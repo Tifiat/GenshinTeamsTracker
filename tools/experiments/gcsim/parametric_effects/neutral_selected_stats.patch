@@ -1,0 +1,181 @@
+diff --git a/pkg/gttsourcegen/select_stats.go b/pkg/gttsourcegen/select_stats.go
+--- a/pkg/gttsourcegen/select_stats.go
++++ b/pkg/gttsourcegen/select_stats.go
+@@ -11,6 +11,15 @@
+ // innermost executed block/case. Foreign getters fall back at the typed runtime
+ // interface; ambiguous mutable locals are not granted character ownership.
+ func selectStatsRefs(fs *token.FileSet, tf *token.File, file *ast.File, at token.Pos, rt string) (map[string]string, []textEdit) {
++	refs, _, edits := selectedStatsBindings(fs, tf, file, at, rt, nil)
++	return refs, edits
++}
++
++// Direct totals on an already selected vector retain the query origin too.
++// The expression emitter supplies its single evaluated total as the final
++// argument; no mutable getter is re-read while attaching provenance.
++func selectedStatsBindings(fs *token.FileSet, tf *token.File, file *ast.File, at token.Pos, rt string, expression ast.Expr) (map[string]string, map[string]string, []textEdit) {
++	totals := map[string]string{}
+ 	refs := map[string]string{}
+ 	edits := []textEdit{}
+ 	alias := vectorInfoAlias(file)
+@@ -21,7 +30,7 @@
+ 		}
+ 	}
+ 	if alias == "" || attr == "" {
++		return refs, totals, edits
+-		return refs, edits
+ 	}
+ 	var statements []ast.Stmt
+ 	span := int(^uint(0) >> 1)
+@@ -119,6 +128,44 @@
+ 		refs[id.Name] = fmt.Sprintf("%s.GTTStatsTotalRef(%s,%s,%s,%s,%s)", alias, rt, saved.origin, rootText(fs, method.X), strings.Join(keys, ","), id.Name)
+ 		used[rootText(fs, method.X)] = true
+ 	}
++	// A selected vector must not escape or be edited after selection. Accept
++	// only its declaration and the official pure total methods. This is
++	// deliberately conservative for arrays passed to unknown helpers.
++	if expression != nil {
++		parents := vectorParents(file)
++		ast.Inspect(expression, func(n ast.Node) bool {
++			call, ok := n.(*ast.CallExpr)
++			if !ok || len(call.Args) != 0 { return true }
++			method, ok := call.Fun.(*ast.SelectorExpr)
++			if !ok { return true }
++			name := rootText(fs, method.X)
++			saved, ok := containers[name]
++			if !ok { return true }
++			keys := map[string][]string{"TotalATK": {"BaseATK", "ATKP", "ATK"}, "MaxHP": {"BaseHP", "HPP", "HP"}, "TotalDEF": {"BaseDEF", "DEFP", "DEF"}}[method.Sel.Name]
++			if len(keys) != 3 { return true }
++			valid := true
++			for _, statement := range statements {
++				ast.Inspect(statement, func(use ast.Node) bool {
++					id, ok := use.(*ast.Ident)
++					if !ok || id.Name != name { return true }
++					if id == saved.stmt.Lhs[0] { return true }
++					selector, ok := parents[id].(*ast.SelectorExpr)
++					if !ok || selector.X != id { valid = false; return false }
++					call, ok := parents[selector].(*ast.CallExpr)
++					if !ok || call.Fun != selector || len(call.Args) != 0 ||
++						(selector.Sel.Name != "TotalATK" && selector.Sel.Name != "MaxHP" && selector.Sel.Name != "TotalDEF") {
++						valid = false
++					}
++					return true
++				})
++			}
++			if !valid { return true }
++			for i := range keys { keys[i] = attr + "." + keys[i] }
++			totals[rootText(fs, call)] = fmt.Sprintf("%s.GTTStatsTotalRef(%s,%s,%s,%s,%%s)", alias, rt, saved.origin, name, strings.Join(keys, ","))
++			used[name] = true
++			return false
++		})
++	}
+ 	for name := range used {
+ 		s := containers[name]
+ 		keys := []string{}
+@@ -128,5 +175,5 @@
+ 		code := fmt.Sprintf("%s,%s := %s.GTTSelectStats(%s,%s,%s,[]%s.Stat{%s},func()%s.Stats{return %s})", name, s.origin, alias, rt, rootText(fs, s.method.X), rootText(fs, s.call.Args[0]), attr, strings.Join(keys, ","), attr, rootText(fs, s.call))
+ 		edits = append(edits, textEdit{start: tf.Offset(s.stmt.Pos()), end: tf.Offset(s.stmt.End()), replacement: code})
+ 	}
++	return refs, totals, edits
+-	return refs, edits
+ }
+diff --git a/pkg/gttsourcegen/saved_vector.go b/pkg/gttsourcegen/saved_vector.go
+--- a/pkg/gttsourcegen/saved_vector.go
++++ b/pkg/gttsourcegen/saved_vector.go
+@@ -319,6 +319,9 @@
+ 			}
+ 			prefix := fmt.Sprintf("gttVector_%d_%d", pos.Line, pos.Column)
+ 			expr := fieldExpression{fset: fs, rt: rt, source: strconv.Quote(owned.entry.SourceID), prefix: prefix, info: alias, refs: localVectorRefs(fs, file, wanted, stmt.Pos(), rt), constants: sourceNamedConstants(file)}
++			selectedRefs, selectedTotals, selectedEdits := selectedStatsBindings(fs, tf, file, stmt.Pos(), rt, stmt.Rhs[0])
++			for key, ref := range selectedRefs { expr.refs[key] = ref }
++			expr.selectedTotals = selectedTotals
+ 			value, extra, pure := pureLocalValue(fs, tf, file, stmt.Pos(), stmt.Rhs[0], &expr)
+ 			var err error
+ 			if pure {
+@@ -335,6 +338,9 @@
+ 				expr.code.Reset()
+ 				value = fieldValue{value: rootText(fs, stmt.Rhs[0]), ref: traceImportAlias + ".NumericRef{}"}
+ 			}
++			if err == nil {
++				for _, edit := range selectedEdits { inputEdits[edit.start] = edit }
++			}
+ 			// Go evaluates the indexed LHS address before RHS calls; keep that order.
+ 			code := fmt.Sprintf("if !%s.Enabled() {%s} else {\n%s_ptr := &%s\n%s\n*%s_ptr=%s\n%s.StoreStatCell(%s_ptr,%s)\n}",
+ 				rt, rootText(fs, stmt), prefix, rootText(fs, stmt.Lhs[0]), expr.code.String(), prefix, value.value, rt, prefix, value.ref)
+diff --git a/pkg/gttsourcegen/attack_fields.go b/pkg/gttsourcegen/attack_fields.go
+--- a/pkg/gttsourcegen/attack_fields.go
++++ b/pkg/gttsourcegen/attack_fields.go
+@@ -15,6 +15,7 @@
+ 	fset                     *token.FileSet
+ 	rt, source, prefix, info string
+ 	refs                     map[string]string
++	selectedTotals           map[string]string
+ 	constants                map[string]bool
+ 	serial, visits           int
+ 	code                     strings.Builder
+@@ -50,6 +51,11 @@
+ 	c.serial++
+ 	name := c.prefix + "_n" + strconv.Itoa(c.serial)
+ 	ref := name + "_ref"
++	if binding, ok := c.selectedTotals[text]; ok {
++		fmt.Fprintf(&c.code, "%s := (%s);\n", name, text)
++		fmt.Fprintf(&c.code, "%s := %s;\n", ref, fmt.Sprintf(binding, name))
++		return fieldValue{name, ref}, nil
++	}
+ 	operation := ""
+ 	var operands []ast.Expr
+ 	switch v := e.(type) {
+diff --git a/pkg/gttsourcegen/neutral_selected_test.go b/pkg/gttsourcegen/neutral_selected_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/neutral_selected_test.go
+@@ -0,0 +1,50 @@
++package gttsourcegen
++
++import (
++	"go/ast"
++	"go/parser"
++	"go/token"
++	"strings"
++	"testing"
++)
++
++func TestNeutralSelectedStatsExpression(t *testing.T) {
++	base := `package x
++import(info "github.com/genshinsim/gcsim/pkg/core/info";a "github.com/genshinsim/gcsim/pkg/core/attributes")
++func(q *provider)tick(){
++ stats:=q.SelectStat(true,a.BaseATK,a.ATKP,a.ATK)
++ // CHANGE
++ q.bank[a.EM]=stats.TotalATK()*.06
++}`
++	for _, tc := range []struct{name, change string; supported bool}{
++		{"direct total", "", true},
++		{"mutation", "stats[a.ATKP]=1", false},
++		{"escape", "observe(&stats)", false},
++		{"alias", "other:=stats;_ = other", false},
++		{"reassign", "stats=q.SelectStat(false,a.ATKP)", false},
++	} {
++		t.Run(tc.name, func(t *testing.T){
++			src:=strings.Replace(base,"// CHANGE",tc.change,1)
++			fs:=token.NewFileSet()
++			file,err:=parser.ParseFile(fs,"test.go",src,0)
++			if err!=nil{t.Fatal(err)}
++			fn:=file.Decls[1].(*ast.FuncDecl)
++			write:=fn.Body.List[len(fn.Body.List)-1].(*ast.AssignStmt)
++			refs,totals,edits:=selectedStatsBindings(fs,fs.File(file.Pos()),file,write.Pos(),"q.Core.GTTTrace",write.Rhs[0])
++			if (len(totals)>0)!=tc.supported{t.Fatalf("bindings=%v",totals)}
++			if !tc.supported{return}
++			expr:=fieldExpression{fset:fs,rt:"q.Core.GTTTrace",source:`"test"`,prefix:"probe",info:"info",refs:refs,selectedTotals:totals}
++			v,err:=expr.emit(write.Rhs[0],0)
++			if err!=nil{t.Fatal(err)}
++			edits=append(edits,textEdit{start:fs.File(file.Pos()).Offset(write.Pos()),end:fs.File(file.Pos()).Offset(write.End()),replacement:expr.code.String()+";q.bank[a.EM]="+v.value})
++			out,err:=applyTextEdits([]byte(src),edits)
++			if err!=nil{t.Fatal(err)}
++			if _,err=parser.ParseFile(token.NewFileSet(),"out.go",out,0);err!=nil{t.Fatal(err,string(out))}
++			for _,token:=range []string{"GTTSelectStats", "GTTStatsTotalRef", "stats.TotalATK()", "q.SelectStat("}{
++				if strings.Count(string(out),token)!=1{t.Fatalf("not single eval %s: %s",token,out)}
++			}
++			if !strings.Contains(string(out),"q,true,[]a.Stat"){t.Fatal("lost receiver/filter",string(out))}
++			if strings.Contains(string(out),"frozen_attack_operand"){t.Fatal("selected total frozen",string(out))}
++		})
++	}
++}

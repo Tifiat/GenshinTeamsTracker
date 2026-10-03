@@ -6,11 +6,13 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPainter, QPixmap
+from PySide6.QtWidgets import QPushButton, QWidget
 
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
 from hoyolab_export.account_storage import (
     AccountCharacterRuntimeRecord,
     AccountWeaponObservedStack,
+    get_account_character,
     list_account_characters,
     list_account_weapon_observed_stacks,
 )
@@ -34,6 +36,7 @@ from hoyolab_export.artifact_stats import (
     property_name,
 )
 from hoyolab_export.crop_manifest import IGNORED_CHARACTER_IDS, IGNORED_WEAPON_RARITIES
+from hoyolab_export.asset_paths import character_variant_path, element_icon_path
 from hoyolab_export.paths import PROJECT_ROOT
 from hoyolab_export.character_trait_catalog import (
     TRAIT_HEXEREI,
@@ -79,6 +82,26 @@ WEAPON_RARITY_FILTERS = [
     (4, "rarity_4.png", "filter.rarity.4"),
     (3, "rarity_3.png", "filter.rarity.3"),
 ]
+
+
+def filter_icon_path(icon_name: str) -> Path:
+    """Use imported HoYoLAB element layers after an import; keep preimport icons."""
+    if icon_name.startswith("element_") and icon_name.endswith(".png"):
+        imported = element_icon_path(icon_name[len("element_"):-4])
+        if imported is not None:
+            return imported
+    return FILTER_ASSETS_DIR / icon_name
+
+
+def refresh_imported_element_filter_icons(root: QWidget) -> None:
+    """Refresh already-visible filter buttons after import or profile switch."""
+    for button in root.findChildren(QPushButton):
+        icon_name = button.property("elementIconName")
+        if not isinstance(icon_name, str) or not icon_name:
+            continue
+        path = filter_icon_path(icon_name)
+        if path.is_file():
+            button.setIcon(QIcon(str(path)))
 
 CHARACTER_TRAIT_FILTERS = [
     (TRAIT_MOONSIGN, "../team_bonus/Moonsign.png", "filter.trait.moonsign"),
@@ -230,6 +253,36 @@ def load_account_weapon_stack_asset_items(
         ]
 
 
+def load_weapon_owner_badges_for_fingerprints(
+    fingerprints: set[str],
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[str, list[dict[str, Any]]]:
+    """Refresh ownership after an equip action without rebuilding the weapon catalog."""
+    wanted = {str(value).strip() for value in fingerprints if str(value).strip()}
+    if not wanted:
+        return {}
+    with closing(connect_db(db_path)) as conn:
+        owners_by_fingerprint = {
+            fingerprint: list_equipped_weapon_owners(conn, fingerprint)
+            for fingerprint in wanted
+        }
+        owner_ids = {
+            character_id
+            for owners in owners_by_fingerprint.values()
+            for character_id in owners
+        }
+        characters_by_id: dict[str, AccountCharacterRuntimeRecord] = {}
+        for character_id in owner_ids:
+            record = get_account_character(conn, character_id)
+            if record is not None:
+                characters_by_id[str(character_id)] = record
+    return {
+        fingerprint: _weapon_owner_badges(characters_by_id, owners)
+        for fingerprint, owners in owners_by_fingerprint.items()
+    }
+
+
 def account_character_asset_item(
     record: AccountCharacterRuntimeRecord,
 ) -> dict[str, Any] | None:
@@ -242,9 +295,10 @@ def account_character_asset_item(
     if path is None:
         return None
 
+    character_ref = record.to_team_builder_character_ref()
     metadata = {
         "source": "account_sqlite",
-        "character": record.to_team_builder_character_ref(),
+        "character": character_ref,
         "region_key": record.region_key,
         "region_name": record.region_name,
         "traits": list(record.traits),
@@ -253,12 +307,37 @@ def account_character_asset_item(
         "source_metadata": dict(record.source_metadata or {}),
         "warnings": list(record.warnings),
     }
+    # A packaged PvP account contains SQLite but no separate image manifest.
+    # Reuse local variants only when its browser bitmap is exactly the one in
+    # the current manifest; a matching ID alone could belong to another owner.
+    manifest_browser = character_variant_path(record.character_id, "crop")
+    matching_variants = manifest_browser is not None and manifest_browser.resolve() == path.resolve()
+    pvp_path = character_variant_path(record.character_id, "pvp") if matching_variants else None
+    history_path = character_variant_path(record.character_id, "history") if matching_variants else None
+    if pvp_path is not None:
+        metadata["portrait_pvp_path"] = str(pvp_path)
+    if history_path is not None:
+        metadata["portrait_history_path"] = str(history_path)
+        character_ref["portrait_history_path"] = str(history_path)
     return {
         "path": path,
         "filename": path.name,
         "tooltip": _character_tooltip(record),
         "metadata": metadata,
     }
+
+
+def pvp_character_asset_item(asset: dict[str, Any]) -> dict[str, Any]:
+    """Swap only the baked image; per-seat PvP constellation badges stay intact."""
+    metadata = dict(asset.get("metadata") or {})
+    pvp_path = _existing_project_path(metadata.get("portrait_pvp_path"))
+    if pvp_path is None:
+        return asset
+    character = dict(metadata.get("character") or {})
+    character["portrait_path"] = str(pvp_path)
+    character["local_portrait_path"] = str(pvp_path)
+    metadata["character"] = character
+    return {**asset, "path": pvp_path, "filename": pvp_path.name, "metadata": metadata}
 
 
 def account_weapon_stack_asset_item(

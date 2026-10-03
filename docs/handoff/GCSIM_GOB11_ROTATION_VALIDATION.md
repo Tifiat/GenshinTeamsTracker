@@ -222,7 +222,7 @@ and saved Chasca rotation were not written.
 ## Execution rules
 
 For that dated validation: project venv, sequential work, no delegation and no
-brute force. Current subagent exceptions follow the direct-user-request rule in
+brute force. Current low-context subagent delegation follows
 `CODEX.md`. Start with at most
 two compact seeds and one reduced ordinary sample per fixture; add narrow
 stat probes only for a declared question. Reuse saved captures. After three

@@ -1,0 +1,2901 @@
+{
+  "schema_version": 1,
+  "scope": "saved-capture CLI-route replay; no new simulation, no install",
+  "saved_run": "all_sets-20260927-212145-2c1cb70d",
+  "request_sha256": "8fc91b23f9c96ede6dd08ed88e7313c138119d7c52e34bdf67674095f89c8f8f",
+  "source_sha256": "c546b004166f42ed02bfcb4c6c2796e3e03ac2710a83473f76a72725532add24",
+  "installed_sha256": "585aca6b49bd766a2b41fd5cc4392f6aeffd6463b824660f39736f62f55b1715",
+  "engine_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "variants": [
+    {
+      "variant": "player_packages32",
+      "build_and_replay_seconds": 91.40700000000652,
+      "variant_source_sha256": "664dda4a1c187ba9479e93b9a5d6c1353346f22e49e6508c6795e2eb1382c5b3",
+      "exact_rows": false,
+      "rows": 49,
+      "groups": 7,
+      "group_deltas": [
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 153577.80433290062,
+          "candidate_dps": 153577.80433290062,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 151461.9087801574,
+          "candidate_dps": 151461.9087801574,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150341.85031832237,
+          "candidate_dps": 150341.85031832237,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150194.48232973166,
+          "candidate_dps": 150194.48232973166,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150156.97276602747,
+          "candidate_dps": 150156.97276602747,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150087.85102837032,
+          "candidate_dps": 150087.85102837032,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150087.0381914777,
+          "candidate_dps": 150135.73197243206,
+          "delta": 48.69378095434513
+        }
+      ],
+      "result_fingerprint": "4b6f3f964c3e6de793f0b76366b18f859c19229522b4b83b501485950fb9a4cd",
+      "leaders": [
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 153577.80433290062,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1510
+            ],
+            [
+              "furina",
+              "flower",
+              1395
+            ],
+            [
+              "furina",
+              "goblet",
+              1563
+            ],
+            [
+              "furina",
+              "plume",
+              1598
+            ],
+            [
+              "furina",
+              "sands",
+              48
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 151461.9087801574,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              1302
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150341.85031832237,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1436
+            ],
+            [
+              "furina",
+              "flower",
+              1454
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150194.48232973166,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              1395
+            ],
+            [
+              "furina",
+              "goblet",
+              1563
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150156.97276602747,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1436
+            ],
+            [
+              "furina",
+              "flower",
+              1417
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150135.73197243206,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              31
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              1351
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150087.85102837032,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              90
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              1351
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        }
+      ],
+      "paired_reference_variant": "player_packages32",
+      "paired_exact_rows": true,
+      "hypothesis_diagnostics": [
+        "=== RUN   TestHypothesisLiteral2PRestrictedSource",
+        "--- PASS: TestHypothesisLiteral2PRestrictedSource (0.00s)",
+        "=== RUN   TestHypothesisLiteral2PRejectsDynamicAndExtraEffects",
+        "--- PASS: TestHypothesisLiteral2PRejectsDynamicAndExtraEffects (0.00s)",
+        "    hypothesis_bonus_approx_test.go:115: restricted literal two-piece coverage: 18/42 source sets: [archaicpetra crimsonwitchofflames deepwoodmemories desertpavilionchronicle emblemofseveredfate flowerofparadiselost fragmentofharmonicwhimsy gildeddreams gladiatorsfinale maidenbeloved nighttimewhispersintheechoingwoods oceanhuedclam shimenawasreminiscence songofdayspast tenacityofthemillelith unfinishedreverie vourukashasglow wandererstroupe]",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=0 full=524 ranked_simple=105 selected=451 width=32",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=1 full=524 ranked_simple=105 selected=451 width=32",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=2 full=524 ranked_simple=105 selected=451 width=32",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=3 full=524 ranked_simple=105 selected=451 width=32",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=0 full=524 ranked_simple=105 selected=451 width=32",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=1 full=524 ranked_simple=105 selected=451 width=32",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=2 full=524 ranked_simple=105 selected=451 width=32",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=3 full=524 ranked_simple=105 selected=451 width=32"
+      ],
+      "passed_hypothesis_controls": [
+        "TestHypothesisMixedInputsPreserveGraphAndGradient",
+        "TestHypothesisRegionsPreserveGraphGradientAndIndependentOutputs",
+        "TestHypothesisRegionsOrderedBranchesAndFailureRecovery",
+        "TestHypothesisInventoryViewsShareBoundedExactVectors",
+        "TestHypothesisAmountPlanKeepsCurrentStorageAndClearBinding",
+        "TestHypothesisAmountPlanFallsBackForAliasAndBoundsOwnership",
+        "TestHypothesisLiteral2PRestrictedSource",
+        "TestHypothesisLiteral2PRejectsDynamicAndExtraEffects",
+        "TestHypothesisActiveSourceLiteralCoverage",
+        "TestHypothesisEffectFamiliesExactBitsAndOwnership",
+        "TestHypothesisFamiliesKeepSourceDiagnosticsAndDependencyMerges",
+        "TestHypothesisPreparedReplayMatchesPublicOrder",
+        "TestHypothesisPlayerPriorityCounterexamples",
+        "TestHypothesisReplay"
+      ],
+      "memory": {
+        "gc_count": 79,
+        "gc_pause_ns": 25854900,
+        "heap_alloc_bytes": 383352296,
+        "heap_sys_bytes": 796590080,
+        "total_alloc_bytes": 13770406096
+      },
+      "rank_deltas": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        47.88094406173332,
+        0.8128368926118128
+      ],
+      "alternative_scores": {
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          153577.80433290062,
+          153555.6992920112,
+          153528.55471697653,
+          153520.15187172382,
+          153518.85736396,
+          153514.45099932462,
+          153512.30988956953
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          151461.9087801574,
+          151439.18629667204,
+          151427.9108279654,
+          151426.77291189373,
+          151419.05186462728,
+          151413.93934573847,
+          151401.9446142587
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150341.85031832237,
+          150319.127834837,
+          150307.85236613033,
+          150298.99340279226,
+          150293.88088390342,
+          150281.88615242369,
+          150276.70884577758
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150194.48232973166,
+          150171.7598462463,
+          150160.48437753966,
+          150151.62541420152,
+          150146.51289531274,
+          150134.51816383295,
+          150129.34085718688
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150156.97276602747,
+          150134.2502825421,
+          150122.97481383546,
+          150114.11585049733,
+          150109.00333160855,
+          150097.0086001288,
+          150091.83129348268
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150135.73197243206,
+          150113.0094889467,
+          150101.73402024002,
+          150099.1622441717,
+          150092.87505690192,
+          150089.5703142893,
+          150087.7625380131
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150087.85102837032,
+          150065.12854488497,
+          150053.85307617835,
+          150044.9941128402,
+          150039.88159395143,
+          150027.88686247164,
+          150022.70955582557
+        ]
+      },
+      "alternative_deltas": {
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          48.69378095434513,
+          34.468665737018455,
+          35.76364186051069,
+          34.84653617933509,
+          39.83481761623989,
+          45.38903834176017,
+          48.69378095434513
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "search_seconds": 56.5826891,
+      "proposal_seconds": 26.6478285,
+      "search_expansions": 188368,
+      "search_stop_reason": "neutral_cycle_budget",
+      "total_elapsed_ms": 56855.4988,
+      "neutral_model": {
+        "Requests": 5333,
+        "Unavailable": 0,
+        "RegionReuse": {
+          "Calls": 683,
+          "Visited": 35480484,
+          "Rebuilt": 3306039,
+          "Reused": 32174445,
+          "OutputNodes": 4045835,
+          "Resets": 0,
+          "PeakArenaNodes": 89469
+        },
+        "DispatchHits": 1676,
+        "ProgramHits": 2847,
+        "ProgramMisses": 810,
+        "ConstantVectorBindings": 2751,
+        "ExpressionMapBindings": 906,
+        "RuleSeconds": 8.80082589999998,
+        "BindSeconds": 7.7982365000000105,
+        "ViewSeconds": 0.8546584999999994,
+        "ConstantBindSeconds": 4.683576400000014,
+        "SymbolicBindSeconds": 3.1131143999999993,
+        "Specialization": {
+          "Hits": 4387,
+          "Misses": 1618,
+          "Entries": 101,
+          "Nodes": 1018451
+        },
+        "EffectInputs": 11205,
+        "ConstantDamageInputs": 11205,
+        "Preparation": {
+          "FamilyHits": 2538,
+          "FamilyMisses": 1119,
+          "TwoPieceChoices": 124,
+          "TwoPieceEffectFamilies": 32,
+          "Requests": 3657,
+          "Replays": 249,
+          "JointReplays": 17,
+          "ComponentHits": 17295,
+          "GroupHits": 127,
+          "GroupMisses": 17,
+          "Merges": 144,
+          "FullFallbacks": 0,
+          "ReplaySeconds": 7.554881800000003,
+          "GroupEntries": 17,
+          "GroupValues": 190485,
+          "SymbolicComponents": 4,
+          "SymbolicCompositions": 204,
+          "ComponentExpressionNodes": 1440
+        }
+      },
+      "neutral_cycles": [
+        {
+          "Cycle": 1,
+          "Total": 2096,
+          "Prepared": 1804,
+          "ModelUnavailable": 0,
+          "ReservationDeferred": 0,
+          "Queued": 1804,
+          "Processed": 0,
+          "NotPrepared": 292,
+          "NotProcessed": 0,
+          "ModelDeferred": 1804,
+          "Sampled": 794,
+          "HeuristicSkipped": 1010
+        },
+        {
+          "Cycle": 2,
+          "Total": 2096,
+          "Prepared": 1804,
+          "ModelUnavailable": 0,
+          "ReservationDeferred": 0,
+          "Queued": 1804,
+          "Processed": 0,
+          "NotPrepared": 292,
+          "NotProcessed": 0,
+          "ModelDeferred": 1804,
+          "Sampled": 291,
+          "HeuristicSkipped": 1513
+        }
+      ],
+      "neutral_joint_seconds": 0.1811067,
+      "neutral_package_joint": [
+        {
+          "Roots": 3,
+          "Proposals": 280,
+          "Seeded": 295,
+          "Scored": 295,
+          "Unavailable": 0,
+          "Refined": 3,
+          "AllocationDeferred": 0,
+          "Seconds": 5.7457264,
+          "Heuristic": true,
+          "Finished": true
+        },
+        {
+          "Roots": 3,
+          "Proposals": 276,
+          "Seeded": 291,
+          "Scored": 291,
+          "Unavailable": 0,
+          "Refined": 3,
+          "AllocationDeferred": 0,
+          "Seconds": 4.8586656,
+          "Heuristic": true,
+          "Finished": true
+        }
+      ],
+      "neutral_stabilization": [
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                1598,
+                48,
+                1563,
+                1510
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 153577.80433290062,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4007,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1302,
+                7,
+                1466,
+                1309,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 151461.9087801574,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4342,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1454,
+                7,
+                1466,
+                1309,
+                1436
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150341.85031832237,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4583,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                7,
+                1466,
+                1563,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150194.48232973166,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4444,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1417,
+                7,
+                1466,
+                1309,
+                1436
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150156.97276602747,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 5135,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                31,
+                1351,
+                1466,
+                1309,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150135.73197243206,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4839,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                90,
+                1351,
+                1466,
+                1309,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150087.85102837032,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4899,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        }
+      ],
+      "work_by_lane": {
+        "neutral_initial": {
+          "count": 1,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_0:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_real_candidate:sampled_neighborhood_stable": {
+          "count": 1085,
+          "seconds": 8.264533199999995,
+          "expanded": 89586
+        },
+        "neutral_actor_0:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_1:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_1:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_2:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_2:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_3:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_3:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_package_pair:refined": {
+          "count": 6,
+          "seconds": 1.3742207,
+          "expanded": 21553
+        },
+        "neutral_joint": {
+          "count": 3,
+          "seconds": 0.37459390000000004,
+          "expanded": 918
+        },
+        "neutral_finalist:single_stationary_sampled_pairs_stable": {
+          "count": 7,
+          "seconds": 2.338561,
+          "expanded": 32249
+        }
+      }
+    },
+    {
+      "variant": "player_packages96",
+      "build_and_replay_seconds": 79.28100000000268,
+      "variant_source_sha256": "e436e324acf216849548ecd2daf32465588f9af0d4db76e0e52ea4053b20b7b1",
+      "exact_rows": false,
+      "rows": 49,
+      "groups": 7,
+      "group_deltas": [
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 153577.80433290062,
+          "candidate_dps": 153577.80433290062,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 151461.9087801574,
+          "candidate_dps": 151461.9087801574,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150341.85031832237,
+          "candidate_dps": 150341.85031832237,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150194.48232973166,
+          "candidate_dps": 150194.48232973166,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150156.97276602747,
+          "candidate_dps": 150156.97276602747,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150087.85102837032,
+          "candidate_dps": 150087.85102837032,
+          "delta": 0.0
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "baseline_dps": 150087.0381914777,
+          "candidate_dps": 150135.73197243206,
+          "delta": 48.69378095434513
+        }
+      ],
+      "result_fingerprint": "4b6f3f964c3e6de793f0b76366b18f859c19229522b4b83b501485950fb9a4cd",
+      "leaders": [
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 153577.80433290062,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1510
+            ],
+            [
+              "furina",
+              "flower",
+              1395
+            ],
+            [
+              "furina",
+              "goblet",
+              1563
+            ],
+            [
+              "furina",
+              "plume",
+              1598
+            ],
+            [
+              "furina",
+              "sands",
+              48
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 151461.9087801574,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              1302
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150341.85031832237,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1436
+            ],
+            [
+              "furina",
+              "flower",
+              1454
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150194.48232973166,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              1395
+            ],
+            [
+              "furina",
+              "goblet",
+              1563
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150156.97276602747,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1436
+            ],
+            [
+              "furina",
+              "flower",
+              1417
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              7
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150135.73197243206,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              31
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              1351
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        },
+        {
+          "group": "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]",
+          "rank": 1,
+          "dps": 150087.85102837032,
+          "ids": [
+            [
+              "bennett",
+              "circlet",
+              203
+            ],
+            [
+              "bennett",
+              "flower",
+              36
+            ],
+            [
+              "bennett",
+              "goblet",
+              140
+            ],
+            [
+              "bennett",
+              "plume",
+              1413
+            ],
+            [
+              "bennett",
+              "sands",
+              1426
+            ],
+            [
+              "chasca",
+              "circlet",
+              1615
+            ],
+            [
+              "chasca",
+              "flower",
+              1571
+            ],
+            [
+              "chasca",
+              "goblet",
+              88
+            ],
+            [
+              "chasca",
+              "plume",
+              81
+            ],
+            [
+              "chasca",
+              "sands",
+              92
+            ],
+            [
+              "furina",
+              "circlet",
+              1319
+            ],
+            [
+              "furina",
+              "flower",
+              90
+            ],
+            [
+              "furina",
+              "goblet",
+              1309
+            ],
+            [
+              "furina",
+              "plume",
+              1351
+            ],
+            [
+              "furina",
+              "sands",
+              1466
+            ],
+            [
+              "ororon",
+              "circlet",
+              119
+            ],
+            [
+              "ororon",
+              "flower",
+              1616
+            ],
+            [
+              "ororon",
+              "goblet",
+              1586
+            ],
+            [
+              "ororon",
+              "plume",
+              91
+            ],
+            [
+              "ororon",
+              "sands",
+              241
+            ]
+          ]
+        }
+      ],
+      "paired_reference_variant": "player_packages32",
+      "paired_exact_rows": true,
+      "hypothesis_diagnostics": [
+        "=== RUN   TestHypothesisLiteral2PRestrictedSource",
+        "--- PASS: TestHypothesisLiteral2PRestrictedSource (0.00s)",
+        "=== RUN   TestHypothesisLiteral2PRejectsDynamicAndExtraEffects",
+        "--- PASS: TestHypothesisLiteral2PRejectsDynamicAndExtraEffects (0.00s)",
+        "    hypothesis_bonus_approx_test.go:115: restricted literal two-piece coverage: 18/42 source sets: [archaicpetra crimsonwitchofflames deepwoodmemories desertpavilionchronicle emblemofseveredfate flowerofparadiselost fragmentofharmonicwhimsy gildeddreams gladiatorsfinale maidenbeloved nighttimewhispersintheechoingwoods oceanhuedclam shimenawasreminiscence songofdayspast tenacityofthemillelith unfinishedreverie vourukashasglow wandererstroupe]",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=0 full=524 ranked_simple=105 selected=515 width=96",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=1 full=524 ranked_simple=105 selected=515 width=96",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=2 full=524 ranked_simple=105 selected=515 width=96",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=3 full=524 ranked_simple=105 selected=515 width=96",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=0 full=524 ranked_simple=105 selected=515 width=96",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=1 full=524 ranked_simple=105 selected=515 width=96",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=2 full=524 ranked_simple=105 selected=515 width=96",
+        "HYPOTHESIS_PACKAGE_SHORTLIST actor=3 full=524 ranked_simple=105 selected=515 width=96"
+      ],
+      "passed_hypothesis_controls": [
+        "TestHypothesisMixedInputsPreserveGraphAndGradient",
+        "TestHypothesisRegionsPreserveGraphGradientAndIndependentOutputs",
+        "TestHypothesisRegionsOrderedBranchesAndFailureRecovery",
+        "TestHypothesisInventoryViewsShareBoundedExactVectors",
+        "TestHypothesisAmountPlanKeepsCurrentStorageAndClearBinding",
+        "TestHypothesisAmountPlanFallsBackForAliasAndBoundsOwnership",
+        "TestHypothesisLiteral2PRestrictedSource",
+        "TestHypothesisLiteral2PRejectsDynamicAndExtraEffects",
+        "TestHypothesisActiveSourceLiteralCoverage",
+        "TestHypothesisEffectFamiliesExactBitsAndOwnership",
+        "TestHypothesisFamiliesKeepSourceDiagnosticsAndDependencyMerges",
+        "TestHypothesisPreparedReplayMatchesPublicOrder",
+        "TestHypothesisPlayerPriorityCounterexamples",
+        "TestHypothesisReplay"
+      ],
+      "memory": {
+        "gc_count": 77,
+        "gc_pause_ns": 13789200,
+        "heap_alloc_bytes": 672297568,
+        "heap_sys_bytes": 817561600,
+        "total_alloc_bytes": 14083161376
+      },
+      "rank_deltas": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        47.88094406173332,
+        0.8128368926118128
+      ],
+      "alternative_scores": {
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          153577.80433290062,
+          153555.6992920112,
+          153528.55471697653,
+          153520.15187172382,
+          153518.85736396,
+          153514.45099932462,
+          153512.30988956953
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          151461.9087801574,
+          151439.18629667204,
+          151427.9108279654,
+          151426.77291189373,
+          151419.05186462728,
+          151413.93934573847,
+          151401.9446142587
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150341.85031832237,
+          150319.127834837,
+          150307.85236613033,
+          150298.99340279226,
+          150293.88088390342,
+          150281.88615242369,
+          150276.70884577758
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150194.48232973166,
+          150171.7598462463,
+          150160.48437753966,
+          150151.62541420152,
+          150146.51289531274,
+          150134.51816383295,
+          150129.34085718688
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150156.97276602747,
+          150134.2502825421,
+          150122.97481383546,
+          150114.11585049733,
+          150109.00333160855,
+          150097.0086001288,
+          150091.83129348268
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150135.73197243206,
+          150113.0094889467,
+          150101.73402024002,
+          150099.1622441717,
+          150092.87505690192,
+          150089.5703142893,
+          150087.7625380131
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          150087.85102837032,
+          150065.12854488497,
+          150053.85307617835,
+          150044.9941128402,
+          150039.88159395143,
+          150027.88686247164,
+          150022.70955582557
+        ]
+      },
+      "alternative_deltas": {
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"wandererstroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"tenacityofthemillelith\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"},{\"pieces\":2,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          48.69378095434513,
+          34.468665737018455,
+          35.76364186051069,
+          34.84653617933509,
+          39.83481761623989,
+          45.38903834176017,
+          48.69378095434513
+        ],
+        "[{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"noblesseoblige\"}],\"wearer_key\":\"bennett\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"obsidiancodex\"}],\"wearer_key\":\"chasca\"},{\"bonuses\":[{\"pieces\":2,\"set_uid\":\"deepwoodmemories\"},{\"pieces\":2,\"set_uid\":\"goldentroupe\"}],\"wearer_key\":\"furina\"},{\"bonuses\":[{\"pieces\":4,\"set_uid\":\"scrolloftheheroofcindercity\"}],\"wearer_key\":\"ororon\"}]": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "search_seconds": 58.8060831,
+      "proposal_seconds": 29.357064400000002,
+      "search_expansions": 190976,
+      "search_stop_reason": "neutral_cycle_budget",
+      "total_elapsed_ms": 59086.1701,
+      "neutral_model": {
+        "Requests": 5868,
+        "Unavailable": 0,
+        "RegionReuse": {
+          "Calls": 687,
+          "Visited": 35688276,
+          "Rebuilt": 3366370,
+          "Reused": 32321906,
+          "OutputNodes": 4069473,
+          "Resets": 0,
+          "PeakArenaNodes": 92523
+        },
+        "DispatchHits": 1766,
+        "ProgramHits": 3283,
+        "ProgramMisses": 819,
+        "ConstantVectorBindings": 3068,
+        "ExpressionMapBindings": 1034,
+        "RuleSeconds": 8.7857171,
+        "BindSeconds": 8.430061400000042,
+        "ViewSeconds": 0.904217200000001,
+        "ConstantBindSeconds": 5.028840200000021,
+        "SymbolicBindSeconds": 3.401221200000006,
+        "Specialization": {
+          "Hits": 4913,
+          "Misses": 1627,
+          "Entries": 101,
+          "Nodes": 1018451
+        },
+        "EffectInputs": 11205,
+        "ConstantDamageInputs": 11205,
+        "Preparation": {
+          "FamilyHits": 2951,
+          "FamilyMisses": 1151,
+          "TwoPieceChoices": 124,
+          "TwoPieceEffectFamilies": 32,
+          "Requests": 4102,
+          "Replays": 249,
+          "JointReplays": 17,
+          "ComponentHits": 19484,
+          "GroupHits": 127,
+          "GroupMisses": 17,
+          "Merges": 144,
+          "FullFallbacks": 0,
+          "ReplaySeconds": 7.482468499999999,
+          "GroupEntries": 17,
+          "GroupValues": 190485,
+          "SymbolicComponents": 4,
+          "SymbolicCompositions": 224,
+          "ComponentExpressionNodes": 1440
+        }
+      },
+      "neutral_cycles": [
+        {
+          "Cycle": 1,
+          "Total": 2096,
+          "Prepared": 2060,
+          "ModelUnavailable": 0,
+          "ReservationDeferred": 0,
+          "Queued": 2060,
+          "Processed": 0,
+          "NotPrepared": 36,
+          "NotProcessed": 0,
+          "ModelDeferred": 2060,
+          "Sampled": 782,
+          "HeuristicSkipped": 1278
+        },
+        {
+          "Cycle": 2,
+          "Total": 2096,
+          "Prepared": 2060,
+          "ModelUnavailable": 0,
+          "ReservationDeferred": 0,
+          "Queued": 2060,
+          "Processed": 0,
+          "NotPrepared": 36,
+          "NotProcessed": 0,
+          "ModelDeferred": 2060,
+          "Sampled": 326,
+          "HeuristicSkipped": 1734
+        }
+      ],
+      "neutral_joint_seconds": 0.17542190000000002,
+      "neutral_package_joint": [
+        {
+          "Roots": 3,
+          "Proposals": 280,
+          "Seeded": 295,
+          "Scored": 295,
+          "Unavailable": 0,
+          "Refined": 3,
+          "AllocationDeferred": 0,
+          "Seconds": 5.695792,
+          "Heuristic": true,
+          "Finished": true
+        },
+        {
+          "Roots": 3,
+          "Proposals": 276,
+          "Seeded": 291,
+          "Scored": 291,
+          "Unavailable": 0,
+          "Refined": 3,
+          "AllocationDeferred": 0,
+          "Seconds": 4.6586136,
+          "Heuristic": true,
+          "Finished": true
+        }
+      ],
+      "neutral_stabilization": [
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                1598,
+                48,
+                1563,
+                1510
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 153577.80433290062,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4007,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1302,
+                7,
+                1466,
+                1309,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 151461.9087801574,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4342,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1454,
+                7,
+                1466,
+                1309,
+                1436
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150341.85031832237,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4583,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                7,
+                1466,
+                1563,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150194.48232973166,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4444,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1417,
+                7,
+                1466,
+                1309,
+                1436
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150156.97276602747,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 5135,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                31,
+                1351,
+                1466,
+                1309,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150135.73197243206,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4839,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        },
+        {
+          "leader": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                90,
+                1351,
+                1466,
+                1309,
+                1319
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "dps": 150087.85102837032,
+            "source": "stabilization_anchor"
+          },
+          "evaluations": 4899,
+          "accepted": 0,
+          "single_stationary": true,
+          "stop": "single_stationary_sampled_pairs_stable"
+        }
+      ],
+      "work_by_lane": {
+        "neutral_initial": {
+          "count": 1,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_0:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_real_candidate:sampled_neighborhood_stable": {
+          "count": 1108,
+          "seconds": 8.302629600000007,
+          "expanded": 87701
+        },
+        "neutral_actor_0:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_1:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_1:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_2:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_2:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_3:anchor": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_actor_3:complete": {
+          "count": 2,
+          "seconds": 0,
+          "expanded": 0
+        },
+        "neutral_package_pair:refined": {
+          "count": 6,
+          "seconds": 1.3692841,
+          "expanded": 21553
+        },
+        "neutral_joint": {
+          "count": 3,
+          "seconds": 0.3643672,
+          "expanded": 918
+        },
+        "neutral_finalist:single_stationary_sampled_pairs_stable": {
+          "count": 7,
+          "seconds": 2.3017772,
+          "expanded": 32249
+        }
+      }
+    }
+  ]
+}

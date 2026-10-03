@@ -68,6 +68,9 @@ from ui.character_assets import (
     CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
+    filter_icon_path,
+    refresh_imported_element_filter_icons,
+    pvp_character_asset_item,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
@@ -566,6 +569,7 @@ class PvpDecksWorkspace(QWidget):
         reload_presets: bool = False,
         emit_signal: bool = True,
     ) -> None:
+        refresh_imported_element_filter_icons(self)
         self.character_assets = self._load_character_assets()
         self.weapon_assets = self._load_weapon_assets()
         if reload_presets:
@@ -788,8 +792,8 @@ class PvpDecksWorkspace(QWidget):
     def _load_character_assets(self) -> list[dict[str, Any]]:
         try:
             if self._character_assets_provider is not None:
-                return list(self._character_assets_provider())
-            return list(load_account_character_asset_items(db_path=self.db_path))
+                return [pvp_character_asset_item(asset) for asset in self._character_assets_provider()]
+            return [pvp_character_asset_item(asset) for asset in load_account_character_asset_items(db_path=self.db_path)]
         except Exception as exc:
             self._last_status = str(exc)
             return []
@@ -1066,8 +1070,10 @@ class PvpDecksWorkspace(QWidget):
         button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
         button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
+        if icon_name.startswith("element_"):
+            button.setProperty("elementIconName", icon_name)
 
-        icon_path = FILTER_ASSETS_DIR / icon_name
+        icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
             button.setIcon(QIcon(str(icon_path)))
         else:
@@ -2033,7 +2039,7 @@ class PvpWorkspace(QWidget):
         cached = self._profile_assets_by_seat.get(seat)
         if cached is None:
             cached = (
-                list(load_account_character_asset_items(db_path=provider.db_path)),
+                [pvp_character_asset_item(asset) for asset in load_account_character_asset_items(db_path=provider.db_path)],
                 list(load_account_weapon_stack_asset_items(db_path=provider.db_path)),
             )
             self._profile_assets_by_seat[seat] = cached

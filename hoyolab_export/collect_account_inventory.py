@@ -172,6 +172,7 @@ async def wait_for_character_list_response(
     page: Page,
     *,
     timeout_sec: int = 60,
+    request_context: dict[str, str] | None = None,
 ) -> asyncio.Future[list[dict[str, Any]]]:
     character_list_future: asyncio.Future[list[dict[str, Any]]] = asyncio.Future()
 
@@ -190,6 +191,16 @@ async def wait_for_character_list_response(
             items = (payload.get("data") or {}).get("list")
             if not isinstance(items, list) or not items:
                 raise RuntimeError("character/list response has no non-empty data.list array")
+            if request_context is not None:
+                try:
+                    body = response.request.post_data_json
+                except Exception:
+                    body = None
+                if isinstance(body, dict):
+                    role_id = str(body.get("role_id") or "")
+                    server = str(body.get("server") or "")
+                    if role_id and server:
+                        request_context.update({"role_id": role_id, "server": server})
             if not character_list_future.done():
                 character_list_future.set_result(items)
                 print(f"[HoYoLAB Inventory] Captured character/list: {len(items)} characters")

@@ -16,6 +16,7 @@ const (
 	IdentityReuse     Route = "identity_reuse"
 	StaticReplacement Route = "proved_static_replacement"
 	FreshCapture      Route = "fresh_context_capture"
+	NeutralEffects    Route = "neutral_parametric_effects"
 )
 
 // Effect is discovery/provenance, never an assertion that an absent set is

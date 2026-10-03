@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from ui.utils.app_scaling import configure_startup_ui_scale
@@ -73,6 +74,24 @@ def _complete_virtual_override(
 
 
 class VirtualGcsimSlotControllerTest(unittest.TestCase):
+    def test_app_shell_refreshes_virtual_catalog_after_active_engine_switch(self) -> None:
+        stale = GcsimVirtualRosterCatalog(engine_id="old", characters=(), weapons=())
+        current = GcsimVirtualRosterCatalog(engine_id="new", characters=(), weapons=())
+        shell = SimpleNamespace(
+            _virtual_gcsim_catalog=stale,
+            _virtual_gcsim_set_choices=(),
+            controller=SimpleNamespace(equipment_db_path="unused.db"),
+        )
+        with patch("ui.app_shell.GcsimEngineStore") as store_type, patch(
+            "ui.app_shell.load_active_virtual_roster_catalog", return_value=current
+        ), patch(
+            "ui.app_shell.load_active_virtual_artifact_set_choices", return_value=("new-set",)
+        ):
+            store_type.return_value.active_engine_id.return_value = "new"
+            AppShell._refresh_active_virtual_gcsim_catalogs(shell)
+        self.assertIs(shell._virtual_gcsim_catalog, current)
+        self.assertEqual(shell._virtual_gcsim_set_choices, ("new-set",))
+
     def test_override_clears_only_account_slot_and_reaches_gcsim_payload(self) -> None:
         controller = AppShellController.empty()
         controller.add_or_replace_character_fast(_account_character("1", "Account Hero"))

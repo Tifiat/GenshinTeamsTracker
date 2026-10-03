@@ -1,0 +1,171 @@
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -1,2 +1,3 @@
+ type Runtime struct {
++	neutralResourceReader func() EventValue
+diff --git a/pkg/gtttrace/neutral_world.go b/pkg/gtttrace/neutral_world.go
+--- a/pkg/gtttrace/neutral_world.go
++++ b/pkg/gtttrace/neutral_world.go
+@@ -1,2 +1,3 @@
+ type NeutralWorldState struct {
++ Facts *EventValue `json:"facts,omitempty"`
+@@ -1,3 +1,4 @@
+ func (r *Runtime) BindNeutralTargets(read func() []EventValue) { if r != nil { r.neutralTargetReader = read } }
++func (r *Runtime) BindNeutralResources(read func() EventValue) { if r != nil { r.neutralResourceReader = read } }
+@@ -1,3 +1,5 @@
+  if r.neutralTargetReader != nil { targets = r.neutralTargetReader() }
++ var facts *EventValue
++ if r.neutralResourceReader != nil { value:=r.neutralResourceReader();facts=&value }
+@@ -1,3 +1,4 @@
+   equal := previous.Active == active && len(previous.Modifiers) == len(mods) && ((len(previous.Targets)==0 && len(targets)==0) || reflect.DeepEqual(previous.Targets, targets))
++  equal = equal && reflect.DeepEqual(previous.Facts,facts)
+@@ -1,3 +1,3 @@
+- r.neutralWorldStates = append(r.neutralWorldStates, NeutralWorldState{Order:order,Frame:r.Frame(),Active:active,Modifiers:append([]NeutralModifierIdentity{},mods...),Targets:cloneEventValues(targets)})
++ if facts!=nil {value:=cloneEventValues([]EventValue{*facts})[0];facts=&value}
++ r.neutralWorldStates = append(r.neutralWorldStates, NeutralWorldState{Order:order,Frame:r.Frame(),Active:active,Modifiers:append([]NeutralModifierIdentity{},mods...),Targets:cloneEventValues(targets),Facts:facts})
+@@ -1,3 +1,4 @@
+   row.Targets = cloneEventValues(row.Targets)
++  if row.Facts!=nil {value:=cloneEventValues([]EventValue{*row.Facts})[0];row.Facts=&value}
+diff --git a/pkg/core/core.go b/pkg/core/core.go
+--- a/pkg/core/core.go
++++ b/pkg/core/core.go
+@@ -1,3 +1,4 @@
+ 	c.GTTTrace.BindNeutralTargets(c.gttNeutralTargets)
++	c.GTTTrace.BindNeutralResources(c.gttNeutralResources)
+diff --git a/pkg/core/status/gtt_neutral_resources.go b/pkg/core/status/gtt_neutral_resources.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/status/gtt_neutral_resources.go
+@@ -0,0 +1,7 @@
++package status
++
++// Observation only; do not execute or refresh any status.
++func (t *Handler) GTTNeutralExpiries() map[string]int {
++ out:=map[string]int{}
++ for key,value:=range t.status {out[key]=value.expiry}
++ return out
++}
+diff --git a/pkg/core/gtt_neutral_resources.go b/pkg/core/gtt_neutral_resources.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/gtt_neutral_resources.go
+@@ -0,0 +1,45 @@
++package core
++
++// Pure resource identities, positions and existing scalar fields. No stat
++// getter, modifier Amount, callback, random draw or gameplay mutation.
++import (
++ "github.com/genshinsim/gcsim/pkg/core/construct"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++ "github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++func (c *Core) gttNeutralResources() gtttrace.EventValue {
++ encode:=func(value any)gtttrace.EventValue{return info.GTTCombatEventValues([]any{value})[0]}
++ chars:=[]gtttrace.EventValue{}
++ for _,char:=range c.Player.Chars(){chars=append(chars,gtttrace.EventValue{Kind:"object",Fields:map[string]gtttrace.EventValue{"Energy":encode(char.Energy),"EnergyMax":encode(char.EnergyMax)}})}
++ shields:=[]gtttrace.EventValue{}
++ for _,s:=range c.Player.Shields.List(){shields=append(shields,encode(s))}
++ objects:=[]gtttrace.EventValue{}
++ // ConstructsByType returns both limited and unlimited lists, partitioned.
++ yes,no:=c.Constructs.ConstructsByType(construct.GeoConstructInvalid)
++ for _,s:=range append(yes,no...){objects=append(objects,gtttrace.EventValue{Kind:"observation",Type:"github.com/genshinsim/gcsim/pkg/core/construct.Construct",Fields:map[string]gtttrace.EventValue{"Type":encode(s.Type()),"Expiry":encode(s.Expiry()),"Pos":gttNeutralPosition(s.Pos())}})}
++ position:=gtttrace.EventValue{Kind:"unknown",Text:"player_not_initialized"}
++ if player:=c.Combat.Player();player!=nil {position=gttNeutralPosition(player.Pos())}
++ return gtttrace.EventValue{Kind:"object",Fields:map[string]gtttrace.EventValue{
++  "Characters":{Kind:"array",Items:chars},"Shields":{Kind:"array",Items:shields},"Constructs":{Kind:"array",Items:objects},
++  "Statuses":encode(c.Status.GTTNeutralExpiries()),"Custom":encode(c.Flags.Custom),"IgnoreBurstEnergy":encode(c.Flags.IgnoreBurstEnergy),"Position":position,
++ }}
++}
++func gttNeutralPosition(p info.Point)gtttrace.EventValue{return gtttrace.EventValue{Kind:"observation",Type:"github.com/genshinsim/gcsim/pkg/core/info.Point",Fields:map[string]gtttrace.EventValue{"X":{Kind:"number",Number:p.X},"Y":{Kind:"number",Number:p.Y}}}}
+diff --git a/pkg/core/info/gtt_combat_event.go b/pkg/core/info/gtt_combat_event.go
+--- a/pkg/core/info/gtt_combat_event.go
++++ b/pkg/core/info/gtt_combat_event.go
+@@ -1,3 +1,4 @@
+ 	"reflect"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
+@@ -1,3 +1,14 @@
+ 	switch v := value.(type) {
++	case interface { ShieldOwner() int; ShieldTarget() int; Expiry() int; Element() attributes.Element }:
++		// The enum-returning Type method cannot appear in this interface without
++		// a package import cycle. Validate its exact signature before calling it.
++		m:=reflect.ValueOf(value).MethodByName("Type")
++		if !m.IsValid() || m.Type().NumIn()!=0 || m.Type().NumOut()!=1 || eventType(m.Type().Out(0))!="github.com/genshinsim/gcsim/pkg/core/player/shield.Type" {return gtttrace.EventValue{Kind:"unknown",Text:"shield_type_signature"}}
++		return gtttrace.EventValue{Kind:"observation",Type:"github.com/genshinsim/gcsim/pkg/core/player/shield.Shield",Fields:map[string]gtttrace.EventValue{
++		 "Type":eventData(m.Call(nil)[0],0),"Expiry":{Kind:"number",Number:float64(v.Expiry())},"Element":eventData(reflect.ValueOf(v.Element()),0),
++		 "ShieldOwner":{Kind:"number",Number:float64(v.ShieldOwner())},"ShieldTarget":{Kind:"number",Number:float64(v.ShieldTarget())},
++		}}
+ 	case *AttackEvent:
+@@ -1,3 +1,4 @@
+ 			Fields: map[string]gtttrace.EventValue{
++				"HitID": {Kind:"number",Number:func()float64{if v.GTTTraceHit!=nil{return float64(v.GTTTraceHit.HitID)};return 0}()},
+ 				"Info": eventData(reflect.ValueOf(v.Info), 0),
+diff --git a/pkg/gttcompact/attack_fields.go b/pkg/gttcompact/attack_fields.go
+--- a/pkg/gttcompact/attack_fields.go
++++ b/pkg/gttcompact/attack_fields.go
+@@ -1,3 +1,11 @@
+ 	initial := c.compileFlatDamage(producer, actor, dynamic)
+-	return c.compileAttackField(hit, "FlatDmg", initial, hit.FlatDmg)
++	flat:=c.compileAttackField(hit, "FlatDmg", initial, hit.FlatDmg)
++	if c.b.neutral && hit.HitID!=0 && hit.AttackModOrder!=0 {
++		zero:=c.b.constant(0)
++		point:=neutralHitPoint(hit);point.Order=hit.AttackModOrder;point.Frame=hit.Frame;point.Mode="stat"
++		c.b.neutralInputs=append(c.b.neutralInputs,NeutralStatInput{NodeID:zero.id,Kind:"flat_event",Owner:actor,Stat:"FlatDmg",Point:point})
++		flat=c.b.add(flat,zero)
++	}
++	return flat
+ }
+diff --git a/pkg/gttcompact/support.go b/pkg/gttcompact/support.go
+--- a/pkg/gttcompact/support.go
++++ b/pkg/gttcompact/support.go
+@@ -1,3 +1,11 @@
+-		raw = c.b.multiply(base, c.b.add(c.b.constant(1+*operation.HealBonusTotal), sourceBonus))
++		incoming:=c.b.constant(1+*operation.HealBonusTotal)
++		if c.b.neutral && operation.TargetIndex>=0 && operation.TargetIndex<len(c.characterKeys) {
++			zero:=c.b.constant(0)
++			point:=neutralEventPoint(event);point.Mode="stat"
++			c.b.neutralInputs=append(c.b.neutralInputs,NeutralStatInput{NodeID:zero.id,Kind:"heal_bonus",Owner:c.characterKeys[operation.TargetIndex],Stat:"heal_bonus",Point:point})
++			incoming=c.b.add(incoming,zero)
++		}
++		raw = c.b.multiply(base, c.b.add(incoming, sourceBonus))
+ 		eventAmount = raw
+diff --git a/pkg/gtttrace/neutral_resources_test.go b/pkg/gtttrace/neutral_resources_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_resources_test.go
+@@ -0,0 +1,15 @@
++package gtttrace
++import "testing"
++func TestNeutralResourceSnapshotsDoNotAlias(t *testing.T){
++ r:=NewRuntime();r.Enable();r.BindNeutralWorld(func()[]NeutralModifierIdentity{return []NeutralModifierIdentity{}})
++ facts:=EventValue{Kind:"object",Fields:map[string]EventValue{"Energy":{Kind:"number",Number:15}}}
++ r.BindNeutralResources(func()EventValue{return facts})
++ r.NextNeutralObservationOrder();r.NextNeutralObservationOrder()
++ facts.Fields["Energy"]=EventValue{Kind:"number",Number:0};r.NextNeutralObservationOrder()
++ rows:=r.NeutralWorld().States
++ if len(rows)!=2 || rows[0].Facts.Fields["Energy"].Number!=15 || rows[1].Facts.Fields["Energy"].Number!=0 {t.Fatal(rows)}
++ rows[0].Facts.Fields["Energy"]=EventValue{Kind:"number",Number:999}
++ if r.NeutralWorld().States[0].Facts.Fields["Energy"].Number!=15{t.Fatal("export aliases stored facts")}
++}
+diff --git a/pkg/core/info/gtt_neutral_resources_test.go b/pkg/core/info/gtt_neutral_resources_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_neutral_resources_test.go
+@@ -0,0 +1,18 @@
++package info_test
++import (
++ "testing"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++ "github.com/genshinsim/gcsim/pkg/core/attributes"
++ "github.com/genshinsim/gcsim/pkg/core/player/shield"
++)
++func TestNeutralShieldAndHitPayload(t *testing.T){
++ s:=&shield.Tmpl{ShieldType:shield.IneffaSkill,Expires:123,Ele:attributes.Electro}
++ value:=info.GTTCombatEventValues([]any{s})[0]
++ if value.Kind!="observation" || value.Fields["Type"].Number!=float64(shield.IneffaSkill) || value.Fields["Expiry"].Number!=123 {t.Fatal(value)}
++ s.Expires=0
++ if value.Fields["Expiry"].Number!=123{t.Fatal("shield snapshot is live")}
++ attack:=&info.AttackEvent{GTTTraceHit:&info.GTTTraceHit{HitID:7}}
++ value=info.GTTCombatEventValues([]any{attack})[0]
++ if value.Fields["HitID"].Number!=7{t.Fatal("hit identity lost",value)}
++}

@@ -8,7 +8,7 @@ from contextlib import closing
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 from uuid import uuid4
 
@@ -93,6 +93,8 @@ from run_workspace.session import (
 from run_workspace.team_builder import TeamBuilderState
 from ui.character_assets import (
     FILTER_ASSETS_DIR,
+    filter_icon_path,
+    refresh_imported_element_filter_icons,
     STANDARD_FILTER_ALL,
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
@@ -100,6 +102,7 @@ from ui.character_assets import (
     character_sort_key,
     load_account_character_asset_items,
     load_account_weapon_stack_asset_items,
+    load_weapon_owner_badges_for_fingerprints,
     metadata_int,
 )
 from ui.right_panel.settings.account_data import AccountDataPage
@@ -119,6 +122,7 @@ from ui.gcsim_browser.optimizer_result import build_optimizer_result_pages
 from ui.history_browser.window import HistoryBrowserWorkspace
 from ui.right_panel.history.viewer import HistoryRightPanelHost
 from ui.gcsim_browser.run_worker import (
+    _active_run_binding,
     GcsimBrowserBatchRunRequest,
     GcsimBrowserBatchRunWorker,
     GcsimBrowserDpsDummyRunRequest,
@@ -137,6 +141,7 @@ from ui.gcsim_browser.run_worker import (
 from run_workspace.gcsim.optimizer_go_selected import (
     GcsimOptimizerGoSelectedRequest,
 )
+from run_workspace.gcsim.engine_store import GcsimEngineStore, GcsimEngineStoreError
 from run_workspace.gcsim.virtual_roster import (
     GcsimCatalogCharacter,
     GcsimCatalogWeapon,
@@ -165,6 +170,7 @@ from run_workspace.gcsim.readiness_summary import (
 )
 from run_workspace.gcsim.settings import (
     GcsimRunSettings,
+    effective_gcsim_optimizer_settings,
     effective_gcsim_run_settings,
 )
 from run_workspace.perf import log_perf, perf_ms, perf_now
@@ -1762,6 +1768,9 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.optimizer_cancel_requested.connect(
             self._on_gcsim_optimizer_cancel_requested
         )
+        self.left_host.gcsim_browser_workspace.optimizer_finish_requested.connect(
+            self._on_gcsim_optimizer_finish_requested
+        )
         self.left_host.gcsim_browser_workspace.optimizer_build_save_requested.connect(
             self._on_gcsim_optimizer_build_save_requested
         )
@@ -1855,10 +1864,7 @@ class AppShell(QWidget):
         self.setWindowTitle(tr("app_shell.title"))
         self.left_host.retranslate_ui()
         self.right_dock.retranslate_ui()
-        self._virtual_gcsim_set_choices = load_active_virtual_artifact_set_choices(
-            self.controller.equipment_db_path,
-            language=get_language(),
-        )
+        self._refresh_active_virtual_gcsim_catalogs(force=True)
         self._refresh_right_panel()
 
     def resizeEvent(self, event) -> None:
@@ -2061,11 +2067,7 @@ class AppShell(QWidget):
         total_ms = perf_ms(total_start)
         applied = bool(timings.get("hydration_applied"))
         if applied:
-            sync_start = perf_now()
-            self._sync_artifact_browser_operation_target()
-            sync_ms = perf_ms(sync_start)
             self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
-            timings["operation_target_sync"] = sync_ms
         log_perf(
             "persistent_equipment_hydration_flush",
             total=total_ms,
@@ -2123,6 +2125,7 @@ class AppShell(QWidget):
         run_dir = PROJECT_ROOT / "data" / "gcsim" / "runs" / "gcsim-browser-prepare"
         rotation_shell_path = run_dir / "rotation_shell.txt"
         try:
+            binding = _active_run_binding(_selected_gcsim_engine_id())
             run_dir.mkdir(parents=True, exist_ok=True)
             rotation_shell_path.write_text(rotation_shell_text, encoding="utf-8")
             report = build_selected_team_full_config_report(
@@ -2132,6 +2135,7 @@ class AppShell(QWidget):
                 rotation_shell_path=rotation_shell_path,
                 run_dir=run_dir,
                 write_config=True,
+                artifact_set_registry_source=binding.artifact_registry,
                 run_settings=self.controller.gcsim_run_settings(),
             )
         except Exception as exc:
@@ -2168,6 +2172,7 @@ class AppShell(QWidget):
                 selected_team=selected_team,
                 team_index=normalized_team_index,
                 rotation_shell_text=rotation_shell_text,
+                expected_engine_id=_selected_gcsim_engine_id(),
                 boosted_energy_enabled=(
                     self.controller.gcsim_run_settings().boosted_energy_enabled
                 ),
@@ -2205,6 +2210,7 @@ class AppShell(QWidget):
             chamber=max(1, min(3, int(chamber))),
             side=side,
             rotation_shell_text=rotation_shell_text,
+            expected_engine_id=_selected_gcsim_engine_id(),
             abyss_period_start=abyss_source_data.period.start_date,
             abyss_floor=abyss_source_data.floor,
             target_mode=self.controller.gcsim_target_mode(),
@@ -2295,6 +2301,7 @@ class AppShell(QWidget):
             team_index=normalized_team_index,
             side=side,
             rotation_shell_text=rotation_shell_text,
+            expected_engine_id=_selected_gcsim_engine_id(),
             abyss_period_start=abyss_source_data.period.start_date,
             abyss_floor=abyss_source_data.floor,
             target_mode=self.controller.gcsim_target_mode(),
@@ -2380,14 +2387,29 @@ class AppShell(QWidget):
             if mode == "theory"
             else GcsimOptimizerGoSelectedRequest
         )
+        optimizer_request_settings: dict[str, Any] = {}
+        if mode in {"selected", "all_sets"}:
+            optimizer_settings = effective_gcsim_optimizer_settings()
+            optimizer_request_settings = {
+                "set_group_limit": (
+                    optimizer_settings.set_group_limit
+                    if mode == "all_sets"
+                    else 1
+                ),
+                "builds_per_group": optimizer_settings.builds_per_group,
+                "fast_mode": optimizer_settings.fast_mode,
+                "expanded_limits": optimizer_settings.expanded_limits,
+            }
         request = request_type(
             db_path=str(self.controller.equipment_db_path),
             selected_team=selected_team,
             team_index=normalized_team_index,
             rotation_shell_text=rotation_shell_text,
+            expected_engine_id=_selected_gcsim_engine_id(),
             infinite_energy_enabled=bool(
                 self.controller.gcsim_boosted_energy_enabled
             ),
+            **optimizer_request_settings,
         )
         worker = GcsimBrowserSelectedOptimizerWorker(request)
         thread = QThread(self)
@@ -2420,6 +2442,17 @@ class AppShell(QWidget):
             )
             worker.cancel()
 
+    def _on_gcsim_optimizer_finish_requested(self) -> None:
+        worker = self._gcsim_browser_run_worker
+        if not isinstance(worker, GcsimBrowserSelectedOptimizerWorker):
+            return
+        workspace = self.left_host.gcsim_browser_workspace
+        if workspace._optimizer_mode not in {"selected", "all_sets"}:
+            return
+        request_finish = getattr(worker, "request_finish", None)
+        if callable(request_finish):
+            request_finish()
+
     def _on_gcsim_optimizer_selected_finished(self, payload: dict) -> None:
         payload_dict = dict(payload)
         workspace = self.left_host.gcsim_browser_workspace
@@ -2430,6 +2463,17 @@ class AppShell(QWidget):
             formatted = format_gcsim_optimizer_go_theory_result(payload_dict)
         else:
             formatted = format_gcsim_optimizer_go_selected_result(payload_dict)
+            if _gcsim_optimizer_ranking_basis(payload_dict) == "formula":
+                formatted = _format_formula_only_optimizer_text(formatted)
+        if _gcsim_optimizer_was_finished_by_user(payload_dict):
+            finish_note = tr("gcsim.optimizer.search_finished_by_user")
+            finish_warning = tr("gcsim.optimizer.search_finished_by_user.warning")
+            formatted = formatted.replace("search_finished_by_user", finish_warning)
+            if finish_note not in formatted:
+                lines = formatted.splitlines()
+                formatted = "\n".join(
+                    [lines[0], finish_note, *lines[1:]] if lines else [finish_note]
+                )
         workspace.set_optimizer_result_text(
             formatted
         )
@@ -2448,8 +2492,15 @@ class AppShell(QWidget):
                 template = tr("gcsim.optimizer.cards_unavailable")
                 if template == "gcsim.optimizer.cards_unavailable":
                     template = "Build cards unavailable: {error}"
+                fallback_text = format_gcsim_optimizer_go_selected_result(
+                    payload_dict
+                )
+                if _gcsim_optimizer_ranking_basis(payload_dict) == "formula":
+                    fallback_text = _format_formula_only_optimizer_text(
+                        fallback_text
+                    )
                 workspace.set_optimizer_result_text(
-                    format_gcsim_optimizer_go_selected_result(payload_dict)
+                    fallback_text
                     + "\n"
                     + template.format(error=exc)
                 )
@@ -2458,6 +2509,8 @@ class AppShell(QWidget):
         progress_stage = (
             "completed" if status == "success" else "cancelled" if status == "cancelled" else "failed"
         )
+        if payload_dict.get("error_code") == "finish_no_result":
+            progress_stage = "finish_no_result"
         workspace.update_optimizer_progress(
             {
                 "stage": progress_stage,
@@ -2590,6 +2643,8 @@ class AppShell(QWidget):
             self.controller.invalidate_persistent_equipment_cache()
 
         self.left_host.refresh_account_data()
+        refresh_imported_element_filter_icons(self)
+        self.right_panel.refresh_asset_pixmaps()
         self._refresh_character_selection_markers()
         self._sync_artifact_browser_operation_target()
         self.schedule_weapon_filter_sync(delay_ms=0)
@@ -2638,7 +2693,21 @@ class AppShell(QWidget):
             "set_model": set_model_ms,
         }
 
+    def _refresh_active_virtual_gcsim_catalogs(self, *, force: bool = False) -> None:
+        try:
+            active_id = GcsimEngineStore().active_engine_id() or ""
+        except GcsimEngineStoreError:
+            active_id = ""
+        if not force and self._virtual_gcsim_catalog.engine_id == active_id:
+            return
+        self._virtual_gcsim_catalog = load_active_virtual_roster_catalog()
+        self._virtual_gcsim_set_choices = load_active_virtual_artifact_set_choices(
+            self.controller.equipment_db_path,
+            language=get_language(),
+        )
+
     def _sync_virtual_gcsim_controls(self) -> None:
+        self._refresh_active_virtual_gcsim_catalogs()
         workspace = self.left_host.gcsim_browser_workspace
         workspace.set_virtual_gcsim_catalogs(
             self._virtual_gcsim_catalog,
@@ -2948,6 +3017,7 @@ class AppShell(QWidget):
         slot_index: int,
         character_key: str,
     ) -> None:
+        self._refresh_active_virtual_gcsim_catalogs()
         character = next(
             (
                 item
@@ -3020,6 +3090,7 @@ class AppShell(QWidget):
         slot_index: int,
         weapon_key: str,
     ) -> None:
+        self._refresh_active_virtual_gcsim_catalogs()
         override = self.controller.virtual_gcsim_override(team_index, slot_index)
         if override is None:
             return
@@ -3258,8 +3329,14 @@ class AppShell(QWidget):
         if changed:
             workspace_start = perf_now()
             workspace = self.left_host.character_weapon_workspace
-            workspace.refresh_weapon_asset_cache()
-            workspace.reload_weapons()
+            change_result = self.controller.last_weapon_equipment_change_result
+            fingerprints = getattr(change_result, "affected_weapon_fingerprints", ())
+            if (
+                self.controller.equipment_state is not None
+                or not workspace.refresh_weapon_owner_badges(fingerprints)
+            ):
+                workspace.refresh_weapon_asset_cache()
+                workspace.reload_weapons()
             timings["weapon_workspace_refresh"] = perf_ms(workspace_start)
             self.schedule_right_panel_refresh()
         log_perf(
@@ -3634,6 +3711,59 @@ def _cap_text_list(values: list[str], *, limit: int = 8) -> list[str]:
     return [*values[:limit], f"... +{len(values) - limit} more"]
 
 
+def _selected_gcsim_engine_id() -> str:
+    try:
+        return GcsimEngineStore().active_engine_id() or ""
+    except GcsimEngineStoreError:
+        return ""
+
+
+def _gcsim_optimizer_ranking_basis(payload: Mapping[str, Any]) -> str:
+    result = _mapping(payload.get("result"))
+    basis = result.get("ranking_basis") or payload.get("ranking_basis")
+    if not basis:
+        candidates = result.get("candidates")
+        if isinstance(candidates, (list, tuple)) and candidates:
+            basis = _mapping(candidates[0]).get("ranking_basis")
+    return "formula" if str(basis or "").strip().casefold() == "formula" else "gcsim"
+
+
+def _gcsim_optimizer_was_finished_by_user(payload: Mapping[str, Any]) -> bool:
+    result = _mapping(payload.get("result"))
+    warnings: list[Any] = []
+    for value in (result.get("warnings"), payload.get("warnings")):
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            warnings.extend(value)
+        elif value:
+            warnings.append(value)
+    return any(
+        str(_mapping(warning).get("code") or warning).strip().casefold()
+        == "search_finished_by_user"
+        for warning in warnings
+    )
+
+
+def _format_formula_only_optimizer_text(text: str) -> str:
+    forbidden_prefixes = (
+        "final dps:",
+        "standard error:",
+        "standard error ",
+        "se:",
+        "formula residual:",
+        "formula residual ",
+        "gain vs initial",
+        "gain over initial",
+        "improvement over initial",
+    )
+    lines = [
+        line
+        for line in str(text).splitlines()
+        if not line.strip().casefold().startswith(forbidden_prefixes)
+    ]
+    warning = tr("gcsim.optimizer.formula_unverified")
+    return "\n".join((warning, *lines))
+
+
 def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
     slots = selected_team.get("slots") if isinstance(selected_team, dict) else []
     if not isinstance(slots, list):
@@ -3806,6 +3936,39 @@ class CharacterWeaponWorkspace(QWidget):
     def refresh_weapon_asset_cache(self) -> None:
         self._all_weapon_items = None
         self._last_weapon_grid_keys = ()
+
+    def refresh_weapon_owner_badges(self, fingerprints: Iterable[str]) -> bool:
+        wanted = {_text(value) for value in fingerprints if _text(value)}
+        if self._all_weapon_items is None or not wanted:
+            return False
+        badges_by_fingerprint = load_weapon_owner_badges_for_fingerprints(
+            wanted,
+            db_path=self.db_path,
+        )
+        updated_items: list[dict[str, Any]] = []
+        changed = False
+        for asset in self._all_weapon_items:
+            fingerprint = _text(_asset_metadata_mapping(asset, "weapon").get("source_key"))
+            if fingerprint not in wanted:
+                updated_items.append(asset)
+                continue
+            metadata = dict(_mapping(asset.get("metadata")))
+            badges = badges_by_fingerprint.get(fingerprint, [])
+            if _asset_owner_badges(asset) == badges:
+                updated_items.append(asset)
+                continue
+            if badges:
+                metadata["owner_badges"] = list(badges)
+                metadata["extra_owner_count"] = max(0, len(badges) - 1)
+            else:
+                metadata.pop("owner_badges", None)
+                metadata.pop("extra_owner_count", None)
+            updated_items.append({**asset, "metadata": metadata})
+            changed = True
+        if changed:
+            self._all_weapon_items = updated_items
+            self.reload_weapons()
+        return True
 
     def _character_asset_items(self) -> tuple[list[dict], float, str]:
         load_start = perf_now()
@@ -4027,8 +4190,10 @@ class CharacterWeaponWorkspace(QWidget):
         button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
         button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
+        if icon_name.startswith("element_"):
+            button.setProperty("elementIconName", icon_name)
 
-        icon_path = FILTER_ASSETS_DIR / icon_name
+        icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
             button.setIcon(QIcon(str(icon_path)))
         else:

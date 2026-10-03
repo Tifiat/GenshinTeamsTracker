@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,8 @@ from run_workspace.gcsim.selected_team_config import (
     run_selected_team_dps_dummy_artifact,
 )
 from run_workspace.gcsim.settings import GcsimRunSettings
+from run_workspace.gcsim.artifact_runner import run_active_gcsim_artifact
+from run_workspace.gcsim.engine_store import GcsimEngineStore
 from run_workspace.gcsim.optimizer_go_selected import (
     GcsimOptimizerGoSelectedRequest,
     GcsimOptimizerGoSelectedSession,
@@ -73,6 +76,7 @@ class GcsimBrowserRunRequest:
     target_mode: str = FACT_DPS_HP_MODE_MULTI_TARGET
     boosted_energy_enabled: bool = False
     run_root: str = ""
+    expected_engine_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +93,7 @@ class GcsimBrowserBatchRunRequest:
     chambers: tuple[int, ...] = (1, 2, 3)
     boosted_energy_enabled: bool = False
     run_root: str = ""
+    expected_engine_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +104,51 @@ class GcsimBrowserDpsDummyRunRequest:
     rotation_shell_text: str
     boosted_energy_enabled: bool = False
     run_root: str = ""
+    expected_engine_id: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class _ActiveRunBinding:
+    engine_id: str
+    artifact_registry: Path
+    enemy_registry: Path | None
+
+
+def _active_run_binding(
+    expected_engine_id: str = "", *, require_enemy_registry: bool = False
+) -> _ActiveRunBinding:
+    active = GcsimEngineStore().get_active_engine()
+    if active is None:
+        raise RuntimeError("No active GCSIM engine is configured.")
+    if expected_engine_id and active.engine_id != expected_engine_id:
+        raise RuntimeError(
+            f"Selected GCSIM engine changed from {expected_engine_id} "
+            f"to {active.engine_id} before preparation."
+        )
+    shortcut_root = active.path / "pkg" / "shortcut"
+    artifact_registry = next(
+        (path for path in (
+            shortcut_root / "artifact.dm.go",
+            shortcut_root / "artifacts.go",
+        ) if path.is_file()),
+        None,
+    )
+    if artifact_registry is None:
+        raise RuntimeError(
+            f"Active GCSIM engine artifact registry is missing: {shortcut_root}"
+        )
+    enemy_registry = next(
+        (path for path in (
+            shortcut_root / "monster.dm.go",
+            shortcut_root / "enemies_gen.go",
+        ) if path.is_file()),
+        None,
+    )
+    if require_enemy_registry and enemy_registry is None:
+        raise RuntimeError(
+            f"Active GCSIM engine enemy registry is missing: {shortcut_root}"
+        )
+    return _ActiveRunBinding(active.engine_id, artifact_registry, enemy_registry)
 
 
 class GcsimBrowserRunWorker(QObject):
@@ -171,6 +221,12 @@ class GcsimBrowserSelectedOptimizerWorker(QObject):
         # flag and interrupts its owned process group.
         self._session.cancel()
 
+    def request_finish(self) -> None:
+        """Ask Selected/All to stop searching after a legal candidate is scored."""
+
+        if self._session.run_mode in {"selected", "all_sets"}:
+            self._session.request_finish()
+
 
 def run_gcsim_browser_selected_chamber(
     request: GcsimBrowserRunRequest,
@@ -194,6 +250,9 @@ def run_gcsim_browser_selected_chamber(
     rotation_shell_path = run_dir / "rotation_shell.from_editor.txt"
     try:
         run_dir.mkdir(parents=True, exist_ok=True)
+        binding = _active_run_binding(
+            request.expected_engine_id, require_enemy_registry=True
+        )
         rotation_shell_path.write_text(request.rotation_shell_text, encoding="utf-8")
         report = build_selected_team_full_config_report(
             db_path=request.db_path,
@@ -202,6 +261,7 @@ def run_gcsim_browser_selected_chamber(
             rotation_shell_path=rotation_shell_path,
             run_dir=run_dir,
             write_config=True,
+            artifact_set_registry_source=binding.artifact_registry,
             run_settings=GcsimRunSettings(
                 boosted_energy_enabled=request.boosted_energy_enabled,
             ),
@@ -217,6 +277,11 @@ def run_gcsim_browser_selected_chamber(
                     request.target_mode != FACT_DPS_HP_MODE_SOLO
                 ),
                 abyss_cache_dir=request.abyss_cache_dir or None,
+                gcsim_enemy_registry_source=binding.enemy_registry,
+                artifact_run_func=partial(
+                    run_active_gcsim_artifact,
+                    expected_engine_id=binding.engine_id,
+                ),
             )
             report = report_with_smoke(report, smoke)
         payload = report.to_dict()
@@ -264,6 +329,7 @@ def run_gcsim_browser_dps_dummy(
     rotation_shell_path = run_dir / "rotation_shell.from_editor.txt"
     try:
         run_dir.mkdir(parents=True, exist_ok=True)
+        binding = _active_run_binding(request.expected_engine_id)
         rotation_shell_path.write_text(request.rotation_shell_text, encoding="utf-8")
         report = build_selected_team_full_config_report(
             db_path=request.db_path,
@@ -272,6 +338,7 @@ def run_gcsim_browser_dps_dummy(
             rotation_shell_path=rotation_shell_path,
             run_dir=run_dir,
             write_config=True,
+            artifact_set_registry_source=binding.artifact_registry,
             run_settings=GcsimRunSettings(
                 boosted_energy_enabled=request.boosted_energy_enabled,
             ),
@@ -280,6 +347,10 @@ def run_gcsim_browser_dps_dummy(
             dps_dummy_run = run_selected_team_dps_dummy_artifact(
                 report,
                 run_dir=run_dir,
+                artifact_run_func=partial(
+                    run_active_gcsim_artifact,
+                    expected_engine_id=binding.engine_id,
+                ),
             )
             report = report_with_dps_dummy_run(report, dps_dummy_run)
         payload = report.to_dict()
@@ -331,6 +402,19 @@ def run_gcsim_browser_three_chambers(
             "chambers": [],
         }
 
+    try:
+        binding = _active_run_binding(
+            request.expected_engine_id, require_enemy_registry=True
+        )
+    except Exception as exc:
+        return _with_readiness_summary({
+            "success": False,
+            "batch_status": "failed",
+            "error_category": ERROR_CONFIG_PREPARE_ERROR,
+            "error": str(exc),
+            "selection": _batch_selection_report(request),
+            "chambers": [],
+        })
     chambers: list[dict[str, Any]] = []
     for chamber in request.chambers:
         chamber_request = GcsimBrowserRunRequest(
@@ -346,6 +430,7 @@ def run_gcsim_browser_three_chambers(
             target_mode=request.target_mode,
             boosted_energy_enabled=request.boosted_energy_enabled,
             run_root=request.run_root,
+            expected_engine_id=binding.engine_id,
         )
         chambers.append(run_gcsim_browser_selected_chamber(chamber_request))
 
@@ -912,6 +997,7 @@ def _selection_report(request: GcsimBrowserRunRequest) -> dict[str, Any]:
         "cache_dir": request.abyss_cache_dir,
         "target_mode": request.target_mode,
         "boosted_energy_enabled": bool(request.boosted_energy_enabled),
+        "expected_engine_id": request.expected_engine_id,
     }
 
 
@@ -926,6 +1012,7 @@ def _batch_selection_report(request: GcsimBrowserBatchRunRequest) -> dict[str, A
         "cache_dir": request.abyss_cache_dir,
         "target_mode": request.target_mode,
         "boosted_energy_enabled": bool(request.boosted_energy_enabled),
+        "expected_engine_id": request.expected_engine_id,
         "chambers": [int(chamber) for chamber in request.chambers],
     }
 
@@ -940,6 +1027,7 @@ def _dps_dummy_selection_report(
         "selected_slot_count": _selected_slot_count(request.selected_team),
         "target_mode": MODE_DPS_DUMMY,
         "boosted_energy_enabled": bool(request.boosted_energy_enabled),
+        "expected_engine_id": request.expected_engine_id,
     }
 
 

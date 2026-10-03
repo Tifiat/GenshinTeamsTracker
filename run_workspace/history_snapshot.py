@@ -33,6 +33,14 @@ class HistorySnapshotBundleError(ValueError):
 class UnsupportedHistorySnapshotSchemaVersionError(HistorySnapshotBundleError):
     """Raised for bundle schema versions this code cannot read."""
 
+    def __init__(self, schema_version: int | None, expected_version: int) -> None:
+        self.schema_version = schema_version
+        self.expected_version = expected_version
+        super().__init__(
+            "Unsupported history snapshot schema version: "
+            f"{schema_version!r}; expected {expected_version}."
+        )
+
 
 class MalformedHistorySnapshotBundleError(HistorySnapshotBundleError):
     """Raised for malformed bundle payloads."""
@@ -55,6 +63,7 @@ class HistorySnapshotBundleReadError:
 class HistorySnapshotBundleListing:
     records: tuple[HistorySnapshotBundleRecord, ...] = ()
     errors: tuple[HistorySnapshotBundleReadError, ...] = ()
+    ignored_legacy: tuple[HistorySnapshotBundleReadError, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -271,6 +280,7 @@ class HistoryCharacterSnapshot:
     rarity: int | None = None
     constellation: int | None = None
     portrait_ref: str = ""
+    expanded_portrait_ref: str = ""
     side_icon_ref: str = ""
     provenance: Mapping[str, Any] = field(default_factory=dict)
 
@@ -283,6 +293,7 @@ class HistoryCharacterSnapshot:
             "rarity": self.rarity,
             "constellation": self.constellation,
             "portrait_ref": self.portrait_ref,
+            "expanded_portrait_ref": self.expanded_portrait_ref,
             "side_icon_ref": self.side_icon_ref,
             "provenance": dict(sorted(self.provenance.items())),
         }
@@ -298,6 +309,7 @@ class HistoryCharacterSnapshot:
             rarity=_optional_int(data.get("rarity")),
             constellation=_optional_int(data.get("constellation")),
             portrait_ref=_text(data.get("portrait_ref")),
+            expanded_portrait_ref=_text(data.get("expanded_portrait_ref")),
             side_icon_ref=_text(data.get("side_icon_ref")),
             provenance=dict(_mapping(data.get("provenance"))),
         )
@@ -1109,11 +1121,27 @@ class HistorySnapshotBundleStore:
     def list_bundle_records(self) -> HistorySnapshotBundleListing:
         records: list[HistorySnapshotBundleRecord] = []
         errors: list[HistorySnapshotBundleReadError] = []
+        ignored_legacy: list[HistorySnapshotBundleReadError] = []
         for path in self.iter_bundle_paths():
             try:
                 bundle = history_snapshot_bundle_from_json_text(
                     path.read_text(encoding="utf-8")
                 )
+            except UnsupportedHistorySnapshotSchemaVersionError as exc:
+                issue = HistorySnapshotBundleReadError(
+                    path=path,
+                    error_text=str(exc) or exc.__class__.__name__,
+                )
+                # Preserve pre-contract snapshots without presenting them as a
+                # permanent actionable error. Future schemas still surface.
+                if (
+                    exc.schema_version is not None
+                    and exc.schema_version < HISTORY_SNAPSHOT_BUNDLE_SCHEMA_VERSION
+                ):
+                    ignored_legacy.append(issue)
+                else:
+                    errors.append(issue)
+                continue
             except (OSError, HistorySnapshotBundleError) as exc:
                 errors.append(
                     HistorySnapshotBundleReadError(
@@ -1132,6 +1160,7 @@ class HistorySnapshotBundleStore:
         return HistorySnapshotBundleListing(
             records=tuple(records),
             errors=tuple(errors),
+            ignored_legacy=tuple(ignored_legacy),
         )
 
     def list_bundles(self) -> HistorySnapshotBundleListing:
@@ -1158,8 +1187,8 @@ def require_supported_history_snapshot_schema_version(value: Any) -> None:
     schema_version = _optional_int(value)
     if schema_version != HISTORY_SNAPSHOT_BUNDLE_SCHEMA_VERSION:
         raise UnsupportedHistorySnapshotSchemaVersionError(
-            "Unsupported history snapshot schema version: "
-            f"{schema_version!r}; expected {HISTORY_SNAPSHOT_BUNDLE_SCHEMA_VERSION}."
+            schema_version,
+            HISTORY_SNAPSHOT_BUNDLE_SCHEMA_VERSION,
         )
 
 

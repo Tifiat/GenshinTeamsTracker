@@ -43,6 +43,11 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
 
         self.assertEqual(resolved, source)
 
+    def test_default_artifact_registry_has_no_old_source_fallback(self) -> None:
+        with patch("run_workspace.gcsim.engine_store.GcsimEngineStore") as store_type:
+            store_type.return_value.get_active_engine.return_value = None
+            self.assertIsNone(_active_artifact_set_shortcut_source())
+
     def test_dev_energy_override_replaces_shell_energy_line(self) -> None:
         text, replaced = override_rotation_shell_energy_line(
             "options swap_delay=12;\nenergy every interval=480,720 amount=1;\nactive furina;\n"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import QElapsedTimer, QTimer, Qt, Signal
+from PySide6.QtCore import QElapsedTimer, QTimer, Qt, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -79,6 +79,7 @@ class GcsimBrowserWorkspace(QWidget):
     optimizer_theory_requested = Signal(int, str)
     optimizer_infinite_energy_changed = Signal(bool)
     optimizer_cancel_requested = Signal()
+    optimizer_finish_requested = Signal()
     optimizer_build_save_requested = Signal(dict)
     virtual_character_requested = Signal(int, int, str)
     virtual_weapon_requested = Signal(int, int, str)
@@ -104,6 +105,11 @@ class GcsimBrowserWorkspace(QWidget):
         self._mode = mode if mode in {MODE_ABYSS, MODE_DPS_DUMMY} else MODE_ABYSS
         self._selected_chamber_index = 0
         self._optimizer_mode = "selected"
+        self._optimizer_busy = False
+        self._optimizer_finish_requested = False
+        self._optimizer_finalizing = False
+        self._optimizer_progress_value = 0
+        self._optimizer_progress_sequence = -1
         self._optimizer_all_sets_available = False
         self._optimizer_theory_available = False
         self._target_mode_preview = ""
@@ -382,15 +388,27 @@ class GcsimBrowserWorkspace(QWidget):
         self.optimizer_elapsed_label.setStyleSheet(f"color: {UI_TEXT_MUTED};")
         optimizer_status_layout.addWidget(self.optimizer_elapsed_label)
         self.optimizer_progress_bar = QProgressBar()
-        self.optimizer_progress_bar.setRange(0, 1)
+        self.optimizer_progress_bar.setRange(0, 100)
         self.optimizer_progress_bar.setValue(0)
+        self._optimizer_progress_animation = QPropertyAnimation(self.optimizer_progress_bar, b"value", self)
+        self._optimizer_progress_animation.setDuration(400)
+        self._optimizer_progress_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.optimizer_progress_bar.setTextVisible(False)
         optimizer_status_layout.addWidget(self.optimizer_progress_bar)
+        optimizer_buttons = QHBoxLayout()
+        optimizer_buttons.setContentsMargins(0, 0, 0, 0)
+        optimizer_buttons.setSpacing(6)
         self.optimizer_cancel_button = QPushButton()
         self.optimizer_cancel_button.setEnabled(False)
         self.optimizer_cancel_button.clicked.connect(
             self.optimizer_cancel_requested.emit
         )
-        optimizer_status_layout.addWidget(self.optimizer_cancel_button)
+        self.optimizer_finish_button = QPushButton()
+        self.optimizer_finish_button.setEnabled(False)
+        self.optimizer_finish_button.clicked.connect(self._request_optimizer_finish)
+        optimizer_buttons.addWidget(self.optimizer_cancel_button)
+        optimizer_buttons.addWidget(self.optimizer_finish_button)
+        optimizer_status_layout.addLayout(optimizer_buttons)
         self.optimizer_result = QPlainTextEdit()
         self.optimizer_result.setReadOnly(True)
         self.optimizer_result.setMinimumHeight(150)
@@ -597,6 +615,12 @@ class GcsimBrowserWorkspace(QWidget):
         self.optimizer_result_builds.retranslate_ui()
         self._refresh_optimizer_elapsed()
         self.optimizer_cancel_button.setText("Cancel")
+        self.optimizer_finish_button.setText(
+            _fallback(
+                "gcsim.optimizer.finish_button",
+                "Finish and show result",
+            )
+        )
 
     def _make_team_tab(self, team_index: int) -> QWidget:
         tab = QWidget()
@@ -822,6 +846,16 @@ class GcsimBrowserWorkspace(QWidget):
         self.optimizer_energy_note.setText(text)
 
     def set_optimizer_busy(self, busy: bool) -> None:
+        normalized_busy = bool(busy)
+        if normalized_busy and not self._optimizer_busy:
+            self._optimizer_finish_requested = False
+            self._optimizer_finalizing = False
+            self._optimizer_progress_value = 0
+            self._optimizer_progress_sequence = -1
+            self.optimizer_progress_bar.setRange(0, 100)
+            self.optimizer_progress_bar.setValue(0)
+            self.optimizer_progress_bar.setTextVisible(False)
+        self._optimizer_busy = normalized_busy
         self.prepare_button.setEnabled(not busy)
         self.run_selected_button.setEnabled(not busy)
         self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
@@ -830,27 +864,64 @@ class GcsimBrowserWorkspace(QWidget):
         self.optimizer_theory_button.setEnabled(not busy and self._optimizer_theory_available)
         self.optimizer_infinite_energy_switch.setEnabled(not busy)
         self.optimizer_cancel_button.setEnabled(busy)
+        if not busy:
+            self._optimizer_finish_requested = False
+            self._optimizer_finalizing = False
+        self._refresh_optimizer_finish_button()
         if busy and not self._optimizer_elapsed_clock.isValid():
             self._start_optimizer_elapsed()
         elif not busy and self._optimizer_elapsed_tick.isActive():
             self._stop_optimizer_elapsed("stopped")
         if not busy and self.optimizer_progress_bar.maximum() == 0:
-            self.optimizer_progress_bar.setRange(0, 1)
+            self.optimizer_progress_bar.setRange(0, 100)
+            self.optimizer_progress_bar.setValue(self._optimizer_progress_value)
 
     def update_optimizer_progress(self, event: dict) -> None:
         completed = max(0, int(event.get("completed_work", 0)))
         total = max(0, int(event.get("total_work", 0)))
         stage = str(event.get("stage") or "working")
+        sequence = event.get("sequence")
+        if isinstance(sequence, int) and sequence < self._optimizer_progress_sequence:
+            return
+        if isinstance(sequence, int):
+            self._optimizer_progress_sequence = sequence
         labels = {
             "validating_request": "Checking the request",
             "loading_evidence": "Reading the rotation formulas",
+            "preparing_sources": _fallback(
+                "gcsim.optimizer.preparing_sources",
+                "Preparing optimizer source data",
+            ),
+            "capturing_schedule": _fallback(
+                "gcsim.optimizer.capturing_schedule",
+                "Capturing the rotation schedule",
+            ),
             "compiling_formula": "Preparing the damage model",
             "searching": "Searching account artifacts",
-            "validating_finalists": "Choosing finalists",
-            "simulating_finalists": "Checking finalists in GCSIM",
+            "preparing_replacements": _fallback(
+                "gcsim.optimizer.preparing_replacements",
+                "Preparing replacement options",
+            ),
+            "validating_finalists": _fallback(
+                "gcsim.optimizer.validating_finalists",
+                "Choosing finalists",
+            ),
+            "simulating_finalists": _fallback(
+                "gcsim.optimizer.simulating_finalists",
+                "Checking finalists in GCSIM",
+            ),
+            "finish_requested": _fallback(
+                "gcsim.optimizer.finish_requested",
+                "Stopping search; showing results found so far. If no complete build exists yet, this will be reported.",
+            ),
+            "finalizing": _fallback(
+                "gcsim.optimizer.finalizing",
+                "Finalizing and showing the best result",
+            ),
             "completed": "Selected Sets complete",
             "cancelled": "Selected Sets cancelled",
             "failed": "Selected Sets failed",
+            "finish_no_result": tr("gcsim.optimizer.finish_no_result_title"),
         }
         if self._optimizer_mode == "all_sets":
             for terminal in ("completed", "cancelled", "failed"):
@@ -864,14 +935,82 @@ class GcsimBrowserWorkspace(QWidget):
                     "failed": "Theory failed",
                 }
             )
-        self.optimizer_progress_label.setText(labels.get(stage, stage))
-        if stage in {"completed", "cancelled", "failed"}:
-            self._stop_optimizer_elapsed(stage)
-        if total > 0:
-            self.optimizer_progress_bar.setRange(0, total)
-            self.optimizer_progress_bar.setValue(min(completed, total))
+        finalizing_stages = {
+            "preparing_replacements",
+            "finalizing",
+            "validating_finalists",
+            "simulating_finalists",
+            "completed",
+            "cancelled",
+            "failed",
+            "finish_no_result",
+        }
+        if stage in finalizing_stages:
+            self._optimizer_finalizing = True
+            self._refresh_optimizer_finish_button()
+        if self._optimizer_finish_requested and stage not in finalizing_stages:
+            self.optimizer_progress_label.setText(
+                _fallback(
+                    "gcsim.optimizer.finish_requested",
+                    "Stopping search; showing results found so far. If no complete build exists yet, this will be reported.",
+                )
+            )
+        elif stage == "finalizing":
+            self.optimizer_progress_label.setText(
+                _fallback(
+                    "gcsim.optimizer.finalizing",
+                    "Finalizing and showing the best result",
+                )
+            )
         else:
-            self.optimizer_progress_bar.setRange(0, 0)
+            self.optimizer_progress_label.setText(labels.get(stage, stage))
+        if stage in {"completed", "cancelled", "failed", "finish_no_result"}:
+            self._stop_optimizer_elapsed(stage)
+        if stage == "completed":
+            self._optimizer_progress_value = 100
+        else:
+            stage_value = _optimizer_progress_value(stage, completed, total)
+            if stage_value is not None:
+                self._optimizer_progress_value = max(
+                    self._optimizer_progress_value,
+                    min(99, stage_value),
+                )
+        self.optimizer_progress_bar.setRange(0, 100)
+        self.optimizer_progress_bar.setTextVisible(False)
+        self._optimizer_progress_animation.stop()
+        if stage in {"completed", "cancelled", "failed", "finish_no_result"} or not self.isVisible():
+            self.optimizer_progress_bar.setValue(self._optimizer_progress_value)
+        else:
+            self._optimizer_progress_animation.setStartValue(self.optimizer_progress_bar.value())
+            self._optimizer_progress_animation.setEndValue(self._optimizer_progress_value)
+            self._optimizer_progress_animation.start()
+
+    def _request_optimizer_finish(self) -> None:
+        if (
+            not self._optimizer_busy
+            or self._optimizer_mode not in {"selected", "all_sets"}
+            or self._optimizer_finish_requested
+            or self._optimizer_finalizing
+        ):
+            return
+        self._optimizer_finish_requested = True
+        self._refresh_optimizer_finish_button()
+        self.optimizer_progress_label.setText(
+            _fallback(
+                "gcsim.optimizer.finish_requested",
+                "Stopping search; showing results found so far. If no complete build exists yet, this will be reported.",
+            )
+        )
+        self.optimizer_finish_requested.emit()
+
+    def _refresh_optimizer_finish_button(self) -> None:
+        supported_mode = self._optimizer_mode in {"selected", "all_sets"}
+        self.optimizer_finish_button.setEnabled(
+            self._optimizer_busy
+            and supported_mode
+            and not self._optimizer_finish_requested
+            and not self._optimizer_finalizing
+        )
 
     def set_optimizer_result_text(self, text: str) -> None:
         self.optimizer_result.setPlainText(text.strip())
@@ -904,6 +1043,12 @@ class GcsimBrowserWorkspace(QWidget):
     def _start_optimizer_elapsed(self) -> None:
         self._optimizer_elapsed_terminal_stage = ""
         self._optimizer_elapsed_last_ms = 0
+        self._optimizer_progress_value = 0
+        self._optimizer_progress_sequence = -1
+        self._optimizer_progress_animation.stop()
+        self.optimizer_progress_bar.setRange(0, 100)
+        self.optimizer_progress_bar.setValue(0)
+        self.optimizer_progress_bar.setTextVisible(False)
         self._optimizer_elapsed_clock.start()
         self._optimizer_elapsed_tick.start()
         self._refresh_optimizer_elapsed()
@@ -919,39 +1064,30 @@ class GcsimBrowserWorkspace(QWidget):
         self._refresh_optimizer_elapsed()
 
     def _refresh_optimizer_elapsed(self) -> None:
+        if not self._optimizer_elapsed_clock.isValid():
+            self.optimizer_elapsed_label.clear()
+            return
         elapsed_ms = self._optimizer_elapsed_last_ms
         if self._optimizer_elapsed_clock.isValid() and not self._optimizer_elapsed_terminal_stage:
             elapsed_ms = max(elapsed_ms, int(self._optimizer_elapsed_clock.elapsed()))
         elapsed = _format_optimizer_elapsed(elapsed_ms)
-        estimate = (
-            tr("gcsim.optimizer.all_estimate")
-            if self._optimizer_mode == "all_sets"
-            else "1–5 min"
-            if self._optimizer_mode == "theory"
-            else _fallback("gcsim.optimizer.estimate", "1–3 min")
-        )
-        if not self._optimizer_elapsed_clock.isValid():
-            template = _fallback(
-                "gcsim.optimizer.estimate_ready",
-                "Estimated time: {estimate} (depends on CPU)",
-            )
-        elif self._optimizer_elapsed_terminal_stage == "completed":
+        if self._optimizer_elapsed_terminal_stage == "completed":
             template = _fallback(
                 "gcsim.optimizer.elapsed_completed",
-                "Completed in {elapsed} · typical range: {estimate}",
+                "Completed in {elapsed}",
             )
         elif self._optimizer_elapsed_terminal_stage:
             template = _fallback(
                 "gcsim.optimizer.elapsed_stopped",
-                "Stopped after {elapsed} · typical range: {estimate}",
+                "Stopped after {elapsed}",
             )
         else:
             template = _fallback(
                 "gcsim.optimizer.elapsed_running",
-                "Running for {elapsed} · estimated time: {estimate}",
+                "Running for {elapsed}",
             )
         self.optimizer_elapsed_label.setText(
-            template.format(elapsed=elapsed, estimate=estimate)
+            template.format(elapsed=elapsed)
         )
 
     def set_actions_busy(self, busy: bool, *, message: str = "") -> None:
@@ -1071,6 +1207,12 @@ class GcsimBrowserWorkspace(QWidget):
             summary.extend(lines[readiness_index : readiness_index + 4])
         if len(summary) <= 1 and len(lines) > 1:
             summary.extend(lines[1:4])
+        finish_note = _fallback(
+            "gcsim.optimizer.search_finished_by_user",
+            "Search ended early: the best result found so far is shown.",
+        )
+        if finish_note in lines and finish_note not in summary:
+            summary.append(finish_note)
         return "\n".join(_dedupe_text(summary))
 
     def _empty_result_summary(self) -> str:
@@ -1256,6 +1398,28 @@ def _format_optimizer_elapsed(elapsed_ms: int) -> str:
     if hours:
         return f"{hours}:{minutes:02d}:{seconds:02d}"
     return f"{minutes}:{seconds:02d}"
+
+
+def _optimizer_progress_value(stage: str, completed: int, total: int) -> int | None:
+    """Map stage-local work to a coarse phase position, not a time estimate."""
+
+    phases = {
+        "loading_evidence": 0,
+        "preparing_sources": 0,
+        "validating_request": 1,
+        "capturing_schedule": 1,
+        "compiling_formula": 2,
+        "searching": 3,
+        "preparing_replacements": 4,
+        "finalizing": 4,
+        "validating_finalists": 5,
+        "simulating_finalists": 5,
+    }
+    phase = phases.get(stage)
+    if phase is None:
+        return None
+    phase_fraction = min(1.0, max(0.0, completed / total)) if total > 0 else 0.0
+    return round(((phase + phase_fraction) / 6) * 99)
 
 
 def _fallback(key: str, fallback: str) -> str:

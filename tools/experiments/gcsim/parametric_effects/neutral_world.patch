@@ -1,0 +1,208 @@
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -147,6 +147,9 @@
+ 	taskNumericContexts               [][]NumericPayload
+ 	nextTaskQueueID                   uint64
+ 	nextTaskID                        uint64
++	neutralWorldReader                func() []NeutralModifierIdentity
++	neutralWorldStates                []NeutralWorldState
++	neutralWorldTruncated             bool
+ 	observationOrder                  uint64
+ 	combatActive                      func() int
+ 	combatEvents                      []CombatEvent
+diff --git a/pkg/core/core.go b/pkg/core/core.go
+--- a/pkg/core/core.go
++++ b/pkg/core/core.go
+@@ -111,6 +111,11 @@
+ 		},
+ 	)
+ 	c.GTTTrace.BindActiveIndex(c.Player.Active)
++	c.GTTTrace.BindNeutralWorld(func() []gtttrace.NeutralModifierIdentity {
++		out := []gtttrace.NeutralModifierIdentity{}
++		for _, char := range c.Player.Chars() { out = append(out, char.GTTNeutralModifierIdentities()...) }
++		return out
++	})
+ 	c.Combat = combat.New(combat.Opt{
+ 		Events:       c.Events,
+ 		Team:         c.Player,
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -41,6 +41,7 @@
+ }
+ 
+ type GTTTraceEquationBuffer struct {
++	NeutralWorld gtttrace.NeutralWorldLedger `json:"-"`
+ 	DurationFrames      int                           `json:"-"`
+ 	Seed                int64                         `json:"-"`
+ 	Hits                []info.GTTTraceHit            `json:"hits"`
+@@ -284,6 +285,7 @@
+ 	b.StateSlots = core.GTTTrace.StateSlots()
+ 	b.StateEvents = core.GTTTrace.StateEvents()
+ 	b.CombatEvents = core.GTTTrace.CombatEvents()
++	b.NeutralWorld = core.GTTTrace.NeutralWorld()
+ 	seen := map[string]bool{
+ 		"gadget_wave_state_lineage_not_instrumented": true,
+ 		"provider_transition_timeline_incomplete":    true,
+diff --git a/pkg/enemy/gtt_trace.go b/pkg/enemy/gtt_trace.go
+--- a/pkg/enemy/gtt_trace.go
++++ b/pkg/enemy/gtt_trace.go
+@@ -21,7 +21,7 @@
+ 		SourceFrame:                atk.SourceFrame,
+ 		SnapshotFrame:              atk.Snapshot.SourceFrame,
+ 		SnapshotOrder: info.GTTStatsObservationOrder(atk.Snapshot.GTTStatsOrigin),
++		HitOrder: e.Core.GTTTrace.NextNeutralObservationOrder(),
+-		HitOrder: e.Core.GTTTrace.NextObservationOrder(),
+ 		ActorIndex:                 atk.Info.ActorIndex,
+ 		DamageSrc:                  int(atk.Info.DamageSrc),
+ 		Ability:                    atk.Info.Abil,
+diff --git a/pkg/gtttrace/stat_query.go b/pkg/gtttrace/stat_query.go
+--- a/pkg/gtttrace/stat_query.go
++++ b/pkg/gtttrace/stat_query.go
+@@ -17,7 +17,7 @@
+ 		return StatQueryContext{}
+ 	}
+ 	r.nextStatQueryID++
++	return StatQueryContext{runtime: r, id: r.nextStatQueryID, frame: r.Frame(), sequence: len(r.stateEvents), order: r.NextNeutralObservationOrder(), nonExtra: nonExtra}
+-	return StatQueryContext{runtime: r, id: r.nextStatQueryID, frame: r.Frame(), sequence: len(r.stateEvents), order: r.NextObservationOrder(), nonExtra: nonExtra}
+ }
+ 
+ func (r *Runtime) RecordStatQuery(owner int, key string, value float64, modifiers []string, query StatQueryContext) string {
+diff --git a/pkg/gtttrace/combat_events.go b/pkg/gtttrace/combat_events.go
+--- a/pkg/gtttrace/combat_events.go
++++ b/pkg/gtttrace/combat_events.go
+@@ -39,7 +39,7 @@
+ }
+ func (r *Runtime) BeginCombatEvent(event int, args []EventValue) uint64 {
+ 	if !r.Enabled() { return 0 }
++	order := r.NextNeutralObservationOrder()
+-	order := r.NextObservationOrder()
+ 	if len(r.combatEvents) >= maxCombatEventRows {
+ 		r.combatEventsTruncated = true
+ 		return 0
+diff --git a/pkg/core/info/gtt_combat_event.go b/pkg/core/info/gtt_combat_event.go
+--- a/pkg/core/info/gtt_combat_event.go
++++ b/pkg/core/info/gtt_combat_event.go
+@@ -17,6 +17,7 @@
+ 	return out
+ }
+ func gttCombatValue(value any) gtttrace.EventValue {
++	if value != nil { reflected := reflect.ValueOf(value); if (reflected.Kind() == reflect.Pointer || reflected.Kind() == reflect.Interface) && reflected.IsNil() { return gtttrace.EventValue{Kind: "nil"} } }
+ 	switch v := value.(type) {
+ 	case *AttackEvent:
+ 		if v == nil { return gtttrace.EventValue{Kind: "nil"} }
+diff --git a/pkg/gttcompact/neutral_inputs.go b/pkg/gttcompact/neutral_inputs.go
+--- a/pkg/gttcompact/neutral_inputs.go
++++ b/pkg/gttcompact/neutral_inputs.go
+@@ -45,6 +45,7 @@
+ 	Point NeutralInputPoint `json:"point"`
+ }
+ type NeutralInputs struct {
++	World *gtttrace.NeutralWorldLedger `json:"world,omitempty"`
+ 	SchemaVersion int `json:"schema_version"`
+ 	Context optstats.GTTNeutralContext `json:"context"`
+ 	Ledger gtttrace.CombatEventLedger `json:"ledger"`
+@@ -87,7 +88,7 @@
+ }
+ func (b *nodeBuilder) collectNeutralInputs(buffer optstats.GTTTraceEquationBuffer, channels []IRChannel) *NeutralInputs {
+ 	if !b.neutral { return nil }
++	out := &NeutralInputs{World: &buffer.NeutralWorld, SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
+-	out := &NeutralInputs{SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
+ 		States: []NeutralStatePoint{}, Stats: []NeutralStatInput{}, Hits: []NeutralHitPoint{},
+ 		Uncertainty: []string{"event_state_schedule_observed_not_counterfactual", "unresolved_query_modes_require_effect_coverage"}}
+ 	live := make([]bool, len(b.nodes)+1)
+diff --git a/pkg/gtttrace/neutral_world.go b/pkg/gtttrace/neutral_world.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_world.go
+@@ -0,0 +1,51 @@
++package gtttrace
++
++import "sort"
++
++// Pure identity/expiry snapshots. Never evaluate a modifier Amount or stat
++// getter. Intern unchanged world states so many formula reads share one row.
++type NeutralModifierIdentity struct {
++ Owner int `json:"owner"`
++ Key string `json:"key"`
++ Expiry int `json:"expiry"`
++}
++type NeutralWorldState struct {
++ Order uint64 `json:"order"`
++ Frame int `json:"frame"`
++ Active int `json:"active"`
++ Modifiers []NeutralModifierIdentity `json:"modifiers"`
++}
++type NeutralWorldLedger struct {
++ Complete bool `json:"complete"`
++ States []NeutralWorldState `json:"states"`
++}
++func (r *Runtime) BindNeutralWorld(read func() []NeutralModifierIdentity) {
++ if r != nil { r.neutralWorldReader = read }
++}
++func (r *Runtime) NextNeutralObservationOrder() uint64 {
++ order := r.NextObservationOrder()
++ if order == 0 || r.neutralWorldReader == nil { return order }
++ mods := r.neutralWorldReader()
++ sort.Slice(mods, func(i,j int) bool { if mods[i].Owner != mods[j].Owner { return mods[i].Owner < mods[j].Owner }; return mods[i].Key < mods[j].Key })
++ active := -1
++ if r.combatActive != nil { active = r.combatActive() }
++ if len(r.neutralWorldStates) > 0 {
++  previous := r.neutralWorldStates[len(r.neutralWorldStates)-1]
++  equal := previous.Active == active && len(previous.Modifiers) == len(mods)
++  if equal { for i, m := range mods { if previous.Modifiers[i] != m { equal = false; break } } }
++  if equal { return order }
++ }
++ if len(r.neutralWorldStates) >= maxCombatEventRows { r.neutralWorldTruncated = true; return order }
++ r.neutralWorldStates = append(r.neutralWorldStates, NeutralWorldState{order,r.Frame(),active,append([]NeutralModifierIdentity{},mods...)})
++ return order
++}
++func (r *Runtime) NeutralWorld() NeutralWorldLedger {
++ out := NeutralWorldLedger{States: []NeutralWorldState{}}
++ if r == nil { return out }
++ out.Complete = r.Enabled() && r.neutralWorldReader != nil && !r.neutralWorldTruncated
++ for _, row := range r.neutralWorldStates {
++  row.Modifiers = append([]NeutralModifierIdentity{},row.Modifiers...)
++  out.States = append(out.States,row)
++ }
++ return out
++}
+diff --git a/pkg/core/player/character/gtt_neutral_world.go b/pkg/core/player/character/gtt_neutral_world.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/player/character/gtt_neutral_world.go
+@@ -0,0 +1,11 @@
++package character
++
++import "github.com/genshinsim/gcsim/pkg/gtttrace"
++
++// Includes the shared modifier list, not only Status. Expired entries are kept:
++// FindCheckExpiry and actual amount evaluation have distinct boundary rules.
++func (c *CharWrapper) GTTNeutralModifierIdentities() []gtttrace.NeutralModifierIdentity {
++ out := make([]gtttrace.NeutralModifierIdentity,0,len(c.mods))
++ for _, m := range c.mods { out = append(out,gtttrace.NeutralModifierIdentity{Owner:c.Index(),Key:m.Key(),Expiry:m.Expiry()}) }
++ return out
++}
+diff --git a/pkg/gtttrace/neutral_world_test.go b/pkg/gtttrace/neutral_world_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_world_test.go
+@@ -0,0 +1,17 @@
++package gtttrace
++
++import "testing"
++
++func TestNeutralWorldKeepsExpiryRefreshAndInternsStableState(t *testing.T) {
++ r:=NewRuntime(); r.Enable(); frame,active:=3,0; r.BindFrame(&frame);r.BindActiveIndex(func()int{return active})
++ mods:=[]NeutralModifierIdentity{{Owner:1,Key:"shared",Expiry:30}}
++ calls:=0;r.BindNeutralWorld(func()[]NeutralModifierIdentity{calls++;return append([]NeutralModifierIdentity(nil),mods...)})
++ first:=r.NextNeutralObservationOrder();frame=4;r.NextNeutralObservationOrder()
++ mods[0].Expiry=35;r.NextNeutralObservationOrder();active=1;r.NextNeutralObservationOrder()
++ out:=r.NeutralWorld()
++ if !out.Complete || len(out.States)!=3 || out.States[0].Order!=first || out.States[0].Modifiers[0].Expiry!=30 || out.States[1].Modifiers[0].Expiry!=35 || calls!=4 {t.Fatal(out,calls)}
++ out.States[0].Modifiers[0].Expiry=-1
++ if r.NeutralWorld().States[0].Modifiers[0].Expiry!=30 {t.Fatal("mutable world export")}
++ var disabled *Runtime
++ if disabled.NextNeutralObservationOrder()!=0 || disabled.NeutralWorld().Complete {t.Fatal("disabled evidence")}
++}

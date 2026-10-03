@@ -1,0 +1,629 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-19",
+  "scope": "default_AllSets_same_product_request_session_as_button_stage_localization_not_physical_click",
+  "status": "recall_failure_reproduced_no_implementation_change",
+  "manifest": "tools/experiments/gcsim/mode_matrix/archetype_manifest_v1.json",
+  "team": "lunar_charged",
+  "mode": "all_sets",
+  "energy_mode": "infinite",
+  "inputs": {
+    "engine": {
+      "artifact_sha256": "9d107ed713a171c64509ce35348c5d8f7bc08d81bea785db0f308b46d8869d50",
+      "binary_path": "C:/Users/user/Desktop/GenshinTeamsTracker/data/gcsim/engines/engines/gcsim-v2.45.0-observed-modifier-lineage5-20260919/build/gtt-gcsim.exe",
+      "binding_sha256": "ed2387d80a153b8131926c7f066b6100dc1497e8d05efed7770302d2153a3b4c",
+      "capabilities": [
+        "built_artifact_runtime_probe",
+        "gtt_compact_equation_v1",
+        "gtt_effect_inputs_v1",
+        "gtt_energy_ledger_v1",
+        "gtt_engine_marker",
+        "gtt_info_probe",
+        "gtt_patch_stack_boundary",
+        "gtt_source_manifest_v1",
+        "gtt_trace_equation_v2",
+        "gtt_trace_equation_v3",
+        "gtt_trace_equation_v4",
+        "gtt_trace_equation_v5",
+        "gtt_trace_equation_v6",
+        "gtt_trace_provenance_v1",
+        "gtt_wave_scenario_payload",
+        "local_build_artifact",
+        "official_source_layout"
+      ],
+      "patch_manifest_sha256": "680ec766adb897e423f933d9ae49e3ddef565d26edc8a70ee0b25b3dcfdb3275",
+      "source_manifest_sha256": "6d3d46da738259a269f1ffd92f7bf95e27f6c7c2b597aec750b13dace9d4a97e"
+    },
+    "profiles": [
+      {
+        "character_key": "flins",
+        "constellation": 0,
+        "talents": [
+          9,
+          9,
+          9
+        ],
+        "weapon_key": "bloodsoakedruins",
+        "refinement": 1
+      },
+      {
+        "character_key": "ineffa",
+        "constellation": 0,
+        "talents": [
+          9,
+          9,
+          9
+        ],
+        "weapon_key": "fracturedhalo",
+        "refinement": 1
+      },
+      {
+        "character_key": "columbina",
+        "constellation": 0,
+        "talents": [
+          9,
+          9,
+          9
+        ],
+        "weapon_key": "sacrificialjade",
+        "refinement": 1
+      },
+      {
+        "character_key": "jahoda",
+        "constellation": 0,
+        "talents": [
+          9,
+          9,
+          9
+        ],
+        "weapon_key": "skywardharp",
+        "refinement": 1
+      }
+    ],
+    "prepared_config": {
+      "sha256": "380d11266b075ae7f1ff47b0ed2c9303df808af41872e53931daadbb3e89fa40",
+      "text": "flins char lvl=90/90 cons=0 talent=9,9,9;\nflins add weapon=\"bloodsoakedruins\" refine=1 lvl=90/90;\nflins add set=\"silkenmoonsserenade\" count=4;\nflins add stats hp=5228 atk=367 def=59 hp%=0.07 atk%=0.44 em=202 er=0.233 cr=0.105 cd=0.404;\n\nineffa char lvl=90/90 cons=0 talent=9,9,9;\nineffa add weapon=\"fracturedhalo\" refine=1 lvl=90/90;\nineffa add set=\"noblesseoblige\" count=4;\nineffa add stats hp=4780 atk=393 def=60 hp%=0.565 atk%=0.134 def%=0.797 em=23 er=0.796 cr=0.353 cd=0.358;\n\ncolumbina char lvl=90/90 cons=0 talent=9,9,9;\ncolumbina add weapon=\"sacrificialjade\" refine=1 lvl=90/90;\ncolumbina add set=\"noblesseoblige\" count=4;\ncolumbina add stats hp=1255 atk=96 def=19 hp%=0.053 atk%=0.181 def%=0.226 em=44 er=0.11 cr=0.047 cd=0.116;\n\njahoda char lvl=90/90 cons=0 talent=9,9,9;\njahoda add weapon=\"skywardharp\" refine=1 lvl=90/90;\njahoda add set=\"adaycarvedfromrisingwinds\" count=4;\njahoda add stats hp=5646 atk=325 def=55 hp%=0.087 atk%=1.078 def%=0.19 em=79 er=0.181 cr=0.307 cd=1.4;\n\noptions swap_delay=12 iteration=100 ignore_burst_energy=true;\nenergy every interval=480,720 amount=1;\ntarget lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;\n\nactive ineffa;\nfor let i=0; i<4; i=i+1 {\n  ineffa skill;\n  if !is_even(i) {\n    ineffa burst;\n  } else {\n    ineffa attack;\n  }\n\n  columbina skill;\n  if is_even(i) {\n    columbina burst;\n  } else {\n    columbina attack;\n  }\n\n  # Jahoda stays in Shadow Pursuit until the flask resolves; no burst.\n  jahoda attack, skill;\n\n  flins skill, attack,\n        skill, attack, burst,\n        attack:4, dash, attack:4, dash, attack:2,\n        skill, attack, burst,\n        attack:4;\n}\n"
+    },
+    "inventory_sha256": "a9600392c812f58d5504f1bd390f86c027e2eb6bb9acb606728027345c5fa283",
+    "artifact_count": 587
+  },
+  "run": {
+    "search_config": {
+      "MaxContexts": 6,
+      "MaxGuides": 3,
+      "SingleQueue": 16,
+      "TransferQueue": 6,
+      "FinalistLimit": 7,
+      "DeepContextLimit": 2,
+      "MaxSearchExpansions": 1280000,
+      "SearchTime": 420000000000,
+      "Search": {
+        "FirstFrontierWidth": 32,
+        "RecheckFrontierWidth": 8,
+        "MaxExpandedPerActor": 20000,
+        "FinalistLimit": 8,
+        "MaxCycles": 2,
+        "PairFinalistLimit": 24
+      },
+      "Scout": {
+        "FirstFrontierWidth": 16,
+        "RecheckFrontierWidth": 4,
+        "MaxExpandedPerActor": 4000,
+        "FinalistLimit": 6,
+        "MaxCycles": 1,
+        "PairFinalistLimit": 12
+      }
+    },
+    "search_work": [
+      {
+        "context_sha256": "d5707dd492a7559fcce7ea1b43cb4133b88a51b6b1cf6d19b7e77f0089f7d808",
+        "lane": "selected",
+        "formula_dps": 102371.34132154359,
+        "CaptureSeconds": 9.0152438,
+        "SearchSeconds": 45.2320219,
+        "Expansions": 100702
+      },
+      {
+        "context_sha256": "0a74bf35f300032e0774ecfd5c4fb8ea18965a9fd928d55d1af531eaf8f1b19a",
+        "lane": "scout_wearer",
+        "formula_dps": 106894.6090868375,
+        "CaptureSeconds": 9.2856737,
+        "SearchSeconds": 7.5148684,
+        "Expansions": 16000
+      },
+      {
+        "context_sha256": "e8a29a7648ea709cc32a8241217a6449f04a47bd7869f28ed02e7bbb9bbb5598",
+        "lane": "scout_wearer",
+        "formula_dps": 103436.48419045302,
+        "CaptureSeconds": 8.9093629,
+        "SearchSeconds": 7.8988994,
+        "Expansions": 16000
+      },
+      {
+        "context_sha256": "6afada41c61a80f90c3b0f5511e7523da8518c1c422713add0a826cda15e7d35",
+        "lane": "scout_joint",
+        "formula_dps": 99719.1105756633,
+        "CaptureSeconds": 8.8925323,
+        "SearchSeconds": 8.1320221,
+        "Expansions": 16000
+      },
+      {
+        "context_sha256": "70f41b6a51e6ece46c39dcf13960b5d119f0e8b6523a2346edaa27601587f6a9",
+        "lane": "scout_wearer",
+        "formula_dps": 106931.84519442059,
+        "CaptureSeconds": 8.6916455,
+        "SearchSeconds": 8.1273115,
+        "Expansions": 16000
+      },
+      {
+        "context_sha256": "86aaf1bd3629385119f9c1e1316180f819db9cfc0fd1680d50d5ee22008f3ab3",
+        "lane": "scout_wearer",
+        "formula_dps": 105341.99342669833,
+        "CaptureSeconds": 9.1475776,
+        "SearchSeconds": 7.6396887,
+        "Expansions": 16000
+      },
+      {
+        "context_sha256": "70f41b6a51e6ece46c39dcf13960b5d119f0e8b6523a2346edaa27601587f6a9",
+        "lane": "deep_wearer",
+        "formula_dps": 106931.84519442059,
+        "CaptureSeconds": 0,
+        "SearchSeconds": 34.8081783,
+        "Expansions": 77575
+      },
+      {
+        "context_sha256": "0a74bf35f300032e0774ecfd5c4fb8ea18965a9fd928d55d1af531eaf8f1b19a",
+        "lane": "deep_wearer",
+        "formula_dps": 106894.6090868375,
+        "CaptureSeconds": 0,
+        "SearchSeconds": 34.0374445,
+        "Expansions": 77575
+      }
+    ],
+    "search_stop_reason": "context_budget",
+    "capture_members": 12,
+    "search_expansions": 335852,
+    "guides": 3,
+    "queued": 60,
+    "unqueued_across_guides": 5844,
+    "pending": 55,
+    "guide_seconds": 12.6590813,
+    "proposal_seconds": 3.8510276,
+    "search_seconds": 223.8528708,
+    "total_elapsed_ms": 255157.8224,
+    "contexts": {
+      "0a74bf35f300032e0774ecfd5c4fb8ea18965a9fd928d55d1af531eaf8f1b19a": {
+        "sets": [
+          [
+            "flins",
+            "silkenmoonsserenade",
+            "4"
+          ],
+          [
+            "ineffa",
+            "noblesseoblige",
+            "4"
+          ],
+          [
+            "columbina",
+            "tenacityofthemillelith",
+            "4"
+          ],
+          [
+            "jahoda",
+            "adaycarvedfromrisingwinds",
+            "4"
+          ]
+        ],
+        "config_sha256": "54a77d5244cb46d12496bfceba361d7a821cc2a43defc47f8126c3a1d89ba74f"
+      },
+      "6afada41c61a80f90c3b0f5511e7523da8518c1c422713add0a826cda15e7d35": {
+        "sets": [
+          [
+            "flins",
+            "silkenmoonsserenade",
+            "4"
+          ],
+          [
+            "ineffa",
+            "noblesseoblige",
+            "4"
+          ],
+          [
+            "columbina",
+            "silkenmoonsserenade",
+            "4"
+          ],
+          [
+            "jahoda",
+            "tenacityofthemillelith",
+            "4"
+          ]
+        ],
+        "config_sha256": "032686082a7e3b4ada748841ae70381044357a9968af9980958a7b398dc67f88"
+      },
+      "70f41b6a51e6ece46c39dcf13960b5d119f0e8b6523a2346edaa27601587f6a9": {
+        "sets": [
+          [
+            "flins",
+            "silkenmoonsserenade",
+            "4"
+          ],
+          [
+            "ineffa",
+            "obsidiancodex",
+            "4"
+          ],
+          [
+            "columbina",
+            "tenacityofthemillelith",
+            "4"
+          ],
+          [
+            "jahoda",
+            "adaycarvedfromrisingwinds",
+            "4"
+          ]
+        ],
+        "config_sha256": "81eb66cf63c8440f03d3a6ea51522756eef590a5a16a0ab1650bc6561ef57a95"
+      },
+      "86aaf1bd3629385119f9c1e1316180f819db9cfc0fd1680d50d5ee22008f3ab3": {
+        "sets": [
+          [
+            "flins",
+            "silkenmoonsserenade",
+            "4"
+          ],
+          [
+            "ineffa",
+            "obsidiancodex",
+            "4"
+          ],
+          [
+            "columbina",
+            "tenacityofthemillelith",
+            "4"
+          ],
+          [
+            "jahoda",
+            "silkenmoonsserenade",
+            "4"
+          ]
+        ],
+        "config_sha256": "a5887f291ef31518f27acb53ec1325026e0b6db7791ac6723e9734fbef155755"
+      },
+      "d5707dd492a7559fcce7ea1b43cb4133b88a51b6b1cf6d19b7e77f0089f7d808": {
+        "sets": [
+          [
+            "flins",
+            "silkenmoonsserenade",
+            "4"
+          ],
+          [
+            "ineffa",
+            "noblesseoblige",
+            "4"
+          ],
+          [
+            "columbina",
+            "noblesseoblige",
+            "4"
+          ],
+          [
+            "jahoda",
+            "adaycarvedfromrisingwinds",
+            "4"
+          ]
+        ],
+        "config_sha256": "380d11266b075ae7f1ff47b0ed2c9303df808af41872e53931daadbb3e89fa40"
+      },
+      "e8a29a7648ea709cc32a8241217a6449f04a47bd7869f28ed02e7bbb9bbb5598": {
+        "sets": [
+          [
+            "flins",
+            "obsidiancodex",
+            "4"
+          ],
+          [
+            "ineffa",
+            "noblesseoblige",
+            "4"
+          ],
+          [
+            "columbina",
+            "tenacityofthemillelith",
+            "4"
+          ],
+          [
+            "jahoda",
+            "adaycarvedfromrisingwinds",
+            "4"
+          ]
+        ],
+        "config_sha256": "bfe358422d72ccca6c9caa2ee737b396f8d6846b5925f27b69e56d75f987ecf6"
+      }
+    },
+    "candidates": [
+      {
+        "rank": 1,
+        "measured": {
+          "iterations": 500,
+          "dps": "107736.4293148848",
+          "standard_error": "151.04343563393695",
+          "engine_result_sha256": "9b66e33839a1d0f9a3f3c35b8efd3edb48f1c7d69491a8273c3397586abc5831"
+        },
+        "formula_dps": "106931.84519442059",
+        "formula_residual": "804.5841204642056",
+        "builds": [
+          {
+            "wearer_key": "columbina",
+            "artifact_ids": {
+              "flower": 1395,
+              "plume": 1598,
+              "sands": 8,
+              "goblet": 1563,
+              "circlet": 1614
+            }
+          },
+          {
+            "wearer_key": "flins",
+            "artifact_ids": {
+              "flower": 120,
+              "plume": 219,
+              "sands": 68,
+              "goblet": 1566,
+              "circlet": 124
+            }
+          },
+          {
+            "wearer_key": "ineffa",
+            "artifact_ids": {
+              "flower": 80,
+              "plume": 81,
+              "sands": 1576,
+              "goblet": 88,
+              "circlet": 1578
+            }
+          },
+          {
+            "wearer_key": "jahoda",
+            "artifact_ids": {
+              "flower": 1588,
+              "plume": 57,
+              "sands": 58,
+              "goblet": 1545,
+              "circlet": 165
+            }
+          }
+        ]
+      },
+      {
+        "rank": 2,
+        "measured": {
+          "iterations": 500,
+          "dps": "107029.46759927711",
+          "standard_error": "143.171702252985",
+          "engine_result_sha256": "40f0195a273178b853122d8e66b12312ee71727160d41e6e854f1e61bea14d2d"
+        },
+        "formula_dps": "106894.6090868375",
+        "formula_residual": "134.85851243960497",
+        "builds": [
+          {
+            "wearer_key": "columbina",
+            "artifact_ids": {
+              "flower": 1395,
+              "plume": 1598,
+              "sands": 8,
+              "goblet": 1563,
+              "circlet": 1614
+            }
+          },
+          {
+            "wearer_key": "flins",
+            "artifact_ids": {
+              "flower": 120,
+              "plume": 219,
+              "sands": 68,
+              "goblet": 1566,
+              "circlet": 124
+            }
+          },
+          {
+            "wearer_key": "ineffa",
+            "artifact_ids": {
+              "flower": 36,
+              "plume": 81,
+              "sands": 1434,
+              "goblet": 213,
+              "circlet": 203
+            }
+          },
+          {
+            "wearer_key": "jahoda",
+            "artifact_ids": {
+              "flower": 1588,
+              "plume": 57,
+              "sands": 58,
+              "goblet": 1545,
+              "circlet": 165
+            }
+          }
+        ]
+      },
+      {
+        "rank": 3,
+        "measured": {
+          "iterations": 500,
+          "dps": "106317.73922839445",
+          "standard_error": "142.64592345349683",
+          "engine_result_sha256": "e18e5b0308f815df084148972959859b5d7782b5cac63f7cec41e8f3309e9f6c"
+        },
+        "formula_dps": "105341.99342669833",
+        "formula_residual": "975.7458016961173",
+        "builds": [
+          {
+            "wearer_key": "columbina",
+            "artifact_ids": {
+              "flower": 1395,
+              "plume": 1598,
+              "sands": 8,
+              "goblet": 1563,
+              "circlet": 1614
+            }
+          },
+          {
+            "wearer_key": "flins",
+            "artifact_ids": {
+              "flower": 120,
+              "plume": 219,
+              "sands": 68,
+              "goblet": 1566,
+              "circlet": 124
+            }
+          },
+          {
+            "wearer_key": "ineffa",
+            "artifact_ids": {
+              "flower": 80,
+              "plume": 81,
+              "sands": 1576,
+              "goblet": 88,
+              "circlet": 1578
+            }
+          },
+          {
+            "wearer_key": "jahoda",
+            "artifact_ids": {
+              "flower": 218,
+              "plume": 121,
+              "sands": 1544,
+              "goblet": 1590,
+              "circlet": 1580
+            }
+          }
+        ]
+      },
+      {
+        "rank": 4,
+        "measured": {
+          "iterations": 500,
+          "dps": "103850.87727286227",
+          "standard_error": "90.10433198845479",
+          "engine_result_sha256": "6ec7d57663437a0c4a7d75872830bfc03b39e9df177d8f555baafe2a2433f6e1"
+        },
+        "formula_dps": "103436.48419045302",
+        "formula_residual": "414.3930824092531",
+        "builds": [
+          {
+            "wearer_key": "columbina",
+            "artifact_ids": {
+              "flower": 1395,
+              "plume": 1598,
+              "sands": 8,
+              "goblet": 1563,
+              "circlet": 1614
+            }
+          },
+          {
+            "wearer_key": "flins",
+            "artifact_ids": {
+              "flower": 80,
+              "plume": 91,
+              "sands": 43,
+              "goblet": 88,
+              "circlet": 1578
+            }
+          },
+          {
+            "wearer_key": "ineffa",
+            "artifact_ids": {
+              "flower": 36,
+              "plume": 81,
+              "sands": 1434,
+              "goblet": 213,
+              "circlet": 203
+            }
+          },
+          {
+            "wearer_key": "jahoda",
+            "artifact_ids": {
+              "flower": 1588,
+              "plume": 57,
+              "sands": 58,
+              "goblet": 1545,
+              "circlet": 165
+            }
+          }
+        ]
+      },
+      {
+        "rank": 5,
+        "measured": {
+          "iterations": 500,
+          "dps": "102758.58978499024",
+          "standard_error": "133.04369180396594",
+          "engine_result_sha256": "86e880371d73f59bcb48b63dec7905aa69c2e2a17e74dee4fef8b320a4d9799a"
+        },
+        "formula_dps": "102371.34132154359",
+        "formula_residual": "387.24846344665275",
+        "builds": [
+          {
+            "wearer_key": "columbina",
+            "artifact_ids": {
+              "flower": 1416,
+              "plume": 1608,
+              "sands": 236,
+              "goblet": 1563,
+              "circlet": 203
+            }
+          },
+          {
+            "wearer_key": "flins",
+            "artifact_ids": {
+              "flower": 120,
+              "plume": 219,
+              "sands": 68,
+              "goblet": 1566,
+              "circlet": 124
+            }
+          },
+          {
+            "wearer_key": "ineffa",
+            "artifact_ids": {
+              "flower": 31,
+              "plume": 1413,
+              "sands": 1434,
+              "goblet": 1428,
+              "circlet": 1437
+            }
+          },
+          {
+            "wearer_key": "jahoda",
+            "artifact_ids": {
+              "flower": 1588,
+              "plume": 57,
+              "sands": 58,
+              "goblet": 1545,
+              "circlet": 165
+            }
+          }
+        ]
+      }
+    ],
+    "optimizer_sha256": "76c1a4f3cfdfc9c09c4ec9de831ce79d2c115a7a3b2cf6411320fafbe66f8aed"
+  },
+  "comparison_receipt": "tests/fixtures/gcsim_optimizer_go_v1/flins_virtual_artifact_crosscheck_lineage5_v1.json",
+  "findings": {
+    "top1_same_twenty_ids_as_virtual_crosscheck": true,
+    "stop_is_context_not_time_or_expansion_budget": true,
+    "stronger_joint_package_context_never_captured": true,
+    "forced_stronger_context_formula_and_item_search_not_yet_tested": true,
+    "proposal_queue_individual_scores_not_retained": true
+  },
+  "lifecycle": {
+    "managed_scratch": true,
+    "removed_bytes": 95529051,
+    "completed_job_retained": false,
+    "retention": "compact_evidence_until_ranking_quality_regression_is_integrated_then_fold_or_prune"
+  }
+}

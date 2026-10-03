@@ -55,13 +55,39 @@ def run_directory_lease(run_dir: Path):
 
 def _tree_size(path: Path) -> int:
     total = 0
-    for parent, dirs, files in os.walk(path, followlinks=False):
-        dirs[:] = [d for d in dirs if not _is_link(Path(parent) / d)]
+    def raise_walk_error(exc: OSError) -> None:
+        raise exc
+
+    for parent, dirs, files in os.walk(path, followlinks=False, onerror=raise_walk_error):
+        for name in dirs:
+            if _is_link(Path(parent) / name):
+                raise ValueError(f"Linked optimizer run entry: {Path(parent) / name}")
         for name in files:
             item = Path(parent) / name
-            if not _is_link(item):
-                total += item.stat().st_size
+            if _is_link(item):
+                raise ValueError(f"Linked optimizer run entry: {item}")
+            if not item.is_file():
+                raise ValueError(f"Nonregular optimizer run entry: {item}")
+            total += item.stat().st_size
     return total
+
+
+def _run_is_protected(path: Path, explicit: set[Path]) -> bool:
+    pin = path / RUN_PIN
+    lease = path / RUN_LEASE
+    if pin.is_symlink() or (pin.exists() and _is_link(pin)):
+        raise ValueError(f"Linked optimizer run pin: {pin}")
+    if lease.is_symlink() or (lease.exists() and _is_link(lease)):
+        raise ValueError(f"Linked optimizer run lease: {lease}")
+    if path in explicit or pin.exists():
+        return True
+    if lease.exists():
+        try:
+            with run_directory_lease(path):
+                pass
+        except OSError:
+            return True
+    return False
 
 
 def prune_go_optimizer_runs(
@@ -116,27 +142,32 @@ def prune_go_optimizer_runs(
         try:
             size = _tree_size(path)
             entries.append((path.stat().st_mtime_ns, path, size))
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             report["errors"].append(f"{path.name}: {exc}")
-    report["status"] = "dry_run" if dry_run else "pruned"
-    kept = 0
-    retained_any = False
-    for _, path, size in sorted(entries, reverse=True):
+    # Classify all recognized runs first. An old pin or live lease owns budget
+    # before a newer ordinary result is considered, regardless of timestamp.
+    protected_entries = []
+    ordinary_entries = []
+    for _, path, size in entries:
         try:
-            # The lease is also consulted in dry-run mode, but never created for
-            # legacy runs during preview. Completed legacy jobs have no lease.
-            protected = path in explicit or (path / RUN_PIN).exists()
-            if not protected and (path / RUN_LEASE).exists():
-                try:
-                    with run_directory_lease(path):
-                        pass
-                except OSError:
-                    protected = True
-            if protected:
-                report["protected_paths"].append(str(path))
-                report["protected_bytes"] += size
-                retained_any = True
-                continue
+            if _run_is_protected(path, explicit):
+                protected_entries.append((path, size))
+            else:
+                ordinary_entries.append((path.stat().st_mtime_ns, path, size))
+        except (OSError, ValueError) as exc:
+            report["errors"].append(f"{path.name}: {exc}")
+    if report["errors"]:
+        report["status"] = "partial_failure"
+        report["over_budget_bytes"] = 0
+        return report
+    report["status"] = "dry_run" if dry_run else "pruned"
+    for path, size in protected_entries:
+        report["protected_paths"].append(str(path))
+        report["protected_bytes"] += size
+    kept = 0
+    retained_any = bool(protected_entries)
+    for _, path, size in sorted(ordinary_entries, reverse=True):
+        try:
             fits = report["kept_bytes"] + report["protected_bytes"] + size <= max(0, max_bytes)
             if kept < max(0, keep_count) and (fits or not retained_any):
                 report["kept_paths"].append(str(path))
@@ -147,6 +178,14 @@ def prune_go_optimizer_runs(
             if not dry_run:
                 if _is_link(path) or path.resolve().parent != resolved:
                     raise ValueError("Optimizer run changed its deletion boundary")
+                # A pin or active lease can arrive after selection. Preserve it
+                # even when this changes the final budget report.
+                if _run_is_protected(path, explicit):
+                    report["protected_paths"].append(str(path))
+                    report["protected_bytes"] += size
+                    retained_any = True
+                    continue
+                _tree_size(path)  # catch newly introduced nested links before remove
                 shutil.rmtree(path)
             report["deleted_paths"].append(str(path))
             report["deleted_bytes"] += size

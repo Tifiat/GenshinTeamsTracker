@@ -22,6 +22,8 @@ class OfflineProfileTest(unittest.TestCase):
             "data/hoyolab/account_language.json",
             offline_profile.RESTORABLE_FILES,
         )
+        self.assertIn(offline_profile.HOYOLAB_SHARED_ASSETS_DIR, offline_profile.PROFILE_ASSET_DIRS)
+        self.assertIn("assets/hoyolab/shared/", offline_profile.RESTORABLE_PREFIXES)
 
     def test_export_import_round_trip_preserves_account_language(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

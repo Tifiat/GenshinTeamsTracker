@@ -108,5 +108,8 @@ func decodeEffectInputs(payload, memberBytes []byte, member contracts.IRSeedMemb
 		seenNodes[in.NodeID] = true
 		hits[in.HitID] = true
 	}
+	if err := validateNeutralInputs(out.Neutral, member, out.CharacterKeys, seenNodes); err != nil {
+		return nil, err
+	}
 	return &out, nil
 }

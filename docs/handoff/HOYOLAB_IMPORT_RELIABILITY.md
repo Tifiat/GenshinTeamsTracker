@@ -1,15 +1,47 @@
 # HoYoLAB Import Failure Boundaries
 
+<!-- handoff-current: hoyolab-import -->
+2026-09-27. Normal import gets one unambiguous Genshin role and its character
+list through the authenticated request context, then reads detail and Abyss
+period for that role without repeating role lookup. Multi-role/API failures
+retain the browser-selected list path. Direct list uses the observed public
+element/rarity URLs; a live comparison found the same 78 portraits and shared
+layers as the browser card path. Missing portrait/weapon/layer files are
+downloaded once; browser, PvP and expanded-History variants render locally.
+`--images-only` remains the forced refresh of image columns and manifest.
+HoYoWiki artifact lists are reused per language and for six hours on disk;
+an unknown set mapping forces one network refresh and retry. Trait membership
+also uses its recent cache. The same Abyss period reuses source composition
+and retries only missing icons; the Fandom icon request now supplies its site
+referer, clearing prior 403 failures on successful retry.
+
+Live full CLI import: 75.42s before this optimization with broken Abyss icon
+cache; 34.43s after catalog/source repair with cold list caches and icon retry;
+9.85s on a hot cache (8.19s inside Python). A later request stalled for the
+old 30s API timeout and fell back successfully at 42.21s total; the fast path
+now has a 6s request bound and a repeat completed in 10.71s. Last run: 78
+cards, 57 unique weapons, zero image downloads/renders, 250 existing artifacts,
+zero inserted. SQLite integrity/foreign keys passed; saved builds, targets,
+slots and artifact equipment matched the verified pre-change backup. Weapon
+equipment also matched at the 9.85s checkpoint; one row later changed from
+`hoyolab_import` to `manual` while parallel work was active, so final weapon
+equipment is not byte-identical to that backup. These timings include different
+network/cache states. Focused backend tests and direct authenticated API
+probes passed. The earlier
+visible Settings image-only run and PvP display check covered the image layer
+change; this optimization was verified through the production CLI, not a new
+visible UI run.
+<!-- /handoff-current -->
+
 Scope: Settings `AccountDataPage.run_hoyolab_export` -> QProcess ->
-`hoyolab_export.run_import` -> import pipeline/exporter. This is a bounded
-repair/audit of the existing path, not a new importer or a full reliability claim.
+`hoyolab_export.run_import` -> import pipeline/exporter.
 
 ## Entry Point And Import Contract
 
 Production import entrypoint: `python -m hoyolab_export.run_import`.
 The UI starts it through QProcess and consumes `[STATUS]` progress lines.
-Account runtime reads go through SQLite adapters; JSON/crop manifests are source
-inputs. Extraction is DOM/layout/coordinate based, not image matching.
+Account runtime reads go through SQLite adapters; JSON/asset manifest are source
+inputs. Normal images are composed from direct source files, not browser renders.
 
 - HoYoLAB relic set IDs and HoYoWiki entry IDs are distinct. The EN detail
   service pass is mapping input only; never publish it as localized account data.
@@ -22,7 +54,11 @@ inputs. Extraction is DOM/layout/coordinate based, not image matching.
 - Sign-out/offline restore own destructive profile cleanup; ordinary early
   import failure must preserve existing account data/assets.
 
-## Navigation And Export
+## Navigation And Legacy Manual Export
+
+The points below preserve the failure contract for the separate manual exporter.
+Normal account import stops after `character/list` and does not invoke the share
+popover, canvas capture, layout collection or screenshot cropper.
 
 - `DOMContentLoaded` may describe an intermediate redirect document. Startup
   popup JavaScript previously ran outside the readiness guard and could fail
@@ -41,8 +77,8 @@ inputs. Extraction is DOM/layout/coordinate based, not image matching.
   `r_m_ys_all_*.js`. The old `f()(t,r)` match in a tarot/shared chunk still existed
   but was not called by account export. Both narrowly observed sites now reuse
   the same root/clone/canvas capture helper; do not patch arbitrary vendor JS.
-- A downloaded image alone is insufficient: empty root-discovery metadata or
-  zero generated cards is a failure before account writes.
+- In the legacy manual exporter, a downloaded image alone is insufficient:
+  empty root-discovery metadata or zero generated cards is a failure.
 - Follow-up regression: a stray `break` after reopening the share popover
   skipped the second/third export click. A failing deterministic fixture
   reproduced this; the bounded retry now really performs up to three clicks.
@@ -81,8 +117,9 @@ inputs. Extraction is DOM/layout/coordinate based, not image matching.
   complete/cancelled. Pipeline teardown consumes or cancels an unused future.
 - Browser JSON fetch has a 60-second bound and browser-side abort. Roles/detail
   failures and missing requested character ids are rejected before account writes.
-- Crops are built in a temporary mirror of project-relative asset paths, seeded
-  with existing crops. A partial crop failure cannot overwrite old images.
+- Missing source layers and display variants are built in a temporary mirror
+  before account writes. Existing v2 source files are reused on normal import;
+  a failed download/render leaves the prior account images untouched.
 - Account language/period publication happens after artifact import. Account
   JSON is replaced per file; staged image files replace their final paths.
 - Artifact import retains content-fingerprint dedupe and SQLite transaction
@@ -103,6 +140,7 @@ Tests are isolated from the real login profile/runtime DB. Relevant modules:
 - `tests/hoyolab_export/account/test_import_run_lock.py`
 - `tests/hoyolab_export/account/test_import_reliability.py`
 - `tests/hoyolab_export/account/test_import_pipeline.py`
+- `tests/hoyolab_export/account/test_asset_layers.py`
 - account storage/equipment tests in the same directory
 - `tests/ui/right_panel/test_hoyolab_import_lifecycle.py`
 
@@ -186,7 +224,33 @@ repeat in the same app and compare preset/equipment ids plus DB integrity.
 For refusal/retry validation use a temporary import lock, never remove the
 authorization profile or terminate an unrelated browser.
 
+Single-card asset feasibility probe, 2026-09-26 (research evidence, not import
+acceptance): `python -m tools.experiments.hoyolab_asset_probe` opened the saved
+HoYoLAB session, captured the live character/list response, and downloaded one
+character's portrait and weapon directly. Element and rarity-background URLs
+were taken from the last local export layout; no whole-page image export,
+account sync, or runtime asset write occurred. For Noelle, portrait and weapon
+were separate transparent 256x256 PNGs, element 64x64, and both character and
+weapon backgrounds used the same 188x188 rarity-4 PNG. The assembled preview
+restored the visible portrait missing from the existing bad crop; its layout is
+approximate, not pixel-exact. The final live run took 17.52s to have all five
+assets ready, including 2.563s for sequential download/decode; the complete
+script process took 19.46s. This does not isolate or predict the duration of a
+full account import. The probe owns one fixed output of at most 11 files under
+`debug/hoyolab/single_asset_probe` (1,113,828 bytes in this run), replacing
+only its marked output on rerun; normal import clears that debug root. Source
+downloads are bounded to 5MiB/4M pixels each, generated PNGs to 16MiB, and
+the complete output to 100MiB.
+
 ## Limits
+
+Remaining import-cost audit: the character/detail call is already one batch,
+set mapping fetches an English batch only for unknown set IDs, and Abyss
+source-data refresh has a same-period cache gate. The two HoYoWiki trait pages
+are fetched unconditionally by normal import; this is the first independent
+network/cache optimization candidate after stage timings show its cost. The
+new `stageEvents` field in `debug/hoyolab/import_log.json` records future
+normal-import boundaries without logging private URLs or response bodies.
 
 - The complete DB + JSON + image publication is not a single transaction.
   Disk failure/process termination during final publication can still leave

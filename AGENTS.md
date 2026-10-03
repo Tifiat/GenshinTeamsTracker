@@ -1,11 +1,11 @@
 # Project instructions
 
-Read [CODEX.md](CODEX.md) before working in this repository. It owns execution,
-scope, validation and resource rules, including the prohibition on subagents.
+Read [CODEX.md](CODEX.md) once before repository work. It owns universal rules,
+including the low-context subagent policy, and routes to task-specific handoffs. Read
+only the current status and contract sections relevant to the task.
 
-For implementation, decisions saved to files, changed evidence (including failed
-or partial checks), or handoff edits, complete
-[handoff maintenance](docs/handoff/HANDOFF_MAINTENANCE.md) before the final reply.
-Reconcile affected facts and run the lightweight structural checker; fix local
-documentation debt in the same task. A checker PASS does not replace semantic
-review. Discussion-only turns without file changes remain discussion-only.
+For implementation, saved decisions, changed acceptance/evidence or handoff
+edits, complete [handoff closeout](docs/handoff/HANDOFF_MAINTENANCE.md) before
+replying. A routine local fix with no durable change needs no documentation
+entry, but still needs the lightweight closeout check. Discussion-only turns
+remain read-only.

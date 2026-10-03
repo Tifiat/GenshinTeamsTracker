@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import os
 from pathlib import Path
+from unittest.mock import patch
+
+from PIL import Image
+from PySide6.QtWidgets import QApplication, QPushButton, QWidget
 
 from hoyolab_export.account_storage import (
     AccountCharacterRuntimeRecord,
@@ -15,6 +20,8 @@ from ui.character_assets import (
     account_character_asset_item,
     account_weapon_stack_asset_item,
     character_matches_filters,
+    pvp_character_asset_item,
+    refresh_imported_element_filter_icons,
 )
 
 
@@ -85,6 +92,65 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
         self.assertIn("Восстановление энергии 25.2%", item["tooltip"])
         self.assertNotIn("Energy Recharge", item["tooltip"])
         self.assertNotIn("P23", item["tooltip"])
+
+    def test_pvp_variant_keeps_seat_badges_outside_portrait(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            browser = folder / "browser.png"
+            pvp = folder / "pvp.png"
+            browser.write_bytes(b"browser")
+            pvp.write_bytes(b"pvp")
+            item = {
+                "path": browser,
+                "metadata": {
+                    "portrait_pvp_path": str(pvp),
+                    "character": {"id": "1", "portrait_path": str(browser), "constellation": 6},
+                    "owner_badges": [{"label": "C6"}],
+                },
+            }
+            converted = pvp_character_asset_item(item)
+            self.assertEqual(converted["path"], pvp)
+            self.assertEqual(converted["metadata"]["character"]["portrait_path"], str(pvp))
+            self.assertEqual(converted["metadata"]["owner_badges"], [{"label": "C6"}])
+            self.assertEqual(item["path"], browser)
+
+    def test_foreign_profile_does_not_borrow_current_account_variants(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            portrait = Path(tmp) / "guest.png"
+            portrait.write_bytes(b"png")
+            record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", portrait_path=str(portrait))
+            with patch("ui.character_assets.character_variant_path", return_value=None) as lookup:
+                item = account_character_asset_item(record)
+            lookup.assert_called_once_with("1001", "crop")
+            self.assertNotIn("portrait_pvp_path", item["metadata"])
+
+    def test_packaged_profile_reuses_variant_only_for_matching_bitmap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            browser = folder / "browser.png"
+            pvp = folder / "pvp.png"
+            browser.write_bytes(b"browser")
+            pvp.write_bytes(b"pvp")
+            record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", portrait_path=str(browser))
+            with patch("ui.character_assets.character_variant_path", side_effect=lambda _id, variant: {
+                "crop": browser, "pvp": pvp,
+            }.get(variant)):
+                item = account_character_asset_item(record)
+            self.assertEqual(item["metadata"]["portrait_pvp_path"], str(pvp))
+
+    def test_existing_filter_button_updates_to_imported_element(self) -> None:
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "geo.png"
+            Image.new("RGBA", (16, 16), "gold").save(path)
+            root = QWidget()
+            button = QPushButton(root)
+            button.setProperty("elementIconName", "element_geo.png")
+            with patch("ui.character_assets.filter_icon_path", return_value=path):
+                refresh_imported_element_filter_icons(root)
+            self.assertFalse(button.icon().isNull())
+            root.close()
 
     def test_weapon_asset_tooltip_uses_current_ui_language_for_stat_label(self) -> None:
         set_language("en")

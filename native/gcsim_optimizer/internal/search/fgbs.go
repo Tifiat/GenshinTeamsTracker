@@ -5,6 +5,7 @@ package search
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -13,6 +14,7 @@ import (
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
 	energyconstraint "genshinteamstracker/native/gcsim_optimizer/internal/energy"
 	"genshinteamstracker/native/gcsim_optimizer/internal/evaluator"
+	"genshinteamstracker/native/gcsim_optimizer/internal/searchcontrol"
 )
 
 type Config struct {
@@ -48,6 +50,10 @@ type ActorStep struct {
 	BudgetUnexpanded    int64              `json:"budget_unexpanded"`
 	FrontierWidth       int                `json:"frontier_width"`
 	Finalists           []ScoredAssignment `json:"finalists"`
+	BoundEvaluations    int                `json:"bound_evaluations,omitempty"`
+	BoundPrunedBuilds   int64              `json:"bound_pruned_builds,omitempty"`
+	ReducedNodes        int                `json:"reduced_nodes,omitempty"`
+	InvalidAssignments  int                `json:"invalid_assignments,omitempty"`
 }
 
 type Result struct {
@@ -61,6 +67,7 @@ type Result struct {
 	PairEvaluated           int                             `json:"pair_evaluated"`
 	PairInvalid             int                             `json:"pair_invalid"`
 	PairDuplicates          int                             `json:"pair_duplicates"`
+	PairBudgetExhausted     bool                            `json:"pair_budget_exhausted,omitempty"`
 	PairActorKeys           [][2]string                     `json:"pair_actor_keys"`
 	ResponseLedger          []evaluator.ResponseLedgerEntry `json:"response_ledger"`
 	OpaqueReasons           []string                        `json:"opaque_reasons"`
@@ -70,12 +77,38 @@ type Result struct {
 }
 
 type Engine struct {
-	domain      *domain.Index
-	panel       *evaluator.Panel
-	config      Config
-	energy      *energyconstraint.Model
-	energyCache map[domain.Assignment]energyconstraint.Feasibility
-	energyErr   error
+	observeCandidate    func(ScoredAssignment)
+	domain              *domain.Index
+	panel               *evaluator.Panel
+	config              Config
+	energy              *energyconstraint.Model
+	energyCache         map[domain.Assignment]energyconstraint.Feasibility
+	energyErr           error
+	inventoryBounds     bool
+	pairWorkLimit       int
+	pairBudgetExhausted bool
+}
+
+// ObserveCandidates retains already evaluated legal complete builds without
+// changing search decisions. The observer must not mutate this engine.
+func (engine *Engine) ObserveCandidates(observer func(ScoredAssignment)) {
+	engine.observeCandidate = observer
+}
+
+func (engine *Engine) observed(row ScoredAssignment) {
+	if engine.observeCandidate != nil {
+		engine.observeCandidate(row)
+	}
+}
+
+// NewInventory enables the All Sets real-vector branch-and-bound path. The
+// Selected button deliberately retains its separately accepted search policy.
+func NewInventory(d *domain.Index, p *evaluator.Panel, c Config, energy ...*energyconstraint.Model) (*Engine, error) {
+	e, err := New(d, p, c, energy...)
+	if err == nil {
+		e.inventoryBounds = true
+	}
+	return e, err
 }
 
 func New(artifactDomain *domain.Index, panel *evaluator.Panel, config Config, energyModels ...*energyconstraint.Model) (*Engine, error) {
@@ -119,19 +152,40 @@ func (engine *Engine) RefineWearer(ctx context.Context, anchor domain.Assignment
 	return engine.searchActor(ctx, anchor, wearerIndex, 1, engine.config.FirstFrontierWidth)
 }
 
-func (engine *Engine) Run(ctx context.Context) (Result, error) {
+func (engine *Engine) Run(ctx context.Context) (result Result, err error) {
 	initialDPS, err := engine.score(engine.domain.Incumbent)
 	if err != nil {
 		return Result{}, err
 	}
 	initial := ScoredAssignment{engine.domain.Incumbent, initialDPS, "incumbent"}
-	result := Result{
+	result = Result{
 		Initial: initial, Leader: initial, Finalists: []ScoredAssignment{initial},
 		ResponseLedger: engine.panel.ResponseLedger(), OpaqueReasons: engine.panel.OpaqueReasons(),
 		SaturationFrozenWearers: []string{},
 	}
 	anchor := initial
+	searchcontrol.Ready(ctx)
 	candidatePool := []ScoredAssignment{initial}
+	defer func() {
+		// Publish completed work even if a later wearer/pair hits the deadline.
+		result.Leader = anchor
+		candidatePool = append(candidatePool, anchor)
+		result.Finalists = engine.mergeFinalists(engine.config.PairFinalistLimit, candidatePool...)
+		if errors.Is(err, context.DeadlineExceeded) {
+			result.StopReason = "search_deadline"
+		}
+		if errors.Is(err, context.Canceled) {
+			result.StopReason = "search_cancelled"
+		}
+		if engine.energy != nil {
+			assessment, energyErr := engine.energyAssessment(anchor.Assignment)
+			if energyErr != nil {
+				err = energyErr
+			} else {
+				result.Energy = &assessment
+			}
+		}
+	}()
 	lastFinalists := make([][]ScoredAssignment, 4)
 	for cycle := 1; cycle <= engine.config.MaxCycles; cycle++ {
 		improved := false
@@ -144,9 +198,15 @@ func (engine *Engine) Run(ctx context.Context) (Result, error) {
 				return result, err
 			}
 			before := anchor
-			step, err := engine.searchActor(ctx, anchor.Assignment, wearerIndex, cycle, width)
-			if err != nil {
-				return result, err
+			step, stepErr := engine.searchActor(ctx, anchor.Assignment, wearerIndex, cycle, width)
+			if stepErr != nil && !errors.Is(stepErr, context.Canceled) && !errors.Is(stepErr, context.DeadlineExceeded) {
+				return result, stepErr
+			}
+			if len(step.Finalists) == 0 {
+				if stepErr == nil {
+					stepErr = fmt.Errorf("wearer search returned no incumbent")
+				}
+				return result, stepErr
 			}
 			lastFinalists[wearerIndex] = step.Finalists
 			candidatePool = append(candidatePool, step.Finalists...)
@@ -160,26 +220,48 @@ func (engine *Engine) Run(ctx context.Context) (Result, error) {
 				improved = true
 			}
 			result.Steps = append(result.Steps, step)
+			if stepErr != nil {
+				return result, stepErr
+			}
 		}
 		result.CompletedCycles = cycle
 		if !improved {
 			result.StopReason = "provisional_stable"
+			if engine.inventoryBounds {
+				for _, step := range result.Steps {
+					if step.BudgetUnexpanded > 0 {
+						result.StopReason = "work_budget"
+						break
+					}
+				}
+			}
 			break
 		}
 	}
 	if result.StopReason == "" {
 		result.StopReason = "max_cycles"
 	}
+	if engine.inventoryBounds {
+		engine.pairWorkLimit = 4 * engine.config.MaxCycles * engine.config.MaxExpandedPerActor
+		for _, step := range result.Steps {
+			engine.pairWorkLimit -= step.Expanded
+		}
+		engine.pairBudgetExhausted = false
+	}
 	paired, pairRows, pairKeys, generated, evaluated, invalid, duplicates, err := engine.refinePairs(ctx, anchor, lastFinalists)
-	if err != nil {
+	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		return result, err
 	}
 	result.PairGenerated, result.PairEvaluated, result.PairInvalid, result.PairDuplicates = generated, evaluated, invalid, duplicates
 	result.PairActorKeys = pairKeys
+	result.PairBudgetExhausted = engine.pairBudgetExhausted
 	candidatePool = append(candidatePool, pairRows...)
 	if engine.betterScored(paired, anchor) {
 		anchor = paired
 		result.StopReason += "+pair_improved"
+	}
+	if err != nil {
+		return result, err
 	}
 	result.Leader = anchor
 	candidatePool = append(candidatePool, anchor, paired)
@@ -222,6 +304,9 @@ type lane struct {
 }
 
 func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment, wearerIndex, cycle, width int) (ActorStep, error) {
+	if engine.inventoryBounds {
+		return engine.searchInventoryActor(ctx, anchor, wearerIndex, cycle)
+	}
 	step := ActorStep{Cycle: cycle, WearerKey: engine.domain.Wearers[wearerIndex].WearerKey, FrontierWidth: width}
 	anchorDPS, err := engine.score(anchor)
 	if err != nil {
@@ -331,10 +416,10 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 				next = append(next, row)
 			}
 			sort.Slice(next, func(i, j int) bool {
-				if betterObjective(next[i].objective, next[j].objective) {
+				if objectiveRanksBefore(next[i].objective, next[j].objective) {
 					return true
 				}
-				if betterObjective(next[j].objective, next[i].objective) {
+				if objectiveRanksBefore(next[j].objective, next[i].objective) {
 					return false
 				}
 				return idsLess(next[i].ids, next[j].ids)
@@ -404,6 +489,9 @@ func (engine *Engine) lanes(anchor domain.Assignment, wearerIndex int) []lane {
 		}
 	}
 	sets := engine.domain.Wearers[wearerIndex].SelectedSets
+	if len(sets) == 0 || len(sets) == 1 && sets[0].Count == 2 {
+		return engine.sparseSetLanes(occupied, sets)
+	}
 	if len(sets) == 2 {
 		return engine.pairedSetLanes(occupied, sets[0].SetUID, sets[1].SetUID)
 	}
@@ -483,6 +571,9 @@ func (engine *Engine) laneFallback(anchor domain.Assignment, wearerIndex int, cu
 }
 
 func (engine *Engine) refinePairs(ctx context.Context, anchor ScoredAssignment, finalists [][]ScoredAssignment) (ScoredAssignment, []ScoredAssignment, [][2]string, int, int, int, int, error) {
+	if engine.inventoryBounds {
+		return engine.refineInventoryPairs(ctx, anchor, finalists)
+	}
 	best := anchor
 	generated, evaluated, invalid, duplicates := 0, 0, 0, 0
 	seen := map[domain.Assignment]struct{}{anchor.Assignment: {}}
@@ -648,6 +739,19 @@ func betterObjective(left, right objective) bool {
 	return left.dps > right.dps+1e-9
 }
 
+// A tolerance is useful for accepting improvements, but must not define sort
+// equivalence: pairwise epsilon ties are not transitive. Rank finite objective
+// keys exactly, then let the caller break true ties with physical IDs.
+func objectiveRanksBefore(left, right objective) bool {
+	if left.feasible != right.feasible {
+		return left.feasible
+	}
+	if !left.feasible && left.shortage != right.shortage {
+		return left.shortage < right.shortage
+	}
+	return left.dps > right.dps
+}
+
 func (engine *Engine) betterScored(left, right ScoredAssignment) bool {
 	leftObjective, leftErr := engine.objective(left.Assignment, left.DPS)
 	rightObjective, rightErr := engine.objective(right.Assignment, right.DPS)
@@ -663,15 +767,31 @@ func (engine *Engine) betterScored(left, right ScoredAssignment) bool {
 }
 
 func (engine *Engine) sortScored(rows []ScoredAssignment) {
-	sort.Slice(rows, func(i, j int) bool {
-		if engine.betterScored(rows[i], rows[j]) {
+	keyed := make([]struct {
+		row ScoredAssignment
+		key objective
+	}, len(rows))
+	for i, row := range rows {
+		key, err := engine.objective(row.Assignment, row.DPS)
+		if err != nil {
+			engine.energyErr = err
+			return
+		}
+		keyed[i].row, keyed[i].key = row, key
+	}
+	sort.Slice(keyed, func(i, j int) bool {
+		left, right := keyed[i].key, keyed[j].key
+		if objectiveRanksBefore(left, right) {
 			return true
 		}
-		if engine.betterScored(rows[j], rows[i]) {
+		if objectiveRanksBefore(right, left) {
 			return false
 		}
-		return assignmentLess(rows[i].Assignment, rows[j].Assignment)
+		return assignmentLess(keyed[i].row.Assignment, keyed[j].row.Assignment)
 	})
+	for i := range rows {
+		rows[i] = keyed[i].row
+	}
 }
 
 func (engine *Engine) mergeFinalists(limit int, rows ...ScoredAssignment) []ScoredAssignment {
@@ -729,10 +849,10 @@ func diverse(rows []partial, width int) []partial {
 		}
 	}
 	sort.Slice(keep, func(i, j int) bool {
-		if betterObjective(keep[i].objective, keep[j].objective) {
+		if objectiveRanksBefore(keep[i].objective, keep[j].objective) {
 			return true
 		}
-		if betterObjective(keep[j].objective, keep[i].objective) {
+		if objectiveRanksBefore(keep[j].objective, keep[i].objective) {
 			return false
 		}
 		return idsLess(keep[i].ids, keep[j].ids)

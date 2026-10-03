@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from ui.gcsim_browser.run_worker import (
     ERROR_ARTIFACT_PREFLIGHT_FAILED,
@@ -20,10 +24,30 @@ from ui.gcsim_browser.run_worker import (
     run_gcsim_browser_dps_dummy,
     run_gcsim_browser_three_chambers,
     run_gcsim_browser_selected_chamber,
+    _active_run_binding,
 )
 
 
 class GcsimBrowserRunWorkerTest(unittest.TestCase):
+    def test_normal_run_registry_binding_uses_only_selected_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            active_root = root / "selected"
+            artifact = active_root / "pkg" / "shortcut" / "artifact.dm.go"
+            monster = active_root / "pkg" / "shortcut" / "monster.dm.go"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text("package shortcut\n", encoding="utf-8")
+            monster.write_text("package shortcut\n", encoding="utf-8")
+            with patch("ui.gcsim_browser.run_worker.GcsimEngineStore") as store_type:
+                store_type.return_value.get_active_engine.return_value = SimpleNamespace(
+                    engine_id="selected", path=active_root
+                )
+                binding = _active_run_binding("selected")
+                self.assertEqual(binding.artifact_registry, artifact)
+                self.assertEqual(binding.enemy_registry, monster)
+                with self.assertRaisesRegex(RuntimeError, "changed"):
+                    _active_run_binding("previous")
+
     def test_classifies_prepare_not_ready(self) -> None:
         self.assertEqual(
             classify_gcsim_browser_run_payload({"ready": False, "issues": []}),

@@ -305,6 +305,11 @@ class AccountStorageTest(unittest.TestCase):
             self.assertEqual(weapon.gcsim_key, "newbow")
             self.assertEqual(Path(hero.source_paths["character"]), shortcut / "character.dm.go")
 
+    def test_partial_registry_override_is_unavailable_instead_of_mixing_sources(self) -> None:
+        resolver = build_account_gcsim_key_resolver(character_source_path="characters.go")
+        result = resolver("character", "1", "Mona")
+        self.assertEqual(result.status, "registry_unavailable")
+
     def test_missing_active_engine_does_not_fall_back_to_pinned_old_sources(self) -> None:
         with patch("run_workspace.gcsim.engine_store.GcsimEngineStore.get_active_engine", return_value=None):
             result = build_account_gcsim_key_resolver()("character", "1", "Mona")

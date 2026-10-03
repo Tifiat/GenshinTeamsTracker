@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -19,6 +20,21 @@ import (
 	"genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
 	"genshinteamstracker/native/gcsim_optimizer/internal/seteffects"
 )
+
+func TestCandidateSortNearTiesHasTransitiveOrder(t *testing.T) {
+	rows := make([]Candidate, 3)
+	for i := range rows {
+		rows[i].Score.DPS = 100 + float64(i)*0.75e-9
+		rows[i].Score.Assignment[0][0] = int64(i + 1)
+	}
+	if !candidateBefore(rows[2], rows[1]) || !candidateBefore(rows[1], rows[0]) || !candidateBefore(rows[2], rows[0]) {
+		t.Fatal("near-tie sort is not transitive")
+	}
+	sort.Slice(rows, func(i, j int) bool { return candidateBefore(rows[i], rows[j]) })
+	if rows[0].Score.Assignment[0][0] != 3 || rows[2].Score.Assignment[0][0] != 1 {
+		t.Fatal("canonical tie-break overrode actual DPS", rows)
+	}
+}
 
 // Synthetic set semantics deliberately reuse a small neutral graph. These tests
 // pin scheduling/identity/budgets, never real set activation or gameplay quality.
@@ -132,8 +148,8 @@ func TestCoordinatorGlobalBudgetAndDeterminism(t *testing.T) {
 			t.Fatal("stale finalist context")
 		}
 	}
-	if !have[r.Initial.Score.Assignment] || !have[r.Selected.Score.Assignment] {
-		t.Fatal("baseline comparison missing")
+	if !have[r.Leader.Score.Assignment] {
+		t.Fatal("strongest searched candidate missing")
 	}
 	second, e := Run(context.Background(), index, base, sources, provider, cfg)
 	if e != nil {
@@ -151,6 +167,38 @@ func TestCoordinatorGlobalBudgetAndDeterminism(t *testing.T) {
 		x, _ := json.Marshal(a)
 		y, _ := json.Marshal(b)
 		t.Fatal("nondeterministic", string(x), string(y))
+	}
+}
+
+func TestInventoryCoordinatorRetainsFullQueueAndNeutralContexts(t *testing.T) {
+	index, base, sources, provider, cfg := coordinatorFixture(t)
+	cfg.SingleQueue = 0
+	cfg.TransferQueue = 0
+	cfg.MaxContexts = 9
+	cfg.MaxSearchExpansions = 20000
+	cfg.Search.MaxExpandedPerActor = 50
+	r, e := Run(context.Background(), index, base, sources, provider, cfg)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if r.Unqueued != 0 || r.Pending == 0 {
+		t.Fatalf("full package queue was truncated: unqueued=%d pending=%d", r.Unqueued, r.Pending)
+	}
+	neutral := false
+	for _, w := range r.Work {
+		for _, p := range w.Packages {
+			neutral = neutral || p == "none"
+		}
+	}
+	// The tiny fixture has only four families, so a no-bonus package may be
+	// physically impossible. That is a feasibility result, not a named ban.
+	if len(r.Work) < 2 || r.CaptureMembers != len(base.Seeds())*cfg.MaxContexts {
+		t.Fatal("fresh context path skipped", neutral, r.StopReason)
+	}
+	for _, c := range r.Finalists {
+		if e := c.Index.ValidateAssignment(c.Score.Assignment); e != nil {
+			t.Fatal(e)
+		}
 	}
 }
 

@@ -8,6 +8,7 @@ not read account DBs, generated assets, profile data, caches, or network state.
 from __future__ import annotations
 
 from dataclasses import replace
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -295,6 +296,29 @@ class HistorySnapshotBundleTests(unittest.TestCase):
                 "\n".join(abyss_group.abyss_period_summary.chamber_enemy_hp_summaries),
             )
             self.assertIsNone(listing.groups[1].abyss_period_summary)
+
+    def test_listing_preserves_but_silently_skips_obsolete_pre_contract_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            legacy_path = root / "abyss" / "legacy" / "snapshot.json"
+            legacy_path.parent.mkdir(parents=True)
+            legacy = _minimal_abyss_bundle(bundle_id="legacy-v1").to_dict()
+            legacy["schema_version"] = 1
+            legacy_path.write_text(json.dumps(legacy), encoding="utf-8")
+
+            future_path = root / "abyss" / "future" / "snapshot.json"
+            future_path.parent.mkdir(parents=True)
+            future = _minimal_abyss_bundle(bundle_id="future").to_dict()
+            future["schema_version"] = 999
+            future_path.write_text(json.dumps(future), encoding="utf-8")
+
+            listing = HistorySnapshotBundleStore(root).list_bundle_records()
+
+            self.assertEqual(listing.records, ())
+            self.assertEqual(len(listing.ignored_legacy), 1)
+            self.assertEqual(listing.ignored_legacy[0].path, legacy_path)
+            self.assertEqual(len(listing.errors), 1)
+            self.assertEqual(listing.errors[0].path, future_path)
 
     def test_details_payload_derives_selected_snapshot_data_without_live_sources(self) -> None:
         bundle = _rich_abyss_bundle(bundle_id="details-abyss")

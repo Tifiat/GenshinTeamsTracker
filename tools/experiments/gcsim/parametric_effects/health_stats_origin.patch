@@ -1,0 +1,545 @@
+diff --git a/pkg/core/info/gtt_live_stats.go b/pkg/core/info/gtt_live_stats.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_live_stats.go
+@@ -0,0 +1,1 @@
++package info
++
++import (
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++// GTTReadStats keeps a raw Stats() array's ordinary Stat query at the getter
++// site while returning the same gameplay values exactly once. The fallback is
++// used unchanged when tracing or typed owner provenance is unavailable.
++func GTTReadStats(rt *gtttrace.Runtime, owner any, fallback func() ([attributes.EndStatType]float64, []any)) ([attributes.EndStatType]float64, []any, *GTTStatsOrigin) {
++	if rt == nil || !rt.Enabled() {
++		stats, debug := fallback()
++		return stats, debug, nil
++	}
++	c, ok := owner.(interface {
++		Index() int
++		GTTStats() ([attributes.EndStatType]float64, []any, []GTTTraceStatContribution)
++	})
++	if !ok || GTTStatOwnerRuntime(owner) != rt {
++		stats, debug := fallback()
++		return stats, debug, nil
++	}
++	query := rt.NewStatQuery(false)
++	stats, debug, contributions := c.GTTStats()
++	origin := GTTNewStatsOrigin(rt, c.Index(), attributes.Stats(stats), contributions, query)
++	return stats, debug, origin
++}
++
++// GTTStatsCellRef relates an already-observed array cell to the original
++// ordinary Stats() query. Mutation or owner/query mismatch stays frozen.
++func GTTStatsCellRef(rt *gtttrace.Runtime, origin *GTTStatsOrigin, values [attributes.EndStatType]float64, key attributes.Stat, observed float64) gtttrace.NumericRef {
++	freeze := func() gtttrace.NumericRef {
++		if rt == nil || !rt.Enabled() {
++			return gtttrace.LiteralRef(observed)
++		}
++		return gtttrace.EventRef(rt.RecordNumericEval("", "frozen_attack_operand", nil, observed, gtttrace.IncompleteEvidence("stats_container_origin_unproven_or_mutated")))
++	}
++	if rt == nil || !rt.Enabled() {
++		return gtttrace.LiteralRef(observed)
++	}
++	if origin == nil || origin.runtime != rt || origin.Values != attributes.Stats(values) || key <= attributes.NoStat || key >= attributes.EndStatType || values[key] != observed {
++		return freeze()
++	}
++	if key >= attributes.DelimBaseStat {
++		return gtttrace.LiteralRef(observed)
++	}
++	return gtttrace.EventRef(rt.RecordStatQuery(origin.Owner, key.String(), observed, origin.ModifierIDs, origin.query))
++}
+diff --git a/pkg/gttsourcegen/health_stats_origin.go b/pkg/gttsourcegen/health_stats_origin.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_stats_origin.go
+@@ -0,0 +1,1 @@
++package gttsourcegen
++
++import (
++	"fmt"
++	"go/ast"
++	"go/token"
++	"strconv"
++	"strings"
++)
++
++// healthStatsRefs transports raw Stats() provenance only through a private,
++// same-file helper whose every callsite and array read is syntactically proven.
++// Unsupported aliases, writes, escapes, or unresolved callsites stay frozen.
++func healthStatsRefs(fs *token.FileSet, tf *token.File, file *ast.File, fn *ast.FuncDecl, original ast.Expr, rt string) (map[string]string, []textEdit) {
++	empty := map[string]string{}
++	if fs == nil || tf == nil || file == nil || fn == nil || fn.Body == nil || fn.Recv == nil || fn.Name == nil || ast.IsExported(fn.Name.Name) || strings.TrimSpace(rt) == "" {
++		return empty, nil
++	}
++	imports := sourceImportAliases(file)
++	infoAlias, attributesAlias := "", ""
++	for alias, path := range imports {
++		if path == "github.com/genshinsim/gcsim/pkg/core/info" {
++			infoAlias = alias
++		}
++		if path == "github.com/genshinsim/gcsim/pkg/core/attributes" {
++			attributesAlias = alias
++		}
++	}
++	if infoAlias == "" || attributesAlias == "" || len(fn.Recv.List) != 1 || len(fn.Recv.List[0].Names) != 1 {
++		return empty, nil
++	}
++	arrayName, arrayParamIndex, ok := healthStatsArrayParam(fs, fn, attributesAlias)
++	if !ok {
++		return empty, nil
++	}
++	parents := healthASTParents(file)
++	keys := map[string]string{}
++	addCell := func(expr ast.Expr) bool {
++		cell, ok := expr.(*ast.IndexExpr)
++		if !ok {
++			return false
++		}
++		base, ok := cell.X.(*ast.Ident)
++		if !ok || base.Name != arrayName {
++			return false
++		}
++		key, ok := cell.Index.(*ast.SelectorExpr)
++		if !ok {
++			return false
++		}
++		pkg, ok := key.X.(*ast.Ident)
++		if !ok || imports[pkg.Name] != "github.com/genshinsim/gcsim/pkg/core/attributes" || key.Sel == nil {
++			return false
++		}
++		keys[rootText(fs, cell)] = rootText(fs, cell.Index)
++		return true
++	}
++	// Only raw indexed reads are accepted. Scalar locals must first be proven
++	// and resolved to their original RHS by healthFieldOrigin.
++	ast.Inspect(original, func(n ast.Node) bool {
++		if cell, ok := n.(*ast.IndexExpr); ok && cell.X != nil {
++			addCell(cell)
++		}
++		return true
++	})
++	if len(keys) == 0 || !healthStatsParamReadOnly(fn, arrayName, parents) {
++		return empty, nil
++	}
++
++	// The private method name must have one declaration in this file, and every
++	// same-file selector reference must be a direct call with a proven Stats()
++	// array. Package-private references from other files are caught by the full
++	// overlay compile after the transport is applied.
++	for _, decl := range file.Decls {
++		other, ok := decl.(*ast.FuncDecl)
++		if ok && other != fn && other.Name != nil && other.Name.Name == fn.Name.Name {
++			return empty, nil
++		}
++	}
++	selectors := []*ast.SelectorExpr{}
++	ast.Inspect(file, func(n ast.Node) bool {
++		if sel, ok := n.(*ast.SelectorExpr); ok && sel.Sel != nil && sel.Sel.Name == fn.Name.Name {
++			selectors = append(selectors, sel)
++		}
++		return true
++	})
++	if len(selectors) == 0 {
++		return empty, nil
++	}
++	originParam := "gttStatsOrigin_" + strconv.Itoa(tf.Offset(fn.Pos()))
++	if healthHasIdent(file, originParam) {
++		return empty, nil
++	}
++	callEdits := []textEdit{}
++	assignments := map[*ast.AssignStmt]string{}
++	callArrayUses := map[*ast.Ident]bool{}
++	for _, sel := range selectors {
++		call, callOK := parents[sel].(*ast.CallExpr)
++		if !callOK || call.Fun != sel || arrayParamIndex >= len(call.Args) {
++			continue
++		}
++		if arrayArg, argOK := call.Args[arrayParamIndex].(*ast.Ident); argOK {
++			callArrayUses[arrayArg] = true
++		}
++	}
++	for _, sel := range selectors {
++		call, ok := parents[sel].(*ast.CallExpr)
++		if !ok || call.Fun != sel || call.Rparen == token.NoPos || arrayParamIndex >= len(call.Args) || len(call.Args) <= arrayParamIndex {
++			return empty, nil
++		}
++		arrayArg, ok := call.Args[arrayParamIndex].(*ast.Ident)
++		if !ok {
++			return empty, nil
++		}
++		caller := healthEnclosingFunc(call, parents)
++		if caller == nil || caller.Body == nil {
++			return empty, nil
++		}
++		if !healthSameReceiverCall(fs, fn, caller, sel) {
++			return empty, nil
++		}
++		owner := rootText(fs, sel.X)
++		assignment, getter, ok := healthStatsAssignment(fs, caller, call, arrayArg.Name, owner)
++		if !ok || !healthStatsLocalUsesProven(caller, assignment, arrayArg.Name, callArrayUses) {
++			return empty, nil
++		}
++		origin, exists := assignments[assignment]
++		if !exists {
++			origin = "gttStatsOrigin_" + strconv.Itoa(tf.Offset(assignment.Pos()))
++			if healthHasIdent(file, origin) {
++				return empty, nil
++			}
++			assignments[assignment] = origin
++			callEdits = append(callEdits,
++				textEdit{start: tf.Offset(assignment.Lhs[len(assignment.Lhs)-1].End()), end: tf.Offset(assignment.Lhs[len(assignment.Lhs)-1].End()), replacement: ", " + origin},
++				textEdit{start: tf.Offset(getter.Pos()), end: tf.Offset(getter.End()), replacement: fmt.Sprintf("%s.GTTReadStats(%s.GTTStatOwnerRuntime(%s),%s,%s.Stats)", infoAlias, infoAlias, owner, owner, owner)},
++			)
++		}
++		callEdits = append(callEdits, textEdit{start: tf.Offset(call.Rparen), end: tf.Offset(call.Rparen), replacement: ", " + origin})
++	}
++	if len(assignments) == 0 || fn.Type == nil || fn.Type.Params == nil {
++		return empty, nil
++	}
++	comma := ""
++	if len(fn.Type.Params.List) > 0 {
++		comma = ", "
++	}
++	callEdits = append(callEdits, textEdit{
++		start: tf.Offset(fn.Type.Params.Closing), end: tf.Offset(fn.Type.Params.Closing),
++		replacement: comma + originParam + " *" + infoAlias + ".GTTStatsOrigin",
++	})
++	refs := make(map[string]string, len(keys))
++	for cell, key := range keys {
++		refs[cell] = fmt.Sprintf("%s.GTTStatsCellRef(%s,%s,%s,%s,float64(%s))", infoAlias, rt, originParam, arrayName, key, cell)
++	}
++	return refs, callEdits
++}
++
++func healthStatsArrayParam(fs *token.FileSet, fn *ast.FuncDecl, attributesAlias string) (string, int, bool) {
++	if fn.Type == nil || fn.Type.Params == nil {
++		return "", 0, false
++	}
++	found := ""
++	index := 0
++	for _, field := range fn.Type.Params.List {
++		if len(field.Names) != 1 || rootText(fs, field.Type) != "["+attributesAlias+".EndStatType]float64" {
++			index += len(field.Names)
++			continue
++		}
++		if found != "" {
++			return "", 0, false
++		}
++		found = field.Names[0].Name
++		index += len(field.Names)
++		// Only a uniquely named fixed Stats() array parameter is transportable.
++		for _, candidate := range fn.Type.Params.List {
++			for _, name := range candidate.Names {
++				if name.Name == found && candidate != field {
++					return "", 0, false
++				}
++			}
++		}
++	}
++	if found == "" {
++		return "", 0, false
++	}
++	paramIndex := 0
++	for _, field := range fn.Type.Params.List {
++		if len(field.Names) > 0 && field.Names[0].Name == found {
++			return found, paramIndex, true
++		}
++		paramIndex += len(field.Names)
++	}
++	return "", 0, false
++}
++
++func healthStatsParamReadOnly(fn *ast.FuncDecl, name string, parents map[ast.Node]ast.Node) bool {
++	valid := true
++	ast.Inspect(fn.Body, func(n ast.Node) bool {
++		id, ok := n.(*ast.Ident)
++		if !ok || id.Name != name {
++			return true
++		}
++		cell, ok := parents[id].(*ast.IndexExpr)
++		if !ok || cell.X != id || healthStatsWriteTarget(cell, parents) {
++			valid = false
++			return false
++		}
++		return true
++	})
++	return valid
++}
++
++func healthStatsWriteTarget(expr ast.Expr, parents map[ast.Node]ast.Node) bool {
++	node := ast.Node(expr)
++	for node != nil {
++		parent := parents[node]
++		switch value := parent.(type) {
++		case *ast.ParenExpr:
++			node = parent
++		case *ast.AssignStmt:
++			for _, lhs := range value.Lhs {
++				if lhs.Pos() <= node.Pos() && node.End() <= lhs.End() {
++					return true
++				}
++			}
++			return false
++		case *ast.IncDecStmt:
++			return true
++		case *ast.UnaryExpr:
++			return value.Op == token.AND
++		default:
++			return false
++		}
++	}
++	return false
++}
++
++func healthASTParents(root ast.Node) map[ast.Node]ast.Node {
++	parents := map[ast.Node]ast.Node{}
++	stack := []ast.Node{}
++	ast.Inspect(root, func(node ast.Node) bool {
++		if node == nil {
++			if len(stack) > 0 {
++				stack = stack[:len(stack)-1]
++			}
++			return false
++		}
++		if len(stack) > 0 {
++			parents[node] = stack[len(stack)-1]
++		}
++		stack = append(stack, node)
++		return true
++	})
++	return parents
++}
++
++func healthEnclosingFunc(node ast.Node, parents map[ast.Node]ast.Node) *ast.FuncDecl {
++	for current := parents[node]; current != nil; current = parents[current] {
++		if fn, ok := current.(*ast.FuncDecl); ok {
++			return fn
++		}
++	}
++	return nil
++}
++
++func healthSameReceiverCall(fs *token.FileSet, target, caller *ast.FuncDecl, call *ast.SelectorExpr) bool {
++	if target.Recv == nil || caller.Recv == nil || len(target.Recv.List) != 1 || len(caller.Recv.List) != 1 || len(target.Recv.List[0].Names) != 1 || len(caller.Recv.List[0].Names) != 1 {
++		return false
++	}
++	targetType := rootText(fs, target.Recv.List[0].Type)
++	if targetType == "" || rootText(fs, caller.Recv.List[0].Type) != targetType {
++		return false
++	}
++	receiverName := caller.Recv.List[0].Names[0].Name
++	callReceiver, ok := call.X.(*ast.Ident)
++	if !ok || callReceiver.Name != receiverName || healthReceiverShadowed(caller.Body, receiverName) {
++		return false
++	}
++	return true
++}
++
++func healthReceiverShadowed(body *ast.BlockStmt, name string) bool {
++	shadowed := false
++	ast.Inspect(body, func(n ast.Node) bool {
++		if shadowed {
++			return false
++		}
++		defines := func(id *ast.Ident) bool { return id != nil && id.Name == name }
++		switch value := n.(type) {
++		case *ast.AssignStmt:
++			for _, lhs := range value.Lhs {
++				if id, ok := lhs.(*ast.Ident); ok && defines(id) { shadowed = true; return false }
++			}
++		case *ast.ValueSpec:
++			for _, id := range value.Names { if defines(id) { shadowed = true; return false } }
++		case *ast.RangeStmt:
++			if id, ok := value.Key.(*ast.Ident); ok && defines(id) { shadowed = true; return false }
++			if id, ok := value.Value.(*ast.Ident); ok && defines(id) { shadowed = true; return false }
++		case *ast.FuncLit:
++			for _, list := range []*ast.FieldList{value.Type.Params, value.Type.Results} {
++				if list == nil { continue }
++				for _, field := range list.List { for _, id := range field.Names { if defines(id) { shadowed = true; return false } } }
++			}
++		}
++		return true
++	})
++	return shadowed
++}
++
++func healthStatsAssignment(fs *token.FileSet, caller *ast.FuncDecl, call *ast.CallExpr, arrayName, owner string) (*ast.AssignStmt, *ast.CallExpr, bool) {
++	callBlock := healthContainingBlock(caller.Body, call.Pos())
++	if callBlock == nil {
++		return nil, nil, false
++	}
++	var found *ast.AssignStmt
++	var getter *ast.CallExpr
++	ast.Inspect(caller.Body, func(n ast.Node) bool {
++		assignment, ok := n.(*ast.AssignStmt)
++		if !ok || assignment.Tok != token.DEFINE || len(assignment.Lhs) != 2 || len(assignment.Rhs) != 1 || assignment.End() >= call.Pos() {
++			return true
++		}
++		name, ok := assignment.Lhs[0].(*ast.Ident)
++		discard, discardOK := assignment.Lhs[1].(*ast.Ident)
++		if !ok || name.Name != arrayName || !discardOK || discard.Name != "_" {
++			return true
++		}
++		rhs, ok := assignment.Rhs[0].(*ast.CallExpr)
++		if !ok || len(rhs.Args) != 0 {
++			return true
++		}
++		selector, ok := rhs.Fun.(*ast.SelectorExpr)
++		if !ok || selector.Sel.Name != "Stats" || rootText(fs, selector.X) != owner {
++			return true
++		}
++		defBlock := healthContainingBlock(caller.Body, assignment.Pos())
++		if defBlock == nil || !(defBlock == callBlock || (defBlock.Pos() < callBlock.Pos() && defBlock.End() > callBlock.End())) {
++			return true
++		}
++		if found != nil {
++			found = nil
++			getter = nil
++			return false
++		}
++		found, getter = assignment, rhs
++		return true
++	})
++	return found, getter, found != nil && getter != nil
++}
++
++func healthContainingBlock(root ast.Node, pos token.Pos) *ast.BlockStmt {
++	var best *ast.BlockStmt
++	ast.Inspect(root, func(n ast.Node) bool {
++		block, ok := n.(*ast.BlockStmt)
++		if ok && block.Pos() <= pos && pos <= block.End() && (best == nil || block.End()-block.Pos() < best.End()-best.Pos()) {
++			best = block
++		}
++		return true
++	})
++	return best
++}
++
++func healthStatsLocalUsesProven(caller *ast.FuncDecl, definition *ast.AssignStmt, name string, allowed map[*ast.Ident]bool) bool {
++	parents := healthASTParents(caller.Body)
++	valid := true
++	ast.Inspect(caller.Body, func(n ast.Node) bool {
++		id, ok := n.(*ast.Ident)
++		if !ok || id.Name != name || allowed[id] {
++			return true
++		}
++		parent := parents[id]
++		if parent == definition {
++			return true
++		}
++		valid = false
++		return false
++	})
++	return valid
++}
++
++func healthHasIdent(root ast.Node, name string) bool {
++	found := false
++	ast.Inspect(root, func(n ast.Node) bool {
++		if id, ok := n.(*ast.Ident); ok && id.Name == name {
++			found = true
++			return false
++		}
++		return true
++	})
++	return found
++}
++
++// Root collection may request the same transport edits for Src and Bonus.
++// Deduplicate only exact edits carrying this transport's generated markers;
++// conflicting edits remain visible to applyTextEdits as overlap errors.
++func healthOriginEditsOnce(edits []textEdit) []textEdit {
++	seen := map[string]bool{}
++	out := make([]textEdit, 0, len(edits))
++	for _, edit := range edits {
++		marked := strings.Contains(edit.replacement, "GTTReadStats(") || strings.Contains(edit.replacement, "GTTStatsOrigin") || strings.Contains(edit.replacement, "gttStatsOrigin_")
++		key := strconv.Itoa(edit.start) + ":" + strconv.Itoa(edit.end) + ":" + edit.replacement
++		if marked && seen[key] {
++			continue
++		}
++		if marked {
++			seen[key] = true
++		}
++		out = append(out, edit)
++	}
++	return out
++}
+diff --git a/pkg/gttsourcegen/health_stats_origin_test.go b/pkg/gttsourcegen/health_stats_origin_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_stats_origin_test.go
+@@ -0,0 +1,1 @@
++package gttsourcegen
++
++import (
++	"go/ast"
++	"go/parser"
++	"go/token"
++	"strings"
++	"testing"
++)
++
++func TestHealthStatsOriginTransportRequiresProvenRawStats(t *testing.T) {
++	source := `package arbitrary
++import (
++ "github.com/genshinsim/gcsim/pkg/core/attributes"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++)
++type char struct{}
++type other struct{}
++func (p *char) burst() {
++ stats, _ := p.Stats()
++ p.apply(stats, false)
++}
++func (c *char) apply(stats [attributes.EndStatType]float64, first bool) {
++ hpplus := stats[attributes.Heal]
++ if !first { c.Core.Player.Heal(info.HealInfo{Bonus: hpplus}) }
++}`
++	for _, tc := range []struct {
++		name, source string
++		want         bool
++	}{
++		{"direct private helper", source, true},
++		{"mutated helper array", strings.Replace(source, "hpplus := stats[attributes.Heal]", "stats[attributes.Heal] = 4; hpplus := stats[attributes.Heal]", 1), false},
++		{"unproven call argument", strings.Replace(source, "p.apply(stats, false)", "p.apply(other, false)", 1), false},
++		{"escaped caller array", strings.Replace(source, "p.apply(stats, false)", "consume(stats); p.apply(stats, false)", 1), false},
++		{"foreign enclosing receiver", strings.Replace(source, "func (p *char) burst()", "func (p *other) burst()", 1), false},
++		{"foreign call receiver", strings.Replace(source, "p.apply(stats, false)", "other := &char{}; other.apply(stats, false)", 1), false},
++	} {
++		if tc.name != "direct private helper" && tc.source == source {
++			t.Fatalf("negative fixture %q did not change the source", tc.name)
++		}
++		t.Run(tc.name, func(t *testing.T) {
++			fs := token.NewFileSet()
++			file, err := parser.ParseFile(fs, "test.go", tc.source, parser.SkipObjectResolution)
++			if err != nil { t.Fatal(err) }
++			var fn *ast.FuncDecl
++			for _, decl := range file.Decls {
++				if candidate, ok := decl.(*ast.FuncDecl); ok && candidate.Name.Name == "apply" { fn = candidate }
++			}
++			if fn == nil { t.Fatal("missing helper") }
++			var original ast.Expr
++			ast.Inspect(fn, func(n ast.Node) bool {
++				if a, ok := n.(*ast.AssignStmt); ok && len(a.Lhs)==1 && rootText(fs,a.Lhs[0])=="hpplus" {
++					original = a.Rhs[0]
++				}
++				return true
++			})
++			refs, edits := healthStatsRefs(fs, fs.File(file.Pos()), file, fn, original, "c.Core.GTTTrace")
++			if (len(refs) != 0 && len(edits) != 0) != tc.want { t.Fatalf("refs=%v edits=%v", refs, edits) }
++			if !tc.want { return }
++			if refs["stats[attributes.Heal]"] == "" || !strings.Contains(refs["stats[attributes.Heal]"], "GTTStatsCellRef") { t.Fatal(refs) }
++			out, err := applyTextEdits([]byte(tc.source), healthOriginEditsOnce(append(edits, edits...)))
++			if err != nil { t.Fatal(err) }
++			if _, err := parser.ParseFile(token.NewFileSet(), "out.go", out, 0); err != nil { t.Fatal(err, string(out)) }
++			text := string(out)
++			for _, want := range []string{"GTTReadStats(info.GTTStatOwnerRuntime(p),p,p.Stats)", "gttStatsOrigin_", "GTTStatsOrigin"} {
++				if !strings.Contains(text, want) { t.Fatal(want, text) }
++			}
++		})
++	}
++}

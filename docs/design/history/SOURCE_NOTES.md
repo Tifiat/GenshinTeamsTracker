@@ -216,8 +216,114 @@ upload/reset/export/restart validation. Scope and resume path are in [README](RE
 
 > вот эту строчку надо сделать более читаемой - формат даты 9.2026-10.2026, а не как сейчас, и сделать более читаемым - возможно общий таймер сделать слева сверху просто как 444 с без "всего" и по центру бездна 12 и дата. или как-то как ты предложишь по компоновке, потому что сейчас как будто глаза по центру видят пустое пятно, как бельмо на глазу
 
-[Header feedback](references/user-expanded-header-feedback.png). The implemented
-choice uses a bare large timer on the left, title centered over a readable
-month-year period; no save timestamp in that line. An unavailable/invalid
-period end is not inferred from the formatting example. User's postponement
-of native interaction checks remains in force.
+[Header feedback](references/user-expanded-header-feedback.png). V7 used a bare
+large timer on the left and centered title over month-year period; the later
+one-line request below supersedes that vertical arrangement. No save timestamp
+is used, and an unavailable/invalid period end is not inferred from the example.
+
+## RDP compact mode and period controls, same session
+
+> в режиме рдп на мониторе 1366 у меня выглядит вот так ... очень широкую нижнюю линию и вся суть компактной прокрутки теряется
+
+The user allowed the maximally compressed mode to hide chamber timing detail
+and retain only the overall timer, and explicitly removed the `Всего` label.
+The [RDP capture](references/user-rdp-1366-compact-wrap.png) and
+[large-monitor baseline](references/user-large-monitor-compact.png) define the
+responsive difference; this does not remove wide-mode timing data.
+
+> дату нужно вынести в одну строку чтобы не растягивать высоту - можно выровнять справа дату, заголовок бездна - по центру как сейас и общий таймер выравнивание слева тоже как сейчас
+
+[One-line header reference](references/user-expanded-header-one-line.png).
+This supersedes the immediately preceding two-line title/period arrangement.
+
+> кнопка раскрывающая забеги должна быть понятным заголовком ... в формате бездна 12. 9.2026-10.2026
+
+The same feedback requires boss details to be hidden by default behind a
+`Показать боссов` control and to become clearer/larger only when expanded.
+Reference: [period and bosses](references/user-period-bosses-feedback.png).
+The persistent unreadable notice was also called out for investigation; it was
+traced to the preserved pre-contract v1 snapshot rather than a current v2 run.
+
+## Boss rows, period menu and compact team identity
+
+> номер комнаты | картинки боссов | хп
+
+The user asked to remove the boss chamber title row, spend that height on the
+largest boss images the two half-rows can hold, and make the HP value larger and
+styled. They also asked for a larger Akasha-like period popup that omits every
+period with zero saved runs. References:
+[boss and total annotation](references/user-v8-boss-total-feedback.png) and
+[period menu](references/user-v8-period-menu-feedback.png).
+
+> бирки 1 2 на общем таймере - убери ... непоместившиеся резонансы просто скрывать
+
+The compact overall timer loses its numeric team tags and the space before the
+localized seconds suffix. Wide mode still retains the full team/chamber timing
+table. An intermediate implementation placed bonus icons inside the total and
+treated the styled left-edge `I`/`II` gutter as higher priority. The later
+1366-screen correction below explicitly supersedes both decisions.
+
+> на общем таймере ничего быть не должно ... резонансов расположенных в две строки по высоте
+
+In the [1366 correction](references/user-v8-resonance-column-feedback.png), the
+overall timer must be a clean, narrower, full-height rectangular zone without
+rounded inset treatment. Compact resonances belong to their own adjacent
+column; up to two for one team stack vertically. That whole column may disappear
+when width is exhausted. The user reversed the previous responsive priority:
+Roman `I`/`II` team marks now hide before the resonance column.
+
+The requested settings control for the authoritative current Abyss period is a
+separate future item in [TODO](../../../TODO.md): only the dynamically latest
+period gets a localized `(current)` marker. It is not inferred from History
+selection or the newest saved run.
+
+## 2K/150% compact refinement, 2026-09-18
+
+> у меня на мониторе 2к масштабирование 150% ... надо что-то сделать, чтобы при масштабировании 150% все еще влезала область с детализацией
+
+The [150% capture](references/user-v9-150pct-compact.png) must retain the
+team/chamber timing detail shown by the [wide reference](references/user-v9-wide-detail-reference.png)
+without returning to a tall compact card. The user also requested less top and
+bottom padding and a smaller bonus row close to chamber-row height.
+
+> обводку\квадратную рамку вокруг резонансов убрать - пусть вписываются в общий фон
+
+This applies to both compact and expanded resonance icons. Large expanded bonus
+sets must remain inside the existing identity area by forming rows/columns, not
+overflowing the card. References: [compact frame](references/user-v9-compact-resonance-frame.png),
+[row height](references/user-v9-resonance-row-height.png) and
+[expanded frame](references/user-v9-expanded-resonance-frame.png).
+
+> римские цифры надо сделать по центру и не выносить отдельно прямоугольные области, а вписать к скругленному краю и минимизировать ширину
+
+The [Roman-gutter capture](references/user-v9-roman-gutter.png) rejects the
+detached rectangle but retains centered `I`/`II` identity at sufficient width.
+The user also explicitly removed the old expanded `01`/`02` badges
+([reference](references/user-v9-expanded-number-badge.png)) and asked to center
+the expanded team label and timer. These are implementation directions, not
+acceptance of the v9 result.
+
+## Narrow reflow and outer-edge marker correction, 2026-09-18
+
+> при уменьшении ширины окна ... багается вся компоновка
+
+The [narrow window](references/user-v10-narrow-window-breakage.png),
+[card crop](references/user-v10-narrow-card-breakage.png), and
+[name-collapse crop](references/user-v10-name-collapse.png) reject V9's
+width-triggered 64px wrap. The collapsed card should remain roughly 20% shorter
+than V9, keep four stable columns while they remain usable, and switch to a
+bounded narrower layout before text or icons overlap. The
+[wide](references/user-v10-wide-layout-reference.png) and
+[narrow](references/user-v10-narrow-layout-reference.png) captures define the
+same reading order at different widths.
+
+> должна быть иллюзия, что рамка скругленная это часть области под 1 и 2
+
+Removing the marker's explicit fill was insufficient. The
+[detached-gutter crop](references/user-v10-detached-roman-gutter.png) rejects
+the remaining inset and blank gap. In the user's
+[schematic](references/user-v10-integrated-roman-sketch.png), the outer rounded
+card edge is the I/II area itself: each numeral is centered in its half, one
+narrow vertical divider follows it, and character content begins immediately
+after that divider. No inner rounded band or second marker background may
+recreate the separation.

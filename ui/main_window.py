@@ -43,6 +43,8 @@ from ui.character_assets import (
     CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
+    filter_icon_path,
+    refresh_imported_element_filter_icons,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
@@ -70,6 +72,8 @@ HOYOLAB_IMPORT_STATUSES = {
     "exporting_image": ("loader.exporting_image", 0.15),
     "opening_character_list": ("loader.opening_character_list", 0.18),
     "collecting_inventory": ("loader.collecting_inventory", 0.24),
+    "collecting_asset_urls": ("loader.collecting_asset_urls", 0.29),
+    "downloading_assets": ("loader.downloading_assets", 0.55),
     "waiting_export_images": ("loader.waiting_export_images", 0.30),
     "opening_share_menu": ("loader.opening_share_menu", 0.34),
     "starting_image_download": ("loader.starting_image_download", 0.38),
@@ -81,7 +85,7 @@ HOYOLAB_IMPORT_STATUSES = {
     "downloading_image": ("loader.downloading_image", 0.48),
     "image_downloaded": ("loader.image_downloaded", 0.52),
     "building_layout": ("loader.building_layout", 0.58),
-    "writing_inventory": ("loader.writing_inventory", 0.63),
+    "writing_inventory": ("loader.writing_inventory", 0.39),
     "fetching_character_details": ("loader.fetching_character_details", 0.70),
     "fetching_abyss_period": ("loader.fetching_abyss_period", 0.735),
     "updating_artifact_catalog": ("loader.updating_artifact_catalog", 0.76),
@@ -257,6 +261,10 @@ class App(QWidget):
 
         self.hoyolab_auth_box.setVisible(False)
         self.btn_profile_menu.setEnabled(not import_running and not import_cooldown)
+        self.action_refresh_images.setEnabled(
+            not import_running and not import_cooldown and not login_running
+            and status == AuthStatus.LOGGED_IN and local_profile_exists
+        )
 
         if import_running:
             self.btn_hoyolab_export.setEnabled(False)
@@ -440,9 +448,10 @@ class App(QWidget):
         if self._run_history_window is not None:
             self._run_history_window.reload()
         self.safe_update_grids()
+        refresh_imported_element_filter_icons(self)
         self.refresh_hoyolab_auth_status()
 
-    def run_hoyolab_export(self):
+    def run_hoyolab_export(self, images_only: bool = False):
         if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
             if self.ask_open_hoyolab_login():
                 self.open_hoyolab_login()
@@ -456,7 +465,7 @@ class App(QWidget):
 
         process = QProcess(self)
         process.setProgram(sys.executable)
-        process.setArguments(["-m", "hoyolab_export.run_import"])
+        process.setArguments(["-m", "hoyolab_export.run_import"] + (["--images-only"] if images_only else []))
         process.setWorkingDirectory(str(PROJECT_ROOT))
         process.setProcessChannelMode(QProcess.MergedChannels)
 
@@ -566,6 +575,7 @@ class App(QWidget):
                 self._hoyolab_loader.finish()
 
             self.safe_update_grids()
+            refresh_imported_element_filter_icons(self)
             self._close_hoyolab_loader()
             self.refresh_hoyolab_auth_status()
             return
@@ -654,8 +664,10 @@ class App(QWidget):
         button.setFixedSize(30, 30)
         button.setIconSize(QSize(24, 24))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
+        if icon_name.startswith("element_"):
+            button.setProperty("elementIconName", icon_name)
 
-        icon_path = FILTER_ASSETS_DIR / icon_name
+        icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
             button.setIcon(QIcon(str(icon_path)))
         else:
@@ -749,10 +761,12 @@ class App(QWidget):
         self.profile_menu = QMenu(self.btn_profile_menu)
         self.action_export_profile = self.profile_menu.addAction(tr("profile.export"))
         self.action_import_profile = self.profile_menu.addAction(tr("profile.import"))
+        self.action_refresh_images = self.profile_menu.addAction(tr("hoyolab.refresh_images_button"))
         self.profile_menu.addSeparator()
         self.action_switch_profile = self.profile_menu.addAction(tr("profile.switch"))
         self.action_export_profile.triggered.connect(lambda _checked=False: self.export_profile())
         self.action_import_profile.triggered.connect(lambda _checked=False: self.import_profile())
+        self.action_refresh_images.triggered.connect(lambda _checked=False: self.run_hoyolab_export(images_only=True))
         self.action_switch_profile.triggered.connect(lambda _checked=False: self.change_hoyolab_account())
         self.btn_profile_menu.setMenu(self.profile_menu)
 
@@ -896,6 +910,7 @@ class App(QWidget):
         self.btn_profile_menu.setText(tr("profile.menu_button"))
         self.action_export_profile.setText(tr("profile.export"))
         self.action_import_profile.setText(tr("profile.import"))
+        self.action_refresh_images.setText(tr("hoyolab.refresh_images_button"))
         self.action_switch_profile.setText(tr("profile.switch"))
         self.weapon_title_label.setText(tr("asset_panel.weapons"))
         self.char_title_label.setText(tr("asset_panel.characters"))

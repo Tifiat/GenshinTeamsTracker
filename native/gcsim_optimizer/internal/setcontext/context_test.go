@@ -146,10 +146,14 @@ func TestContextRejectsAmbiguousPreparedRows(t *testing.T) {
 			t.Fatal("ambiguous layout accepted")
 		}
 	}
-	for _, sets := range [][]Set{nil, {{UID: "old", Count: 4}, {UID: "new", Count: 2}}, {{UID: "new", Count: 2, Parameters: "; actor_a skill;"}}, {{UID: "new", Count: 0}}} {
+	for _, sets := range [][]Set{{{UID: "old", Count: 4}, {UID: "new", Count: 2}}, {{UID: "new", Count: 2, Parameters: "; actor_a skill;"}}, {{UID: "new", Count: 0}}} {
 		if _, err := base.Replace(map[string][]Set{"actor_a": sets}); err == nil {
 			t.Fatal("invalid replacement accepted")
 		}
+	}
+	neutral, err := base.Replace(map[string][]Set{"actor_a": nil})
+	if err != nil || len(neutral.Sets("actor_a")) != 0 || !neutral.SameFrame(base) {
+		t.Fatal("neutral replacement lost frame", err)
 	}
 	if _, err := base.Replace(map[string][]Set{"unknown": {{UID: "new", Count: 2}}}); err == nil {
 		t.Fatal("unknown owner accepted")

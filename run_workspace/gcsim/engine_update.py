@@ -37,6 +37,7 @@ from .source_acquisition import (
     OfficialGcsimSourceAcquisition,
     acquire_official_gcsim_source,
 )
+from .source_cache_retention import retain_official_source_cache
 from .tree_identity import directory_sha256
 from .engine_compatibility import verify_engine_application_bundle
 from .runtime_probe import (
@@ -127,6 +128,13 @@ class GcsimOfficialEngineUpdateReport:
     go_build_cache_cleanup_path: str = ""
     go_build_cache_cleanup_deleted_bytes: int = 0
     go_build_cache_cleanup_error: str = ""
+    source_cache_cleanup_status: str = "not_requested"
+    source_cache_cleanup_deleted_paths: tuple[str, ...] = ()
+    source_cache_cleanup_deleted_bytes: int = 0
+    source_cache_cleanup_protected_paths: tuple[str, ...] = ()
+    source_cache_cleanup_unowned_paths: tuple[str, ...] = ()
+    source_cache_cleanup_over_budget_bytes: int = 0
+    source_cache_cleanup_error: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -200,6 +208,13 @@ class GcsimOfficialEngineUpdateReport:
                 self.go_build_cache_cleanup_deleted_bytes
             ),
             "go_build_cache_cleanup_error": self.go_build_cache_cleanup_error,
+            "source_cache_cleanup_status": self.source_cache_cleanup_status,
+            "source_cache_cleanup_deleted_paths": list(self.source_cache_cleanup_deleted_paths),
+            "source_cache_cleanup_deleted_bytes": self.source_cache_cleanup_deleted_bytes,
+            "source_cache_cleanup_protected_paths": list(self.source_cache_cleanup_protected_paths),
+            "source_cache_cleanup_unowned_paths": list(self.source_cache_cleanup_unowned_paths),
+            "source_cache_cleanup_over_budget_bytes": self.source_cache_cleanup_over_budget_bytes,
+            "source_cache_cleanup_error": self.source_cache_cleanup_error,
         }
 
 
@@ -366,6 +381,7 @@ def prepare_official_gcsim_engine_update(
     return _apply_post_update_cleanup(
         report,
         store=store,
+        acquisition=acquisition,
         prune_engine_store=prune_engine_store,
         clean_go_build_cache=clean_go_build_cache,
         go_work_dir=go_work_dir,
@@ -818,6 +834,7 @@ def _apply_post_update_cleanup(
     report: GcsimOfficialEngineUpdateReport,
     *,
     store: GcsimEngineStore,
+    acquisition: OfficialGcsimSourceAcquisition,
     prune_engine_store: bool,
     clean_go_build_cache: bool,
     go_work_dir: str | Path | None,
@@ -840,6 +857,29 @@ def _apply_post_update_cleanup(
                 engine_cleanup_deleted_paths=tuple(prune_result.deleted_paths),
                 engine_cleanup_deleted_bytes=prune_result.deleted_bytes,
             )
+    try:
+        source_cleanup = retain_official_source_cache(
+            acquisition=acquisition,
+            store=store,
+            dry_run=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - retention cannot change update outcome.
+        updated = replace(
+            updated,
+            source_cache_cleanup_status="failed",
+            source_cache_cleanup_error=str(exc),
+        )
+    else:
+        updated = replace(
+            updated,
+            source_cache_cleanup_status=source_cleanup.status,
+            source_cache_cleanup_deleted_paths=source_cleanup.deleted_paths,
+            source_cache_cleanup_deleted_bytes=source_cleanup.deleted_bytes,
+            source_cache_cleanup_protected_paths=source_cleanup.protected_paths,
+            source_cache_cleanup_unowned_paths=source_cleanup.unowned_paths,
+            source_cache_cleanup_over_budget_bytes=source_cleanup.over_budget_bytes,
+            source_cache_cleanup_error=source_cleanup.error,
+        )
     if clean_go_build_cache and updated.success and go_cleanup_allowed:
         cleanup_result = cleanup_go_build_cache_dir(go_work_dir=go_work_dir)
         updated = replace(
@@ -912,6 +952,9 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
             f"engine_deleted_bytes={report.engine_cleanup_deleted_bytes} "
             f"go_build_cache_status={report.go_build_cache_cleanup_status} "
             f"go_build_cache_deleted_bytes={report.go_build_cache_cleanup_deleted_bytes}"
+            f" source_cache_status={report.source_cache_cleanup_status}"
+            f" source_cache_deleted_bytes={report.source_cache_cleanup_deleted_bytes}"
+            f" source_cache_over_budget_bytes={report.source_cache_cleanup_over_budget_bytes}"
         ),
     ]
     if report.runtime_probe_stdout:
@@ -943,6 +986,14 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
         lines.append(
             f"go_build_cache_cleanup_error={report.go_build_cache_cleanup_error}"
         )
+    if report.source_cache_cleanup_deleted_paths:
+        lines.append("source_cache_cleanup_deleted=" + ", ".join(report.source_cache_cleanup_deleted_paths))
+    if report.source_cache_cleanup_protected_paths:
+        lines.append("source_cache_cleanup_protected=" + ", ".join(report.source_cache_cleanup_protected_paths))
+    if report.source_cache_cleanup_unowned_paths:
+        lines.append("source_cache_cleanup_unowned=" + ", ".join(report.source_cache_cleanup_unowned_paths))
+    if report.source_cache_cleanup_error:
+        lines.append(f"source_cache_cleanup_error={report.source_cache_cleanup_error}")
     if report.error:
         lines.append(f"error={report.error}")
     return "\n".join(lines)

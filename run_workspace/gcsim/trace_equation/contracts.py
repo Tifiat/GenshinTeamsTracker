@@ -22,6 +22,8 @@ import math
 import re
 from typing import TypeAlias
 
+from ..trace_contract_error import TraceContractError
+
 
 TRACE_DOCUMENT_SCHEMA_VERSION = 1
 TRACE_EXTRACTION_REQUEST_SCHEMA_VERSION = 1
@@ -40,10 +42,6 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _SEED_MAX = 2**63 - 1
 _FORMULA_REL_TOLERANCE = 1e-9
 _FORMULA_ABS_TOLERANCE = 1e-7
-
-
-class TraceContractError(ValueError):
-    """Raised when a trace object violates the frozen schema contract."""
 
 
 class TraceObjective(str, Enum):

@@ -19,6 +19,7 @@ from .paths import (
     HOYOLAB_DATA_DIR,
     HOYOLAB_DEBUG_DIR,
     HOYOLAB_WEAPON_ASSETS_DIR,
+    HOYOLAB_SHARED_ASSETS_DIR,
     PROJECT_ROOT,
     clear_hoyolab_current_data,
     ensure_hoyolab_dirs,
@@ -41,6 +42,7 @@ PROFILE_DATA_FILES = (
 PROFILE_ASSET_DIRS = (
     HOYOLAB_CHARACTER_ASSETS_DIR,
     HOYOLAB_WEAPON_ASSETS_DIR,
+    HOYOLAB_SHARED_ASSETS_DIR,
     HOYOLAB_ARTIFACT_ASSETS_DIR,
 )
 RESTORABLE_FILES = {
@@ -54,6 +56,7 @@ RESTORABLE_FILES = {
 RESTORABLE_PREFIXES = (
     "assets/hoyolab/characters/",
     "assets/hoyolab/weapons/",
+    "assets/hoyolab/shared/",
     "assets/hoyolab/artifacts/",
 )
 

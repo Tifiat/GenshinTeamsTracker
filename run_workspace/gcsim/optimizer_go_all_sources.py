@@ -14,8 +14,22 @@ from typing import Mapping
 from .artifact_set_catalog import load_gcsim_artifact_set_catalog
 from .source_manifest_build import canonical_json, compute_patched_source_tree_sha256
 
+NEUTRAL_RULE_LIBRARIES = (
+    "pkg/core/event/event.go", "pkg/modifier/modifier.go",
+    "internal/template/nightsoul/nightsoul.go", "pkg/core/info/weapon.go",
+    "pkg/core/keys/artifact.dm.go",
+    "pkg/core/info/reaction.go",
+    "pkg/core/info/target.go",
+    "pkg/core/stacks/refresh.go",
+    "pkg/core/player/shield/shield.go",
+    "pkg/core/construct/construct.go",
+)
 
-def prepare_all_set_effect_sources(engine_root: str | Path, binding: Mapping[str, object]) -> dict:
+NEUTRAL_INPUTS_CAPABILITY = "gtt_neutral_inputs_v1"
+
+
+def prepare_all_set_effect_sources(engine_root: str | Path, binding: Mapping[str, object], *,
+                                   include_neutral_rules: bool = False) -> dict:
     root = Path(engine_root).resolve()
     binary = Path(str(binding["binary_path"])).resolve()
     if binary.parent.parent != root:
@@ -45,9 +59,14 @@ def prepare_all_set_effect_sources(engine_root: str | Path, binding: Mapping[str
             continue
         items.append({"key": entry.key, "four_piece_modeled": entry.four_piece_modeled,
                       "sources": {name: text(name) for name in entry.source_files if name.endswith(".go")}})
-    return {"schema_version": 1, "engine_sha256": binary_sha,
+    result = {"schema_version": 1, "engine_sha256": binary_sha,
             "source_manifest_sha256": manifest_sha, "catalog_sha256": catalog.source_fingerprint,
             "stat_source": text("pkg/core/attributes/stats.go"),
             "attack_source": text("pkg/core/attacks/attack.go"),
             "element_source": text("pkg/core/attributes/element.go"),
             "context_source": text("pkg/enemy/damage.go"), "items": items}
+    # Older consumers reject unknown JSON fields. The caller enables this only
+    # for the neutral-capable infinite-energy All Sets route (or explicit gates).
+    if include_neutral_rules:
+        result["rule_libraries"] = {name: text(name) for name in NEUTRAL_RULE_LIBRARIES}
+    return result

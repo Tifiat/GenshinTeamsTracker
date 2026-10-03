@@ -62,20 +62,28 @@ func TestEnergyConstraintRetainsFormulaInvisibleERAndFindsFeasibleBuild(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err := New(indexed, panel, Config{64, 64, 10000, 16, 1, 16}, energyModel)
-	if err != nil {
-		t.Fatal(err)
-	}
-	step, err := engine.searchActor(context.Background(), indexed.Incumbent, 0, 1, 64)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if step.Finalists[0].Assignment[0][0] != alternative.ArtifactID {
-		t.Fatalf("energy-feasible formula-invisible artifact was lost: %#v", step.Finalists[0].Assignment[0])
-	}
-	assessment, err := energyModel.Assess(step.Finalists[0].Assignment)
-	if err != nil || !assessment.Feasible {
-		t.Fatalf("leader energy assessment = %#v, %v", assessment, err)
+	for _, inventory := range []bool{false, true} {
+		t.Run(strconv.FormatBool(inventory), func(t *testing.T) {
+			factory := New
+			if inventory {
+				factory = NewInventory
+			}
+			engine, err := factory(indexed, panel, Config{64, 64, 10000, 16, 1, 16}, energyModel)
+			if err != nil {
+				t.Fatal(err)
+			}
+			step, err := engine.searchActor(context.Background(), indexed.Incumbent, 0, 1, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if step.Finalists[0].Assignment[0][0] != alternative.ArtifactID {
+				t.Fatalf("energy-feasible formula-invisible artifact was lost: %#v", step.Finalists[0].Assignment[0])
+			}
+			assessment, err := energyModel.Assess(step.Finalists[0].Assignment)
+			if err != nil || !assessment.Feasible {
+				t.Fatalf("leader energy assessment = %#v, %v", assessment, err)
+			}
+		})
 	}
 }
 

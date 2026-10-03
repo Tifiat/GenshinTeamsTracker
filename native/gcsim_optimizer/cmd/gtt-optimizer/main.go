@@ -1,15 +1,16 @@
-// Command gtt-optimizer owns the accepted fixed-panel, indexed evaluation,
-// bounded FGBS and staged common-context finalist verification boundaries.
-// Product UI binding remains a later gate.
+// Command gtt-optimizer owns fixed-panel evaluation and bounded searches.
+// Selected reports grouped search results; ordinary runs add one final
+// measurement panel, while fast mode remains formula-only. verify-fgbs controls
+// remain a development command.
 package main
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"genshinteamstracker/native/gcsim_optimizer/internal/evaluator"
 	"genshinteamstracker/native/gcsim_optimizer/internal/finalists"
 	"genshinteamstracker/native/gcsim_optimizer/internal/search"
+	"genshinteamstracker/native/gcsim_optimizer/internal/searchcontrol"
 	"genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
 	"genshinteamstracker/native/gcsim_optimizer/internal/stochastic"
 	"genshinteamstracker/native/gcsim_optimizer/internal/theory"
@@ -41,6 +43,18 @@ func main() {
 }
 
 func run(ctx context.Context, arguments []string) error {
+	finishProfile, err := startManagedProfile(arguments)
+	if err != nil {
+		return err
+	}
+	defer finishProfile()
+	if len(arguments) >= 3 && arguments[len(arguments)-2] == "--finish-file" {
+		if arguments[0] != "verify-fgbs" && arguments[0] != "optimize-all-sets" {
+			return fmt.Errorf("finish-file is supported only for Selected/All Sets")
+		}
+		ctx = searchcontrol.WithFile(ctx, arguments[len(arguments)-1])
+		arguments = arguments[:len(arguments)-2]
+	}
 	if len(arguments) == 4 && arguments[0] == "aggregate-fixed-panel" {
 		return aggregateFixedPanel(ctx, arguments[1], arguments[2], arguments[3])
 	}
@@ -64,6 +78,9 @@ func run(ctx context.Context, arguments []string) error {
 	}
 	if len(arguments) == 3 && arguments[0] == "audit-set-sources" {
 		return auditSetSources(arguments[1], arguments[2])
+	}
+	if len(arguments) == 4 && arguments[0] == "warm-set-cache" {
+		return warmSetCache(arguments[1], arguments[2], arguments[3])
 	}
 	if len(arguments) >= 4 && arguments[0] == "audit-theory-panel" {
 		return auditTheoryPanel(arguments[1], arguments[2:])
@@ -235,7 +252,7 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 	if err := progress.emit("compiling_formula", 0, 5, false); err != nil {
 		return err
 	}
-	overall, cancel := context.WithTimeout(ctx, time.Duration(request.Budgets.ProductTimeoutMS)*time.Millisecond)
+	overall, cancel := productContext(ctx, request.Budgets.ProductTimeoutMS)
 	defer cancel()
 	compileStarted := time.Now()
 	panel, err := evaluator.Compile(request, compact)
@@ -250,17 +267,38 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 	if err != nil {
 		return fmt.Errorf("compile energy constraint: %w", err)
 	}
-	engine, err := search.New(artifactIndex, panel, search.DefaultConfig(), energyModel)
-	if err != nil {
-		return err
-	}
 	compileElapsed := time.Since(compileStarted)
 	searchStarted := time.Now()
-	searchResult, err := engine.Run(overall)
+	options := request.EffectiveResultOptions()
+	if err := progress.emit("searching", 1, 5, false); err != nil {
+		return err
+	}
+	searchCtx, closeSearch := searchcontrol.Begin(overall)
+	searchResult, fixedSearch, err := runSelectedSearch(searchCtx, artifactIndex, panel, energyModel, options.BuildsPerGroup)
+	closeSearch()
+	finishedEarly := searchcontrol.Requested(searchCtx)
+	if overall.Err() != nil {
+		return overall.Err()
+	}
+	if finishedEarly && (err == nil || errors.Is(err, context.Canceled)) {
+		searchResult.StopReason = "user_requested_finish"
+		err = nil
+	}
 	if err != nil {
 		return fmt.Errorf("FGBS search: %w", err)
 	}
+	if finishedEarly {
+		if len(searchResult.Finalists) == 0 {
+			return fmt.Errorf("finish_no_result: search stopped before a complete feasible build was found")
+		}
+		if err := progress.emit("finalizing", 1, 5, false); err != nil {
+			return err
+		}
+	}
 	if energyModel != nil && (searchResult.Energy == nil || !searchResult.Energy.Feasible) {
+		if finishedEarly {
+			return fmt.Errorf("search finished by user before an energy-feasible complete build was found; no partial build will be reported as verified")
+		}
 		shortage := 0.0
 		if searchResult.Energy != nil {
 			shortage = searchResult.Energy.MaximumShortage
@@ -268,72 +306,95 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 		return fmt.Errorf("FGBS found no energy-feasible inventory assignment; remaining artifact ER deficit %.6f", shortage)
 	}
 	searchElapsed := time.Since(searchStarted)
-	if err := progress.emit("searching", 1, 5, false); err != nil {
-		return err
-	}
 	candidates := searchResult.Finalists
 	var screening *finalists.VerificationResult
-	parallelism := 1
-	workersPerProcess := runtime.NumCPU()
+	verificationPolicy := "controls_n1000"
 	if mode == "controls" {
 		candidates = controlCandidates(searchResult)
 	} else {
-		if err := os.Mkdir(runRoot, 0o700); err != nil {
-			return fmt.Errorf("create GOB-7 run root: %w", err)
+		candidates = fixedSelectedFinalists(searchResult)
+		if !finishedEarly && len(candidates) > 0 {
+			alternatives, e := search.SingleReplacements(overall, artifactIndex, panel, candidates[0], options.BuildsPerGroup-1, energyModel)
+			if e != nil {
+				return e
+			}
+			candidates = append(candidates[:1:1], alternatives...)
 		}
-		screenCandidates := append([]search.ScoredAssignment{searchResult.Initial}, searchResult.Finalists...)
-		screenCandidates = uniqueCandidates(screenCandidates)
-		screenParallelism := minInt(4, len(screenCandidates), runtime.NumCPU())
-		screenWorkers := maxInt(1, runtime.NumCPU()/screenParallelism)
-		if err := progress.emit("simulating_finalists", 2, 5, false); err != nil {
-			return err
+		if len(candidates) > options.BuildsPerGroup {
+			candidates = candidates[:options.BuildsPerGroup]
 		}
-		screenResult, err := finalists.Verify(overall, request, artifactIndex, screenCandidates, filepath.Join(runRoot, "screen-n128"), 128, screenWorkers, screenParallelism)
-		if err != nil {
-			return fmt.Errorf("GOB-7 n128 screen: %w", err)
-		}
-		screening = &screenResult
-		if err := progress.emit("validating_finalists", 3, 5, false); err != nil {
-			return err
-		}
-		candidates = boundedN1000Finalists(screenResult, searchResult, 5)
-		parallelism = minInt(3, len(candidates), runtime.NumCPU())
-		workersPerProcess = maxInt(1, runtime.NumCPU()/parallelism)
+		verificationPolicy = "single_n500"
 	}
-	verificationRoot := runRoot
-	if mode == "all" {
-		verificationRoot = filepath.Join(runRoot, "final-adaptive")
-	}
-	var verification finalists.VerificationResult
-	if mode == "all" {
-		verification, err = finalists.VerifyAdaptive(overall, request, artifactIndex, candidates, verificationRoot, 500, 1000, 4, runtime.NumCPU(), 3, 4)
-	} else {
-		verification, err = finalists.Verify(overall, request, artifactIndex, candidates, verificationRoot, 1000, workersPerProcess, parallelism)
-	}
-	if err != nil {
+	if err := os.Mkdir(runRoot, 0o700); err != nil {
 		return err
 	}
-	if err := progress.emit("simulating_finalists", 4, 5, false); err != nil {
+	var verification *finalists.VerificationResult
+	finalStage := "simulating_finalists"
+	if options.FastMode {
+		finalStage = "validating_finalists"
+	}
+	if err := progress.emit(finalStage, 2, 5, false); err != nil {
+		return err
+	}
+	if options.FastMode {
+		verificationPolicy = "formula_only"
+	} else {
+		iterations := 500
+		if mode == "controls" {
+			iterations = 1000
+		}
+		measured, verifyErr := finalists.VerifyDynamicWaves(overall, request, artifactIndex, candidates, filepath.Join(runRoot, "final-n500"), iterations, 4, runtime.NumCPU())
+		if verifyErr != nil {
+			return verifyErr
+		}
+		verification = &measured
+	}
+	if err := progress.emit(finalStage, 4, 5, false); err != nil {
 		return err
 	}
 	debugReceiptPath, err := filepath.Abs(filepath.Join(runRoot, "gob7-result.json"))
 	if err != nil {
 		return fmt.Errorf("resolve debug receipt path: %w", err)
 	}
-	productResult, err := buildProductResult(request, compact, searchResult, verification, debugReceiptPath, energyModel)
+	compactSHA, err := contracts.CanonicalSHA256(compact)
 	if err != nil {
 		return err
 	}
+	productResult, err := buildGroupedProductResult(request, compactSHA, "", searchResult.OpaqueReasons, nil, candidates, verification, debugReceiptPath)
+	if err != nil {
+		return err
+	}
+	if energyModel != nil {
+		winner := productWinnerAssignment(request, productResult)
+		assessment, e := energyModel.Assess(winner)
+		if e != nil {
+			return e
+		}
+		productResult.Energy = energyProductResult(assessment)
+	}
+	productResult.Warnings = append(productResult.Warnings, fixedSelectedWarnings(searchResult, fixedSearch)...)
+	if finishedEarly {
+		productResult.Warnings = append(productResult.Warnings, "search_finished_by_user")
+	}
+	sort.Strings(productResult.Warnings)
+	if err := productResult.Validate(); err != nil {
+		return fmt.Errorf("validate Selected search warnings: %w", err)
+	}
 	payload := struct {
-		Mode             string                        `json:"mode"`
-		Search           search.Result                 `json:"search"`
-		Screening        *finalists.VerificationResult `json:"screening,omitempty"`
-		Verification     finalists.VerificationResult  `json:"verification"`
-		ProductResult    contracts.OptimizerResult     `json:"product_result"`
-		CompileElapsedMS float64                       `json:"compile_elapsed_ms"`
-		SearchElapsedMS  float64                       `json:"search_elapsed_ms"`
-		TotalElapsedMS   float64                       `json:"total_elapsed_ms"`
-	}{mode, searchResult, screening, verification, productResult, float64(compileElapsed) / float64(time.Millisecond), float64(searchElapsed) / float64(time.Millisecond), float64(compileElapsed+searchElapsed)/float64(time.Millisecond) + verification.TotalElapsedMS}
+		Mode               string                        `json:"mode"`
+		Search             search.Result                 `json:"search"`
+		Screening          *finalists.VerificationResult `json:"screening,omitempty"`
+		Verification       *finalists.VerificationResult `json:"verification,omitempty"`
+		ProductResult      contracts.OptimizerResult     `json:"product_result"`
+		CompileElapsedMS   float64                       `json:"compile_elapsed_ms"`
+		SearchElapsedMS    float64                       `json:"search_elapsed_ms"`
+		TotalElapsedMS     float64                       `json:"total_elapsed_ms"`
+		FixedSearch        *selectedSearchReceipt        `json:"fixed_search,omitempty"`
+		VerificationPolicy string                        `json:"verification_policy"`
+	}{mode, searchResult, screening, verification, productResult, float64(compileElapsed) / float64(time.Millisecond), float64(searchElapsed) / float64(time.Millisecond), float64(compileElapsed+searchElapsed) / float64(time.Millisecond), fixedSearch, verificationPolicy}
+	if verification != nil {
+		payload.TotalElapsedMS += verification.TotalElapsedMS
+	}
 	if screening != nil {
 		payload.TotalElapsedMS += screening.TotalElapsedMS
 	}
@@ -342,6 +403,9 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 		return fmt.Errorf("encode verification receipt: %w", err)
 	}
 	receipt = append(receipt, '\n')
+	if err := overall.Err(); err != nil {
+		return err
+	}
 	if err := os.WriteFile(filepath.Join(runRoot, "gob7-result.json"), receipt, 0o600); err != nil {
 		return fmt.Errorf("write verification receipt: %w", err)
 	}
@@ -385,103 +449,19 @@ func (emitter *progressEmitter) emit(stage string, completed, total int64, cance
 	return nil
 }
 
-func buildProductResult(request contracts.OptimizerRequest, compact contracts.CompactIR, searchResult search.Result, verification finalists.VerificationResult, debugReceiptPath string, energyModels ...*energy.Model) (contracts.OptimizerResult, error) {
-	compactSHA256, err := contracts.CanonicalSHA256(compact)
-	if err != nil {
-		return contracts.OptimizerResult{}, fmt.Errorf("identify product compact IR: %w", err)
-	}
-	result, err := buildMeasuredProductResult(request, compactSHA256, "", searchResult.OpaqueReasons, nil, verification, debugReceiptPath)
-	if err != nil || len(energyModels) == 0 || energyModels[0] == nil {
-		return result, err
-	}
-	assessment, err := energyModels[0].Assess(verification.Winner.Assignment)
-	if err != nil {
-		return contracts.OptimizerResult{}, fmt.Errorf("assess winner energy: %w", err)
-	}
-	result.Energy = energyProductResult(assessment)
-	if err = result.Validate(); err != nil {
-		return contracts.OptimizerResult{}, fmt.Errorf("validate energy product result: %w", err)
-	}
-	return result, nil
-}
-
-func buildMeasuredProductResult(request contracts.OptimizerRequest, compactSHA256, setPanelSHA256 string, opaqueReasons, extraWarnings []string, verification finalists.VerificationResult, debugReceiptPath string) (contracts.OptimizerResult, error) {
-	winner := verification.Winner
-	assignments := productAssignments(request, winner.Assignment)
-	requestSHA256, err := contracts.CanonicalSHA256(request)
-	if err != nil {
-		return contracts.OptimizerResult{}, fmt.Errorf("identify product request: %w", err)
-	}
-	warnings := []string{"formula_rank_not_measurement_authority"}
-	warnings = append(warnings, extraWarnings...)
-	if len(opaqueReasons) > 0 {
-		warnings = append(warnings, "opaque_formula_boundaries_present")
-	}
-	if verification.Adaptive != nil && verification.Adaptive.Status == finalists.AdaptiveUnresolvedPanelWide {
-		warnings = append(warnings, "adaptive_finalist_panel_too_wide")
-	}
-	if len(verification.EnergyRejectedSHA256) > 0 {
-		warnings = append(warnings, "final_energy_infeasible_candidates_rejected")
-	}
-	measuredOrder := append([]finalists.MeasuredCandidate(nil), verification.Candidates...)
-	sort.Slice(measuredOrder, func(i, j int) bool {
-		if measuredOrder[i].MeasuredDPS != measuredOrder[j].MeasuredDPS {
-			return measuredOrder[i].MeasuredDPS > measuredOrder[j].MeasuredDPS
-		}
-		return measuredOrder[i].AssignmentSHA256 < measuredOrder[j].AssignmentSHA256
-	})
-	if len(measuredOrder) > 1 {
-		combinedSE := math.Hypot(measuredOrder[0].StandardError, measuredOrder[1].StandardError)
-		if measuredOrder[0].MeasuredDPS-measuredOrder[1].MeasuredDPS <= 1.96*combinedSE {
-			warnings = append(warnings, "measured_top_confidence_overlap")
+func productWinnerAssignment(request contracts.OptimizerRequest, result contracts.OptimizerResult) domain.Assignment {
+	var assignment domain.Assignment
+	for i, wearer := range request.Wearers {
+		for j, slot := range wearer.CurrentArtifacts {
+			for _, item := range result.Winner {
+				if item.WearerKey == wearer.WearerKey && item.Slot == slot.Slot {
+					assignment[i][j] = item.ArtifactID
+					break
+				}
+			}
 		}
 	}
-	// Search and verification deliberately keep a wider panel.  The product/UI
-	// surface only exposes the five strongest measured alternatives so lower
-	// diagnostic finalists are not presented as useful builds.
-	if len(measuredOrder) > maxProductCandidates {
-		measuredOrder = measuredOrder[:maxProductCandidates]
-	}
-	sort.Strings(warnings)
-	rankedCandidates := make([]contracts.RankedCandidateResult, 0, len(measuredOrder))
-	for index, candidate := range measuredOrder {
-		rankedCandidates = append(rankedCandidates, contracts.RankedCandidateResult{
-			Rank:       index + 1,
-			Artifacts:  productAssignments(request, candidate.Assignment),
-			FormulaDPS: decimalText(candidate.FormulaDPS),
-			Measured: contracts.MeasuredResult{
-				Iterations:         candidate.Iterations,
-				DPS:                decimalText(candidate.MeasuredDPS),
-				StandardError:      decimalText(candidate.StandardError),
-				EngineResultSHA256: candidate.EngineResultSHA256,
-			},
-			FormulaResidual: decimalText(candidate.FormulaResidualDPS),
-		})
-	}
-	result := contracts.OptimizerResult{
-		SchemaVersion:         contracts.SchemaVersion,
-		SchemaKind:            contracts.ResultSchemaKind,
-		RequestSHA256:         requestSHA256,
-		CompactIRSHA256:       compactSHA256,
-		SetContextPanelSHA256: setPanelSHA256,
-		Status:                "success",
-		Winner:                assignments,
-		Candidates:            rankedCandidates,
-		FormulaDPS:            decimalText(winner.FormulaDPS),
-		Measured: &contracts.MeasuredResult{
-			Iterations:         winner.Iterations,
-			DPS:                decimalText(winner.MeasuredDPS),
-			StandardError:      decimalText(winner.StandardError),
-			EngineResultSHA256: winner.EngineResultSHA256,
-		},
-		FormulaResidual:  decimalText(winner.FormulaResidualDPS),
-		Warnings:         warnings,
-		DebugReceiptPath: debugReceiptPath,
-	}
-	if err := result.Validate(); err != nil {
-		return contracts.OptimizerResult{}, fmt.Errorf("validate product result: %w", err)
-	}
-	return result, nil
+	return assignment
 }
 
 func productAssignments(request contracts.OptimizerRequest, assignment domain.Assignment) []contracts.ArtifactAssignment {
@@ -542,29 +522,6 @@ func energyProductResult(assessment energy.Assessment) *contracts.EnergyResult {
 
 func decimalText(value float64) string {
 	return strconv.FormatFloat(value, 'f', -1, 64)
-}
-
-func boundedN1000Finalists(screen finalists.VerificationResult, result search.Result, measuredLimit int) []search.ScoredAssignment {
-	rows := append([]finalists.MeasuredCandidate(nil), screen.Candidates...)
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].MeasuredDPS != rows[j].MeasuredDPS {
-			return rows[i].MeasuredDPS > rows[j].MeasuredDPS
-		}
-		return rows[i].AssignmentSHA256 < rows[j].AssignmentSHA256
-	})
-	if len(rows) > measuredLimit {
-		rows = rows[:measuredLimit]
-	}
-	candidates := make([]search.ScoredAssignment, 0, measuredLimit+2)
-	for _, row := range rows {
-		candidates = append(candidates, search.ScoredAssignment{Assignment: row.Assignment, DPS: row.FormulaDPS, Source: row.Source + "+n128_top"})
-	}
-	formulaLeader := result.Leader
-	formulaLeader.Source = "mandatory_formula_leader"
-	current := result.Initial
-	current.Source = "mandatory_current"
-	candidates = append(candidates, formulaLeader, current)
-	return uniqueCandidates(candidates)
 }
 
 func uniqueCandidates(rows []search.ScoredAssignment) []search.ScoredAssignment {
@@ -654,7 +611,7 @@ func searchFGBS(ctx context.Context, requestPath, compactPath string) error {
 		return err
 	}
 	compileElapsed := time.Since(preparedAt)
-	searchContext, cancel := context.WithTimeout(ctx, time.Duration(request.Budgets.ProductTimeoutMS)*time.Millisecond)
+	searchContext, cancel := productContext(ctx, request.Budgets.ProductTimeoutMS)
 	defer cancel()
 	searchStarted := time.Now()
 	result, err := engine.Run(searchContext)

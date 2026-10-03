@@ -84,6 +84,13 @@ interface. Local paths remain UI/provider data and must not enter
 
 Ownership styling is independent of whose turn it is:
 
+The local account image variant used by PvP contains background, element and
+portrait without a baked constellation badge. Existing per-seat constellation
+badges remain independent overlays, so shared cards can show each player's C
+without doubling the imported account badge. A `.gttpvp` provider can reuse
+the local variant only when its browser bitmap path exactly matches the
+current image manifest; matching character ID alone is insufficient.
+
 - Player-1-only card: full Player 1 frame and Player 1 constellation badge on
   the left;
 - Player-2-only card: full Player 2 frame and Player 2 constellation badge on

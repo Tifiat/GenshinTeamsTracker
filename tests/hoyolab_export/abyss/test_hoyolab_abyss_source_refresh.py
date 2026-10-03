@@ -24,6 +24,7 @@ from hoyolab_export.import_pipeline import refresh_abyss_source_data_for_import
 from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from run_workspace.abyss.source_data_cache import (
     cache_abyss_floor_monster_icons,
+    load_cached_abyss_floor_source_data,
     save_abyss_floor_source_data,
 )
 from run_workspace.abyss.source_data_runtime import (
@@ -314,6 +315,20 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             page.request.calls[0]["headers"]["x-rpc-language"],
             "ru-ru",
         )
+
+    def test_abyss_period_reuses_inventory_role_without_roles_request(self) -> None:
+        page = _FakePage([{
+            "retcode": 0,
+            "data": {"schedule": {"period": "2026/05/16-2026/06/16"}},
+        }])
+
+        period = asyncio.run(fetch_hoyolab_spiral_abyss_period(
+            page, role_id="123", server="os_euro",
+        ))
+
+        self.assertEqual(period.start_date, "2026-05-16")
+        self.assertEqual(len(page.request.calls), 1)
+        self.assertIn("spiralAbyss", str(page.request.calls[0]["url"]))
 
     def test_abyss_period_fetch_reports_hoyolab_api_failure_readably(self) -> None:
         page = _FakePage(
@@ -639,6 +654,38 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
         self.assertEqual(result.matched, 1)
         self.assertIn("cache_ready_lookup", result.timings_ms)
         self.assertIn("total", result.timings_ms)
+
+    def test_missing_icons_refresh_without_refetching_same_period_source(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-05-16", "119",
+            composition_report=composition_report(
+                "2026-05-16", [fandom_row("Enemy", chamber=1, side=1, wave=1, level=100)],
+            ),
+            nanoka_report=nanoka_report(
+                "119", [nanoka_row("Enemy", chamber=1, side=1, hp=1_000_000,
+                                      monster_id="enemy", level=100)],
+            ),
+        )
+        period = parse_hoyolab_abyss_period("2026/05/16-2026/06/16")
+        with tempfile.TemporaryDirectory() as tmp:
+            save_abyss_floor_source_data(source_data, cache_dir=tmp)
+            with patch(
+                "hoyolab_export.abyss_source_refresh.cache_abyss_floor_monster_icons",
+                side_effect=lambda data, **kwargs: cache_abyss_floor_monster_icons(
+                    data, cache_dir=kwargs["cache_dir"], icon_fetcher=lambda _url: b"icon",
+                ),
+            ):
+                result = update_cached_abyss_source_data_for_hoyolab_period(
+                    period, cache_dir=tmp,
+                    update_report_builder=lambda **_kwargs: self.fail("source must not be fetched"),
+                )
+            loaded = load_cached_abyss_floor_source_data("2026-05-16", floor=12, cache_dir=tmp)
+
+        self.assertTrue(result.skipped)
+        self.assertEqual(result.skip_reason, "same_period_source_cache_icons_only")
+        self.assertEqual(result.assets["saved"], 1)
+        self.assertEqual(result.assets["downloaded"], 1)
+        self.assertIsNotNone(loaded.enemy_rows[0].cached_icon_path)
 
     def test_update_helper_force_refreshes_even_when_cache_is_ready(self) -> None:
         source_data = load_abyss_floor12_source_data(

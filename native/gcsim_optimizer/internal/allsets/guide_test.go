@@ -144,10 +144,13 @@ func TestGuideKeepsUnknownMechanicsAndRejectsStaleContext(t *testing.T) {
 	if _, e = g.Propose(context.Background(), index, other, nil, 1); e == nil {
 		t.Fatal("old guide reused after set replacement")
 	}
-	wrong := *source
-	wrong.SourceManifestSHA256 = strings.Repeat("e", 64)
-	if _, e = BuildGuide(context.Background(), index, h, &wrong); e == nil {
-		t.Fatal("source mismatch accepted")
+	wrong := &seteffects.SourceCatalog{
+		EngineSHA256:         source.EngineSHA256,
+		SourceManifestSHA256: strings.Repeat("e", 64),
+		CatalogSHA256:        source.CatalogSHA256,
+	}
+	if _, e = BuildGuide(context.Background(), index, h, wrong); e == nil || !strings.Contains(e.Error(), "guide sources differ from captured engine/catalog") {
+		t.Fatal("source mismatch was not rejected at the identity boundary", e)
 	}
 	g.anchorSHA = "changed"
 	if _, e = g.Propose(context.Background(), index, h, nil, 1); e == nil {

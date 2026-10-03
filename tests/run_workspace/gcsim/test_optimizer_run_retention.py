@@ -75,6 +75,46 @@ class OptimizerRunRetentionTest(unittest.TestCase):
             self.assertTrue(new.exists())
             self.assertEqual(result["kept_paths"], [])
 
+    def test_old_pin_consumes_budget_before_newer_ordinary_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pinned = completed(root, "all_sets-old-pin", 100)
+            newer = completed(root, "selected-newer", 300)
+            (pinned / RUN_PIN).write_text("manual pin", encoding="utf-8")
+            os.utime(pinned, (100, 100))
+            preview = prune_go_optimizer_runs(root, keep_count=2, max_bytes=160)
+            self.assertIn(str(pinned), preview["protected_paths"])
+            self.assertEqual(preview["kept_paths"], [])
+            self.assertEqual(preview["deleted_paths"], [str(newer)])
+            self.assertEqual(preview["over_budget_bytes"], 0)
+            self.assertTrue(newer.exists())
+            applied = prune_go_optimizer_runs(root, keep_count=2, max_bytes=160, dry_run=False)
+            self.assertEqual(applied["deleted_paths"], [str(newer)])
+            self.assertTrue(pinned.exists())
+            self.assertFalse(newer.exists())
+
+    def test_pin_added_after_classification_is_rechecked_before_remove(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run = completed(root, "selected-late-pin", 100)
+            from run_workspace.gcsim.optimizer_run_retention import _run_is_protected
+
+            checks = 0
+
+            def pin_during_cleanup(path, explicit):
+                nonlocal checks
+                checks += 1
+                if checks == 2:
+                    (run / RUN_PIN).write_text("arrived after scan", encoding="utf-8")
+                return _run_is_protected(path, explicit)
+
+            with patch("run_workspace.gcsim.optimizer_run_retention._run_is_protected",
+                       side_effect=pin_during_cleanup):
+                report = prune_go_optimizer_runs(root, keep_count=0, dry_run=False)
+            self.assertEqual(report["deleted_paths"], [])
+            self.assertIn(str(run), report["protected_paths"])
+            self.assertTrue(run.exists())
+
     def test_completed_theory_runs_use_the_shared_retention_boundary(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -105,6 +145,23 @@ class OptimizerRunRetentionTest(unittest.TestCase):
             if link is not None:
                 self.assertIn(str(link), result["skipped_paths"])
 
+    def test_nested_link_aborts_deletion_of_recognized_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "runs"
+            root.mkdir()
+            run = completed(root, "selected-linked", 100)
+            outside = Path(tmp) / "outside"
+            outside.mkdir()
+            (outside / "precious.txt").write_text("keep", encoding="utf-8")
+            try:
+                (run / "linked").symlink_to(outside, target_is_directory=True)
+            except OSError:
+                self.skipTest("Directory links are unavailable")
+            report = prune_go_optimizer_runs(root, keep_count=0, dry_run=False)
+            self.assertEqual(report["status"], "partial_failure")
+            self.assertTrue(run.exists())
+            self.assertTrue((outside / "precious.txt").exists())
+
     def test_failure_is_reported_and_does_not_delete_other_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -133,11 +190,11 @@ class OptimizerRunRetentionTest(unittest.TestCase):
                         return original(root, protected_paths=(run_dir,), keep_count=0, dry_run=False)
 
                     failure = None if outcome == "success" else GcsimOptimizerGoSelectedError(outcome, "expected")
-                    with patch("run_workspace.gcsim.optimizer_go_selected._prepare_inputs", return_value={"request_sha256": "hash"}, side_effect=failure), \
+                    with patch("run_workspace.gcsim.optimizer_go_session.prepare_optimizer_inputs", return_value={"request_sha256": "hash"}, side_effect=failure), \
                          patch.object(session, "_validate_optimizer_request"), \
                          patch.object(session, "_prepare_formula_inputs", return_value={}), \
                          patch.object(session, "_run_go_optimizer", return_value={"measured": {}}), \
-                         patch("run_workspace.gcsim.optimizer_go_selected.prune_go_optimizer_runs_best_effort", side_effect=bounded_cleanup):
+                         patch("run_workspace.gcsim.optimizer_go_session.prune_go_optimizer_runs_best_effort", side_effect=bounded_cleanup):
                         payload = session.run()
                     self.assertEqual(payload["status"], outcome)
                     self.assertFalse(old.exists())

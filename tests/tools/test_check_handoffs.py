@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.check_handoffs import ROOT_BUDGETS, check_repository
+from tools.check_handoffs import ROOT_BUDGETS, SCOPED_BUDGETS, check_repository
 
 
 class HandoffChecksTest(unittest.TestCase):
@@ -16,8 +16,10 @@ class HandoffChecksTest(unittest.TestCase):
         for name in ROOT_BUDGETS:
             self.write(name, "# Document\n")
         self.write("AGENTS.md", "Read CODEX.md and docs/handoff/HANDOFF_MAINTENANCE.md.\n")
-        self.write("docs/handoff/README.md",
-                   "[Protocol](HANDOFF_MAINTENANCE.md)\n[Current](CURRENT.md)\n")
+        self.write("docs/handoff/README.md", "[Catalog](CATALOG.md)\n")
+        self.write("docs/handoff/CATALOG.md",
+                   "[Router](README.md)\n[Protocol](HANDOFF_MAINTENANCE.md)\n"
+                   "[Current](CURRENT.md)\n")
         tick = chr(96)
         self.current = (
             "<!-- handoff-current: optimizer -->\n"
@@ -64,7 +66,7 @@ class HandoffChecksTest(unittest.TestCase):
     def test_new_untracked_diagnostic_must_be_indexed_once(self):
         self.write("docs/handoff/DIAGNOSIS.md", "# Failed response\n")
         self.assertIn("index-coverage", self.codes())
-        index = self.root / "docs/handoff/README.md"
+        index = self.root / "docs/handoff/CATALOG.md"
         index.write_text(index.read_text() + "[Diagnosis](DIAGNOSIS.md)\n", encoding="utf-8")
         self.assertEqual(set(), self.codes())
         index.write_text(index.read_text() + "[Duplicate](DIAGNOSIS.md)\n", encoding="utf-8")
@@ -80,9 +82,9 @@ class HandoffChecksTest(unittest.TestCase):
 
     def test_external_fragment_and_encoded_local_links(self):
         self.write("docs/handoff/space name.md", "# Details\n")
-        self.write("docs/handoff/README.md",
-                   "[Protocol](HANDOFF_MAINTENANCE.md)\n[Current](CURRENT.md)\n"
-                   "[Space](space%20name.md#details)\n")
+        self.write("docs/handoff/CATALOG.md",
+                   "[Router](README.md)\n[Protocol](HANDOFF_MAINTENANCE.md)\n"
+                   "[Current](CURRENT.md)\n[Space](space%20name.md#details)\n")
         self.write("TODO.md", "[Here](#todo)\n[External](https://example.org/missing.md)\n")
         self.assertEqual(set(), self.codes())
 
@@ -95,6 +97,12 @@ class HandoffChecksTest(unittest.TestCase):
         self.manifest["current_state"]["active_engine_id"] = "wrong-engine"
         self.save_manifest()
         self.assertEqual({"current-pointer", "current-projection"}, self.codes())
+
+    def test_no_rollback_is_an_explicit_live_projection(self):
+        self.manifest["current_state"]["rollback_engine_id"] = None
+        self.write(self.owner, self.current.replace("old-engine", "none"))
+        self.save_manifest()
+        self.assertEqual(set(), self.codes())
 
     def test_non_object_live_section(self):
         self.manifest["current_state"] = None
@@ -155,6 +163,13 @@ class HandoffChecksTest(unittest.TestCase):
         self.write("TODO.md", "- [X] Already implemented\n")
         self.assertEqual({"root-budget", "completed-todo"}, self.codes())
 
+    def test_scoped_work_rules_have_a_context_budget(self):
+        name = "docs/handoff/UI_WORK_RULES.md"
+        self.write(name, "x" * (SCOPED_BUDGETS[name] + 1))
+        index = self.root / "docs/handoff/CATALOG.md"
+        index.write_text(index.read_text() + "[UI rules](UI_WORK_RULES.md)\n", encoding="utf-8")
+        self.assertEqual({"scoped-budget"}, self.codes())
+
     def test_line_ending_normalization_at_budget(self):
         size = ROOT_BUDGETS["TODO.md"]
         (self.root / "TODO.md").write_bytes(b"x\r\n" * (size // 2))
@@ -171,6 +186,10 @@ class HandoffChecksTest(unittest.TestCase):
         (self.root / "AGENTS.md").unlink()
         self.assertEqual({"missing-entrypoint", "missing-routing"}, self.codes())
         self.write("AGENTS.md", "No instructions.\n")
+        self.assertEqual({"missing-routing"}, self.codes())
+
+    def test_short_router_must_link_optional_catalog(self):
+        self.write("docs/handoff/README.md", "# Router without catalog\n")
         self.assertEqual({"missing-routing"}, self.codes())
 
 

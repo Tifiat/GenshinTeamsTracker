@@ -81,18 +81,6 @@ func (bound BoundEngine) VerifyUnchanged() error {
 	return verifyFileSHA256(bound.binaryPath, bound.artifactSHA256)
 }
 
-func RunOrdinary(ctx context.Context, request contracts.OptimizerRequest, configText, runDirectory string, expectedIterations, workers int) (OrdinaryResult, error) {
-	bound, err := BindEngine(request)
-	if err != nil {
-		return OrdinaryResult{}, err
-	}
-	output, runErr := bound.RunOrdinary(ctx, configText, runDirectory, expectedIterations, workers)
-	if verifyErr := bound.VerifyUnchanged(); verifyErr != nil {
-		return OrdinaryResult{}, fmt.Errorf("bound engine changed during run: %w", verifyErr)
-	}
-	return output, runErr
-}
-
 func (bound BoundEngine) RunOrdinary(ctx context.Context, configText, runDirectory string, expectedIterations, workers int) (OrdinaryResult, error) {
 	var output OrdinaryResult
 	if expectedIterations <= 0 || workers <= 0 {

@@ -21,6 +21,24 @@ from run_workspace.gcsim.shipped_artifact import (
 
 
 class GcsimArtifactRunnerTest(unittest.TestCase):
+    def test_runner_rejects_engine_switch_before_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _install_active_engine(
+                root,
+                metadata={"artifact_relative_path": "build/gtt-gcsim.exe"},
+                artifact_bytes=b"fake exe",
+            )
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                store_dir=root / "store",
+                expected_engine_id="previous-engine",
+                runner=UnexpectedRunner(),
+            )
+            self.assertFalse(result.success)
+            self.assertEqual(result.status, "active_engine_changed")
+            self.assertEqual(result.engine_id, "engine-v1")
+
     def test_runner_refuses_without_active_engine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

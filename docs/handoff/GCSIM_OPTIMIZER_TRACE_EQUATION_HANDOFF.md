@@ -23,13 +23,14 @@ The application needs three optimizer modes:
 2. All Sets — choose promising set packages and real artifacts.
 3. Theory / farming guidance — explain useful main stats, balance, plateaus and future farming targets.
 
-Selected and the bounded All Sets extension are implemented. Installed backend
-evidence and pending real UI acceptance belong to the checkpoint. Both return:
+Selected, bounded All Sets and neutral formula-only Theory are implemented.
+Installed backend evidence and pending real UI acceptance belong to the
+checkpoint. Selected/All Sets return:
 
 - five artifact IDs for each of four characters;
 - twenty globally unique physical IDs;
-- measured adaptive n=500/n=1000 GCSIM DPS and standard error;
-- formula estimate, residual and uncertainty warnings;
+- ordinary mode: measured GCSIM DPS, sample count, standard error and formula residual;
+- fast mode: formula estimate and explicit unverified warning, no fabricated measurement;
 - deterministic debug receipt;
 - no automatic equip; every character row can be saved explicitly as a normal
   Artifact Browser preset through the existing preset storage service.
@@ -37,10 +38,295 @@ evidence and pending real UI acceptance belong to the checkpoint. Both return:
 Cold Selected above 190 seconds remains a performance failure criterion. The
 historical GOB-10 replay met the backend target; its 62-64s full UI projection
 was an estimate. Current copied-fixture Flins backend timings are recorded
-separately in GP-3. The temporary 360s UI boundary is only a fail-safe; All Sets
-has a separate future 600s boundary. No fresh UI timing is claimed here.
+separately in GP-3. Selected/All Sets wall-clock boundaries were removed by
+the2026-09-27 cooperative-Finish extension; Theory keeps its existing limit. GP-3 owns
+its quality/performance acceptance. No fresh UI timing is claimed here.
 
-## 2. Accepted production architecture
+## 2. Production architecture and approved replacement
+
+### Approved parametric/search overhaul (2026-09-19)
+
+The user approved implementation after the whole-pipeline audit. This replaces
+the requirement to preserve the old search method/contract, not the engine
+ownership and response-correctness guarantees. Implementation and acceptance are
+separate; the checkpoint identifies which parts actually run in the product.
+
+The target is one prepared aggregate team-DPS function per observed schedule
+member, with artifact inputs and effect expressions still variable AFTER
+reduction. The2026-09-20 user-approved refinement starts All Sets from a neutral
+capture with NO set rows (already supported by GCSIM and Theory preparation),
+not a dummy set or mandatory removal of old buffs. Observe event emissions
+independently of registered set callbacks, together with required state/query
+identity. Use current source rules plus these facts to evaluate bonus inputs;
+ordinary package changes do not recapture or rebuild the damage function.
+
+The user also approved a crystallization-plus-skill activation fallback when
+pickup evidence is genuinely unavailable. Prefer observed shield identity and
+nearby construct facts where present; a foreign shield is not crystallization,
+and absent evidence must not silently become full uptime. Incoming healing is
+a recipient input, distinct from the wearer's outgoing healing stat. Diagnostic
+completion runs use the managed job's emergency watchdog. Production
+Selected/All Sets have no wall-clock deadline; neither policy proves convergence.
+
+Do not rewrite ordinary GCSIM set implementations into a new declarative engine.
+Extend only observation/export and the consumer's bounded source interpretation.
+Exact supported effects are preferred. Approximate effective coverage is an
+approved fallback when amount, applicability and recipients are known; distinguish
+it from exact response and from a conservative bound. Unknown activation/amount/
+recipient is not zero or a full bonus. Keep caps, stat-dependent expressions,
+shared-key interactions and per-damage-kind ownership. Neutral capture eliminates
+old set contributions, not these obligations. Effect rules may use the event
+schedule without rerunning it; stat-independent work is prepared outside item
+scoring. Real output, action, branch or source-RNG changes take an explicit
+schedule/uncertainty route, not an energy-mode or named-set exception list.
+
+The approved scope, in dependency order:
+
+1. Revise the parametric input/coverage contract and prove changed-input response,
+   including cross-owner support. Baseline agreement alone is insufficient.
+2. Produce effect semantics from the active GCSIM implementation and neutral
+   event/state evidence, with the exact/approximate distinction above and without
+   named set/character allowlists. Keep effect inputs distinct before deduplication;
+   equal observed values do not imply interchangeable sources or windows.
+3. Reduce earlier: common expressions, constant-only regions, unreachable nodes
+   and valid algebraic grouping. Specialize the prepared program for one/two
+   variable wearers or fixed packages without re-reading the original hit list.
+4. Replace the inherited partial-build beam with real-build candidate search.
+   The2026-09-20 user-approved revision supersedes eager upper enclosures:
+   formula gradients propose complete legal packages; their actual model DPS
+   orders refinement. Inspect different complete starts and joint two-slot
+   changes; directly enumerate small domains. A top-five team-DPS gap versus
+   observed variation may HEURISTICALLY defer a branch, never certify a bound.
+   Reconsider changed team anchors; retain unvisited/deferred accounting.
+   Package sweeps update one wearer block at a time against the latest accepted
+   complete team. Do not treat four stale-anchor conditional winners as
+   independent contributions; shared bonuses couple their utility. The bounded
+   block-coordinate schedule still does not prove a global package optimum.
+   The2026-09-27 approved extension keeps a bounded frontier of distinct complete
+   package teams and scores joint two-wearer replacement/relocation, including
+   removing a bonus from its old owner. Conditional package ranks only propose
+   alternatives; changed team effects require a fresh score through the SAME
+   neutral formula. Preserve the incumbent, actual item ownership, current
+   global work bounds and configured final simulator count. Production wall-clock
+   limits are removed by the cooperative-Finish extension. A changed nonleading frontier
+   may use the next configured cycle; sampled-pair/frontier completion is not
+   exhaustive package search or proof of global optimality.
+   Zero local gradient is not global irrelevance, and weak pieces can complete
+   bonuses or serve another wearer. Unknown effects are not inactive effects.
+   Before ordinary verification, stabilize the surviving complete finalists:
+   all legal free single-item substitutions first, broader sampled pairs and
+   cross-wearer exchanges next; any accepted change restarts the cheap checks.
+   Report a complete single-neighborhood check separately from sampled-pair
+   stability, work exhaustion and global optimality. Do not refill final slots
+   with old unchecked rows after improved representatives deduplicate.
+5. Search actual joint wearer exchanges, not only combinations of already
+   retained rows. Keep physical-ID alternatives when numeric vectors coincide,
+   twenty-ID legality, energy constraints and partial-incumbent checkpoints.
+6. All Sets combines feasible inventory and operative effects, including4p,
+   2+2, single2p and no-bonus cases. Inactive-set pieces remain eligible. Replace
+   raw-old-context/short-list selection, not merely its time/context budget.
+7. Remove the separate n128 screen and mandatory repeated128/500/1000 ladder.
+   One bounded common-fidelity ordinary finalist stage follows corrected offline
+   selection. Selected's previous screen selected rows, so deleting it alone
+   was not a quality-preserving replacement. Measure total preparation, transport,
+   compilation, search and final verification; do not advertise node counts as
+   end-to-end speedups. Avoid illegal-point work and preserve progress on expiry.
+8. Theory follows with equal investment, independent stat optimization per
+   effect choice/main-stat layout and an optimized no-bonus baseline. Repair
+   Jahoda/Columbina coverage, deadline handling and false convergence labels.
+   Then apply proven common-core/search improvements to fixed-package Selected,
+   preserving4p/2+2 and result paging/Save/cancel. The later grouped-output
+   decision below removes the production current-equipment comparison.
+
+The shared arithmetic AND basic inventory search are part of the All Sets work;
+they are not deferred to Selected. The Selected replacement requires its own
+evidence before installation. First validate response, then tiny exhaustive inventory
+oracles, then the saved Flins team/rotation through the production All Sets path.
+The legal144.7k control, meaningful coverage and whole-pipeline runtime are the
+acceptance comparison (roughly half the original273s is a target, not a promise).
+Add teams one at a time afterwards; no14-team matrix restart or Gaming test.
+Preserve original/new receipts. Computer Use is limited to short actual button/
+route checks; substantive numerical validation is programmatic on that same path.
+
+**2026-09-27 execution/order update:** the user now authorizes continuing all
+remaining matrix teams sequentially without requesting permission between rows.
+A low-context Luna runner executes each row; the parent reviews its compact
+result before releasing the next. Pause the queue on an obvious bug, diagnose
+and repair within the existing technical/attempt boundaries, and ask only for
+a genuine user decision. Preserve accepted rows and every failed attempt; this
+does not require regenerating the baseline or spending extra retries on passed
+teams. The earlier Gaming rotation/status exception remains separate. After the
+matrix, prepare a player-readable comparison and transfer proved common-core
+improvements to Selected Sets before returning to Theory. This supersedes the
+old Theory-before-Selected delivery order, not the math/physical-ID/energy gates.
+
+**2026-09-28 practical quality clarification:** the user explicitly accepts the
+observed5.720792 DPS loss at Bloom rank7 (~0.0043%, first six ranks unchanged)
+as negligible for player-facing quality; it must not block further research or
+reject the narrow prototype by itself. Keep its deterministic formula difference
+in the receipt, without relabeling it as measured stochastic noise. Review new
+heuristic differences by magnitude, affected ranks and gameplay relevance; this
+is not blanket permission for materially weaker results or lost valid groups.
+Exact arithmetic/setup reuse still requires controlled response and same-input
+parity; illegal assignments, stale capture/owner bindings or unsupported effects
+remain blockers regardless of small point-DPS differences. New hypotheses are
+tested separately before combination/installation. Cheap low-context agents run
+the tests and may implement bounded local hypotheses; the parent retains broad
+architecture and evidence review, following `CODEX.md`'s delegation policy.
+
+**Selected transfer (2026-09-27):** infinite-energy Selected now shares the
+complete-build screen/refine and final single/pair/exchange stabilization APIs
+proved in All Sets. Its capture still fixes the selected4p/2+2 packages; it does
+not run All Sets' package discovery. One160000 candidate-trial cap covers
+proposal work and final stabilization (guide/preparation is separately timed).
+Search still stabilizes a bounded shortlist; the independent output archive
+retains the best already-scored legal alternatives, including checked neighbors
+which need not themselves be local optima. No unchanged input/control row is
+reserved or added for measurement. Stops distinguish sampled stability, exhaustion and
+cancellation; none claims a global optimum. Common sort keys are exact, while
+the improvement-acceptance tolerance remains separate. Finite energy retains
+the existing constrained coordinator, not an ER-blind transfer. Ordinary
+verification is one n500 stage; there is no production n128/adaptive ladder.
+The checkpoint owns installed-path and UI acceptance scopes.
+
+### Source preparation cache and exact arithmetic work reuse
+
+Reusable source structure belongs to a team-independent cache, keyed by original
+source bytes/path, cache schema and Go AST version. Verified engine/source/catalog
+binding is still checked before use. Immutable parsed trees may be shared; VM
+environments, activation state, event tapes and bound formula programs must not
+cross team/run boundaries. A changed/new source misses automatically; corrupt or
+incompatible entries reparse from verified source. A cached compile failure gets
+one source retry, not an endless retry of unsupported gameplay. Distribution seeds
+are read-only; runtime repairs use the bounded cache lifecycle documented in
+`DATA_RUNTIME_BOUNDARIES.md`. Parsing and event-dependent rule evaluation are
+separate costs; a warm syntax cache does not eliminate rotation evaluation.
+The neutral inventory path no longer builds the unused legacy `Discover`/recipe
+representation. Finite-energy/Theory/audit consumers still require it; remove
+that implementation only after their replacements are accepted. Current Selected
+consumes a captured panel, not these source rules. Current Theory inherits cache
+configuration but supplies no neutral-rule libraries, so receives no AST-cache
+benefit and must not clean another mode's entries. Shared arithmetic reuse applies
+independently of this source-cache boundary.
+
+Schedule metadata describes potential source hazards, not activation. Successful
+neutral evaluation does not request a capture merely because source contains an
+attack/speed API. An activated schedule boundary (or unavailable neutral model
+with a classified potential schedule effect) uses a separately bounded run-local
+capture session. Its key is the full engine/source/config/team/package/seed
+context, never a set name. Captured bonuses are not added a second time, and its
+schedule never replaces another context's neutral graph. Failed attempts remain
+cached diagnostics and spend their reservation. Capture at reference item stats
+is not proof of unchanged timing under all candidate stats; preserve that warning.
+
+Incremental arithmetic skips a node only when none of its input coordinates
+changed, comparing IEEE bits including signed zero. Scratch/error state remains
+private; full evaluation is the oracle. Dense graph memo tables, ordered CSE keys
+and contiguous operand storage must preserve arithmetic and gradient accumulation
+order. Prepared single-wearer legality may reuse the other fifteen validated IDs;
+the changed five still satisfy physical uniqueness, slots and exact bonus tiers.
+These are computation reuse, not new item pruning or a global search guarantee.
+The checkpoint owns installed acceptance; implementation alone does not accept UI.
+
+The2026-09-28 exact-reuse combination keeps the original proposal/refinement
+width and candidate order. Run-local preparation reuses immutable inventory
+vectors by wearer and ordered coordinates, preordered neutral queries and source
+lookup, context-to-program dispatch, and unchanged reduced formula regions.
+Dense constant effect inputs coexist with sparse dependent expressions; all
+ports, including latent ones, are validated before projection. Equal full-port
+IEEE vectors may share composed arithmetic only AFTER dependency/interaction
+checks; symbolic components retain distinct identities. Actual item pools,
+ownership, diagnostics and uncertainty remain specific to their set choices.
+Bounded amount-function plans cache syntax, never current storage or lexical
+values. All caches are finite and fall back to ordinary computation on overflow.
+These in-memory caches do not cross runs or replace the persistent parsed-source
+cache. Selected shares inventory-vector reuse; it does not acquire All Sets'
+neutral package discovery. Rejected point shortlists and narrowed frontiers are
+research evidence only, not selectable production paths.
+
+### Grouped output and fast mode (2026-09-27)
+
+Persistent settings are `gcsim_optimizer_set_group_limit` and
+`gcsim_optimizer_builds_per_group`. The UI exposes groups and SINGLE-ITEM swaps
+per group: recommended normal1..5 groups /0..10 swaps; fast1..10 groups /0..40
+swaps. Internal builds_per_group counts the leader too (normal1..11, fast1..41).
+Fresh/reset UI defaults are normal3 groups/2 swaps and fast5 groups/20 swaps;
+existing explicit saved counts are preserved, not reset by a mode change.
+Omitted legacy wire options retain3x2 total rows.
+Stored oversized values clamp to the effective mode; native requests exceeding
+limits fail validation. `gcsim_optimizer_expanded_limits` / wire expanded_limits
+opts into the checkbox "Remove recommended limit": both modes allow50 groups
+and100 swaps (101 rows/group,5050 total) as a high technical bound. A persistent
+note warns about very long runs, freezes/errors and normal GCSIM verification.
+Only found rows consume result allocation; never allocate requested G*K slots
+before discovery. Disabling the checkbox persists counts clamped to recommendations.
+Fast mode defaults OFF. Theory is unchanged; Selected fixes one bonus group.
+
+A group is the complete wearer-owned combination of active bonus tiers: 2/3
+pieces canonicalize to2p, 4/5 to4p; singletons have no bonus. Item swaps that
+preserve all wearers' tiers are alternatives, while2+2 and either4p are different
+groups. No equipped/input control receives a reserved result slot. All Sets
+uses an inventory-ID-canonical physical reference for capture and search,
+independent of equipped item IDs/stats; this reference is not a quality control.
+
+An independent per-group archive retains K best scored assignments, including
+groups temporarily outside the top G. It does not widen the search frontier.
+The final search stabilization panel also stays independent of G/K: a separate
+one-leader-per-group core archive supplies the fixed internal finalist count.
+Only output retention/construction and ordinary verification scale with the
+requested display limits; larger limits do not request extra search cycles or
+more stabilized groups. Hydration reuses one model per retained context.
+Select G groups by their best formula score. After normal search completion,
+enumerate legal single-item neighbours of each group leader through its reduced
+formula, preserving bonus tiers, physical IDs and energy constraints. Retain up
+to K-1 best swaps; no extra search cycles/stabilization are requested. Send these
+leaders and swaps to one ordinary n500 stage (fast skips it). Rank groups by
+their best measured DPS. If verification promotes another leader, expose only
+measured rows exactly one item away from that actual displayed leader; discard
+distance-two rows, do not attribute their joint delta to one item or refill with
+extra simulations. Thus fewer swaps may appear than requested.
+Pages show distinct bonus groups; swaps expand below their wearer with team-DPS
+delta against the displayed group leader. Deltas are independent, not additive.
+Limits are maxima, not a promise of G*K legal rows or a global optimum.
+
+Fast mode skips the ordinary finalist stage and uses formula ordering. Initial
+engine captures needed to obtain the formula still occur. `ranking_basis=formula`
+and `formula_only_unverified` are mandatory; omit measured DPS, SE, engine result
+hash and residual. Every user OFF->ON transition warns; restored preferences
+do not reopen the modal, while each result remains visibly labeled. Finite
+mode also reports `energy_not_simulator_verified`: modeled deadline feasibility
+is not ordinary energy verification. Recommended normal output caps at55 ordinary
+checks; fast at410 formula rows. Expanded output caps at5050 rows/checks in either
+mode. Crossing12 requested ordinary checks, or
+returning from fast with that workload, warns about CPU/time cost. Fast has no
+extra modal volume warning; the expansion risk note and accuracy warning remain
+independent. Fewer available
+items is a valid smaller result. No time estimates are displayed: elapsed time
+and a monotonic stage/work bar with short animated transitions replace them.
+
+Selected/All Sets production requests use zero product/development time budgets:
+no wall-clock deadline for preparation, search or ordinary finalists. Explicit
+positive deadlines remain available for bounded diagnostic harnesses. Existing
+cycle, work, source-coverage and candidate-queue bounds are unchanged; removing
+a timer does not certify exhaustive search or convergence. Theory keeps its
+existing limits and is not changed by this feature.
+
+`Finish and show results` is cooperative, separate from emergency Cancel.
+A per-run `finish-requested` marker cancels search even during preparation.
+If no complete feasible candidate exists, return explicit `finish_no_result`
+with instructions to restart and allow preparation/search to produce a build.
+Otherwise retain already scored legal candidates, skip output-only swap
+enumeration, stop new search and use the outer context for retained-context
+hydration and normal n500 verification or fast output. Hard cancellation of
+that outer context still stops all work. Report `search_finished_by_user` and stop reason
+`user_requested_finish`, never a completed exhaustive search. Finite energy
+still requires a feasible candidate; no valid candidate is an explicit failure,
+not an invented result. Once finalizing, Finish is disabled and Cancel remains
+available to terminate the owned process tree. Arithmetic/provenance failures
+must not be converted into partial success. Markers share the session run-root
+retention/cleanup lifecycle and cannot leak to a later run.
+
+### Installed architecture before this replacement
 
 The production backend is gtt_gcsim_optimizer_go_v1.
 
@@ -56,7 +342,8 @@ It owns:
 - artifact stat arrays and physical legality;
 - formula compilation and stochastic expectation;
 - Formula-Guided Build Search;
-- finalist policy and adaptive ordinary n=500/n=1000 verification;
+- bounded ordinary finalist verification (the checkpoint distinguishes installed
+  staged policy from the approved single-stage replacement);
 - cache, cancellation, timings and debug receipt.
 
 It must not import gcsim/internal packages.
@@ -74,6 +361,21 @@ The engine patch owns only unavoidable runtime observation:
 It converts GCSIM internals into stable compact GTT IR. Artifact search, FGBS and finalist selection do not live in the engine patch.
 
 Python/UI sends one compact request and receives progress plus the final IDs/DPS. There is no Python-Go call per candidate.
+
+Shared Python requests, explicit mode input preparation and the process/Finish/
+Cancel lifecycle belong to `optimizer_go_requests`, `optimizer_go_inputs` and
+`optimizer_go_session`; canonical writers belong to `optimizer_go_contracts`.
+Mode adapters own their respective capture/source hooks and CLI command. All
+Sets does not inherit Selected's compact capture. Strict source-manifest codecs
+belong to `source_manifest_codec` without loading the legacy trace closure;
+historical trace readers re-export the same objects/error identity.
+
+Schema-v1 `finalists`, `budgets.development_timeout_ms` and
+`cancellation.mode` are deprecated but validated compatibility inputs. They do
+not select current product measurement, introduce a second runtime deadline or
+change Cancel semantics. Retained requests keep their identities; retirement
+requires an explicit versioned migration. Inventory output uses `result_options`
+and ordinary finalists use a single n500 stage, not the old sampling ladder.
 
 ## 3. What the Python work actually proved
 
@@ -143,10 +445,10 @@ Required rules:
 - frozen share remains visible and cannot prove dominance or saturation;
 - a material unknown widens retained finalists and produces diagnostics;
 - no character, set, element or reaction name switch in generic evaluator/search code;
-- All Sets changes the observed effect context, not only artifact stats. An
-  unchanged hit topology does not authorize formula reuse after a set change.
-  Apply a fully proved static-effect replacement or capture the changed team
-  context; keep unknown/conditional effects visible rather than assuming zero.
+- All Sets changes effects, not only artifact stats. The approved replacement
+  uses the neutral parametric/event path in section2. Existing non-neutral
+  captures still need complete effect removal/replacement or fresh capture;
+  unchanged topology or an approximate guide is not a replacement certificate.
   The isolated `internal/setcontext` boundary keeps replacement bias separate
   from physical item stats and reuses only fully bound contexts. Its proof
   contract does not itself prove engine source semantics; enabled coverage and
@@ -155,10 +457,11 @@ Required rules:
   Old-context increments can guide proposals but do not remove an old effect.
   Neutral read annotations identify the actual input owner/query/graph node;
   generic arithmetic probes must not invent inheritance for another damage type.
-- accepted Selected remains infinite-energy. The shared switch also exposes
-  diagnostic finite-energy execution, not ER-aware search. Selected supports
-  fixed4p and2+2 packages; current acceptance is owned by the checkpoint.
-  Energy-aware search remains separately gated last, after All Sets.
+- Selected supports fixed4p and2+2 packages. Its finite-energy route compiles
+  observed burst-deadline constraints and ordinary verification checks actual
+  energy failures; both energy routes remain live. This is not a proof of every
+  stochastic energy schedule. Theory finite energy still fails closed; current
+  acceptance and limits belong to the checkpoint.
 
 Reaction-dominant and future Lunar/multi-contributor teams remain required later controls. Damage share, not hit count, determines whether an unknown path is material.
 
@@ -206,18 +509,24 @@ limits belong to the current checkpoint.
 
 ### Retained product result contract
 
-- Selected and capability-gated All Sets share this result path; Theory remains unavailable.
-- One Go process returns exact IDs, measured DPS, progress/cancellation,
+- Selected and capability-gated All Sets share the grouped normal/fast result path;
+  Theory has a separate formula-only guidance result, not measured artifact IDs.
+- One Go process returns exact IDs, explicit ranking basis, progress/cancellation,
   fail-closed errors, warnings and a debug receipt. No automatic equip.
 - Four compact five-piece rows reuse existing artifact/stat/element assets.
   Per-character Save prompts for a name and uses the existing Artifact Browser
   `save_build_preset` service, never a second storage path.
-- Result-v1 `candidates` contains measured finalists ordered by measured DPS.
+- Result-v1 `candidates` contains up to2500 grouped rows (expanded opt-in), with combinations and
+  alternatives ordered by their chosen ranking basis (normal measured DPS,
+  fast formula DPS), as defined in section2. Grouped paging is not a flat
+  global-DPS rank. Normal results contain measurements; fast results omit them.
   Paging uses the returned data, not debug files or extra simulations. Older
   payloads without that additive field show one winner page.
-- Keep common n128 for Current plus the 24-row formula pool: saved evidence
-  disproves truncating directly to formula top-seven.
-- Run all retained/mandatory finalists (at most seven) at n500. Extend only a
+- The pre-overhaul Selected keeps common n128 for Current plus the24-row formula pool: saved
+  evidence disproves truncating directly to formula top-seven. All Sets instead
+  preselects at most seven context-diverse rows and sends that unchanged panel
+  to both n128 and adaptive verification; this is a distinct recall limitation.
+- The pre-overhaul policy runs all retained/mandatory finalists (at most seven) at n500. Extend only a
   two-to-four-row group unresolved within three combined standard errors to
   n1000. An overwide unresolved group returns the bounded n500 panel with
   explicit warnings, not an unbounded extension.
@@ -278,8 +587,9 @@ engine identities from the checkpoint, not historical install records.
 Selected2+2 retains each chosen pair and the legal remaining slot across
 UI/request/legality/search/materialization/tests. Its standalone Go extension
 is described in the Go design; acceptance is owned by the checkpoint.
-Energy-aware Selected, All Sets and
-Theory remain separately scoped work. Engine update limitations are retained
+Energy-aware Selected/All Sets are implemented with observed constraints and
+ordinary finalist verification; Theory's finite-energy solver remains separate.
+Engine update limitations are retained
 in `GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md`.
 
 Use one fixed-rotation fixture per materially different mechanism: direct
@@ -359,88 +669,3 @@ If the constraint consumes a main stat or a large part of the available damage
 budget, report the measured trade-off and suggest reviewing rotation, burst
 frequency or an energy weapon. Do not automatically declare a burst worthless:
 its damage/support contribution and energy cost must both be visible first.
-
-### Overnight execution contract (2026-09-17; bounded N0 recovery verified)
-
-The user explicitly started the autonomous session after discussion, adding N0
-disk-growth diagnosis, safe cleanup and enforced retention before other work.
-TODO owns N0-N6 order; the checkpoint owns resume state. This is a scoped
-exception, not a permanent policy change.
-The initial agent cleanup command was denied. Both user-run allowlists are now
-confirmed absent; subsequently authorized guarded deep cleanup and lossless
-archiving completed. The checkpoint owns results and N1 inputs. Five extra
-binary removals were separately denied; do not retry through another API.
-Heartbeat remains paused. Future-output lifecycle rules continue to apply.
-
-- All Sets: retain the shared Go search. First measure on saved contexts where
-  repeated work and weak-branch spending occur. Reject impossible packages using
-  actual slot availability/physical IDs. Rank feasible packages using the team's
-  damage/support dependencies, conditions, buff duplication/caps, wearer cost
-  and available artifact strength, rather than a universal set tier list.
-  A promising bonus alone does not prove a promising complete team. Cheap
-  ranking followed by bounded refinement is a hypothesis to test, not a claimed
-  implemented speedup. Hard elimination requires a valid feasibility/dominance
-  or upper-bound proof; heuristic low scores justify less budget, not claims of
-  impossibility. Retain bounded unknown/synergy discovery. Do not enumerate all
-  set combinations or weaken effect replacement/source binding to save time.
-- Compare incremental work against the saved incumbent and reduced exact
-  controls: total time by stage, search coverage, best formula score, ordinary
-  measured quality/uncertainty and changed finalist semantics. A faster timeout
-  or silently lower-quality winner is not an accepted optimization. Revisit
-  mandatory weak representatives separately from discovery. No promise of
-  Selected-like runtime or a global optimum before measurements.
-- Shared product checks follow AppShell action -> request -> installed Go/engine
-  -> worker result -> cards/preset service. For this session the user explicitly
-  accepts a temporary handler-path harness instead of Computer Use. Preserve
-  the distinction in reports: harness verification is not a physical click.
-  Include2+2/4p legality, unique IDs, cancellation, result paging, save service
-  and unchanged live equipment. Use copies for persistence tests. Clean only
-  proven disposable files under existing gates; keep rollback/UI-pending backups.
-- Theory reuses preserved continuous-target mathematics only where helpful;
-  do not force it into account search. Read the existing roll/main-stat budget
-  contract before modeling reachable theoretical stats and set conditions.
-  Keep theoretical estimates/farming advice distinct from owned artifact IDs,
-  proven global optima and ordinary measured DPS. Missing product assumptions
-  that materially change conclusions remain explicit choices, not magic values.
-- Energy starts only after the preceding optimizer stages. Follow the ledger
-  contract above, including initial energy, capacity/clipping, burst deadlines,
-  flat versus ER-scaled gains and timing/probability-dependent sources. An
-  expected particle count alone cannot guarantee burst readiness. Keep uncertain
-  constraints visible and validate actual action completion with bounded
-  finite-energy finalists. No automatic rotation/weapon rewrite or second toggle.
-- Editor: one self-contained worker may research upstream grammar and build
-  grouped buttons plus RU/EN readable rendering with punctuation. Maintain a
-  structured, round-trippable representation and raw escape path. Unknown valid
-  DSL must not be dropped. Agree isolated file ownership before delegation;
-  do not load the entire optimizer history or let the worker edit shared handoffs.
-- At most one subagent at a time; the main agent handles optimizer work. Do not
-  recruit more workers through a child. Reuse project venv/imports, Go tests and
-  saved evidence rather than reasoning through large numeric tables manually.
-- Fix ordinary defects and select justified recommended local options without
-  waiting. After three failed substantive attempts, preserve the first unresolved
-  loss and park that task; take the next independent authorized task. Do not
-  convert this into unlimited retries, fabricated certainty, permission bypass,
-  external publication or destructive live-data changes. History Browser is out
-  of scope, including incidental redesign/migrations from other TODO work.
-- Checkpoint each meaningful stage and before a safe pause. On the user's return
-  and stop request, stop new work, finish/cancel safely and report completed,
-  measured, unverified and parked work separately. If every available task is
-  done or genuinely blocked, stop rather than inventing work. Scheduled resumption
-  is claimed only after a persisted ACTIVE automation exists. The current
-  heartbeat is `automation`, created ACTIVE every30 minutes on2026-09-17, then
-  confirmed PAUSED at the N0 deletion-policy stop.
-  Usage limits/app availability cannot be bypassed.
-
-## 11. Permanent execution rules
-
-- Work sequentially without subagents or parallel agents outside the scoped,
-  explicitly started overnight exception above.
-- Do not brute-force parameters or repeat expensive runs without a declared gate.
-- Stop after three substantive failed approaches to one blocker.
-- Ordinary technical errors are fixed without pretending they are conceptual.
-- No full-account or n=1000 run before its reduced/parity gate.
-- Unknown behavior degrades safely; no legacy fallback.
-- Preserve unrelated dirty-tree work.
-- Do not commit/push unless requested.
-- Update the owning status/contract and affected root pointers/cleanup manifest;
-  keep evidence in dated receipts instead of duplicating logs across documents.

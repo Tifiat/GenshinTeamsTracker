@@ -2,6 +2,10 @@ package contracts
 
 const EffectInputsCapability = "gtt_effect_inputs_v1"
 
+// Neutral ABI is additive: ordinary effect sidecars alone do not guarantee
+// independent event/world observations or latent stat-read roots.
+const NeutralInputsCapability = "gtt_neutral_inputs_v1"
+
 // Neutral observer ABI: typed graph locations, not set ranking or gameplay rules.
 type EffectInput struct {
 	EventID   string `json:"event_id"`
@@ -22,6 +26,7 @@ type ResistanceInput struct {
 }
 
 type EffectInputsOutput struct {
+	Neutral                  *NeutralInputs    `json:"neutral,omitempty"`
 	SchemaVersion            int               `json:"schema_version"`
 	Capability               string            `json:"capability"`
 	MemberContentSHA256      string            `json:"member_content_sha256"`

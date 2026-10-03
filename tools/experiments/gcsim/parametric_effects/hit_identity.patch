@@ -1,0 +1,61 @@
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -1,2 +1,3 @@
+ type Runtime struct {
++	nextHitID uint64
+diff --git a/pkg/gtttrace/hit_identity.go b/pkg/gtttrace/hit_identity.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/hit_identity.go
+@@ -0,0 +1,14 @@
++package gtttrace
++
++// NextHitID is trace-only, per core, and independent of observation ordering.
++// Allocate before OnEnemyHit is copied so event writes and the terminal formula
++// share one identity, including multiple targets or hits in the same frame.
++func (r *Runtime) NextHitID() uint64 {
++	if !r.Enabled() { return 0 }
++	r.nextHitID++
++	return r.nextHitID
++}
+diff --git a/pkg/gtttrace/hit_identity_test.go b/pkg/gtttrace/hit_identity_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/hit_identity_test.go
+@@ -0,0 +1,21 @@
++package gtttrace
++import "testing"
++func TestHitIdentityIsPerCoreAndTraceOnly(t *testing.T) {
++ var absent *Runtime
++ if absent.NextHitID()!=0 {t.Fatal("nil trace allocated an ID")}
++ a,b:=NewRuntime(),NewRuntime()
++ if a.NextHitID()!=0 {t.Fatal("disabled trace allocated an ID")}
++ a.Enable();b.Enable()
++ for i:=uint64(1);i<=100;i++ {if a.NextHitID()!=i {t.Fatal("nonunique hit ID")}}
++ if b.NextHitID()!=1 {t.Fatal("identity leaked across simulations")}
++ if a.NextObservationOrder()!=1 {t.Fatal("hit numbering changed event order")}
++}
+diff --git a/pkg/enemy/gtt_trace.go b/pkg/enemy/gtt_trace.go
+--- a/pkg/enemy/gtt_trace.go
++++ b/pkg/enemy/gtt_trace.go
+@@ -1,3 +1,4 @@
+ 	atk.GTTTraceHit = &info.GTTTraceHit{
++		HitID: e.Core.GTTTrace.NextHitID(),
+ 		FlatProducer:               atk.Info.GTTFlatProducer,
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -1,3 +1,2 @@
+ 	nextAttackID        uint64
+-	nextHitID           uint64
+ 	nextEventID         uint64
+@@ -1,3 +1,6 @@
+-		out.nextHitID++
+-		trace.HitID = out.nextHitID
++		// Normal enemy hits were numbered before OnEnemyHit observation. Preserve
++		// that identity; opaque terminal-only producers use the same allocator.
++		if trace.HitID == 0 {
++			trace.HitID = core.GTTTrace.NextHitID()
++		}
+ 		terminalEventID := "hit:" + strconv.FormatUint(trace.HitID, 10)

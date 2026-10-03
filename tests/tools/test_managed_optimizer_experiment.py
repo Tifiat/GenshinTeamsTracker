@@ -7,11 +7,26 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.managed_optimizer_experiment import managed_scratch, run_experiment
+from tools.managed_optimizer_experiment import managed_scratch, owned_job, run_experiment
 from run_workspace.gcsim.runtime_probe import _go_sandbox_env
 
 
 class ManagedOptimizerExperimentTest(unittest.TestCase):
+    def test_owned_job_requires_the_exact_managed_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'managed'
+            root.mkdir()
+            job = root / 'job-test'
+            job.mkdir()
+            with patch('tools.managed_optimizer_experiment.MANAGED_ROOT', root), patch.dict(os.environ, GTT_SCRATCH_DIR=str(job)):
+                self.assertEqual(owned_job(), job.resolve())
+                with patch.dict(os.environ, GTT_SCRATCH_DIR=str(root)):
+                    with self.assertRaises(ValueError):
+                        owned_job()
+            with patch.dict(os.environ, {}, clear=True):
+                with self.assertRaises(RuntimeError):
+                    owned_job()
+
     def test_success_error_and_cancellation_remove_owned_output_only(self):
         for error in (None, ValueError, KeyboardInterrupt):
             with self.subTest(error=error), tempfile.TemporaryDirectory() as tmp:

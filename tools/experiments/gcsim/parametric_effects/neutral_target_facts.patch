@@ -1,0 +1,135 @@
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -152,6 +152,7 @@
+ 	nextTaskQueueID                   uint64
+ 	nextTaskID                        uint64
+ 	neutralWorldReader                func() []NeutralModifierIdentity
++	neutralTargetReader               func() []EventValue
+ 	neutralWorldStates                []NeutralWorldState
+ 	neutralWorldTruncated             bool
+ 	observationOrder                  uint64
+diff --git a/pkg/gtttrace/neutral_world.go b/pkg/gtttrace/neutral_world.go
+--- a/pkg/gtttrace/neutral_world.go
++++ b/pkg/gtttrace/neutral_world.go
+@@ -1,6 +1,6 @@
+ package gtttrace
+ 
++import ("sort";"reflect")
+-import "sort"
+ 
+ // Pure identity/expiry snapshots. Never evaluate a modifier Amount or stat
+ // getter. Intern unchanged world states so many formula reads share one row.
+@@ -10,6 +10,7 @@
+  Expiry int `json:"expiry"`
+ }
+ type NeutralWorldState struct {
++ Targets []EventValue `json:"targets,omitempty"`
+  Order uint64 `json:"order"`
+  Frame int `json:"frame"`
+  Active int `json:"active"`
+@@ -22,6 +23,7 @@
+ func (r *Runtime) BindNeutralWorld(read func() []NeutralModifierIdentity) {
+  if r != nil { r.neutralWorldReader = read }
+ }
++func (r *Runtime) BindNeutralTargets(read func() []EventValue) { if r != nil { r.neutralTargetReader = read } }
+ func (r *Runtime) NextNeutralObservationOrder() uint64 {
+  order := r.NextObservationOrder()
+  r.CaptureNeutralWorldAt(order)
+@@ -30,17 +32,19 @@
+ func (r *Runtime) CaptureNeutralWorldAt(order uint64) {
+  if !r.Enabled() || order == 0 || r.neutralWorldReader == nil { return }
+  mods := r.neutralWorldReader()
++ var targets []EventValue
++ if r.neutralTargetReader != nil { targets = r.neutralTargetReader() }
+  sort.Slice(mods, func(i,j int) bool { if mods[i].Owner != mods[j].Owner { return mods[i].Owner < mods[j].Owner }; return mods[i].Key < mods[j].Key })
+  active := -1
+  if r.combatActive != nil { active = r.combatActive() }
+  if len(r.neutralWorldStates) > 0 {
+   previous := r.neutralWorldStates[len(r.neutralWorldStates)-1]
++  equal := previous.Active == active && len(previous.Modifiers) == len(mods) && ((len(previous.Targets)==0 && len(targets)==0) || reflect.DeepEqual(previous.Targets, targets))
+-  equal := previous.Active == active && len(previous.Modifiers) == len(mods)
+   if equal { for i, m := range mods { if previous.Modifiers[i] != m { equal = false; break } } }
+   if equal { return }
+  }
+  if len(r.neutralWorldStates) >= maxCombatEventRows { r.neutralWorldTruncated = true; return }
++ r.neutralWorldStates = append(r.neutralWorldStates, NeutralWorldState{Order:order,Frame:r.Frame(),Active:active,Modifiers:append([]NeutralModifierIdentity{},mods...),Targets:cloneEventValues(targets)})
+- r.neutralWorldStates = append(r.neutralWorldStates, NeutralWorldState{order,r.Frame(),active,append([]NeutralModifierIdentity{},mods...)})
+ }
+ func (r *Runtime) NeutralWorld() NeutralWorldLedger {
+  out := NeutralWorldLedger{States: []NeutralWorldState{}}
+@@ -48,6 +52,7 @@
+  out.Complete = r.Enabled() && r.neutralWorldReader != nil && !r.neutralWorldTruncated
+  for _, row := range r.neutralWorldStates {
+   row.Modifiers = append([]NeutralModifierIdentity{},row.Modifiers...)
++  row.Targets = cloneEventValues(row.Targets)
+   out.States = append(out.States,row)
+  }
+  return out
+diff --git a/pkg/gtttrace/neutral_world_test.go b/pkg/gtttrace/neutral_world_test.go
+--- a/pkg/gtttrace/neutral_world_test.go
++++ b/pkg/gtttrace/neutral_world_test.go
+@@ -15,3 +15,15 @@
+  var disabled *Runtime
+  if disabled.NextNeutralObservationOrder()!=0 || disabled.NeutralWorld().Complete {t.Fatal("disabled evidence")}
+ }
++
++func TestNeutralWorldRetainsAuraChangesWithoutAliasing(t *testing.T) {
++ r:=NewRuntime();r.Enable();r.BindNeutralWorld(func()[]NeutralModifierIdentity{return []NeutralModifierIdentity{}})
++ target:=EventValue{Kind:"target",Fields:map[string]EventValue{"Key":{Kind:"number",Number:1},"Auras":{Kind:"array",Items:[]EventValue{{Kind:"bool"}}}}}
++ r.BindNeutralTargets(func()[]EventValue{return []EventValue{target}})
++ r.NextNeutralObservationOrder();r.NextNeutralObservationOrder()
++ target.Fields["Auras"].Items[0].Boolean=true;r.NextNeutralObservationOrder()
++ out:=r.NeutralWorld()
++ if len(out.States)!=2 || out.States[0].Targets[0].Fields["Auras"].Items[0].Boolean || !out.States[1].Targets[0].Fields["Auras"].Items[0].Boolean {t.Fatal(out)}
++ out.States[1].Targets[0].Fields["Auras"].Items[0].Boolean=false
++ if !r.NeutralWorld().States[1].Targets[0].Fields["Auras"].Items[0].Boolean {t.Fatal("target export aliases live facts")}
++}
+diff --git a/pkg/core/core.go b/pkg/core/core.go
+--- a/pkg/core/core.go
++++ b/pkg/core/core.go
+@@ -128,6 +128,7 @@
+ 		Tasks:        c.Tasks,
+ 	})
+ 
++	c.GTTTrace.BindNeutralTargets(c.gttNeutralTargets)
+ 	return c, nil
+ }
+ 
+diff --git a/pkg/core/gtt_neutral_targets.go b/pkg/core/gtt_neutral_targets.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/gtt_neutral_targets.go
+@@ -0,0 +1,32 @@
++package core
++
++// Pure target identity/interface/aura observation. It never evaluates stats,
++// modifier Amounts or callbacks. The aura implementation remains engine-owned.
++import (
++ "github.com/genshinsim/gcsim/pkg/core/attributes"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++ "github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func (c *Core) gttNeutralTargets() []gtttrace.EventValue {
++ out:=[]gtttrace.EventValue{}
++ for _, target:=range c.Combat.Enemies() {
++  value:=info.GTTCombatEventValues([]any{target})[0]
++  reactable, hasReactable:=target.(Reactable)
++  _, hasAuraTarget:=target.(info.TargetWithAura)
++  value.Fields["Interfaces"]=gtttrace.EventValue{Kind:"map",Fields:map[string]gtttrace.EventValue{
++   "github.com/genshinsim/gcsim/pkg/core/info.Target":{Kind:"bool",Boolean:true},
++   "github.com/genshinsim/gcsim/pkg/core/info.TargetWithAura":{Kind:"bool",Boolean:hasAuraTarget},
++   "github.com/genshinsim/gcsim/pkg/core.Reactable":{Kind:"bool",Boolean:hasReactable},
++  }}
++  if hasReactable {
++   auras:=make([]gtttrace.EventValue,attributes.EndEleType)
++   for ele:=attributes.Element(0);ele<attributes.EndEleType;ele++ {
++    auras[ele]=gtttrace.EventValue{Kind:"bool",Boolean:reactable.AuraContains(ele)}
++   }
++   value.Fields["Auras"]=gtttrace.EventValue{Kind:"array",Items:auras}
++  }
++  out=append(out,value)
++ }
++ return out
++}

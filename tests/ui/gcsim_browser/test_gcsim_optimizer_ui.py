@@ -10,6 +10,7 @@ configure_startup_ui_scale()
 
 from PySide6.QtWidgets import QApplication, QAbstractSpinBox
 
+from localization import tr
 from run_workspace.gcsim.optimizer_go_all import (
     GcsimOptimizerGoAllSetsRequest,
 )
@@ -88,7 +89,8 @@ class GcsimOptimizerUiTests(unittest.TestCase):
         workspace.optimizer_all_sets_button.click()
         self.assertEqual(requests, [(0, "active furina;")])
         self.assertEqual(workspace._optimizer_mode, "all_sets")
-        self.assertIn("10", workspace.optimizer_elapsed_label.text())
+        request = GcsimOptimizerGoAllSetsRequest("account.db", {"slots": []}, 0, "active furina;")
+        self.assertIn(str(request.product_timeout_ms // 60_000), workspace.optimizer_elapsed_label.text())
         workspace.set_optimizer_busy(True)
         self.assertFalse(workspace.optimizer_all_sets_button.isEnabled())
         self.assertFalse(workspace.optimizer_selected_button.isEnabled())
@@ -326,18 +328,198 @@ class GcsimOptimizerUiTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(workspace.optimizer_progress_bar.maximum(), 5)
-        self.assertEqual(workspace.optimizer_progress_bar.value(), 4)
+        self.assertEqual(workspace.optimizer_progress_bar.maximum(), 100)
+        self.assertGreater(workspace.optimizer_progress_bar.value(), 0)
+        self.assertLess(workspace.optimizer_progress_bar.value(), 100)
+        self.assertFalse(workspace.optimizer_progress_bar.isTextVisible())
+        self.assertEqual(
+            workspace.optimizer_progress_label.text(),
+            tr("gcsim.optimizer.simulating_finalists"),
+        )
         self.assertTrue(workspace.optimizer_cancel_button.isEnabled())
 
         workspace.set_optimizer_busy(False)
         self.assertFalse(workspace.optimizer_cancel_button.isEnabled())
 
-    def test_timer_reports_elapsed_time_and_stops_on_completion(self) -> None:
+    def test_progress_bar_advances_monotonically_across_optimizer_stages(self) -> None:
         workspace = GcsimBrowserWorkspace()
         workspace.set_optimizer_busy(True)
+        events = (
+            {
+                "stage": "preparing_sources",
+                "completed_work": 1,
+                "total_work": 3,
+                "sequence": 1,
+            },
+            {
+                "stage": "capturing_schedule",
+                "completed_work": 2,
+                "total_work": 4,
+                "sequence": 2,
+            },
+            {
+                "stage": "searching",
+                "completed_work": 1,
+                "total_work": 5,
+                "sequence": 3,
+            },
+            {
+                "stage": "preparing_replacements",
+                "completed_work": 1,
+                "total_work": 2,
+                "sequence": 4,
+            },
+            {
+                "stage": "simulating_finalists",
+                "completed_work": 4,
+                "total_work": 5,
+                "sequence": 5,
+            },
+            # A later stage can report a smaller local counter; the overall bar holds.
+            {"stage": "validating_finalists", "completed_work": 2, "total_work": 5, "sequence": 6},
+        )
+        values = []
+        for event in events:
+            workspace.update_optimizer_progress(event)
+            values.append(workspace.optimizer_progress_bar.value())
+
+        self.assertEqual(values, sorted(values))
+        self.assertLess(values[-1], 100)
+
+        workspace.update_optimizer_progress(
+            {"stage": "completed", "completed_work": 1, "total_work": 1, "sequence": 7}
+        )
+        self.assertEqual(workspace.optimizer_progress_bar.value(), 100)
+        workspace.close()
+
+    def test_finish_is_single_shot_for_selected_and_all_but_disabled_for_theory(self) -> None:
+        workspace = GcsimBrowserWorkspace()
+        finish_requests: list[bool] = []
+        workspace.optimizer_finish_requested.connect(
+            lambda: finish_requests.append(True)
+        )
+        workspace.optimizer_selected_button.click()
+        workspace.set_optimizer_busy(True)
+
+        self.assertTrue(workspace.optimizer_finish_button.isEnabled())
+        workspace.optimizer_finish_button.click()
+        workspace.optimizer_finish_button.click()
+
+        self.assertEqual(finish_requests, [True])
+        self.assertFalse(workspace.optimizer_finish_button.isEnabled())
+        self.assertTrue(workspace.optimizer_cancel_button.isEnabled())
+        self.assertIn(
+            tr("gcsim.optimizer.finish_requested"),
+            workspace.optimizer_progress_label.text(),
+        )
+        workspace.update_optimizer_progress(
+            {"stage": "loading_evidence", "completed_work": 1, "total_work": 3}
+        )
+        self.assertIn(
+            tr("gcsim.optimizer.finish_requested"),
+            workspace.optimizer_progress_label.text(),
+        )
+        workspace.update_optimizer_progress(
+            {"stage": "validating_finalists", "completed_work": 2, "total_work": 3}
+        )
+        self.assertEqual(
+            workspace.optimizer_progress_label.text(),
+            tr("gcsim.optimizer.validating_finalists"),
+        )
+        self.assertFalse(workspace.optimizer_finish_button.isEnabled())
+        workspace.update_optimizer_progress(
+            {"stage": "simulating_finalists", "completed_work": 3, "total_work": 3}
+        )
+        self.assertFalse(workspace.optimizer_finish_button.isEnabled())
+        self.assertEqual(
+            workspace.optimizer_progress_label.text(),
+            tr("gcsim.optimizer.simulating_finalists"),
+        )
+        self.assertTrue(workspace.optimizer_cancel_button.isEnabled())
+        workspace.set_optimizer_busy(False)
+
+        workspace.set_optimizer_all_sets_available(True)
+        workspace.optimizer_all_sets_button.click()
+        workspace.set_optimizer_busy(True)
+        self.assertTrue(workspace.optimizer_finish_button.isEnabled())
+        workspace.set_optimizer_busy(False)
+
+        workspace.set_optimizer_theory_available(True)
+        workspace.optimizer_theory_button.click()
+        workspace.set_optimizer_busy(True)
+        self.assertFalse(workspace.optimizer_finish_button.isEnabled())
+        workspace.set_optimizer_busy(False)
+        workspace.close()
+
+    def test_finish_handler_requests_worker_finish_without_cancelling(self) -> None:
+        workspace = GcsimBrowserWorkspace()
+
+        class WorkerStub:
+            request_finish = MagicMock()
+            cancel = MagicMock()
+
+        worker = WorkerStub()
+        shell = SimpleNamespace(
+            _gcsim_browser_run_worker=worker,
+            left_host=SimpleNamespace(gcsim_browser_workspace=workspace),
+        )
+        with patch("ui.app_shell.GcsimBrowserSelectedOptimizerWorker", WorkerStub):
+            AppShell._on_gcsim_optimizer_finish_requested(shell)
+
+        worker.request_finish.assert_called_once_with()
+        worker.cancel.assert_not_called()
+        workspace.close()
+
+    def test_manual_early_finish_warning_is_localized_in_result_and_summary(self) -> None:
+        workspace = GcsimBrowserWorkspace()
+        shell = SimpleNamespace(
+            controller=SimpleNamespace(equipment_db_path="unused-account.db"),
+            left_host=SimpleNamespace(gcsim_browser_workspace=workspace),
+            _gcsim_optimizer_selected_team={"slots": []},
+        )
+        payload = {
+            "status": "success",
+            "mode": "selected",
+            "result": {
+                "ranking_basis": "gcsim",
+                "winner": [],
+                "warnings": ["search_finished_by_user"],
+            },
+        }
+
+        with patch("ui.app_shell.list_all_artifacts", return_value=[]):
+            AppShell._on_gcsim_optimizer_selected_finished(shell, payload)
+
+        notice = tr("gcsim.optimizer.search_finished_by_user")
+        self.assertIn(notice, workspace.optimizer_result.toPlainText())
+        self.assertNotIn(
+            "search_finished_by_user",
+            workspace.optimizer_result.toPlainText(),
+        )
+        workspace.close()
+
+    def test_finish_without_candidate_has_stopped_instruction_not_failure_heading(self) -> None:
+        workspace = GcsimBrowserWorkspace()
+        self.addCleanup(workspace.close)
+        workspace.set_optimizer_busy(True)
+        workspace._optimizer_finish_requested = True
+        shell = SimpleNamespace(left_host=SimpleNamespace(gcsim_browser_workspace=workspace))
+        AppShell._on_gcsim_optimizer_selected_finished(shell, {
+            "status": "failed", "mode": "all_sets", "error_code": "finish_no_result",
+        })
+        self.assertEqual(workspace.optimizer_progress_label.text(), tr("gcsim.optimizer.finish_no_result_title"))
+        self.assertIn(tr("gcsim.optimizer.finish_no_result"), workspace.optimizer_result.toPlainText())
+        self.assertFalse(workspace._optimizer_elapsed_tick.isActive())
+        self.assertLess(workspace.optimizer_progress_bar.value(), 100)
+
+    def test_timer_reports_only_real_elapsed_time_and_stops_on_completion(self) -> None:
+        workspace = GcsimBrowserWorkspace()
+        self.assertEqual(workspace.optimizer_elapsed_label.text(), "")
+        workspace.set_optimizer_busy(True)
         self.assertTrue(workspace._optimizer_elapsed_tick.isActive())
-        self.assertIn("1", workspace.optimizer_elapsed_label.text())
+        self.assertIn("0:00", workspace.optimizer_elapsed_label.text())
+        self.assertNotIn("estimate", workspace.optimizer_elapsed_label.text().casefold())
+        self.assertNotIn("typical", workspace.optimizer_elapsed_label.text().casefold())
 
         workspace.update_optimizer_progress(
             {"stage": "completed", "completed_work": 1, "total_work": 1}
@@ -345,6 +527,8 @@ class GcsimOptimizerUiTests(unittest.TestCase):
 
         self.assertFalse(workspace._optimizer_elapsed_tick.isActive())
         self.assertIn("0:00", workspace.optimizer_elapsed_label.text())
+        self.assertNotIn("estimate", workspace.optimizer_elapsed_label.text().casefold())
+        self.assertNotIn("typical", workspace.optimizer_elapsed_label.text().casefold())
         self.assertEqual(_format_optimizer_elapsed(3_725_000), "1:02:05")
 
     def test_result_rows_follow_team_order_and_emit_existing_preset_payload(self) -> None:

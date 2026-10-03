@@ -277,9 +277,10 @@ func (progress ProgressRecord) Validate() error {
 		return err
 	}
 	allowedStages := map[string]bool{
+		"preparing_sources": true, "capturing_schedule": true, "preparing_replacements": true,
 		"validating_request": true, "loading_evidence": true, "compiling_formula": true,
 		"searching": true, "validating_finalists": true, "simulating_finalists": true,
-		"completed": true, "cancelled": true, "failed": true,
+		"finalizing": true, "completed": true, "cancelled": true, "failed": true,
 	}
 	if !allowedStages[progress.Stage] {
 		return fmt.Errorf("unsupported progress stage %q", progress.Stage)
@@ -294,6 +295,9 @@ func (progress ProgressRecord) Validate() error {
 }
 
 func (result OptimizerResult) Validate() error {
+	if len(result.Candidates) > MaxResultRows {
+		return fmt.Errorf("candidates exceed the 5050-row technical output limit")
+	}
 	if err := validateHeader(result.SchemaVersion, result.SchemaKind, ResultSchemaKind); err != nil {
 		return err
 	}
@@ -346,15 +350,19 @@ func (result OptimizerResult) validateSuccess() error {
 	if err := validateResultArtifacts("winner", result.Winner); err != nil {
 		return err
 	}
-	if result.Measured == nil {
-		return fmt.Errorf("successful result requires measured result")
+	rankingBasis := result.RankingBasis
+	if rankingBasis == "" {
+		rankingBasis = "gcsim"
+	}
+	if rankingBasis != "gcsim" && rankingBasis != "formula" {
+		return fmt.Errorf("ranking_basis must be gcsim or formula")
 	}
 	if len(result.Candidates) > 0 {
-		var previousDPS *big.Rat
+		seenAssignments := make(map[[20]ArtifactAssignment]struct{}, len(result.Candidates))
 		for index, candidate := range result.Candidates {
 			field := fmt.Sprintf("candidates[%d]", index)
 			if candidate.Rank != index+1 {
-				return fmt.Errorf("%s rank must match measured order", field)
+				return fmt.Errorf("%s rank must match product order", field)
 			}
 			if err := validateResultArtifacts(field+".artifacts", candidate.Artifacts); err != nil {
 				return err
@@ -362,67 +370,187 @@ func (result OptimizerResult) validateSuccess() error {
 			if err := validateNonNegativeDecimal(field+".formula_dps", candidate.FormulaDPS); err != nil {
 				return err
 			}
-			if err := validateDecimal(field+".formula_residual", candidate.FormulaResidual); err != nil {
-				return err
-			}
-			if candidate.Measured.Iterations <= 0 {
-				return fmt.Errorf("%s requires measured iterations", field)
-			}
-			if err := validateNonNegativeDecimal(field+".measured.dps", candidate.Measured.DPS); err != nil {
-				return err
-			}
-			currentDPS, _ := new(big.Rat).SetString(candidate.Measured.DPS)
-			if previousDPS != nil && previousDPS.Cmp(currentDPS) < 0 {
-				return fmt.Errorf("candidates must be sorted by descending measured DPS")
-			}
-			previousDPS = currentDPS
-			if err := validateNonNegativeDecimal(field+".measured.standard_error", candidate.Measured.StandardError); err != nil {
-				return err
-			}
-			if err := validateSHA256(field+".measured.engine_result_sha256", candidate.Measured.EngineResultSHA256, false); err != nil {
-				return err
-			}
-			for prior := 0; prior < index; prior++ {
-				if sameArtifactAssignments(result.Candidates[prior].Artifacts, candidate.Artifacts) {
-					return fmt.Errorf("candidates must not repeat artifact assignments")
+			if rankingBasis == "formula" {
+				if candidate.Measured != nil || candidate.FormulaResidual != "" {
+					return fmt.Errorf("%s formula-only candidate must not contain measured or residual results", field)
+				}
+			} else {
+				if err := validateDecimal(field+".formula_residual", candidate.FormulaResidual); err != nil {
+					return err
+				}
+				if err := validateMeasuredResult(field+".measured", candidate.Measured); err != nil {
+					return err
 				}
 			}
+			var identity [20]ArtifactAssignment
+			copy(identity[:], candidate.Artifacts)
+			if _, exists := seenAssignments[identity]; exists {
+				return fmt.Errorf("candidates must not repeat artifact assignments")
+			}
+			seenAssignments[identity] = struct{}{}
+		}
+		if err := validateCandidateOrdering(result.Candidates, rankingBasis); err != nil {
+			return err
 		}
 		first := result.Candidates[0]
 		if !sameArtifactAssignments(first.Artifacts, result.Winner) ||
 			first.FormulaDPS != result.FormulaDPS ||
-			first.FormulaResidual != result.FormulaResidual ||
-			first.Measured != *result.Measured {
+			first.FormulaResidual != result.FormulaResidual {
 			return fmt.Errorf("first ranked candidate must be the product winner")
+		}
+		if rankingBasis == "gcsim" && (first.Measured == nil || result.Measured == nil || *first.Measured != *result.Measured) {
+			return fmt.Errorf("first ranked candidate must contain the product winner measurement")
 		}
 	}
 	if err := validateNonNegativeDecimal("formula_dps", result.FormulaDPS); err != nil {
 		return err
 	}
-	if err := validateDecimal("formula_residual", result.FormulaResidual); err != nil {
-		return err
-	}
-	if result.Measured == nil || result.Measured.Iterations <= 0 {
-		return fmt.Errorf("successful result requires measured iterations")
-	}
-	if err := validateNonNegativeDecimal("measured.dps", result.Measured.DPS); err != nil {
-		return err
-	}
-	if err := validateNonNegativeDecimal("measured.standard_error", result.Measured.StandardError); err != nil {
-		return err
-	}
-	if err := validateSHA256("measured.engine_result_sha256", result.Measured.EngineResultSHA256, false); err != nil {
-		return err
-	}
-	if result.Energy != nil {
-		if err := result.Energy.validate("energy"); err != nil {
+	if rankingBasis == "formula" {
+		if result.Measured != nil || result.FormulaResidual != "" {
+			return fmt.Errorf("formula-only result must not contain measured or residual results")
+		}
+		if !containsResultWarning(result.Warnings, "formula_only_unverified") {
+			return fmt.Errorf("formula-only result requires formula_only_unverified warning")
+		}
+		if result.Energy != nil {
+			if err := result.Energy.validate("energy"); err != nil {
+				return err
+			}
+		}
+	} else {
+		if err := validateDecimal("formula_residual", result.FormulaResidual); err != nil {
 			return err
+		}
+		if err := validateMeasuredResult("measured", result.Measured); err != nil {
+			return err
+		}
+		if result.Energy != nil {
+			if err := result.Energy.validate("energy"); err != nil {
+				return err
+			}
 		}
 	}
 	if result.DebugReceiptPath == "" || result.Error != nil {
 		return fmt.Errorf("successful result requires debug receipt and no error")
 	}
 	return nil
+}
+
+func validateMeasuredResult(field string, measured *MeasuredResult) error {
+	if measured == nil || measured.Iterations <= 0 {
+		return fmt.Errorf("%s requires measured iterations", field)
+	}
+	if err := validateNonNegativeDecimal(field+".dps", measured.DPS); err != nil {
+		return err
+	}
+	if err := validateNonNegativeDecimal(field+".standard_error", measured.StandardError); err != nil {
+		return err
+	}
+	return validateSHA256(field+".engine_result_sha256", measured.EngineResultSHA256, false)
+}
+
+func containsResultWarning(warnings []string, wanted string) bool {
+	index := sort.SearchStrings(warnings, wanted)
+	return index < len(warnings) && warnings[index] == wanted
+}
+
+func validateCandidateOrdering(candidates []RankedCandidateResult, rankingBasis string) error {
+	grouped := false
+	for _, candidate := range candidates {
+		if candidate.SetGroupKey != "" || candidate.SetGroupRank != 0 || candidate.AlternativeRank != 0 {
+			grouped = true
+			break
+		}
+	}
+	if !grouped {
+		for index := 1; index < len(candidates); index++ {
+			previous, _ := candidateRankingScore(candidates[index-1], rankingBasis)
+			current, _ := candidateRankingScore(candidates[index], rankingBasis)
+			if previous.Cmp(current) < 0 {
+				return fmt.Errorf("candidates must be globally sorted by descending %s DPS", rankingBasis)
+			}
+		}
+		return nil
+	}
+
+	seenGroups := make(map[string]bool)
+	groupRank := 0
+	groupKey := ""
+	groupAlternativeRank := 0
+	var previousGroupScore *big.Rat
+	previousGroupKey := ""
+	var previousAlternativeScore *big.Rat
+	var previousAlternative []ArtifactAssignment
+	for index, candidate := range candidates {
+		field := fmt.Sprintf("candidates[%d]", index)
+		if candidate.SetGroupKey == "" || candidate.SetGroupRank <= 0 || candidate.AlternativeRank <= 0 {
+			return fmt.Errorf("%s has incomplete set-group metadata", field)
+		}
+		if candidate.SetGroupRank > MaxResultGroups || candidate.AlternativeRank > MaxResultBuildsPerGroup {
+			return fmt.Errorf("%s set-group/alternative ranks exceed technical limits %d/%d", field, MaxResultGroups, MaxResultBuildsPerGroup)
+		}
+		score, _ := candidateRankingScore(candidate, rankingBasis)
+		if index == 0 || candidate.SetGroupKey != groupKey {
+			if seenGroups[candidate.SetGroupKey] {
+				return fmt.Errorf("candidate set groups must be contiguous")
+			}
+			if candidate.SetGroupRank != groupRank+1 || candidate.AlternativeRank != 1 {
+				return fmt.Errorf("%s set-group and alternative ranks must be contiguous", field)
+			}
+			if previousGroupScore != nil {
+				if previousGroupScore.Cmp(score) < 0 || (previousGroupScore.Cmp(score) == 0 && previousGroupKey >= candidate.SetGroupKey) {
+					return fmt.Errorf("set groups must be sorted by descending %s DPS and canonical key", rankingBasis)
+				}
+			}
+			seenGroups[candidate.SetGroupKey] = true
+			groupRank = candidate.SetGroupRank
+			groupKey = candidate.SetGroupKey
+			groupAlternativeRank = 1
+			previousGroupScore = score
+			previousGroupKey = candidate.SetGroupKey
+			previousAlternativeScore = score
+			previousAlternative = candidate.Artifacts
+			continue
+		}
+		if candidate.SetGroupRank != groupRank || candidate.AlternativeRank != groupAlternativeRank+1 {
+			return fmt.Errorf("%s set-group and alternative ranks must be contiguous", field)
+		}
+		if previousAlternativeScore.Cmp(score) < 0 ||
+			(previousAlternativeScore.Cmp(score) == 0 && compareResultAssignments(previousAlternative, candidate.Artifacts) > 0) {
+			return fmt.Errorf("set-group alternatives must be sorted by descending %s DPS and artifact IDs", rankingBasis)
+		}
+		groupAlternativeRank = candidate.AlternativeRank
+		previousAlternativeScore = score
+		previousAlternative = candidate.Artifacts
+	}
+	return nil
+}
+
+func candidateRankingScore(candidate RankedCandidateResult, rankingBasis string) (*big.Rat, error) {
+	text := candidate.FormulaDPS
+	if rankingBasis == "gcsim" {
+		if candidate.Measured == nil {
+			return nil, fmt.Errorf("candidate is missing measured ranking score")
+		}
+		text = candidate.Measured.DPS
+	}
+	score, ok := new(big.Rat).SetString(text)
+	if !ok {
+		return nil, fmt.Errorf("candidate ranking score is not a finite decimal")
+	}
+	return score, nil
+}
+
+func compareResultAssignments(left, right []ArtifactAssignment) int {
+	for index := range left {
+		if left[index].ArtifactID < right[index].ArtifactID {
+			return -1
+		}
+		if left[index].ArtifactID > right[index].ArtifactID {
+			return 1
+		}
+	}
+	return 0
 }
 
 func (result EnergyResult) validate(field string) error {

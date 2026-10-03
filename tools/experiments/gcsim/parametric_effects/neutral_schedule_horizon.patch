@@ -1,0 +1,22 @@
+diff --git a/pkg/optimization/optstats/gtt_neutral_context.go b/pkg/optimization/optstats/gtt_neutral_context.go
+--- a/pkg/optimization/optstats/gtt_neutral_context.go
++++ b/pkg/optimization/optstats/gtt_neutral_context.go
+@@ -11,6 +11,7 @@
+ 	Stats gtttrace.EventValue `json:"stats"`
+ }
+ type GTTNeutralContext struct {
++	DurationFrames int `json:"duration_frames"`
+ 	NoSets bool `json:"no_sets"`
+ 	Moonsign int `json:"moonsign"`
+ 	Active int `json:"active"`
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -288,6 +288,7 @@
+ 
+ func (b GTTTraceEquationBuffer) Flush(core *core.Core) GTTTraceEquationBuffer {
+ 	b.DurationFrames = core.F
++	b.NeutralContext.DurationFrames = core.F
+ 	b.Seed = core.Seed
+ 	b.ProviderTransitions = core.GTTTrace.ModifierTransitions()
+ 	b.SourceOccurrences = core.GTTTrace.SourceOccurrences()

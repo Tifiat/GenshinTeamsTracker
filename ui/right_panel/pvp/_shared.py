@@ -1293,6 +1293,7 @@ def _asset_image_path(asset: Mapping[str, Any] | None) -> str:
     character = _mapping(metadata.get("character"))
     weapon = _mapping(metadata.get("weapon"))
     for value in (
+        metadata.get("portrait_pvp_path"),
         character.get("portrait_path"),
         character.get("local_portrait_path"),
         character.get("side_icon_path"),

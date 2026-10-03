@@ -1,0 +1,65 @@
+diff --git a/pkg/optimization/gtt_trace_equation.go b/pkg/optimization/gtt_trace_equation.go
+--- a/pkg/optimization/gtt_trace_equation.go
++++ b/pkg/optimization/gtt_trace_equation.go
+@@ -299,7 +299,8 @@
++	if err := validateGTTTraceHitIdentities(buffer.Hits); err != nil {
++		return err
++	}
+ 	for index, hit := range buffer.Hits {
+-		if hit.HitID != uint64(index+1) || hit.AttackID == 0 {
+-			return errors.New("gtt trace equation: unstable hit identity")
+-		}
+ 		switch hit.FormulaKind {
+diff --git a/pkg/optimization/gtt_hit_identity.go b/pkg/optimization/gtt_hit_identity.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_hit_identity.go
+@@ -0,0 +1,25 @@
++package optimization
++
++import (
++	"fmt"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++)
++
++// Identity is allocated before reactions/callbacks run. A nested hit can
++// complete before its parent, so completion order is not identity order.
++// Preserve the observed order and every event reference; never renumber/sort.
++func validateGTTTraceHitIdentities(hits []info.GTTTraceHit) error {
++	seen := make(map[uint64]bool, len(hits))
++	for index, hit := range hits {
++		if hit.HitID == 0 || hit.AttackID == 0 || seen[hit.HitID] {
++			return fmt.Errorf("gtt trace equation: invalid hit identity at observation %d: hit=%d attack=%d duplicate=%t", index, hit.HitID, hit.AttackID, seen[hit.HitID])
++		}
++		seen[hit.HitID] = true
++	}
++	return nil
++}
+diff --git a/pkg/optimization/gtt_hit_identity_test.go b/pkg/optimization/gtt_hit_identity_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_hit_identity_test.go
+@@ -0,0 +1,36 @@
++package optimization
++
++import (
++	"reflect"
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++)
++
++func TestNeutralHitIdentityValidation(t *testing.T) {
++	for _, ids := range [][]uint64{{1, 2, 3}, {2, 1, 3}, {2, 5, 1}} {
++		hits := make([]info.GTTTraceHit, len(ids))
++		for i, id := range ids { hits[i] = info.GTTTraceHit{HitID:id, AttackID:7} }
++		before := append([]info.GTTTraceHit(nil), hits...)
++		if err := validateGTTTraceHitIdentities(hits); err != nil { t.Fatal(ids, err) }
++		if !reflect.DeepEqual(hits, before) { t.Fatal("validator changed observations/identities") }
++	}
++	for _, hits := range [][]info.GTTTraceHit{
++		{{HitID:0, AttackID:7}}, {{HitID:1, AttackID:0}},
++		{{HitID:2, AttackID:7}, {HitID:2, AttackID:8}},
++	} {
++		if validateGTTTraceHitIdentities(hits) == nil { t.Fatal("accepted invalid identity", hits) }
++	}
++}

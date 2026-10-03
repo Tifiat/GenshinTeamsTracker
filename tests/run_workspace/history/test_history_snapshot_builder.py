@@ -127,6 +127,7 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
     def test_supplied_team_slot_build_stat_and_bonus_data_survives(self) -> None:
         session = RunSessionController.empty()
         details = _rich_details()
+        details["account_character"]["portrait_history_path"] = "assets/characters/thoma_history.png"
         session.team_state = (
             session.team_state.set_character(0, 0, {"id": "10000050", "name": "Thoma"})
             .set_weapon(0, 0, {"id": "13501", "name": "Favonius Lance"})
@@ -146,6 +147,8 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
         self.assertEqual(slot.character.character_id, "10000050")
         self.assertEqual(slot.character.level, 90)
         self.assertEqual(slot.character.portrait_ref, "assets/characters/thoma.png")
+        self.assertEqual(slot.character.expanded_portrait_ref, "assets/characters/thoma_history.png")
+        self.assertIn("assets/characters/thoma_history.png", {ref.path for ref in bundle.asset_refs})
         self.assertEqual(slot.weapon.weapon_fingerprint, "favonius_lance|90|5")
         self.assertEqual(slot.weapon.stat_rows[0].label, "Base ATK")
         self.assertEqual(slot.weapon.passive_effects, ("Generates particles on CRIT.",))

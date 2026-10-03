@@ -155,7 +155,9 @@ def _slot_view_model(
         character_meta="" if character is None else _character_meta(character),
         portrait_label="" if character is None else _square_label(character.name, "CHAR"),
         portrait_path=(
-            "" if character is None else _asset_path(bundle_dir, character.portrait_ref)
+            "" if character is None else _asset_path(
+                bundle_dir, character.expanded_portrait_ref or character.portrait_ref
+            )
         ),
         weapon_label="" if weapon is None else weapon.name,
         weapon_square_label=(

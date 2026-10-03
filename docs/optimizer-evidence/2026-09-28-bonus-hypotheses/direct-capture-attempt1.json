@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "stage": "source_copy_compile",
+  "failure_type": "FileNotFoundError",
+  "message": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\user\\\\Desktop\\\\GenshinTeamsTracker\\\\native\\\\gcsim_optimizer\\\\go.sum'"
+}

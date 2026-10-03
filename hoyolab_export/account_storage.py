@@ -2044,9 +2044,14 @@ def build_account_gcsim_key_resolver(
             ),
         )
 
-    # The report module's pinned old source is a dev fixture, not the engine
-    # currently used by the application. Resolve defaults at sync time so an
-    # engine update cannot leave later imports using an obsolete registry.
+    # Bind both defaults to one active installation at sync time. Source-layout
+    # compatibility is allowed inside that installation, never across engines.
+    if (character_source_path is None) != (weapon_source_path is None):
+        return _unavailable_gcsim_key_resolver(
+            source_paths={},
+            warnings=(WARNING_GCSIM_KEY_REGISTRY_UNAVAILABLE,
+                      "gcsim_registry_partial_override"),
+        )
     if character_source_path is None or weapon_source_path is None:
         try:
             from run_workspace.gcsim.engine_store import GcsimEngineStore

@@ -59,9 +59,9 @@ func (h *Handle) EvaluateDPS(rawArtifactDeltas map[string]float64) (float64, err
 		return 0, fmt.Errorf("missing compiled context")
 	}
 	d := h.decision
-	if d.Route == FreshCapture {
+	if d.Route == FreshCapture || d.Route == NeutralEffects {
 		d.Route = IdentityReuse
-	} // new graph already contains its own set effects
+	} // Captured or explicitly bound arithmetic already contains its effects.
 	composed, err := d.ComposeDeltas(rawArtifactDeltas)
 	if err != nil {
 		return 0, err
@@ -79,7 +79,9 @@ func (h *Handle) EvaluateDPS(rawArtifactDeltas map[string]float64) (float64, err
 	return h.compiled.panel.EvaluateDPS(dense)
 }
 
-// SearchPanel is available only for a graph captured for this exact context.
+// SearchPanel is available for an exact capture or an explicitly bound neutral
+// model view. Neutral views retain their distinct route and uncertainty; they
+// are not fresh captures and never expose a replacement certificate.
 // Static-bias contexts need a bias-aware dense search adapter, not accidental
 // direct access that would drop the replacement. No such producer is enabled.
 func (h *Handle) SearchPanel() (*evaluator.Panel, error) {
@@ -87,6 +89,17 @@ func (h *Handle) SearchPanel() (*evaluator.Panel, error) {
 		return nil, fmt.Errorf("search requires an exact captured context")
 	}
 	return h.compiled.panel, nil
+}
+
+// All Sets discovery no longer performs hypothetical effect-input probes.
+// After compiling its optional energy model it can release the bulky raw IR
+// and sidecars; identity, arithmetic panel and on-disk capture remain intact.
+// Theory/Selected and source-guide callers must not use this one-way operation.
+func (h *Handle) ReleaseCaptureInputs() {
+	if h != nil && h.compiled != nil {
+		h.compiled.capture = nil
+		h.compiled.effectCapture = nil
+	}
 }
 
 // EnergyMembers exposes the immutable seed panel for an exact captured

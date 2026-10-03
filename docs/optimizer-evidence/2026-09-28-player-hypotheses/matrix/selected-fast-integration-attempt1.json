@@ -1,0 +1,1 @@
+{"failure":{"message":"Retained request is not bound to the current active engine","stage":"saved_request","type":"ValueError"},"mode":"fast-pair","schema_version":1,"scope":"pinned Selected request; fresh compact; real Python adapter; no DB or install","status":"failed"}

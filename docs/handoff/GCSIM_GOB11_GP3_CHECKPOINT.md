@@ -3,47 +3,57 @@
 ## Status and authority
 
 <!-- handoff-current: gcsim-optimizer -->
-Reviewed 2026-09-19. N1 All Sets, Selected/All finite-energy implementation,
-neutral Theory and shared formula regressions remain installed. A clean
-v2.45.0 apply/build/runtime check activated the eight-patch observed-modifier
-lineage; its predecessor is byte-identical and retained for rollback.
+Reviewed 2026-10-03 during authorized baseline/worker preparation, not a numerical run.
+Exact-reuse consumer e0bf5d64 remains installed; engine unchanged. Source9251adea
+is the dated 2026-09-28 build aggregate, including tests, not the current refactored
+source identity. Trace section2 owns behavior. The
+[experiment ledger](../optimizer-evidence/2026-09-28-player-hypotheses/README.md)
+owns measurements and rejected alternatives; the
+[refactor audit](GCSIM_OPTIMIZER_REFACTOR_AUDIT_20261003.md) owns cleanup findings.
 
-- Active engine: `gcsim-v2.45.0-observed-modifier-lineage5-20260919`
-- Rollback engine: `gcsim-v2.45.0-observed-modifier-lineage4-20260919`
+- Active engine: `gcsim-v2.45.0-20260927011932`
+- Rollback engine: `gcsim-v2.45.0-20260926234622`
 - Active patch: `run_workspace/gcsim/patch_stack`
-- Patch SHA256: `680ec766adb897e423f933d9ae49e3ddef565d26edc8a70ee0b25b3dcfdb3275`
-- Active artifact SHA256: `9d107ed713a171c64509ce35348c5d8f7bc08d81bea785db0f308b46d8869d50`
-- Acceptance status: `lineage5_archetype_matrix_and_account_ui_pass_quality_limits_open`
-- Next block: `optimizer_archetype_quality_followup`
+- Patch SHA256: `154ba582eb6af53f1a2e96f8eb4e808e268a047308b0198a30cbcd88b6b56198`
+- Active artifact SHA256: `7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c`
+- Acceptance status: `exact_reuse_installed_backend_pass`
+- Next block: `optimizer_split_baseline`
 
-Computer Use followed the user's PyCharm AppShell launch and clicked all three
-real buttons on the account Chasca team: Theory 5:14 (172467 formula DPS),
-Selected 1:13 (155658 measured), All Sets 2:55 (155688 measured), all with
-visible result pages. A fourth physical click completed Theory with virtual
-Chasca and **no saved artifact build** in 5:12. The account team was restored.
-The byte-identical lineage4 exe served those clicks; the freshly installed
-lineage5 serves the subsequent product-session matrix. A Qt-button unit test
-also forwards an unsaved virtual profile to the All Sets session, but no
-physical virtual All Sets click is claimed.
-After activating lineage5, a fresh PyCharm AppShell launch displayed all three
-optimizer buttons and the shared energy switch. Its team was empty, so no
-lineage5 physical search completion is claimed from that later UI check.
+Pages group bonus combinations with independent single-item DPS deltas.
+Recommended caps normal5/10, fast10/40; defaults3/2 and5/20; opt-in50/100.
+Found rows control allocations; output limits do not widen core search. Fast
+skips final verification, not capture. Search cycles/work are bounded, not an
+exhaustive/global-optimum proof; no product wall-clock timeout.
 
-The managed 14-roster × (All Sets, Theory) matrix uses the same request/session
-classes as the UI, owner-preserving virtual profiles, ordinary n=500/n=1000
-All Sets finalists and explicitly infinite energy. See the dated
-[archetype audit](GCSIM_OPTIMIZER_ARCHETYPE_AUDIT_20260919.md) and its compact
-receipt for per-team ranks, timing, formula channels and engine hashes. All
-completed rows succeeded; this is not 28 UI clicks or a global optimum proof.
-Gaming's two-seed reacted-plunge schedule overpredicts its ordinary DPS;
-several physically retained 4p sets have inactive bonuses on their wearer.
-Theory may return a labeled partial shortlist or an undistinguished set. Its
-finite-energy request now fails clearly rather than silently ignoring ER.
+The [2026-09-28 matrix/install receipt](../optimizer-evidence/2026-09-28-player-hypotheses/matrix/README.md)
+retains13 non-Gaming cases,637 exact rows, Selected fast/ordinary and installed
+Navia gates within their dated scope. Preserve rejected variants, reused
+baselines and accepted Bloom noise attribution; never inject an equipped
+control. No new numerical matrix, source oracle or physical UI gate.
 
-Next: bounded Gaming schedule/recall diagnosis and controlled inactive-set
-alternatives; preserve the Selected2+2/Save/cancel/equipment visible UI gate.
-Opaque branch/schedule boundaries, account-specific acceptance and a true
-finite-energy Theory solver remain open. [TODO](../../TODO.md) owns their order.
+Prior physical Selected/All evidence remains in the
+[replacement/Finish receipt](GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md#2026-09-27-single-item-replacement-output-and-early-finish).
+Revised limits and104px replacement geometry have programmatic checks only;
+physical jitter/reload and actual preset Save remain unverified.
+
+Dead result/n1000/ordinary wrappers removed; rechecked live helpers remain.
+Mode-explicit Python inputs/processes and strict source codecs separated;
+cache warming skips legacy discovery. Both All Sets energy routes and Theory
+full discovery remain. No search arithmetic changed.
+
+Cleanup gates: vet/15 native packages and119 Python/offscreen tests PASS in the
+structural slice. New worker/storage gates:61 tests,58 PASS/3 platform-link
+skips. Failed SQLite-handle attempt and repairs remain in audit section9.
+Native34 disabled/platform gates do not certify engine response. Active engine
+binding rechecked trusted; no binary promotion, capture/search/matrix or actual UI.
+
+User approved whole mixed-state `master` baseline and separate polish/Theory
+branches; `worker2 GTT` gets independent DB/engine copies. Source retention and
+old-pin budget fixed; four unpinned old runs reclaimed, evidence preserved.
+Next: commit, seed/verify linked worker, then gated polish/retirement and
+separate Theory chat. Fresh-checkout proof pending; no new chat created.
+Neither mode is fully clean; installed post-refactor parity, Theory and
+changed-item response remain outside acceptance.
 <!-- /handoff-current -->
 
 ### Multi-scale provenance audit (2026-09-18)
@@ -201,10 +211,10 @@ No actual optimizer UI rerun was performed for N0. Latest Jahoda user result is
 pinned only through N1 review; release that diagnostic pin after its evidence
 has been exported. Evidence and limits:
 `tests/fixtures/gcsim_optimizer_go_v1/generated_storage_audit_v1.json`.
-Then follow TODO N1-N6 and the trace handoff's "Overnight execution contract".
-One isolated subagent is temporarily permitted; History Browser is excluded.
-Real conceptual choices without a defensible default are parked while other
-independent authorized work continues. All existing acceptance limits persist.
+The N0-to-N6 overnight instructions were time-limited and are closed. Current
+work order is in `../../TODO.md`; current subagent policy is in `../../CODEX.md`.
+The retained evidence above does not authorize new delegation or exclude a
+separately requested History task.
 
 Joint evidence: `tests/fixtures/gcsim_optimizer_go_v1/all_sets_joint_context_receipt_v1.json`.
 Raw controls are now archive members under original paths: `.codex_tmp/all-sets-transfer-guide-20260917`,

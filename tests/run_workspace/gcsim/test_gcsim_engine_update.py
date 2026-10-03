@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from run_workspace.gcsim.engine_store import GcsimEngineStore, load_engine_manifest
@@ -26,6 +27,55 @@ from run_workspace.gcsim.source_acquisition import (
 
 
 class GcsimEngineUpdateTest(unittest.TestCase):
+    def test_source_retention_hook_runs_after_success_and_failed_preparation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            good_archive = _write_fake_gcsim_archive(root / "good.zip")
+            bad_archive = _write_fake_gcsim_archive(root / "bad.zip", include_main=False)
+            with patch("run_workspace.gcsim.engine_update.retain_official_source_cache") as cleaner:
+                cleaner.return_value.status = "dry_run"
+                cleaner.return_value.deleted_paths = ()
+                cleaner.return_value.deleted_bytes = 0
+                cleaner.return_value.protected_paths = ()
+                cleaner.return_value.unowned_paths = ()
+                cleaner.return_value.over_budget_bytes = 0
+                cleaner.return_value.error = ""
+                good = prepare_official_gcsim_engine_update(
+                    release="good", store_dir=root / "store",
+                    source_cache_dir=root / "good-sources",
+                    source_acquirer=_archive_acquirer(good_archive, tag="good"),
+                )
+                bad = prepare_official_gcsim_engine_update(
+                    release="bad", store_dir=root / "store",
+                    source_cache_dir=root / "bad-sources",
+                    source_acquirer=_archive_acquirer(bad_archive, tag="bad"),
+                )
+                missing = prepare_official_gcsim_engine_update(
+                    release="missing", store_dir=root / "store",
+                    source_cache_dir=root / "missing-sources",
+                    source_acquirer=_failing_acquirer("offline"),
+                )
+            self.assertTrue(good.success)
+            self.assertFalse(bad.success)
+            self.assertFalse(missing.success)
+            self.assertEqual(cleaner.call_count, 2)
+            self.assertEqual(missing.source_cache_cleanup_status, "not_requested")
+
+    def test_source_retention_error_does_not_change_update_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = _write_fake_gcsim_archive(root / "good.zip")
+            with patch("run_workspace.gcsim.engine_update.retain_official_source_cache",
+                       side_effect=RuntimeError("injected retention failure")):
+                report = prepare_official_gcsim_engine_update(
+                    release="good", store_dir=root / "store",
+                    source_cache_dir=root / "sources",
+                    source_acquirer=_archive_acquirer(archive, tag="good"),
+                )
+            self.assertTrue(report.success)
+            self.assertEqual(report.source_cache_cleanup_status, "failed")
+            self.assertIn("injected retention failure", report.source_cache_cleanup_error)
+
     def test_application_gate_failure_keeps_previous_active(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

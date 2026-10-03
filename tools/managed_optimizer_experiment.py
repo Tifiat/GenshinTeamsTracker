@@ -32,6 +32,19 @@ def assert_unlinked(path: Path) -> None:
             raise ValueError(f"Linked scratch path: {item}")
 
 
+def owned_job() -> Path:
+    """Resolve this runner's active output scope without depending on a probe."""
+    raw = os.environ.get("GTT_SCRATCH_DIR")
+    if not raw:
+        raise RuntimeError("Run inside managed_optimizer_experiment.py")
+    path = Path(raw).absolute()
+    assert_unlinked(path)
+    job = path.resolve(strict=True)
+    if job.parent != MANAGED_ROOT.resolve(strict=True) or not job.name.startswith("job-"):
+        raise ValueError("Not an owned managed job")
+    return job
+
+
 def remove_owned_job(job: Path, root: Path) -> int:
     assert_unlinked(job)
     if job.parent != root or not job.name.startswith("job-"):

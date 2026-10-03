@@ -45,6 +45,8 @@ type Index struct {
 	coordinateIndex    map[string]int
 	artifactIndexByID  map[int64]int
 	Incumbent          Assignment
+	exactPackages      bool                 // All Sets views forbid unrepresented bonus tiers.
+	vectorCache        *artifactVectorCache // shared only by views of this immutable inventory
 }
 
 // AssignmentStats returns the complete artifact stat totals for every wearer.
@@ -146,6 +148,7 @@ func buildValidated(request contracts.OptimizerRequest, coordinates []string) (*
 		Coordinates:       append([]string(nil), coordinates...),
 		coordinateIndex:   coordinateIndex,
 		artifactIndexByID: make(map[int64]int, len(request.Artifacts)),
+		vectorCache:       &artifactVectorCache{entries: map[artifactVectorKey]artifactVectorEntry{}},
 	}
 	for _, artifact := range request.Artifacts {
 		row := IndexedArtifact{
@@ -199,6 +202,7 @@ func (index *Index) ValidateAssignment(assignment Assignment) error {
 	used := make(map[int64]struct{}, wearerCount*slotCount)
 	for wearerIndex, wearerIDs := range assignment {
 		var setCounts [2]int
+		physical := map[string]int{}
 		for slotIndex, artifactID := range wearerIDs {
 			artifactIndex, ok := index.artifactIndexByID[artifactID]
 			if !ok {
@@ -212,6 +216,7 @@ func (index *Index) ValidateAssignment(assignment Assignment) error {
 				return fmt.Errorf("artifact %d is assigned more than once", artifactID)
 			}
 			used[artifactID] = struct{}{}
+			physical[artifact.SetUID]++
 			for i, set := range index.Wearers[wearerIndex].SelectedSets {
 				if artifact.SetUID == set.SetUID {
 					setCounts[i]++
@@ -221,6 +226,22 @@ func (index *Index) ValidateAssignment(assignment Assignment) error {
 		for i, set := range index.Wearers[wearerIndex].SelectedSets {
 			if setCounts[i] < set.Count {
 				return fmt.Errorf("wearer %s does not satisfy fixed set package %s:%d", index.Wearers[wearerIndex].WearerKey, set.SetUID, set.Count)
+			}
+		}
+		if index.exactPackages {
+			for uid, count := range physical {
+				if count < 2 {
+					continue
+				}
+				found := false
+				for _, set := range index.Wearers[wearerIndex].SelectedSets {
+					if set.SetUID == uid && (set.Count == 4 && count >= 4 || set.Count == 2 && count < 4) {
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("wearer %s has unrepresented bonus %s:%d", index.Wearers[wearerIndex].WearerKey, uid, count)
+				}
 			}
 		}
 	}

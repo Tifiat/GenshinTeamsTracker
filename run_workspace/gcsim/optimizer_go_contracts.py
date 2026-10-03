@@ -51,6 +51,20 @@ def text_sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def write_canonical(path: Path, payload: Any) -> None:
+    """Write the same canonical bytes/newline used by the Go process contract."""
+    path.write_bytes(canonical_json_bytes(payload) + b"\n")
+
+
+def write_diagnostic_json(path: Path, payload: Any) -> None:
+    """Write a readable diagnostic inside the caller's owned run directory."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def load_contract(
     path: str | Path,
     *,
@@ -78,4 +92,6 @@ __all__ = [
     "canonical_sha256",
     "load_contract",
     "text_sha256",
+    "write_canonical",
+    "write_diagnostic_json",
 ]

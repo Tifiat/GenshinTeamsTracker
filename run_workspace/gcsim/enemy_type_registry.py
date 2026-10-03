@@ -1,7 +1,7 @@
 """Backend/dev GCSIM enemy target type registry and matcher.
 
-This module parses known target type keys from local prepared GCSIM source
-(`pkg/shortcut/enemies_gen.go`) when available, but tests pin the matcher with
+This module parses known target type keys from the active GCSIM engine source
+(`pkg/shortcut/monster.dm.go`) when available, but tests pin the matcher with
 small fixture registries. It is intentionally not a full hand-written monster
 database and must not use fuzzy similarity as production truth.
 """
@@ -18,8 +18,10 @@ from typing import Any
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_GCSIM_SOURCE_ROOT = PROJECT_ROOT / "data" / "gcsim" / "sources" / "expanded"
-GCSIM_ENEMY_SHORTCUT_RELATIVE_PATH = Path("pkg") / "shortcut" / "enemies_gen.go"
+GCSIM_ENEMY_SHORTCUT_RELATIVE_PATHS = (
+    Path("pkg") / "shortcut" / "monster.dm.go",
+    Path("pkg") / "shortcut" / "enemies_gen.go",
+)
 
 MATCH_METHOD_MANUAL_MAPPING = "manual_mapping"
 MATCH_METHOD_EXACT_NORMALIZED_NAME = "exact_normalized_name"
@@ -217,14 +219,22 @@ def load_default_gcsim_enemy_type_registry(
 
 
 def find_default_gcsim_enemy_shortcut_source() -> Path | None:
-    if not DEFAULT_GCSIM_SOURCE_ROOT.is_dir():
+    from .engine_store import GcsimEngineStore, GcsimEngineStoreError
+
+    try:
+        active = GcsimEngineStore().get_active_engine()
+    except (GcsimEngineStoreError, OSError, ValueError):
         return None
-    candidates = [
-        path / GCSIM_ENEMY_SHORTCUT_RELATIVE_PATH
-        for path in sorted(DEFAULT_GCSIM_SOURCE_ROOT.iterdir(), reverse=True)
-        if path.is_dir()
-    ]
-    return next((path for path in candidates if path.is_file()), None)
+    if active is None:
+        return None
+    return next(
+        (
+            candidate
+            for relative in GCSIM_ENEMY_SHORTCUT_RELATIVE_PATHS
+            if (candidate := active.path / relative).is_file()
+        ),
+        None,
+    )
 
 
 def _parse_go_map_string_keys(text: str) -> tuple[str, ...]:

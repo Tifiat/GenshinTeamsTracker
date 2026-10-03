@@ -4,48 +4,36 @@ Scope: authoritative product and architecture contract for the AppShell
 History Browser.
 
 <!-- handoff-current: history-browser -->
-Reviewed 2026-09-17: the user likes v6 compact and approved v7's portrait-based
-team identity. Splash-art download research was explicitly cancelled: do not
-implement or queue it. History now uses side icons for character slots and a
-front portrait of the first occupied slot for the team picture. The comparison
-setting and its AppShell signal were removed; obsolete saved values are ignored.
+Reviewed 2026-09-18: v10 keeps inline team/chamber timing from 960 logical
+pixels, so a 1004px History workspace at 150% retains detail in its 976px inner
+cards. Normal and 2+2 builds share the threshold. Both wide and narrow team
+strips are 41px; an ordinary two-team run is 84 logical pixels high (126
+physical pixels at 150%), down from v9's 104. Below 960px, secondary timers are
+hidden without increasing row height. Four character columns remain through
+560px; smaller cards switch to a bounded 2x2 layout. The independent 86px total
+contains only the unlabeled compact overall timer.
 
-V7 expansion replaces the wide team header with a left identity panel, large
-bonuses and a team timer aligned beside the three room results. Character/stat
-columns are denser; the overall header/total stays dominant. The saved
-444-second run is 666px tall at width 1220 (previously 770), 706px at 864;
-below 800, two columns preserve readability (1186px at 720). PNG is 1600x888.
-Compact geometry remains 120/180/220px at 1220/864/720, with whole-run zebra,
-one total column and no DPS. Expanded/export/right-panel DPS remain.
-The final header moves the bare total left and centers `Abyss · 12` above a
-14px month range (`9.2026–10.2026`), without the save timestamp. It never invents
-a missing/invalid period end; the old fixture displays `8.2026`.
+The outer rounded card is now the actual team-row background. From 980px, a
+centered 14px I/II allocation starts at its left edge, one vertical divider
+follows it, and character content begins immediately after the divider. There
+is no inset team band, marker rectangle or blank gutter. Markers still yield
+before bonus data. Narrow bonus icons remain borderless in a separate 28px
+two-high allocation, which disappears below 720px; inline bonuses are 18px.
 
-Side icons reuse ArtifactCardDelegate's untrimmed calibrated canvas and shared
-owner-badge face ratio. A common bottom anchor allows hats above the text/card
-edge instead of shrinking faces individually. Bonus variants use alpha >64
-bounds to exclude faint Pyro glow from sizing; 30px compact/32px expanded cells
-now scale visible content consistently. Source files remain unchanged.
+Expanded identity no longer paints obsolete `01`/`02` badges or individual
+bonus frames. Bonuses form an in-bounds grid of up to two rows with a bounded
+`+N` overflow cell. The team label and timer are centered in their shared
+panel. V8 period/boss controls, one-line header, warning classification,
+calibrated assets, tooltip containment, export and snapshot isolation remain
+unchanged and are specified below.
 
-Artwork hover offers upload/reset; an export-bar menu provides keyboard access.
-The override belongs only to this saved record/team and survives restart/source
-removal. It is stored under `data/history/presentation`, never in immutable
-snapshot JSON; export includes it without hover controls. See the stable
-presentation-asset boundary below.
-
-All 19 focused automated checks passed (ten cards, four AppShell, five HiDPI).
-The subsequent header-only edit passed render and month-range edge checks.
-Native verification reached the real History compact list, then was stopped
-because the app was being used concurrently. The user explicitly postponed
-upload/reset/export/restart checks. They remain unverified through the real UI;
-automated tests and rendered PNG are not substitutes. Details and resume steps
-are in the [v7 evidence](../design/history/README.md). Next: review the final v7 corrections
-in [TODO](../../TODO.md). No full locale/monitor matrix, real DPS Dummy save,
-or frontend migration is implied.
-
-One pre-contract 2026-06-13 bundle is v1, rejected by the existing v2 reader;
-the top unreadable-snapshot count remains visible and the file was preserved.
-Normal browsing has no permanent PNG preview and generates no PNG on selection.
+Fifteen focused History-card checks and four AppShell History checks pass,
+including 520/560/704/960/980px responsive geometry, 4p/2+2 layouts and bounded
+expanded bonus overflow. Direct hidden Qt renders cover the 704px workspace,
+the 1004px workspace/card at 150%, and the 520px fallback. The real app was not
+taken over while the user was using it, so the actual click path and visual
+acceptance remain open, along with upload/reset/export/restart. See
+[v10 evidence](../design/history/README.md) and [TODO](../../TODO.md).
 <!-- /handoff-current -->
 
 ## Ownership And Boundaries
@@ -126,35 +114,48 @@ teams, selection, timers, results, and settings unchanged.
 
 ### Abyss
 
-- The period catalog is the union of immutable snapshot periods and readable
-  cached `floor_12.json` periods. It is newest-first, cache-only periods remain
-  selectable with empty run lists, and unknown snapshot periods sort last.
-- The initial period is the current cached period when available, otherwise the
-  newest catalog period. Selection is History-local and never rewrites the live
-  period file or Run Session.
-- The top selected-period zone always shows C1/C2/C3 with Side 1/Side 2,
-  compact local enemy icons and total HP per side. Enemy tooltips show saved or
-  cached name, level, count, wave, and individual HP.
-- A full-width period dropdown below that zone shows date range, floor, and run
-  count. Invalid/too-short end dates are omitted rather than inferred.
+- The period catalog remains the union of immutable snapshot periods and
+  readable cached `floor_12.json` periods, newest-first with unknown snapshot
+  periods last. The History selector exposes only periods with saved runs;
+  cache-only zero-run periods remain catalog metadata and do not create empty
+  menu rows.
+- The initial visible period is the current cached period only when it has a
+  saved run, otherwise the newest run-bearing catalog period. Selection is
+  History-local and never rewrites the live period file or Run Session.
+- One accent heading is both the full-width period selector and period label,
+  using `Abyss 12 · 9.2026–10.2026` month-range formatting. It does not consume
+  a second metadata row. Invalid/too-short ends are omitted rather than inferred;
+  menu entries add the saved-run count.
+- An adjacent localized Show bosses toggle owns C1/C2/C3 enemy details. They
+  take no height while collapsed. Expanded details use one horizontal group per
+  chamber: a fixed room badge, two half-rows of enlarged local enemies, and a
+  styled total-HP pill at the right. Tooltips retain saved/cache name, level,
+  count, wave and individual HP.
 - Cache data is preferred for this period preview; latest snapshot enemy data
   is the fallback. Saved-run rows never borrow cache/account assets.
 - Each compact row has two dense team strips, four characters horizontally per team
-  at normal panel width (two columns below 680 design pixels),
-  weapon/refinement and set/count icons, main-stat shorthand, team bonuses,
-  completion seconds and all three chamber result blocks.
-- Compact scale is a height budget, not a scaled-down expanded report: at the
-  864px reference viewport, target <=180px for an ordinary two-team run. A head
-  occupies essentially the full 44px character strip; adjacent equipment is
-  slightly smaller and C stays beside the name. At sufficient width, reclaim
-  horizontal gaps for right-hand timers (ordinary run <=140px tall
-  at 1220px). The narrower fallback uses a separate results strip. Extra height
-  is reserved for genuinely narrower content or additional set information.
+  from 560 design pixels (two columns below that boundary),
+  weapon/refinement and set/count icons, main-stat shorthand and team bonuses.
+- Compact scale is a height budget, not a scaled-down expanded report. At the
+  864px/RDP viewport an ordinary two-team run is 84px: one 36px character row
+  inside each 41px team strip and no secondary results rows. The shared column
+  keeps a clean rectangular overall timer and an independent, borderless
+  resonance allocation with up to two vertically stacked icons per team. That
+  allocation disappears as a unit below 720 design pixels. From 980px a
+  centered 14px `I`/`II` allocation occupies the outer rounded card edge; one
+  divider leads directly into the character grid, with no inset band or gap.
+  It yields before resonance data. From 960px, both 4p and 2+2 layouts retain
+  inline team totals and three chamber times in the same two 41px team strips,
+  keeping the full card at 84px.
+  Truly two-column widths may reserve extra character height, never an empty
+  results band.
   Title/date are expanded/export-only; the period navigator already owns them.
 - Compact adjacent runs alternate background brightness, not the two teams
   inside one run. A shared total-time column visually binds the whole record.
-  Order team name, large bonuses, team time; put chamber times in one line.
-  Overall total is the strongest time accent, then team time, then chamber time.
+  Wide mode orders borderless bonuses and team time after the optional left
+  Roman marker, with chamber times on one line. Overall total is the strongest
+  time accent. Narrow mode keeps that clean total and its separate borderless
+  resonance allocation; Roman markers are omitted first.
 - Compact cards omit all factual/simulated DPS by explicit user decision.
   Expanded chamber blocks and PNG show saved time plus both DPS types when
   present; the frozen data and shared right-panel fields are unchanged.
@@ -165,18 +166,21 @@ teams, selection, timers, results, and settings unchanged.
   append a second export report or duplicate character headers below it.
   On-screen layout uses readable font floors and maps painted hit regions back
   to widget coordinates when compensating sub-1 DPR. Expanded chamber results
-  sit below the character grid; compact results use the width-dependent layout
-  above, intentionally omitting DPS.
+  sit below the character grid; wide compact results use the inline layout,
+  while narrow compact intentionally omits all secondary results and DPS.
   Export scaling is separate from screen
   layout; PNG still shares the expanded painter and frozen data.
 - The expanded composition stacks two teams. Each has a left identity/art panel
-  with large bonuses and a team timer aligned beside room results, plus four character columns
+  with a borderless bonus grid and centered team timer aligned beside room
+  results, plus four character columns
   with level/C, weapon/R, sets, shorthand and overall stats, followed by a
   separate three-chamber band with frozen enemies/counts, seconds and DPS.
-  It intentionally omits individual artifact pieces and precise timer editors.
-  The report header centers the mode/floor and month-year period, with the
-  unlabeled total at top left. It does not mix save date with the Abyss period;
-  invalid/short ends are omitted, and no missing date is inferred.
+  It has no numeric team badge, intentionally omits individual artifact pieces
+  and precise timer editors, and keeps excess bonuses inside at most two rows
+  plus an in-bounds overflow cell.
+  The report header uses one row: unlabeled total at top left, mode/floor in the
+  center and month-year period at top right. It does not mix save date with the
+  Abyss period; invalid/short ends are omitted, and no missing date is inferred.
 - Side icons preserve the calibrated full canvas like ArtifactCardDelegate:
   the shared owner-badge size ratio defines a common face scale, with one
   bottom anchor and top overhang for hats. Never trim each side silhouette to
@@ -268,16 +272,23 @@ frozen right Run and live session remain read-only/unaffected.
 
 Snapshot Bundle v2 and production Save capture frozen display details for every
 occupied slot and materialize declared visible assets inside the bundle without
-retaining temporary hydration in live state. Grouped storage, row selection,
-the snapshot-to-shared-right-panel adapter, isolated read-only Run panel, first
+retaining temporary hydration in live state.
+New saves may carry a second frozen character image for expanded cards:
+background plus portrait, without element or constellation. Compact/team art
+keeps its original portrait, and old bundles fall back when the optional
+expanded reference is absent. Both files are copied into the immutable bundle.
+The History right panel also uses the expanded variant when present.
+Grouped storage, row selection, the snapshot-to-shared-right-panel adapter,
+isolated read-only Run panel, first
 occupied slot selection, frozen slot navigation, disabled timers/state changes,
 hidden commands, and removal of the permanent PNG area are implemented.
 
-The v7 composition and saved-build formatting repair are implemented. The user
-approved compact density and the portrait-based identity direction; final v7
-corrections still need review. The rejected first pass,
+The v10 responsive composition and saved-build formatting repair are implemented.
+The user approved the preceding wide compact density and portrait-based identity
+direction; the corrected narrow/RDP mode, one-line headers and collapsible boss section
+still need real-app review. The rejected first pass,
 v2, one-team study and oversized v3 compact report are historical references.
-V7 visual review, fuller DPS Dummy
+V10 visual review, fuller DPS Dummy
 input capture, real PvP History, filters/sorting beyond newest-first and further
 Preview/Share/data-export features remain open in TODO. Original concept and
 actual app samples are distinct, linked references; neither implies acceptance

@@ -384,7 +384,7 @@ def _validate_body(
 def _validate_strict_body_contract(body: Mapping[str, object]) -> None:
     """Reject a build that the optimizer's runtime V6 decoder cannot consume."""
 
-    from .trace_equation.source_dependencies import (
+    from .source_manifest_codec import (
         decode_source_manifest_body,
         encode_source_manifest_body,
     )

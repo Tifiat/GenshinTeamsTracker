@@ -159,6 +159,7 @@ class _SetBonusRow(QPushButton):
     def __init__(self, choice: GcsimVirtualArtifactSetChoice) -> None:
         super().__init__()
         self.choice = choice
+        self._piece_count: int | None = None
         self.setProperty("compact", True)
         if choice.icon_path and Path(choice.icon_path).is_file():
             self.setIcon(QIcon(choice.icon_path))
@@ -167,6 +168,9 @@ class _SetBonusRow(QPushButton):
         self.set_piece_count(0)
 
     def set_piece_count(self, count: int) -> None:
+        if count == self._piece_count:
+            return
+        self._piece_count = count
         suffix = "—" if count <= 0 else f"{count}p"
         self.setText(f"{self.choice.display_name}  ·  {suffix}")
         self.setProperty("selected", count > 0)
@@ -188,6 +192,7 @@ class VirtualGcsimBuildPopup(QWidget):
         self._syncing = False
         self._choices: dict[str, GcsimVirtualArtifactSetChoice] = {}
         self._rows: dict[str, _SetBonusRow] = {}
+        self._row_choices: tuple[GcsimVirtualArtifactSetChoice, ...] | None = None
         self._selected: dict[str, int] = {}
 
         root = QVBoxLayout(self)
@@ -243,6 +248,7 @@ class VirtualGcsimBuildPopup(QWidget):
         artifact_builds: Iterable[Mapping[str, object]],
         set_choices: Iterable[GcsimVirtualArtifactSetChoice],
     ) -> None:
+        choices = tuple(set_choices)
         self._syncing = True
         try:
             self.saved_build_combo.clear()
@@ -256,7 +262,9 @@ class VirtualGcsimBuildPopup(QWidget):
                 self.saved_build_combo,
                 override.artifact_build_id if override else None,
             )
-            self._replace_set_rows(tuple(set_choices))
+            if choices != self._row_choices:
+                self._replace_set_rows(choices)
+                self._row_choices = choices
             self._selected = {
                 item.set_uid: int(item.piece_count)
                 for item in (override.artifact_set_bonuses if override else ())
@@ -361,6 +369,8 @@ class VirtualGcsimCardEditor(QWidget):
         super().__init__(parent)
         self._catalog = GcsimVirtualRosterCatalog.empty()
         self._set_choices: tuple[GcsimVirtualArtifactSetChoice, ...] = ()
+        self._catalogs_initialized = False
+        self._context_initialized = False
         self._override: GcsimVirtualSlotOverride | None = None
         self._artifact_builds: tuple[dict[str, object], ...] = ()
         self._syncing = False
@@ -474,8 +484,17 @@ class VirtualGcsimCardEditor(QWidget):
         catalog: GcsimVirtualRosterCatalog,
         set_choices: tuple[GcsimVirtualArtifactSetChoice, ...],
     ) -> None:
+        set_choices = tuple(set_choices)
+        catalog_changed = not self._catalogs_initialized or catalog != self._catalog
+        choices_changed = not self._catalogs_initialized or set_choices != self._set_choices
+        if not catalog_changed and not choices_changed:
+            return
         self._catalog = catalog
-        self._set_choices = tuple(set_choices)
+        self._set_choices = set_choices
+        self._catalogs_initialized = True
+        self._context_initialized = False
+        if not catalog_changed:
+            return
         self._syncing = True
         try:
             self.character_combo.clear()
@@ -495,8 +514,15 @@ class VirtualGcsimCardEditor(QWidget):
         override: GcsimVirtualSlotOverride | None,
         artifact_builds: tuple[dict[str, object], ...] = (),
     ) -> None:
+        artifact_builds = tuple(dict(item) for item in artifact_builds)
+        if (
+            self._context_initialized
+            and override == self._override
+            and artifact_builds == self._artifact_builds
+        ):
+            return
         self._override = override
-        self._artifact_builds = tuple(dict(item) for item in artifact_builds)
+        self._artifact_builds = artifact_builds
         self._syncing = True
         try:
             _select_data(self.character_combo, override.character_key if override else "")
@@ -529,6 +555,7 @@ class VirtualGcsimCardEditor(QWidget):
             self._refresh_summary()
         finally:
             self._syncing = False
+        self._context_initialized = True
 
     def begin_editing(self) -> None:
         self.character_combo.setFocus(Qt.FocusReason.OtherFocusReason)

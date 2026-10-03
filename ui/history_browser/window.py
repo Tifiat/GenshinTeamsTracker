@@ -68,12 +68,67 @@ QFrame#HistoryRunRow[selected="true"] {{
 QFrame#HistoryPeriodPreview {{
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
         stop:0 {UI_HISTORY_BG_TOP}, stop:1 {UI_HISTORY_BG_BOTTOM});
+    border-top: 1px solid {UI_HISTORY_BORDER};
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}}
+QFrame#HistoryPeriodSection {{
+    background: {UI_HISTORY_BG_BOTTOM};
     border: 1px solid {UI_HISTORY_BORDER};
     border-radius: 8px;
 }}
-QFrame#HistoryEnemyChamber, QFrame#HistoryEnemySide {{ border: none; background: transparent; }}
+QToolButton#HistoryPeriodSelector {{
+    background: transparent; color: {UI_HISTORY_TEXT}; border: none;
+    border-radius: 7px; padding: 5px 10px; text-align: left;
+    font-size: 16px; font-weight: 650;
+}}
+QToolButton#HistoryPeriodSelector:hover {{ background: {UI_BG_BUTTON_HOVER}; }}
+QMenu#HistoryPeriodMenu {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 {UI_HISTORY_BG_TOP}, stop:1 {UI_HISTORY_BG_BOTTOM});
+    color: {UI_HISTORY_TEXT}; border: 1px solid {UI_BORDER_SELECTED};
+    border-radius: 9px; padding: 7px; font-size: 14px;
+}}
+QMenu#HistoryPeriodMenu::item {{
+    min-width: 320px; padding: 10px 34px 10px 14px;
+    margin: 2px; border-radius: 6px;
+}}
+QMenu#HistoryPeriodMenu::item:selected {{
+    background: {UI_BG_BUTTON_HOVER}; color: {UI_HISTORY_TEXT};
+}}
+QMenu#HistoryPeriodMenu::item:checked {{
+    color: {UI_HISTORY_TEAM_1}; font-weight: 700;
+}}
+QToolButton#HistoryBossToggle {{
+    background: transparent; color: {UI_HISTORY_MUTED};
+    border: 1px solid {UI_HISTORY_BORDER}; border-radius: 6px;
+    padding: 4px 9px; font-size: 12px; font-weight: 600;
+}}
+QToolButton#HistoryBossToggle:hover, QToolButton#HistoryBossToggle:checked {{
+    background: {UI_BG_BUTTON_HOVER}; color: {UI_HISTORY_TEXT};
+    border-color: {UI_BORDER_SELECTED};
+}}
+QFrame#HistoryEnemyChamber {{
+    background: rgba(8, 18, 27, 92); border: 1px solid {UI_HISTORY_BORDER};
+    border-radius: 6px;
+}}
+QFrame#HistoryEnemySide {{
+    background: rgba(255, 255, 255, 7); border: none; border-radius: 4px;
+}}
 QLabel#CompactRunTitle {{ font-weight: 600; color: {UI_HISTORY_TEXT}; }}
-QLabel#HistorySideHp {{ font-size: 12px; font-weight: 600; color: {UI_HISTORY_MUTED}; }}
+QLabel#HistoryChamberIndex {{
+    background: rgba(63, 197, 207, 20); color: {UI_HISTORY_TEAM_1};
+    border: 1px solid rgba(63, 197, 207, 85); border-radius: 5px;
+    font-size: 13px; font-weight: 800; padding: 3px 1px;
+}}
+QLabel#HistorySideIndex {{
+    color: {UI_HISTORY_TEAM_1}; font-size: 12px; font-weight: 800;
+}}
+QLabel#HistorySideHp {{
+    background: rgba(255, 214, 102, 15); color: {UI_HISTORY_TEXT};
+    border: 1px solid rgba(255, 214, 102, 55); border-radius: 5px;
+    font-size: 15px; font-weight: 750; padding: 3px 6px;
+}}
 QPushButton#HistoryExportButton {{
     background: {UI_HISTORY_BG_TOP}; color: {UI_HISTORY_TEXT};
     border: 1px solid {UI_HISTORY_BORDER}; border-radius: 5px;
@@ -170,17 +225,16 @@ class HistoryBrowserWorkspace(QFrame):
                 abyss_cache_dir=self.abyss_cache_dir,
                 current_period_path=self.current_period_path,
             )
-        available_periods = {
-            period.period_start for period in self._catalog.periods
-        }
+        run_periods = self._run_periods()
+        available_periods = {period.period_start for period in run_periods}
         if self._selected_period_start not in available_periods:
             preferred = self._catalog.current_period_start
             self._selected_period_start = (
                 preferred
                 if preferred in available_periods
                 else (
-                    self._catalog.periods[0].period_start
-                    if self._catalog.periods
+                    run_periods[0].period_start
+                    if run_periods
                     else ""
                 )
             )
@@ -247,42 +301,21 @@ class HistoryBrowserWorkspace(QFrame):
         self.content_layout.addStretch(1)
 
     def _render_abyss(self) -> None:
+        run_periods = self._run_periods()
         period = self._selected_period()
-        if period is None:
+        if period is None or not period.runs:
             self.scroll_area.hide()
             self.empty_label.setText(tr("app_shell.history.empty.abyss"))
             self.empty_label.show()
             return
-        self.content_layout.addWidget(AbyssPeriodPreviewWidget(period))
-        selector = QToolButton()
-        selector.setObjectName("ActionButton")
-        selector.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        selector.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        selector.setArrowType(Qt.ArrowType.DownArrow)
-        selector.setText(_period_label(period))
-        selector.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Fixed,
-        )
-        menu = QMenu(selector)
-        for option in self._catalog.periods:
-            action = menu.addAction(_period_label(option))
-            action.setCheckable(True)
-            action.setChecked(option.period_start == period.period_start)
-            action.triggered.connect(
-                lambda _checked=False, value=option.period_start: self._select_period(
-                    value
-                )
-            )
-        selector.setMenu(menu)
-        self.content_layout.addWidget(selector)
+        section = AbyssPeriodSectionWidget(period, run_periods)
+        section.period_selected.connect(self._select_period)
+        self.content_layout.addWidget(section)
         self._render_runs(period.runs)
-        if not period.runs:
-            empty = QLabel(tr("app_shell.history.period.no_runs"))
-            empty.setObjectName("MutedLabel")
-            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty.setContentsMargins(0, 16, 0, 16)
-            self.content_layout.addWidget(empty)
+
+    def _run_periods(self) -> tuple[HistoryPeriodVisual, ...]:
+        """Periods shown in History always contain at least one saved run."""
+        return tuple(period for period in self._catalog.periods if period.runs)
 
     def _render_runs(self, runs: tuple[HistoryRunVisual, ...]) -> None:
         for index, run in enumerate(runs):
@@ -337,6 +370,80 @@ class HistoryBrowserWorkspace(QFrame):
         self.snapshot_selected.emit(payload)
 
 
+class AbyssPeriodSectionWidget(QFrame):
+    """One compact period heading with optional enemy details beneath it."""
+
+    period_selected = Signal(str)
+
+    def __init__(
+        self,
+        period: HistoryPeriodVisual,
+        periods: tuple[HistoryPeriodVisual, ...],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("HistoryPeriodSection")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        header = QWidget(self)
+        row = QHBoxLayout(header)
+        row.setContentsMargins(2, 1, 4, 1)
+        row.setSpacing(4)
+        self.selector = QToolButton(header)
+        self.selector.setObjectName("HistoryPeriodSelector")
+        self.selector.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.selector.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self.selector.setText(_period_heading(period))
+        self.selector.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        menu = QMenu(self.selector)
+        menu.setObjectName("HistoryPeriodMenu")
+        menu.setMinimumWidth(360)
+        for option in periods:
+            if not option.runs:
+                continue
+            action = menu.addAction(_period_menu_label(option))
+            action.setCheckable(True)
+            action.setChecked(option.period_start == period.period_start)
+            action.triggered.connect(
+                lambda _checked=False, value=option.period_start: (
+                    self.period_selected.emit(value)
+                )
+            )
+        self.selector.setMenu(menu)
+        row.addWidget(self.selector, 1)
+
+        self.boss_button = QToolButton(header)
+        self.boss_button.setObjectName("HistoryBossToggle")
+        self.boss_button.setCheckable(True)
+        self.boss_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.boss_button.setArrowType(Qt.ArrowType.DownArrow)
+        row.addWidget(self.boss_button)
+        root.addWidget(header)
+
+        self.preview = AbyssPeriodPreviewWidget(period, self)
+        self.preview.hide()
+        root.addWidget(self.preview)
+        self.boss_button.toggled.connect(self._set_bosses_visible)
+        self._set_bosses_visible(False)
+
+    def _set_bosses_visible(self, visible: bool) -> None:
+        self.preview.setVisible(visible)
+        self.boss_button.setArrowType(
+            Qt.ArrowType.UpArrow if visible else Qt.ArrowType.DownArrow
+        )
+        key = (
+            "app_shell.history.period.hide_bosses"
+            if visible
+            else "app_shell.history.period.show_bosses"
+        )
+        self.boss_button.setText(tr(key))
+
+
 class AbyssPeriodPreviewWidget(QFrame):
     def __init__(
         self,
@@ -346,28 +453,42 @@ class AbyssPeriodPreviewWidget(QFrame):
         super().__init__(parent)
         self.setObjectName("HistoryPeriodPreview")
         root = QHBoxLayout(self)
-        root.setContentsMargins(6, 6, 6, 6)
-        root.setSpacing(6)
+        root.setContentsMargins(6, 5, 6, 6)
+        root.setSpacing(5)
         sides = {(item.chamber, item.side): item for item in period.sides}
         for chamber in (1, 2, 3):
             frame = QFrame()
             frame.setObjectName("HistoryEnemyChamber")
-            column = QVBoxLayout(frame)
-            column.setContentsMargins(4, 3, 4, 3)
-            column.setSpacing(3)
-            title = QLabel(f"C{chamber}")
-            title.setObjectName("CompactRunTitle")
-            title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            column.addWidget(title)
-            for side in (1, 2):
+            chamber_row = QHBoxLayout(frame)
+            chamber_row.setContentsMargins(3, 3, 3, 3)
+            chamber_row.setSpacing(3)
+            chamber_label = QLabel(f"{period.floor or '—'}-{chamber}")
+            chamber_label.setObjectName("HistoryChamberIndex")
+            chamber_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            chamber_label.setFixedWidth(40)
+            chamber_row.addWidget(chamber_label)
+
+            side_rows = QWidget(frame)
+            column = QVBoxLayout(side_rows)
+            column.setContentsMargins(0, 0, 0, 0)
+            column.setSpacing(2)
+            chamber_sides = [
+                sides.get(
+                    (chamber, side),
+                    HistorySideVisual(chamber=chamber, side=side),
+                )
+                for side in (1, 2)
+            ]
+            max_enemies = max((len(side.enemies) for side in chamber_sides), default=0)
+            icon_size = 50 if max_enemies <= 3 else 36
+            for side in chamber_sides:
                 column.addWidget(
                     EnemySidePreviewWidget(
-                        sides.get(
-                            (chamber, side),
-                            HistorySideVisual(chamber=chamber, side=side),
-                        )
+                        side,
+                        icon_size=icon_size,
                     )
                 )
+            chamber_row.addWidget(side_rows, 1)
             root.addWidget(frame, 1)
 
 
@@ -376,18 +497,21 @@ class EnemySidePreviewWidget(QFrame):
         self,
         side: HistorySideVisual,
         parent: QWidget | None = None,
+        *,
+        icon_size: int = 50,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("HistoryEnemySide")
         root = QHBoxLayout(self)
-        root.setContentsMargins(3, 2, 3, 2)
+        root.setContentsMargins(2, 1, 2, 1)
         root.setSpacing(2)
-        side_label = QLabel(f"S{side.side}")
-        side_label.setObjectName("MutedLabel")
+        side_label = QLabel("I" if side.side == 1 else "II")
+        side_label.setObjectName("HistorySideIndex")
+        side_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         side_label.setFixedWidth(15)
         root.addWidget(side_label)
         for enemy in side.enemies[:4]:
-            root.addWidget(_enemy_icon(enemy))
+            root.addWidget(_enemy_icon(enemy, icon_size))
         if len(side.enemies) > 4:
             extra = QLabel(f"+{len(side.enemies) - 4}")
             extra.setObjectName("MutedLabel")
@@ -396,6 +520,7 @@ class EnemySidePreviewWidget(QFrame):
         hp = QLabel(_compact_hp(side.total_hp))
         hp.setObjectName("HistorySideHp")
         hp.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        hp.setFixedWidth(58)
         root.addWidget(hp)
 
 
@@ -534,9 +659,9 @@ class HistoryRunRowWidget(QFrame):
         super().mousePressEvent(event)
 
 
-def _enemy_icon(enemy: HistoryEnemyVisual) -> QLabel:
-    size = 28
+def _enemy_icon(enemy: HistoryEnemyVisual, size: int = 50) -> QLabel:
     label = QLabel()
+    label.setObjectName("HistoryEnemyIcon")
     label.setFixedSize(size, size)
     label.setAlignment(Qt.AlignmentFlag.AlignCenter)
     pixmap = _fit_pixmap(enemy.icon_path, QSize(size, size))
@@ -558,20 +683,34 @@ def _enemy_icon(enemy: HistoryEnemyVisual) -> QLabel:
     return label
 
 
-def _period_label(period: HistoryPeriodVisual) -> str:
-    start = (
-        tr("app_shell.history.period.unknown")
-        if period.period_start == "unknown_period"
-        else period.period_start
+def _period_heading(period: HistoryPeriodVisual) -> str:
+    return tr("app_shell.history.period.heading").format(
+        floor=period.floor or "—",
+        dates=_period_month_range(period),
     )
-    end = _valid_period_end(period.period_start, period.period_end)
-    dates = start if not end else f"{start} - {end}"
-    floor = "-" if period.floor is None else f"F{period.floor}"
+
+
+def _period_menu_label(period: HistoryPeriodVisual) -> str:
     return tr("app_shell.history.period.option").format(
-        dates=dates,
-        floor=floor,
+        heading=_period_heading(period),
         count=len(period.runs),
     )
+
+
+def _period_month_range(period: HistoryPeriodVisual) -> str:
+    if period.period_start == "unknown_period":
+        return tr("app_shell.history.period.unknown")
+    try:
+        start = date.fromisoformat(period.period_start)
+    except ValueError:
+        return tr("app_shell.history.period.unknown")
+    label = f"{start.month}.{start.year}"
+    end = _valid_period_end(period.period_start, period.period_end)
+    if end:
+        end_date = date.fromisoformat(end)
+        if (end_date.year, end_date.month) != (start.year, start.month):
+            label += f"–{end_date.month}.{end_date.year}"
+    return label
 
 
 def _valid_period_end(start: str, end: str) -> str:

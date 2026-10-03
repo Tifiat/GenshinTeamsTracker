@@ -1,0 +1,306 @@
+diff --git a/pkg/core/info/gtt_snapshot_stats.go b/pkg/core/info/gtt_snapshot_stats.go
+--- a/pkg/core/info/gtt_snapshot_stats.go
++++ b/pkg/core/info/gtt_snapshot_stats.go
+@@ -69,12 +69,14 @@
+ 		return nil
+ 	}
+ 	ids := []string{}
++	extraIDs := []string{}
+ 	for _, c := range contributions {
+ 		if c.Accepted && c.ModifierEvalEventID != "" {
+ 			ids = append(ids, c.ModifierEvalEventID)
++			if c.Extra { extraIDs=append(extraIDs,c.ModifierEvalEventID) }
+ 		}
+ 	}
++	if len(queries) == 1 { return GTTStatsOriginAtQuery(rt, owner, values, ids, queries[0], extraIDs) }
+-	if len(queries) == 1 { return GTTStatsOriginAtQuery(rt, owner, values, ids, queries[0]) }
+ 	return GTTStatsOriginFromModifiers(rt, owner, values, ids)
+ }
+ 
+@@ -158,8 +160,19 @@
+ }
+ 
+ // Original getter query retained by value, before any modifier Amount executes.
++func GTTStatsOriginAtQuery(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string, query gtttrace.StatQueryContext, extraIDs ...[]string) *GTTStatsOrigin {
+-func GTTStatsOriginAtQuery(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string, query gtttrace.StatQueryContext) *GTTStatsOrigin {
+ 	if !rt.Enabled() { return nil }
++	observed:=map[string]float64{}
++	if keys:=query.SelectedKeys();keys!=nil {
++		for _,key:=range *keys {
++			for stat:=attributes.NoStat+1;stat<attributes.EndStatType;stat++ {
++				if stat.String()==key {observed[key]=values[stat];break}
++			}
++		}
++	} else {
++		for stat:=attributes.NoStat+1;stat<attributes.EndStatType;stat++ {observed[stat.String()]=values[stat]}
++	}
++	rt.RecordNeutralStatVector(owner,observed,ids,query,extraIDs...)
+ 	return &GTTStatsOrigin{runtime: rt, query: query, Owner: owner, Values: values, ModifierIDs: append([]string(nil), ids...)}
+ }
+ func GTTNewSelectedStatQuery(rt *gtttrace.Runtime, nonExtra bool, keys ...attributes.Stat) gtttrace.StatQueryContext {
+diff --git a/pkg/core/info/gtt_trace.go b/pkg/core/info/gtt_trace.go
+--- a/pkg/core/info/gtt_trace.go
++++ b/pkg/core/info/gtt_trace.go
+@@ -158,6 +158,7 @@
+ }
+ 
+ type GTTTraceStatContribution struct {
++	Extra bool `json:"-"`
+ 	ModifierKey         string             `json:"modifier_key"`
+ 	ModifierEvalEventID string             `json:"modifier_eval_event_id"`
+ 	RecipientIndex      int                `json:"recipient_index"`
+diff --git a/pkg/core/player/character/stats.go b/pkg/core/player/character/stats.go
+--- a/pkg/core/player/character/stats.go
++++ b/pkg/core/player/character/stats.go
+@@ -83,6 +83,7 @@
+ 		}
+ 		if capture {
+ 			contributions = append(contributions, info.GTTTraceStatContribution{
++				Extra: m.Extra,
+ 				ModifierKey: m.Key(), ModifierEvalEventID: modifierEvalEventID,
+ 				RecipientIndex: c.Index(), Accepted: !reject, Values: values,
+ 				Provider: m.GTTSource(), SourceID: m.GTTSourceID(),
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -119,6 +119,8 @@
+ // Runtime belongs to exactly one core. Simulations may run concurrently, but
+ // a single core executes its event/task callbacks serially.
+ type Runtime struct {
++	neutralStatObservations []NeutralStatObservation
++	neutralStatObservationsTruncated bool
+ 	neutralHitlag []NeutralHitlagEvent
+ 	neutralHitlagTruncated bool
+ 	enabled                           bool
+diff --git a/pkg/gttcompact/builder.go b/pkg/gttcompact/builder.go
+--- a/pkg/gttcompact/builder.go
++++ b/pkg/gttcompact/builder.go
+@@ -19,6 +19,7 @@
+ 
+ type nodeBuilder struct {
+ 	neutral bool
++	neutralReads []NeutralReadRoot
+ 	inputPoint NeutralInputPoint
+ 	neutralInputs []NeutralStatInput
+ 	nodes            []IRNode
+diff --git a/pkg/gttcompact/support.go b/pkg/gttcompact/support.go
+--- a/pkg/gttcompact/support.go
++++ b/pkg/gttcompact/support.go
+@@ -74,6 +74,7 @@
+ 		}
+ 		c.compileEvent(event)
+ 	}
++	if b.neutral { c.compileNeutralStatReads() }
+ 	return supportProgram{eventNodes: c.eventNodes, eventOutputs: c.eventOutputs, unknown: c.unknown, ancestorIDs: ancestorIDs}
+ }
+ 
+@@ -158,6 +159,7 @@
+ 		}
+ 	}
+ 	pending := make([]string, 0)
++	if buffer.NeutralContext.NoSets {for _,query:=range buffer.NeutralStatObservations {pending=append(pending,query.Modifiers...)}}
+ 	hits := append([]info.GTTTraceHit(nil), buffer.Hits...)
+ 	for _, hit := range buffer.Hits {
+ 		if hit.ContributorGroup != nil && len(hit.ContributorGroup.Contributors) <= 4 {
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -55,6 +55,8 @@
+ 	StateSlots          []gtttrace.StateSlot          `json:"state_slots"`
+ 	StateEvents         []gtttrace.StateEvent         `json:"state_events"`
+ 	EnergyLedger        gtttrace.EnergyLedger         `json:"energy_ledger"`
++	NeutralStatObservations []gtttrace.NeutralStatObservation `json:"-"`
++	NeutralStatObservationsComplete bool `json:"-"`
+ 	NeutralContext GTTNeutralContext `json:"-"`
+ 	CombatEvents gtttrace.CombatEventLedger `json:"-"`
+ 	nextAttackID        uint64
+@@ -286,6 +288,7 @@
+ 	b.StateSlots = core.GTTTrace.StateSlots()
+ 	b.StateEvents = core.GTTTrace.StateEvents()
+ 	b.CombatEvents = core.GTTTrace.CombatEvents()
++	b.NeutralStatObservations,b.NeutralStatObservationsComplete = core.GTTTrace.NeutralStatObservations()
+ 	b.NeutralWorld = core.GTTTrace.NeutralWorld()
+ 	b.NeutralHitlag = core.GTTTrace.NeutralHitlag()
+ 	seen := map[string]bool{
+diff --git a/pkg/gttcompact/neutral_inputs.go b/pkg/gttcompact/neutral_inputs.go
+--- a/pkg/gttcompact/neutral_inputs.go
++++ b/pkg/gttcompact/neutral_inputs.go
+@@ -56,6 +56,8 @@
+ 	Input *gtttrace.EventValue `json:"input,omitempty"`
+ }
+ type NeutralInputs struct {
++	Reads []NeutralReadRoot `json:"reads"`
++	ReadsComplete bool `json:"reads_complete"`
+ 	Hitlag *gtttrace.NeutralHitlagLedger `json:"hitlag,omitempty"`
+ 	Effects []NeutralEffectPoint `json:"effects"`
+ 	World *gtttrace.NeutralWorldLedger `json:"world,omitempty"`
+@@ -108,12 +110,13 @@
+ }
+ func (b *nodeBuilder) collectNeutralInputs(buffer optstats.GTTTraceEquationBuffer, channels []IRChannel) *NeutralInputs {
+ 	if !b.neutral { return nil }
++	out := &NeutralInputs{Reads: append([]NeutralReadRoot{},b.neutralReads...), ReadsComplete: buffer.NeutralStatObservationsComplete, Hitlag: &buffer.NeutralHitlag, World: &buffer.NeutralWorld, SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
+-	out := &NeutralInputs{Hitlag: &buffer.NeutralHitlag, World: &buffer.NeutralWorld, SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
+ 		States: []NeutralStatePoint{}, Stats: []NeutralStatInput{}, Hits: []NeutralHitPoint{}, Effects: []NeutralEffectPoint{},
+ 		Uncertainty: []string{"event_state_schedule_observed_not_counterfactual", "unresolved_query_modes_require_effect_coverage"}}
+ 	live := make([]bool, len(b.nodes)+1)
+ 	stack := []uint32{}
+ 	for _, ch := range channels { stack = append(stack, ch.RootNodeID) }
++	for _, read := range b.neutralReads {stack=append(stack,read.NodeID)}
+ 	for len(stack) != 0 {
+ 		id := stack[len(stack)-1]; stack = stack[:len(stack)-1]
+ 		if id == 0 || int(id) > len(b.nodes) || live[id] { continue }
+diff --git a/pkg/gtttrace/neutral_stat_reads.go b/pkg/gtttrace/neutral_stat_reads.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_stat_reads.go
+@@ -0,0 +1,34 @@
++package gtttrace
++
++// Already-computed stat vectors, never a new Amount/getter evaluation. These
++// latent inputs may become damage-relevant after changing an artifact bonus.
++type NeutralStatObservation struct {
++	Owner int
++	Order uint64
++	Frame int
++	Mode string
++	Keys *[]string
++	Values map[string]float64
++	Modifiers []string
++	ExtraModifiers *[]string
++}
++func (r *Runtime) RecordNeutralStatVector(owner int, values map[string]float64, modifiers []string, q StatQueryContext, extra ...[]string) {
++	if !r.Enabled() || q.runtime!=r || q.id==0 || owner<0 { return }
++	if len(r.neutralStatObservations)>=20000 { r.neutralStatObservationsTruncated=true;return }
++	mode:="stat";if q.nonExtra {mode="non_extra_stat"}
++	copied:=make(map[string]float64,len(values))
++	for key,value:=range values {
++		if !finite(value) {r.neutralStatObservationsTruncated=true;return}
++		copied[key]=value
++	}
++	row:=NeutralStatObservation{Owner:owner,Order:q.order,Frame:q.frame,Mode:mode,Keys:q.selectedKeys,Values:copied,Modifiers:append([]string{},modifiers...)}
++	if len(extra)==1 {ids:=append([]string{},extra[0]...);row.ExtraModifiers=&ids}
++	r.neutralStatObservations=append(r.neutralStatObservations,row)
++}
++func (r *Runtime) NeutralStatObservations() ([]NeutralStatObservation,bool) {
++	return append([]NeutralStatObservation{},r.neutralStatObservations...),!r.neutralStatObservationsTruncated
++}
++func (q StatQueryContext) SelectedKeys() *[]string {
++	if q.selectedKeys==nil{return nil}
++	keys:=append([]string{},(*q.selectedKeys)...);return &keys
++}
+diff --git a/pkg/gttcompact/neutral_stat_reads.go b/pkg/gttcompact/neutral_stat_reads.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/neutral_stat_reads.go
+@@ -0,0 +1,64 @@
++package gttcompact
++
++import (
++	"sort"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++type NeutralReadRoot struct {
++	NodeID uint32 `json:"node_id"`
++	Owner string `json:"owner"`
++	Stat string `json:"stat"`
++	Observed string `json:"observed"`
++	Point NeutralInputPoint `json:"point"`
++	Projection bool `json:"projection"`
++	Uncertainty []string `json:"uncertainty"`
++}
++func(c *supportCompiler) compileNeutralStatReads(){
++	rows:=append([]gtttrace.NeutralStatObservation{},c.buffer.NeutralStatObservations...)
++	sort.SliceStable(rows,func(i,j int)bool{return rows[i].Order<rows[j].Order})
++	for _,row:=range rows{
++		if row.Owner<0||row.Owner>=len(c.characterKeys)||row.Order==0{continue}
++		c.compileNeutralVector(row,false)
++		// Removing already observed Extra amounts is a projection of this
++		// full-vector query, NOT an exact new single-stat NonExtraStat query.
++		if row.Mode=="stat"&&row.ExtraModifiers!=nil{c.compileNeutralVector(row,true)}
++	}
++}
++func(c *supportCompiler) compileNeutralVector(row gtttrace.NeutralStatObservation,projection bool){
++	excluded:=map[string]bool{}
++	mode:=row.Mode
++	if projection {
++		mode="non_extra_stat"
++		for _,id:=range *row.ExtraModifiers{excluded[id]=true}
++	}
++	keys:=make([]string,0,len(row.Values))
++	for key:=range row.Values{if key!=""{keys=append(keys,key)}}
++	sort.Strings(keys)
++	for _,key:=range keys{
++		observed:=row.Values[key]
++		if projection {for id:=range excluded{observed-=c.eventByID[id].Output[key]}}
++		actor:=c.characterKeys[row.Owner]
++		node:=c.b.constant(observed)
++		// This root excludes the DIRECT set contribution, supplied by the rule
++		// getter itself. Nested neutral buff ancestry still keeps its own ports.
++		if artifactVariableStat(key){
++			neutral:=c.b.neutral;c.b.neutral=false
++			raw:=c.b.artifactDelta(actor,key)
++			c.b.neutral=neutral
++			node=c.b.add(node,raw)
++		}
++		unknown:=[]string{}
++		for _,id:=range row.Modifiers{
++			if excluded[id]{continue}
++			event,ok:=c.eventByID[id]
++			if !ok{unknown=append(unknown,"neutral_modifier_observation_missing");continue}
++			if candidate,ok:=c.eventOutputs[id][key];ok{
++				node=c.b.add(node,c.b.subtract(candidate,c.b.constant(event.Output[key])))
++			}else if _,has:=event.Output[key];has{
++				unknown=append(unknown,"neutral_modifier_stat_expression_missing")
++			}
++		}
++		c.b.neutralReads=append(c.b.neutralReads,NeutralReadRoot{NodeID:node.id,Owner:actor,Stat:key,Observed:decimal(observed),Point:NeutralInputPoint{Frame:row.Frame,Order:row.Order,Mode:mode,StatKeys:row.Keys},Projection:projection,Uncertainty:unknown})
++	}
++}
+diff --git a/pkg/core/info/gtt_neutral_stat_reads_test.go b/pkg/core/info/gtt_neutral_stat_reads_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_neutral_stat_reads_test.go
+@@ -0,0 +1,21 @@
++package info
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++func TestNeutralLatentStatVectorsKeepOriginalValuesAndFilters(t *testing.T){
++	r:=gtttrace.NewRuntime();r.Enable()
++	frame:=5;r.BindFrame(&frame)
++	stats:=attributes.Stats{};stats[attributes.ER]=1.2;stats[attributes.EM]=50
++	q:=r.NewStatQuery(false)
++	GTTNewStatsOrigin(r,2,stats,[]GTTTraceStatContribution{{Accepted:true,Extra:true,ModifierEvalEventID:"extra"}},q)
++	stats[attributes.ER]=9
++	frame=8
++	q=GTTNewSelectedStatQuery(r,true,attributes.EM)
++	GTTStatsOriginAtQuery(r,1,stats,nil,q)
++	rows,complete:=r.NeutralStatObservations()
++	if !complete||len(rows)!=2||rows[0].Owner!=2||rows[0].Frame!=5||rows[0].Values["er"]!=1.2||rows[0].ExtraModifiers==nil||len(*rows[0].ExtraModifiers)!=1 {t.Fatal(rows)}
++	if rows[1].Mode!="non_extra_stat"||len(rows[1].Values)!=1||rows[1].Values["em"]!=50||rows[1].Keys==nil||len(*rows[1].Keys)!=1 {t.Fatal(rows[1])}
++}
+diff --git a/pkg/gttcompact/neutral_stat_reads_test.go b/pkg/gttcompact/neutral_stat_reads_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/neutral_stat_reads_test.go
+@@ -0,0 +1,16 @@
++package gttcompact
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
++)
++func TestNeutralLatentReadExcludesDirectSetInputAndProjectsExtra(t *testing.T){
++	extra:=[]string{"extra"}
++	b:=&nodeBuilder{neutral:true}
++	c:=&supportCompiler{b:b,characterKeys:[]string{"owner"},eventByID:map[string]gtttrace.StateEvent{"extra":{Output:map[string]float64{"er":.2}}},eventOutputs:map[string]map[string]compiledNode{"extra":{"er":b.constant(.2)}},buffer:optstats.GTTTraceEquationBuffer{NeutralStatObservations:[]gtttrace.NeutralStatObservation{{Owner:0,Order:4,Frame:3,Mode:"stat",Values:map[string]float64{"er":1.2},Modifiers:[]string{"extra"},ExtraModifiers:&extra}}}}
++	c.compileNeutralStatReads()
++	if len(b.neutralReads)!=2||len(b.neutralInputs)!=0 {t.Fatal(b.neutralReads,b.neutralInputs)}
++	if b.neutralReads[0].Observed!="1.2"||b.neutralReads[0].Projection||b.neutralReads[1].Observed!="1"||!b.neutralReads[1].Projection||b.neutralReads[1].Point.Mode!="non_extra_stat"{t.Fatal(b.neutralReads)}
++	for _,r:=range b.neutralReads{if r.NodeID==0||r.Owner!="owner"||r.Stat!="er"||r.Point.Order!=4||len(r.Uncertainty)!=0{t.Fatal(r)}}
++}

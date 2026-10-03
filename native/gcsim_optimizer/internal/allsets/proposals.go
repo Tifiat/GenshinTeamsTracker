@@ -40,6 +40,7 @@ type ProposalReport struct {
 	RawFormulaEvaluations int        `json:"raw_formula_evaluations"`
 	SlopeEvaluations      int        `json:"slope_evaluations"`
 	Unqueued              int        `json:"unqueued"`
+	ReservationDeferred   int        `json:"reservation_deferred"`
 }
 
 // Propose enumerates cheap SET PACKAGES, not physical item combinations. Each
@@ -49,9 +50,10 @@ type ProposalReport struct {
 // limit includes all discovery lanes; no separate unbounded fallback queue.
 func Propose(ctx context.Context, index *domain.Index, panel *evaluator.Panel, catalog []domain.SetCapability, hints map[HintKey]Hint, limit int) (ProposalReport, error) {
 	var out ProposalReport
-	if index == nil || panel == nil || limit < 1 || limit > 64 {
+	if index == nil || panel == nil || limit < 0 || limit > 64 {
 		return out, fmt.Errorf("invalid bounded proposal input")
 	}
+	fullInventoryQueue := limit == 0
 	if strings.Join(index.Coordinates, "\x00") != strings.Join(panel.Coordinates(), "\x00") {
 		return out, fmt.Errorf("proposal coordinate mismatch")
 	}
@@ -83,6 +85,13 @@ func Propose(ctx context.Context, index *domain.Index, panel *evaluator.Panel, c
 		return out, e
 	}
 	out.SlopeEvaluations = len(weights)
+	var teamPriorities [4]map[int64]float64
+	for actor := range teamPriorities {
+		teamPriorities[actor], e = index.ArtifactLinearPriorities(actor, weights)
+		if e != nil {
+			return out, e
+		}
+	}
 	all := []Proposal{}
 	for actor := range index.Wearers {
 		if _, e = panel.EvaluateDPS(anchorDelta); e != nil {
@@ -96,7 +105,11 @@ func Propose(ctx context.Context, index *domain.Index, panel *evaluator.Panel, c
 				}
 			}
 		}
-		feasible, e := index.FeasiblePackages(catalog, occupied)
+		feasibilityOccupied := occupied
+		if fullInventoryQueue {
+			feasibilityOccupied = nil
+		} // Equipped is not locked.
+		feasible, e := index.FeasiblePackages(catalog, feasibilityOccupied)
 		if e != nil {
 			return out, e
 		}
@@ -125,12 +138,20 @@ func Propose(ctx context.Context, index *domain.Index, panel *evaluator.Panel, c
 			if p.Key() == packages[actor].Key() {
 				continue
 			} // incumbent is retained separately, without recapture
-			seed, e := index.PackageSeed(index.Incumbent, actor, p, priority)
-			if e != nil {
-				return out, e
-			}
 			next := packages
 			next[actor] = p
+			seed, e := index.PackageSeed(index.Incumbent, actor, p, priority)
+			if e != nil {
+				if !fullInventoryQueue {
+					return out, e
+				}
+				var ok bool
+				seed, ok = teamPackageSeed(index, next, teamPriorities)
+				if !ok {
+					out.ReservationDeferred++
+					continue
+				} // Unknown joint feasibility, not weak stats.
+			}
 			view, e := index.ForPackages(next, seed, index.Coordinates)
 			if e != nil {
 				return out, e
@@ -139,7 +160,12 @@ func Propose(ctx context.Context, index *domain.Index, panel *evaluator.Panel, c
 			if e != nil {
 				return out, e
 			}
-			raw, e := panel.EvaluateDPSForActor(d, actor)
+			var raw float64
+			if fullInventoryQueue {
+				raw, e = panel.EvaluateDPS(d)
+			} else {
+				raw, e = panel.EvaluateDPSForActor(d, actor)
+			}
 			if e != nil {
 				return out, e
 			}
@@ -167,6 +193,9 @@ func Propose(ctx context.Context, index *domain.Index, panel *evaluator.Panel, c
 			for _, k := range ordered {
 				gain += sharedAfter[k] - currentShared[k]
 			}
+			if fullInventoryQueue {
+				gain = raw - anchorRaw
+			}
 			all = append(all, Proposal{Wearer: actor, Package: p, Seed: seed, RawContextDPS: raw, RawAdvantage: raw - anchorRaw, Priority: gain, Hint: hint})
 		}
 	}
@@ -181,6 +210,15 @@ func Propose(ctx context.Context, index *domain.Index, panel *evaluator.Panel, c
 		}
 		return all[i].Package.Key() < all[j].Package.Key()
 	})
+	if fullInventoryQueue {
+		// Keep EVERY feasible package. These raw-stat scores order work only;
+		// there is no all-set bound until that package's actual graph exists.
+		for i := range all {
+			all[i].Lane = "inventory"
+		}
+		out.Queue = all
+		return out, nil
+	}
 	used := map[int]bool{}
 	take := func(lane string, accept func(Proposal) bool) {
 		if len(out.Queue) >= limit {

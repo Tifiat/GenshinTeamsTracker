@@ -43,7 +43,7 @@ class HistorySnapshotRightPanelAdapterTest(unittest.TestCase):
         self.assertTrue(model.teams[0].slots[1].is_selected)
         self.assertEqual(
             model.teams[0].slots[1].portrait_path,
-            str(bundle_dir / "assets" / "mona.png"),
+            str(bundle_dir / "assets" / "mona_history.png"),
         )
         self.assertEqual(model.selected_details.weapon_name, "The Widsith")
         self.assertEqual(model.selected_details.stat_rows[0].value, "70%")
@@ -75,6 +75,7 @@ def _bundle() -> HistorySnapshotBundle:
             constellation=1,
             element="Hydro",
             portrait_ref="assets/mona.png",
+            expanded_portrait_ref="assets/mona_history.png",
         ),
         weapon=HistoryWeaponSnapshot(
             name="The Widsith",

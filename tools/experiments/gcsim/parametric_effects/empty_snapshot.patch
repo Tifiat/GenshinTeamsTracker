@@ -1,0 +1,170 @@
+diff --git a/pkg/core/info/combat.go b/pkg/core/info/combat.go
+--- a/pkg/core/info/combat.go
++++ b/pkg/core/info/combat.go
+@@ -19,1 +19,5 @@
+ 	GTTTraceContext *GTTTraceAttackContext `json:"-"`
++	// Only QueueAttack's explicit negative snapshot delay attests this. A nil
++	// origin alone can also mean a custom snapshot or lost provenance. Keep
++	// this on the attack: QueueAttackWithSnap must not inherit this assertion.
++	// This observer flag changes no combat values.
++	GTTNoStatSnapshot bool `json:"-"`
+diff --git a/pkg/core/attack.go b/pkg/core/attack.go
+--- a/pkg/core/attack.go
++++ b/pkg/core/attack.go
+@@ -174,2 +174,3 @@
+ 		// damage essentially
++		ae.GTTNoStatSnapshot = true
+ 		c.queueDmg(&ae, dmgDelay)
+diff --git a/pkg/core/info/gtt_trace.go b/pkg/core/info/gtt_trace.go
+--- a/pkg/core/info/gtt_trace.go
++++ b/pkg/core/info/gtt_trace.go
+@@ -298,1 +298,2 @@
+ 	SnapshotOrder uint64 `json:"-"`
++	NoStatSnapshot bool `json:"-"`
+diff --git a/pkg/enemy/gtt_trace.go b/pkg/enemy/gtt_trace.go
+--- a/pkg/enemy/gtt_trace.go
++++ b/pkg/enemy/gtt_trace.go
+@@ -24,1 +24,2 @@
+ 		SnapshotOrder: info.GTTStatsObservationOrder(atk.Snapshot.GTTStatsOrigin),
++		NoStatSnapshot: atk.GTTNoStatSnapshot && atk.Snapshot.GTTStatsOrigin == nil,
+diff --git a/pkg/core/info/gtt_contributor_group.go b/pkg/core/info/gtt_contributor_group.go
+--- a/pkg/core/info/gtt_contributor_group.go
++++ b/pkg/core/info/gtt_contributor_group.go
+@@ -42,1 +42,2 @@
+ 		SnapshotFrame: a.Snapshot.SourceFrame, SnapshotOrder: GTTStatsObservationOrder(a.Snapshot.GTTStatsOrigin),
++		NoStatSnapshot: a.GTTNoStatSnapshot && a.Snapshot.GTTStatsOrigin == nil,
+diff --git a/pkg/gttcompact/neutral_inputs.go b/pkg/gttcompact/neutral_inputs.go
+--- a/pkg/gttcompact/neutral_inputs.go
++++ b/pkg/gttcompact/neutral_inputs.go
+@@ -16,1 +16,2 @@
+ type NeutralInputPoint struct {
++	noStatSnapshot bool // internal producer attestation, not a consumer flag
+@@ -87,1 +88,2 @@
+ 	return NeutralInputPoint{Frame: h.SnapshotFrame, Order: h.SnapshotOrder,
++		noStatSnapshot: h.NoStatSnapshot,
+@@ -87,1 +89,1 @@
+-func (b *nodeBuilder) withNeutralStatInputs(raw compiledNode, owner, stat string) compiledNode {
++func (b *nodeBuilder) withNeutralStatInputs(raw compiledNode, owner, stat string, omittedSnapshot ...bool) compiledNode {
+@@ -104,1 +106,2 @@
+-	node := b.add(raw, add("stat", p))
++	node := raw
++	if len(omittedSnapshot) != 1 || !omittedSnapshot[0] { node = b.add(node, add("stat", p)) }
+diff --git a/pkg/gttcompact/builder.go b/pkg/gttcompact/builder.go
+--- a/pkg/gttcompact/builder.go
++++ b/pkg/gttcompact/builder.go
+@@ -44,0 +45,13 @@
++func (b *nodeBuilder) snapshotDelta(actorKey, statKey string) compiledNode {
++	// An explicitly unsnapshotted attack never inherited character artifacts
++	// or StatMods. AttackMods still execute at impact and need their own ports.
++	// Independent source/reaction reads retain their own event input points.
++	if b.inputPoint.noStatSnapshot {
++		n := b.constant(0)
++		if b.neutral { return b.withNeutralStatInputs(n, actorKey, statKey, true) }
++		return n
++	}
++	return b.artifactDelta(actorKey, statKey)
++}
++
++// Generic source/reaction reads must never infer stat absence from a hit.
+diff --git a/pkg/gttcompact/direct.go b/pkg/gttcompact/direct.go
+--- a/pkg/gttcompact/direct.go
++++ b/pkg/gttcompact/direct.go
+@@ -115,1 +115,1 @@
+-			values = append(values, c.b.artifactDelta(actor, key))
++			values = append(values, c.b.snapshotDelta(actor, key))
+@@ -138,1 +138,1 @@
+-	bonusValues := []compiledNode{c.b.constant(1 + hit.DamageBonus), c.b.artifactDelta(actor, "dmg%")}
++	bonusValues := []compiledNode{c.b.constant(1 + hit.DamageBonus), c.b.snapshotDelta(actor, "dmg%")}
+@@ -140,1 +140,1 @@
+-		bonusValues = append(bonusValues, c.b.artifactDelta(actor, hit.Element+"%"))
++		bonusValues = append(bonusValues, c.b.snapshotDelta(actor, hit.Element+"%"))
+@@ -148,1 +148,1 @@
+-	cr := c.b.add(c.b.constant(hit.RawCritRate), c.b.artifactDelta(actor, "cr"))
++	cr := c.b.add(c.b.constant(hit.RawCritRate), c.b.snapshotDelta(actor, "cr"))
+@@ -152,1 +152,1 @@
+-	cd := c.b.add(c.b.constant(hit.CritDamage), c.b.artifactDelta(actor, "cd"))
++	cd := c.b.add(c.b.constant(hit.CritDamage), c.b.snapshotDelta(actor, "cd"))
+@@ -173,2 +173,2 @@
+-		c.b.multiply(c.b.constant(base), c.b.artifactDelta(actor, percentKey)),
+-		c.b.artifactDelta(actor, flatKey),
++		c.b.multiply(c.b.constant(base), c.b.snapshotDelta(actor, percentKey)),
++		c.b.snapshotDelta(actor, flatKey),
+diff --git a/pkg/gttcompact/numeric_recipe.go b/pkg/gttcompact/numeric_recipe.go
+--- a/pkg/gttcompact/numeric_recipe.go
++++ b/pkg/gttcompact/numeric_recipe.go
+@@ -38,1 +38,1 @@
+-		n := c.b.add(c.b.constant(value), c.b.artifactDelta(actor, key))
++		n := c.b.add(c.b.constant(value), c.b.snapshotDelta(actor, key))
+diff --git a/pkg/gttcompact/contributor_group.go b/pkg/gttcompact/contributor_group.go
+--- a/pkg/gttcompact/contributor_group.go
++++ b/pkg/gttcompact/contributor_group.go
+@@ -124,1 +124,1 @@
+-			v := c.b.add(c.b.constant(observed), c.b.artifactDelta(actor, key))
++			v := c.b.add(c.b.constant(observed), c.b.snapshotDelta(actor, key))
+diff --git a/pkg/gttcompact/empty_snapshot_test.go b/pkg/gttcompact/empty_snapshot_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/empty_snapshot_test.go
+@@ -0,0 +1,70 @@
++package gttcompact
++
++import (
++    "testing"
++    "github.com/genshinsim/gcsim/pkg/core/info"
++    "github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func TestNoStatSnapshotKeepsAttackInputsOnly(t *testing.T) {
++    hit := info.GTTTraceHit{NoStatSnapshot: true, Frame: 9, HitOrder: 31, AttackModOrder: 27}
++    for _, neutral := range []bool{false, true} {
++        b := &nodeBuilder{neutral: neutral, inputPoint: neutralHitPoint(hit)}
++        got := b.snapshotDelta("owner", "cr")
++        if got.baseline != 0 || len(got.coords) != 0 { t.Fatal("invented artifact inheritance", got) }
++        for _, n := range b.nodes { if n.Operation == "artifact_stat" { t.Fatal("raw artifact leaf survived", n) } }
++        if !neutral {
++            if len(b.neutralInputs) != 0 { t.Fatal("Selected gained effect ports") }
++            continue
++        }
++        if len(b.neutralInputs) != 1 { t.Fatal("wrong ports", b.neutralInputs) }
++        p := b.neutralInputs[0]
++        if p.Kind != "attack" || p.Point.Order != 27 || p.Point.Frame != 9 { t.Fatal(p) }
++    }
++}
++
++func TestNoStatSnapshotDoesNotBlessMissingOrigin(t *testing.T) {
++    // No explicit producer attestation: even all-zero observations must retain
++    // the unresolved stat query. A custom/lost snapshot is not a known zero.
++    b := &nodeBuilder{neutral: true, inputPoint: neutralHitPoint(info.GTTTraceHit{AttackModOrder: 27})}
++    got := b.snapshotDelta("owner", "cr")
++    if len(got.coords) != 1 || len(b.neutralInputs) != 2 || b.neutralInputs[0].Kind != "stat" || b.neutralInputs[0].Point.Order != 0 {
++        t.Fatal("missing origin silently treated as empty", b.neutralInputs)
++    }
++}
++
++func TestNoStatSnapshotLeavesIndependentReadsVariable(t *testing.T) {
++    b := &nodeBuilder{neutral: true, inputPoint: neutralHitPoint(info.GTTTraceHit{NoStatSnapshot: true})}
++    b.snapshotDelta("owner", "em")
++    channel := "stat_input:stat"
++    b.inputPoint = neutralEventPoint(gtttrace.StateEvent{ObservationOrder: 15, Channel: &channel})
++    got := b.artifactDelta("reaction_owner", "em")
++    if len(got.coords) != 1 || len(b.neutralInputs) != 1 || b.neutralInputs[0].Point.Order != 15 {
++        t.Fatal("independent reaction/buff read frozen", got, b.neutralInputs)
++    }
++}
++
++func TestNoStatSnapshotGenericHitLocalReadNotFrozen(t *testing.T) {
++    b := &nodeBuilder{neutral: true, inputPoint: neutralHitPoint(info.GTTTraceHit{NoStatSnapshot: true})}
++    got := b.artifactDelta("producer", "em")
++    if len(got.coords) != 1 || len(b.neutralInputs) != 1 || b.neutralInputs[0].Point.Order != 0 {
++        t.Fatal("live producer dependency frozen or missing query fabricated", got, b.neutralInputs)
++    }
++}
++
++func TestNoStatSnapshotPreservesAuraHitsInSidecar(t *testing.T) {
++    // The point retains hit and attack identity even when no stat read occurred.
++    hit := info.GTTTraceHit{NoStatSnapshot: true, HitID: 42, Frame: 9, HitOrder: 31, AttackModOrder: 27, Element: "hydro"}
++    p := neutralHitPoint(hit)
++    if p.HitID != 42 || p.HitOrder != 31 || p.AttackOrder != 27 || p.Element != "hydro" || p.Mode != "snapshot" || !p.noStatSnapshot {
++        t.Fatal("aura/event identity lost", p)
++    }
++}

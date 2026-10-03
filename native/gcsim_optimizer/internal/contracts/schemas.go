@@ -122,6 +122,46 @@ type CancellationPolicy struct {
 	Mode string `json:"mode"`
 }
 
+type ResultOptions struct {
+	SetGroupLimit  int  `json:"set_group_limit"`
+	BuildsPerGroup int  `json:"builds_per_group"`
+	FastMode       bool `json:"fast_mode"`
+	ExpandedLimits bool `json:"expanded_limits,omitempty"`
+}
+
+const MaxResultGroups = 50
+const MaxResultBuildsPerGroup = 101
+const MaxResultRows = MaxResultGroups * MaxResultBuildsPerGroup
+
+// Opt-in lifts recommended limits, retaining generous technical bounds.
+func (options ResultOptions) GroupLimit() int {
+	if options.ExpandedLimits {
+		return MaxResultGroups
+	}
+	if options.FastMode {
+		return 10
+	}
+	return 5
+}
+
+// ResultLimit includes one leader plus single-item replacements.
+func (options ResultOptions) ResultLimit() int {
+	if options.ExpandedLimits {
+		return MaxResultBuildsPerGroup
+	}
+	if options.FastMode {
+		return 41
+	}
+	return 11
+}
+
+func (request OptimizerRequest) EffectiveResultOptions() ResultOptions {
+	if request.ResultOptions == nil {
+		return ResultOptions{SetGroupLimit: 3, BuildsPerGroup: 2}
+	}
+	return *request.ResultOptions
+}
+
 type OptimizerRequest struct {
 	SchemaVersion int                `json:"schema_version"`
 	SchemaKind    string             `json:"schema_kind"`
@@ -135,6 +175,7 @@ type OptimizerRequest struct {
 	Budgets       TimeBudgets        `json:"budgets"`
 	Finalists     *FinalistPolicy    `json:"finalists,omitempty"`
 	Cancellation  CancellationPolicy `json:"cancellation"`
+	ResultOptions *ResultOptions     `json:"result_options,omitempty"`
 }
 
 type IRInput struct {
@@ -247,8 +288,11 @@ type RankedCandidateResult struct {
 	Rank            int                  `json:"rank"`
 	Artifacts       []ArtifactAssignment `json:"artifacts"`
 	FormulaDPS      string               `json:"formula_dps"`
-	Measured        MeasuredResult       `json:"measured"`
-	FormulaResidual string               `json:"formula_residual"`
+	Measured        *MeasuredResult      `json:"measured,omitempty"`
+	FormulaResidual string               `json:"formula_residual,omitempty"`
+	SetGroupKey     string               `json:"set_group_key,omitempty"`
+	SetGroupRank    int                  `json:"set_group_rank,omitempty"`
+	AlternativeRank int                  `json:"alternative_rank,omitempty"`
 }
 
 type EnergySourceResult struct {
@@ -281,6 +325,7 @@ type OptimizerResult struct {
 	RequestSHA256         string                  `json:"request_sha256"`
 	CompactIRSHA256       string                  `json:"compact_ir_sha256,omitempty"`
 	SetContextPanelSHA256 string                  `json:"set_context_panel_sha256,omitempty"`
+	RankingBasis          string                  `json:"ranking_basis,omitempty"`
 	Status                string                  `json:"status"`
 	Winner                []ArtifactAssignment    `json:"winner,omitempty"`
 	Candidates            []RankedCandidateResult `json:"candidates,omitempty"`

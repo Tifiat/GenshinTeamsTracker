@@ -39,8 +39,10 @@ does not switch `main.py`.
   bundles. It writes grouped Abyss snapshots under
   `abyss/<period_start>/<bundle_id>/snapshot.json`, DPS Dummy snapshots under
   `dps_dummy/<bundle_id>/snapshot.json`, and can list old flat dev bundles for
-  current development compatibility. Pre-contract/dev snapshots are disposable;
-  no migration contract is required. `run_workspace.history_snapshot_builder`
+  current development compatibility. Older pre-contract schema versions are
+  preserved but returned as `ignored_legacy` rather than actionable read errors;
+  corrupt, missing-version and future-schema files remain errors. No legacy
+  migration contract is required. `run_workspace.history_snapshot_builder`
   builds backend-only bundles from explicit `RunSessionState`/right-panel
   view-model inputs. It now derives frozen display details for every occupied
   slot. Production AppShell Save materializes every declared visible asset into
@@ -167,8 +169,9 @@ stores supplied Abyss bundles as
 `<root>/abyss/<period_start>/<bundle_id>/snapshot.json` and DPS Dummy bundles
 as `<root>/dps_dummy/<bundle_id>/snapshot.json`, through a temp file in the
 same directory. Missing Abyss period start uses `unknown_period`. The current
-store can also list/read old `<root>/<bundle_id>/snapshot.json` dev bundles,
-but those pre-contract snapshots may be deleted and require no migration. The
+store can also list/read old `<root>/<bundle_id>/snapshot.json` dev bundles.
+Older schema files remain on disk and are listed separately as ignored legacy;
+they require no migration and do not produce a permanent History warning. The
 store does not use production `data/`, account/profile/cache/DB paths, or real
 assets. The AppShell RUN Save command uses the project-root convention
 `data/history/snapshots` by default, while tests and future callers can pass a

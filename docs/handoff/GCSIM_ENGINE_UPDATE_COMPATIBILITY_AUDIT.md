@@ -6,7 +6,7 @@ status below supersedes the former "not fixed yet" audit, but not cross-team
 acceptance or the mandatory pre-MVP all-patches re-audit.
 
 This is the historical 2026-09-07 repair receipt. Current installed engine,
-rollback and acceptance are owned by `GCSIM_GOB11_GP3_CHECKPOINT.md`;
+active-selection policy and acceptance are owned by `GCSIM_GOB11_GP3_CHECKPOINT.md`;
 `GCSIM_GOB11_ROTATION_VALIDATION.md` retains the supplied-fixture chronology.
 IDs and acceptance below describe this repair, not today's active installation.
 Its disjoint wholly constant channel measure is not the conservative

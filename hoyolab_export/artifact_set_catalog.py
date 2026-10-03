@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import quote, urlsplit, urlunsplit
 
 from .artifact_db import (
@@ -475,6 +475,7 @@ def update_artifact_set_catalog(
     language: str = CANONICAL_LANGUAGE,
     force_download: bool = False,
     missing_only: bool = False,
+    list_fetcher: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     requested_language = normalize_language(language)
     summary: dict[str, Any] = {
@@ -500,7 +501,7 @@ def update_artifact_set_catalog(
             f"localized names are handled by ensure_artifact_set_names({requested_language!r})."
         )
 
-    items = fetch_hoyowiki_artifact_sets(language=CANONICAL_LANGUAGE)
+    items = (list_fetcher or fetch_hoyowiki_artifact_sets)(language=CANONICAL_LANGUAGE)
     summary["sets_seen"] = len(items)
 
     now = utc_now()
@@ -944,6 +945,7 @@ def ensure_artifact_set_catalog(
     db_path: str | Path = ARTIFACT_DB_PATH,
     allow_network: bool = False,
     missing_only: bool = False,
+    list_fetcher: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     with connect_db(db_path) as conn:
         init_db(conn)
@@ -971,6 +973,7 @@ def ensure_artifact_set_catalog(
         summary = update_artifact_set_catalog(
             db_path=db_path,
             missing_only=missing_only,
+            list_fetcher=list_fetcher,
         )
         return {"source": "network", **summary}
 
@@ -982,6 +985,7 @@ def ensure_artifact_set_names(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
     allow_network: bool = True,
+    list_fetcher: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     lang = normalize_language(lang)
     catalog_summary = ensure_artifact_set_catalog(db_path=db_path, allow_network=False)
@@ -1019,7 +1023,7 @@ def ensure_artifact_set_names(
         }
 
     try:
-        items = fetch_hoyowiki_artifact_sets(language=lang)
+        items = (list_fetcher or fetch_hoyowiki_artifact_sets)(language=lang)
     except (OSError, urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
         return {
             "lang": lang,
@@ -1082,6 +1086,7 @@ def _ensure_artifact_set_bonus_descriptions_for_language(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
     allow_network: bool = True,
+    list_fetcher: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     lang = normalize_language(lang)
     catalog_summary = ensure_artifact_set_catalog(db_path=db_path, allow_network=False)
@@ -1109,7 +1114,7 @@ def _ensure_artifact_set_bonus_descriptions_for_language(
         }
 
     try:
-        items = fetch_hoyowiki_artifact_sets(language=lang)
+        items = (list_fetcher or fetch_hoyowiki_artifact_sets)(language=lang)
     except (OSError, urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
         return {
             "lang": lang,
@@ -1180,6 +1185,7 @@ def ensure_artifact_set_bonus_descriptions(
     db_path: str | Path = ARTIFACT_DB_PATH,
     allow_network: bool = True,
     include_english: bool = True,
+    list_fetcher: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     requested_lang = normalize_language(lang)
     languages: list[str] = []
@@ -1194,6 +1200,7 @@ def ensure_artifact_set_bonus_descriptions(
             language,
             db_path=db_path,
             allow_network=allow_network,
+            list_fetcher=list_fetcher,
         )
         for language in languages
     }

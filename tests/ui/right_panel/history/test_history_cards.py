@@ -7,20 +7,35 @@ from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
 from PySide6.QtGui import QImage, QMouseEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QScrollArea
+from PySide6.QtWidgets import QApplication, QLabel, QScrollArea
 
 from run_workspace.history_artwork import HistoryArtworkStore
 from run_workspace.history_snapshot import HistoryArtifactSlotSnapshot, HistoryStatRowSnapshot, HistorySnapshotBundleStore
-from run_workspace.history_browser_catalog import _run_visual, HistoryEnemyVisual, HistorySideVisual
+from run_workspace.history_browser_catalog import (
+    _run_visual,
+    HistoryBonusVisual,
+    HistoryEnemyVisual,
+    HistoryPeriodVisual,
+    HistoryRunVisual,
+    HistorySideVisual,
+)
 from run_workspace.history_snapshot_right_panel import build_history_snapshot_right_panel_view_model
 from tests.run_workspace.history.test_history_snapshot_right_panel import _bundle
-from ui.history_browser.window import HistoryBrowserWorkspace
-from ui.right_panel.common.history_card import ArtworkAction, CardLayout, HistoryCardWidget, render_history_card_png, stat_columns, team_seconds
+from ui.history_browser.window import AbyssPeriodSectionWidget, HistoryBrowserWorkspace
+from ui.right_panel.common.history_card import (
+    ArtworkAction,
+    CardLayout,
+    HistoryCardWidget,
+    compact_seconds,
+    render_history_card_png,
+    stat_columns,
+    team_seconds,
+)
 
 
 class HistoryCardsTest(unittest.TestCase):
@@ -160,27 +175,250 @@ class HistoryCardsTest(unittest.TestCase):
         self.assertEqual(right[0].value, "70%")
 
     def test_compact_run_fits_about_four_reference_rows_without_duplicate_characters(self):
-        # User rejected the 510px compact report: a whole run should occupy
-        # roughly four 40px Akasha rows; a wide panel fits results alongside.
+        # A 1366/RDP-sized viewport removes chamber timing detail instead of
+        # adding a full-width results row beneath each team.
+        scale_patch = patch.object(HistoryCardWidget, "content_scale", new_callable=PropertyMock, return_value=1.)
+        scale_patch.start()
+        self.addCleanup(scale_patch.stop)
         visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))
         card = HistoryCardWidget(visual)
-        scale = card.content_scale
-        card.resize(round(864*scale), 1)
+        card.resize(864, 1)
         card.set_expanded(False)
-        self.assertLessEqual(card.height()/scale, 180)
+        scale = card.content_scale
+        self.assertEqual(scale, 1.)
+        self.assertEqual(card.height(), 84)
         card.grab()
         regions = [r for r, slot in card._hits if hasattr(slot, "character_name")]
         self.assertEqual(len(regions), 8)
-        self.assertTrue(all(r.height()/scale >= 42 for r in regions))
-        card.resize(round(1220*scale), 1)
+        self.assertTrue(all(r.height() == 36 for r in regions))
+        self.assertEqual({round(r.y()) for r in regions}, {3, 44})
+        self.assertLessEqual(min(r.x() for r in regions), 2)
+        card.resize(1220, 1)
         card.set_expanded(False)  # Hidden widgets defer resize events until shown.
-        self.assertLessEqual(card.height()/scale, 140)
+        self.assertEqual(card.content_scale, 1.)
+        self.assertEqual(card.height(), 84)
+        card.grab()
+        self.assertEqual(sum(hasattr(s, "character_name") for _, s in card._hits), 8)
+        # A 2K desktop at 150% commonly leaves about 1000 logical pixels for
+        # this pane. It must retain inline team/chamber timing without growing
+        # beyond the narrow card's height budget.
+        card.resize(1000, 1)
+        card.set_expanded(False)
+        self.assertTrue(CardLayout(1000).compact_inline(visual))
+        self.assertEqual(card.height(), 84)
         card.grab()
         self.assertEqual(sum(hasattr(s, "character_name") for _, s in card._hits), 8)
         card.set_expanded(True)
-        self.assertGreater(card.height()/scale, 180)
+        self.assertGreater(card.height(), 180)
         card.close()
         card.deleteLater()
+        self.app.processEvents()
+
+    def test_compact_two_set_run_reserves_only_build_height_without_results_rows(self):
+        scale_patch = patch.object(HistoryCardWidget, "content_scale", new_callable=PropertyMock, return_value=1.)
+        scale_patch.start()
+        self.addCleanup(scale_patch.stop)
+        visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))
+        first = visual.teams[0]
+        slot = replace(first.slots[0], set_icon_paths=("first", "second"), set_counts=(2, 2))
+        visual = replace(visual, teams=(replace(first, slots=(slot, *first.slots[1:])), visual.teams[1]))
+        self.assertTrue(CardLayout(1000).compact_inline(visual))
+        self.assertEqual(CardLayout(1000).height(visual, False), 84)
+        card = HistoryCardWidget(visual)
+        card.resize(1000, 1)
+        card.set_expanded(False)
+        card.grab()
+        self.assertEqual(card.height(), 84)
+        self.assertTrue(all(card.rect().contains(rect.toAlignedRect()) for rect, _ in card._hits))
+        card.resize(864, 1)
+        card.set_expanded(False)
+        self.assertEqual(card.content_scale, 1.)
+        self.assertEqual(card.height(), 84)
+        card.grab()
+        self.assertEqual(sum(hasattr(value, "character_name") for _, value in card._hits), 8)
+        self.assertTrue(all(card.rect().contains(rect.toAlignedRect()) for rect, _ in card._hits))
+        card.close()
+        card.deleteLater()
+        self.app.processEvents()
+
+    def test_narrow_compact_separates_resonances_and_hides_roman_marker_first(self):
+        scale_patch = patch.object(HistoryCardWidget, "content_scale", new_callable=PropertyMock, return_value=1.)
+        scale_patch.start()
+        self.addCleanup(scale_patch.stop)
+        visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))
+        first = visual.teams[0]
+        bonuses = tuple(
+            HistoryBonusVisual(
+                identity=f"bonus-{index}",
+                label=str(index),
+                tooltip=f"unique bonus {index}",
+            )
+            for index in range(5)
+        )
+        visual = replace(
+            visual,
+            teams=(replace(first, bonuses=bonuses), visual.teams[1]),
+        )
+        layout = CardLayout(864)
+        self.assertEqual(layout.compact_total_width, 86)
+        self.assertEqual(layout.compact_team_index_width, 0)
+        self.assertEqual(layout.compact_resonance_width(visual), 28)
+        self.assertTrue(CardLayout(960).compact_inline(visual))
+        self.assertEqual(CardLayout(960).compact_team_index_width, 0)
+        self.assertEqual(CardLayout(1000).compact_team_index_width, 14)
+        self.assertEqual(CardLayout(1000).compact_resonance_width(visual), 0)
+        self.assertEqual(CardLayout(540).compact_team_index_width, 0)
+        self.assertEqual(CardLayout(540).compact_resonance_width(visual), 0)
+        self.assertEqual(CardLayout(320).compact_team_index_width, 0)
+        self.assertNotIn(" ", compact_seconds(444))
+
+        card = HistoryCardWidget(visual)
+        card.resize(864, 1)
+        card.set_expanded(False)
+        card.grab()
+        visible_bonus_hits = [
+            (rect, value)
+            for rect, value in card._hits
+            if isinstance(value, str) and value.startswith("unique bonus")
+        ]
+        self.assertEqual(
+            {value for _, value in visible_bonus_hits},
+            {"unique bonus 0", "unique bonus 1"},
+        )
+        visible_bonus_hits.sort(key=lambda item: item[1])
+        first_rect, _ = visible_bonus_hits[0]
+        second_rect, _ = visible_bonus_hits[1]
+        self.assertAlmostEqual(first_rect.x(), second_rect.x())
+        self.assertGreater(second_rect.y(), first_rect.y())
+        self.assertTrue(
+            all(rect.right() < layout.compact_body_width for rect, _ in visible_bonus_hits)
+        )
+        card.close()
+        card.deleteLater()
+        self.app.processEvents()
+
+    def test_compact_responsive_geometry_keeps_team_rows_stable_and_in_bounds(self):
+        scale_patch = patch.object(HistoryCardWidget, "content_scale", new_callable=PropertyMock, return_value=1.)
+        scale_patch.start()
+        self.addCleanup(scale_patch.stop)
+        visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))
+        for width, expected_height, expected_rows in (
+            (520, 156, 4),
+            (560, 84, 2),
+            (704, 84, 2),
+            (960, 84, 2),
+            (980, 84, 2),
+        ):
+            with self.subTest(width=width):
+                card = HistoryCardWidget(visual)
+                card.resize(width, 1)
+                card.set_expanded(False)
+                card.grab()
+                regions = [
+                    rect
+                    for rect, value in card._hits
+                    if hasattr(value, "character_name")
+                ]
+                layout = CardLayout(width)
+                self.assertEqual(card.height(), expected_height)
+                self.assertEqual(len(regions), 8)
+                self.assertEqual(len({round(rect.y()) for rect in regions}), expected_rows)
+                self.assertTrue(all(card.rect().contains(rect.toAlignedRect()) for rect in regions))
+                expected_left = layout.compact_inner_margin + layout.compact_team_index_width
+                self.assertAlmostEqual(min(rect.x() for rect in regions), expected_left)
+                self.assertLessEqual(
+                    max(rect.right() for rect in regions),
+                    layout.compact_body_width-layout.compact_inner_margin,
+                )
+                for row_y in {round(rect.y()) for rect in regions}:
+                    row = sorted((rect for rect in regions if round(rect.y()) == row_y), key=lambda rect: rect.x())
+                    self.assertTrue(all(right.left() >= left.right() for left, right in zip(row, row[1:])))
+                card.close()
+                card.deleteLater()
+        self.app.processEvents()
+
+    def test_expanded_bonus_grid_stays_inside_identity_panel(self):
+        visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))
+        first = visual.teams[0]
+        bonuses = tuple(
+            HistoryBonusVisual(
+                identity=f"expanded-bonus-{index}",
+                label=str(index),
+                tooltip=f"expanded bonus {index}",
+            )
+            for index in range(11)
+        )
+        visual = replace(visual, teams=(replace(first, bonuses=bonuses), visual.teams[1]))
+        card = HistoryCardWidget(visual)
+        card.resize(1220, 1)
+        card.set_expanded(True)
+        card.grab()
+        bonus_hits = [
+            (rect, value)
+            for rect, value in card._hits
+            if isinstance(value, str) and value.startswith("expanded bonus")
+        ]
+        self.assertEqual(len(bonus_hits), 10)  # Nine icons plus one in-bounds overflow cell.
+        self.assertEqual(len({round(rect.y()) for rect, _ in bonus_hits}), 2)
+        self.assertTrue(all(rect.left() >= 20 and rect.right() <= 183 for rect, _ in bonus_hits))
+        card.close()
+        card.deleteLater()
+        self.app.processEvents()
+
+    def test_period_heading_is_one_row_and_bosses_take_no_height_until_requested(self):
+        run = HistoryRunVisual(
+            bundle_id="period-run",
+            run_type="abyss",
+            created_at="2026-09-17T00:00:00Z",
+            bundle_path=Path("period-run/snapshot.json"),
+        )
+        period = HistoryPeriodVisual(
+            period_start="2026-09-16",
+            period_end="2026-10-01",
+            floor=12,
+            runs=(run,),
+            sides=(
+                HistorySideVisual(
+                    chamber=1,
+                    side=1,
+                    total_hp=10_500_000,
+                    enemies=(HistoryEnemyVisual(name="Boss"),),
+                ),
+            ),
+        )
+        empty_period = HistoryPeriodVisual(
+            period_start="2026-09-01",
+            period_end="2026-09-15",
+            floor=12,
+        )
+        section = AbyssPeriodSectionWidget(period, (period, empty_period))
+        section.resize(864, 1)
+        section.show()
+        self.app.processEvents()
+        self.assertIn("12", section.selector.text())
+        self.assertIn("9.2026", section.selector.text())
+        self.assertIn("10.2026", section.selector.text())
+        self.assertEqual(len(section.selector.menu().actions()), 1)
+        self.assertGreaterEqual(section.selector.menu().minimumWidth(), 360)
+        self.assertTrue(section.preview.isHidden())
+        collapsed_height = section.height()
+        section.boss_button.setChecked(True)
+        self.app.processEvents()
+        self.assertFalse(section.preview.isHidden())
+        self.assertGreater(section.height(), collapsed_height)
+        chamber_labels = section.findChildren(QLabel, "HistoryChamberIndex")
+        enemy_icons = section.findChildren(QLabel, "HistoryEnemyIcon")
+        hp_labels = section.findChildren(QLabel, "HistorySideHp")
+        self.assertEqual([label.text() for label in chamber_labels], ["12-1", "12-2", "12-3"])
+        self.assertEqual(len(enemy_icons), 1)
+        self.assertEqual(enemy_icons[0].width(), 50)
+        self.assertEqual(len(hp_labels), 6)
+        self.assertEqual(hp_labels[0].text(), "10.5m")
+        section.boss_button.setChecked(False)
+        self.app.processEvents()
+        self.assertTrue(section.preview.isHidden())
+        section.close()
+        section.deleteLater()
         self.app.processEvents()
 
     def test_expansion_replaces_compact_characters_and_hover_uses_viewport_coordinates(self):

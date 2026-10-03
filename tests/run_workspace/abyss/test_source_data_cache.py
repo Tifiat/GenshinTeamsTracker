@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import json
+import io
 import threading
 import time
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from run_workspace.abyss.source_data_cache import (
     AbyssSourceDataCacheError,
+    _fetch_url_bytes,
     DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR,
     cache_abyss_floor_monster_icons,
     cached_abyss_floor_source_data_path,
@@ -32,6 +35,13 @@ def _current_style_source_data():
 
 
 class AbyssSourceDataCacheTest(unittest.TestCase):
+    def test_wikia_icons_use_source_referrer(self) -> None:
+        url = "https://static.wikia.nocookie.net/gensin-impact/images/a/icon.png"
+        with patch("run_workspace.abyss.source_data_cache.urlopen", return_value=io.BytesIO(b"icon")) as opener:
+            self.assertEqual(_fetch_url_bytes(url), b"icon")
+        request = opener.call_args.args[0]
+        self.assertEqual(request.get_header("Referer"), "https://genshin-impact.fandom.com/")
+
     def test_default_cache_path_is_project_root_anchored(self) -> None:
         path = cached_abyss_floor_source_data_path("2026-05-16", floor=12)
 
@@ -217,6 +227,21 @@ class AbyssSourceDataCacheTest(unittest.TestCase):
                 for warning in loaded.enemy_rows[0].warnings
             )
         )
+
+    def test_successful_icon_retry_clears_previous_failure_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            first = cache_abyss_floor_monster_icons(
+                _current_style_source_data(), cache_dir=tmp,
+                icon_fetcher=lambda _url: (_ for _ in ()).throw(OSError("offline")),
+            )
+            second = cache_abyss_floor_monster_icons(
+                first.data, cache_dir=tmp, icon_fetcher=lambda _url: b"icon",
+            )
+        self.assertEqual(second.failed, 0)
+        self.assertFalse(any("monster_icon_cache_failed" in warning
+                             for warning in second.data.global_warnings))
+        self.assertFalse(any("monster_icon_cache_failed" in warning
+                             for row in second.data.enemy_rows for warning in row.warnings))
 
     def test_saved_source_data_preserves_local_cached_icon_paths(self) -> None:
         data = _current_style_source_data()

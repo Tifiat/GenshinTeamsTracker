@@ -558,8 +558,10 @@ character/weapon observation rows, use `hoyolab_export/account_storage.py`:
 The adapter returns `AccountCharacterRuntimeRecord` and
 `AccountWeaponObservedStack` dataclasses with `to_dict()` and narrow future
 TeamBuilder ref helpers. UI asset helpers in `ui/character_assets.py` convert
-these runtime records into the legacy grid asset-item shape without reading
-`crop_manifest.json` at runtime.
+these runtime records into the legacy grid asset-item shape. The principal
+portrait/weapon paths still come from SQLite; a cached, narrow lookup in the
+version-2 image manifest supplies optional PvP/expanded-History variants and
+the downloaded mini element icons. Version-1 profiles keep their baked paths.
 
 PvP account deck export also uses this read-adapter boundary. The production
 provider in `run_workspace/pvp/account_deck_export.py` reads

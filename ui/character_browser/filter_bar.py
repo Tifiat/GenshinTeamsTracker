@@ -13,6 +13,7 @@ from ui.character_assets import (
     CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
+    filter_icon_path,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
@@ -90,7 +91,9 @@ class CharacterFilterBar(QWidget):
         active_set: set[Any],
     ) -> QPushButton:
         button = _base_filter_button()
-        icon_path = FILTER_ASSETS_DIR / icon_name
+        if icon_name.startswith("element_"):
+            button.setProperty("elementIconName", icon_name)
+        icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
             button.setIcon(QIcon(str(icon_path)))
         else:

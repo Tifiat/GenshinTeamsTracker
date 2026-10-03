@@ -155,3 +155,69 @@ func TestBoundedProposalsPreserveDomainAndRawAnchor(t *testing.T) {
 		t.Fatal("ignored cancellation")
 	}
 }
+
+func TestInventoryQueueReleasesOccupiedPiecesAndDoesNotScoreHypotheticalBonuses(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..", "tests", "fixtures", "gcsim_optimizer_go_v1")
+	raw, e := os.ReadFile(filepath.Join(root, "request_v1.json"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	req, e := contracts.DecodeRequest(raw)
+	if e != nil {
+		t.Fatal(e)
+	}
+	raw, e = os.ReadFile(filepath.Join(root, "compact_ir_v1.json"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	ir, e := contracts.DecodeCompactIR(raw)
+	if e != nil {
+		t.Fatal(e)
+	}
+	panel, e := evaluator.Compile(req, ir)
+	if e != nil {
+		t.Fatal(e)
+	}
+	// The only fourth piece is the OTHER wearer's off-piece. It is movable,
+	// not locked. Keep that wearer's 4p and provide a legal replacement.
+	borrowed := req.Wearers[1].CurrentArtifacts[4].ArtifactID
+	for i, a := range req.Artifacts {
+		if a.ArtifactID == borrowed {
+			spare := a
+			spare.ArtifactID = 9901
+			req.Artifacts = append(req.Artifacts, spare)
+			req.Artifacts[i].SetUID = "borrowed_set"
+			break
+		}
+	}
+	for slot := 0; slot < 3; slot++ {
+		a := req.Artifacts[slot]
+		a.ArtifactID = int64(9910 + slot)
+		a.SetUID = "borrowed_set"
+		req.Artifacts = append(req.Artifacts, a)
+	}
+	index, e := domain.Build(req, panel.Coordinates())
+	if e != nil {
+		t.Fatal(e)
+	}
+	hints := map[HintKey]Hint{{index.Wearers[0].WearerKey, "borrowed_set", 4}: {PeakIncrement: 1e12}}
+	r, e := Propose(context.Background(), index, panel, []domain.SetCapability{{UID: "borrowed_set", TwoPiece: true, FourPiece: true}}, hints, 0)
+	if e != nil {
+		t.Fatal(e)
+	}
+	found := false
+	for _, p := range r.Queue {
+		if p.Priority != p.RawAdvantage {
+			t.Fatal("unproven activation leaked into bonus score")
+		}
+		if p.Wearer == 0 && p.Package.Key() == "borrowed_set:4" {
+			found = true
+			if p.Seed[0][4] != borrowed || p.Seed[1][4] == borrowed {
+				t.Fatal("reservation was not released")
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("globally available package disappeared: deferred=%d", r.ReservationDeferred)
+	}
+}

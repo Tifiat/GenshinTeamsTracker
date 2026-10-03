@@ -1,0 +1,3 @@
+# Preserve literal engine/research patch payloads across Windows checkouts.
+# Leading diff-context spaces are data, not source indentation errors.
+*.patch text eol=lf whitespace=-blank-at-eol,-space-before-tab

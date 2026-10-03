@@ -1,0 +1,758 @@
+{
+  "bytes": 301591,
+  "catalog_sha256": "9049ed5ed5c33196961bf8bb2f1e8a54be37a0a658491f356d6c34079597c722",
+  "consumer_sha256": "361fb658a75c2304589963c20a8f64b1f44ee566d09771edfc372b860713ea4f",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "files": {
+    "01cebf60a2ddf972759619ee5d851d766608ee6fba654bca6a243b50e1313fe0.gttast": "7e8f37e443caff32a538ba2e2d34d0422b97beb744563825168ff1ba1d3b26f9",
+    "030d3ac35c4933ea696e1ce66607b1a86b32254144ae8e32d5facdb411f9d8b9.gttast": "47a297bcd80b0cf7d59f4dca373d5d887aca1f1adb0e802df04c2455045a7674",
+    "05e62923e5c650a74ece63457cdbf9666e4119800c736413530416a0bd510f07.gttast": "f6ab04cb287dda1826cf3f8cafb24bbeb2364743c3ae99392c69902c2d399756",
+    "0652f968c75b2cce9ffd5ab6d466532d0e132ce5251fe69ed18fba3e37174294.gttast": "7ac6f17e8f59e32165ec39b597faeb8151de16814aec5dafd257b9860c3b9e84",
+    "0d2a8b0c7c818f9780eb97ab50f8f84ddbc1b671655c8885f1330b02cfbe2949.gttast": "db582b007ec7f9b9a0466004a9c75778cd754acf8f36926ac1314a935d83634e",
+    "0d694a48d93720fca3fe51697373b81526dfcb2f7703cca69a21d74570d7faca.gttast": "b9aa638d92fe6b803ff027e5beca374cf4c1dfa0e04b94bdd54b1b8a4abe5ab5",
+    "132a4e612082d59beccab9f21f0b68c178ab1c5b77d93cacd2704a12f7e9a53b.gttast": "6b597730b0f3763fcd592ab1fccfbc7d3446530e69621765d4e9636153874e1a",
+    "15b5d9f5e866e1001cce07e740932b2a30578819debfe625254375298f6e13fc.gttast": "a13bfb13ecc717b3d3e0326e61bb52fdcbddd9b20b56d0bbe3f79babc5433edf",
+    "160482aa939a732a6f3585320c8a51789d345eb4f50579f370df38c08fdffd87.gttast": "c38557b169f91e00cb7f70454483150bf116252c426f4254fbe08898388f0d95",
+    "19821bd73ee3b92632ac2f19fa40f2a99cfab3a06dde4b19bc65a541774fd465.gttast": "a421f8ad355d2cac6be94ffe0769edb08b06206888c907430590ad363b97f5b0",
+    "198f613d6539272ba010913149be3c15c500006fb9d3d46040d8383648a9829c.gttast": "0f6ffb7fbc5496d3c3942aec974a35246d0c22552db069019bf5ce34e3d61f98",
+    "1aa1b33e40adb79750ed656b9c879058d54d4fef454e4e0516f358c19b3056eb.gttast": "bf62fea4f3150920a2809902a27230da3e8e3c25e5f9c49a1ffb534c4580c569",
+    "1bd307c0a99808a5547ca0298e12c8c8d31581bf388254742e2e3f95a6972691.gttast": "188d40028546a1afdbf923d2986847318d8017360546c16037742f68f15783ea",
+    "22031612dffe25d5151514981a043cde9247eef4159edbff0197e958ff303122.gttast": "e124ea263241a22a8b3860f7bfa5344ca938dc2a30ee7639a82332d4508182a3",
+    "2607d2d8c3f399129a32d80e0ec98187b8571aa4e0f31497a446fcaf06c9965e.gttast": "7dbb7486d3d248ad060d69b60b6a3304378496ac32fd101b63dc87787a5ce2e0",
+    "27e790a2b70fec62b4a5957c4337a8a6056eeb8e3186a6be08cd4b0ab75495b7.gttast": "e2017c6419c3a72191a7d03fa5bd04abd05085dcab996d33ad32cdd466b25930",
+    "293ce8b76a45b29c7e53137c836da7e33d9f69fd60524937f0a015426048b949.gttast": "fcf6d01cf012ca992474e2443211d5ec8df92ad672316b3d0c1c30630e834f6b",
+    "2d297e8830f49a23e5b74e0cdcea489cbc090fe13c8159ef6caca5ea5a9d3781.gttast": "1cd33629a5d5de5844d48b9e8a8ea706a9b1051ffea75b10016a9030167115d9",
+    "2e1762176bd3e869623d548318a64eb2fa27e38fdbd57d33f54123c851d28684.gttast": "cedd5f5ca202da10644d3c2b8026c2ccdd757b645aeec4c24829513da4407cac",
+    "2e990c1c28cff3abc65baa0f159bce4fe1171d2c44916f1907972974f0958d1b.gttast": "f5fada6f32f9e3f8c7edc6f81888ee6a43e5cdf0515ad73a1c87afa6fb126c2c",
+    "2ffff65a5a6420f21f97d9c91df6bbbbea452cb4ec2a025b41345a35ed6b7cc1.gttast": "2d4da569daf4557060a33a424dd562784375ddf54a2a8f72372534bbd668369c",
+    "3343141824a2105b34bb0e478fcb95844f1e84592dbc277b1905d1563ca27aa1.gttast": "0c29e42425273fc6a739655900ba2ee8e9b076d4b60693bc79a4a27b28a23990",
+    "334cf23914402e8d0863cf06254ba27880fae332fa32562e6b8e10dad3108ff5.gttast": "220324ff6e2f1a0abcf2c80c41c74ad7d303ef1aae48ab4209e72990ffa5007e",
+    "35333c562dfe94c4bc22613a0592cb17a1581db2aed685ab16c07ee41a06354b.gttast": "e035ee88a4397276f3bcfdfad547251a9a3de1720f9a1c3f5919ed6cafe626d2",
+    "3b5d9a6b2af6080f2e2a83c49d1463dd22cd379c050b603ceebfea22f655fce8.gttast": "f6113cd2f0f83a5c8093881ceb9b12eac569b9535d46c6ca010275fa98790c3b",
+    "3b7c46eb2962f19b0aa2fc8277494afcbbab1d724c7d47d1e664ef79b6b21ffc.gttast": "6a4629944c397d71a1d134155414cc82b299b3dd17eea7bbd37ef641ee7fa293",
+    "3bc11947f5b54b888781f5c77e9e7fa59d7c16f258982cae6cb286576a843d32.gttast": "a68555ef075fef9662484668265c66047dada1c8f0b251664389c11c764671f1",
+    "3f7d81df31104bad67168ebc1a2c243401894315efe203959a93db5ec052c9a6.gttast": "c3d0f0d21b2faef56afc84b22ba3b84289dbf71b91a8af0cbf8ef1b8752e8f37",
+    "496d57d4a039577395ed4a97b70a436a072505fec7aae2ff4e2d092e8ee8a589.gttast": "ae29e35c71e71f857cd28f5915a3b8141cd3f735c7525e09e385f1c1769b1fe4",
+    "4a225ab312f7f4f30c56d2c33b4f6a5ef7392b323a37a7e3fd08e71538024bc0.gttast": "aa9a6c30eab3bdbc16796c918abee229f9e12c4e24d8fc55d1b6d5e86f15e296",
+    "4a7434624c59def26ffcb68fcf162237b3b0c6af0b86e6fea4f86baf9b1bcc75.gttast": "ba35b0ba96015c1306c50838f24e9d1ace10b6be0d6a16b1f479bc9f1c5b954b",
+    "4c44e49b4c947e4b147c3f112fdda52a3469883a3efc719f3ad918f17f2d59b8.gttast": "07edd467dfae10e664ba6b0d527454bb200e20ad3613deff3cb3c9cae128175b",
+    "4e6b0efdf65e431b0fe938dcbc74a3caa2bac671852182c3b7409dcdd3175782.gttast": "8f84eb1c89f3f7bb1449bb4a26b3375c37b6feebb9b8a16ad4a1cf1863522962",
+    "528c830700edcd960925a956e5f762cb4da5d42d22172cb33948895d2d4d5837.gttast": "d26c7e6474bf63230249bcdfe552380d029411a723ebbf8f0e59f529eb8c03c6",
+    "5bd6929351f9a285ac583f38bdd886266b89f6c7382272ec4d6b8d08a4fee767.gttast": "4fd46cbe539055e495e80985121c0a4f4b74919bd78b5c14306544c2bfbad36e",
+    "5d07728316419c96fff2f0f23b04bfd2d15b4d2577cbfd19154023bedc12cf2a.gttast": "544b3735b038e15c61f4ac25d4176d971b8ddc3718fec0ca8a083dec766edafd",
+    "602acbe46956440851298395ad3c233f550ed68aae06fc8debe4a824f140cb35.gttast": "0d778222e02ef6abab4754eef71755aa27cc321da64edabfec2ca5a1d5324aee",
+    "6067623b6728a96572f37b3419153d16d5bd00069c16279fd3f007ccef8238ae.gttast": "2188f3af95a36d158d8618f72e17c7cfeade9e652858f2b48766c50a3efcce2f",
+    "6067ad0f35991ed3b85eb30d797b7dc89dfdfcd5ebc5b3c58ff5f01daec341f9.gttast": "460b7ccee4380f692991ea49e93e07b04d8bea83e34adf48f0f177720223e947",
+    "6831aa822f9c85f8fb5ab59269ec3f761d200ba6d0d421b217d3eb7639655110.gttast": "d251fe9aa6a493caef68da56fc3c5ac87f330dbb609e3f81de0cf9bbd901ea51",
+    "68cdffde388493e5072c34d7c83bde1f6eccb86bca63be8fa6e8bc96087acefe.gttast": "da7c4b50b2cb5c249c23eea3c63687a144cdaffea28727e2efd4303fb9051eb4",
+    "6a695803fce7d7384ed5b16a5b00a905dc7eade54164336d7e538fbb6193e8f6.gttast": "a444e0b7e96824c941b72aee1d22cd9af85713a1abc5488125289c639a9d8061",
+    "6edc3c62444aed08da1cbc4d93a3eaf08358bb8a7a15086fccfc674c99ebcd7b.gttast": "4bbda0a84e3a8380ce5350304cd007e071f7f8c46472c963b4df260bbc27b99b",
+    "7049dd10c6c0b7b27908c6ae56f42f95c68478e12404ed8fcbcf5851510c1aa0.gttast": "141857bd2a709b4568a4050a9fa396819102b6e14ed18aa1cbc278d65ff38149",
+    "7262b6aa7164ea8c16220a546586d2cac4858cdb39d59fcacc0d205b2239ce3b.gttast": "ddabab7af2abdcfaeb724a29b0f2daa212d0760cbd4bdc9719ff0b97676b35b4",
+    "7342309f7fcf4601bb0c0269c208946ff0444296db0d89710844374321819ee2.gttast": "6d1d8b50aac3c0e335a166be1bb8711363d2d6d95dd7532de193c19fab796a43",
+    "7475c16f7728f80b2b21d4cdeeaf30be3ef1509336575f11254e0d7113b436f3.gttast": "0187c82a4f976667cde755115be7e5f7b1d5af5c606b5c81ae8091e78713a3ef",
+    "748ba6f0bc07e0f2038cb199e82236ae03ba0c80d38663f4ccf0c8fba515a11f.gttast": "71705f6645df228938b8d31174db0cd6821acc1a2af32476c841242a81ded7a4",
+    "77a9ee73add750293037e39ed5b584a17edf0df5d1753c0718c2d7f979b5d522.gttast": "bddf2acdd38f84faf12266625204c7c5815bb9f0ac0d178f4af7f4bee1222f96",
+    "7826a96bc4acafcf87095f0eceb4598095f6e0472a33ae6d714be30851c6b36d.gttast": "153bd408f7e86cb2802624fd8f75b26c3757618ae5ba47b1e8dc725de54a9557",
+    "788ca417c7918acfff5c45eacecadd6431d9649f61c75847747bb2e4e6f06313.gttast": "066ffde6782be18ecfde4413522f1b2618d5b46cbc05e8f74b28b672f4df5871",
+    "78a58e2c39ffd68daa312b15add8b36b7133a3d0b97673e8c48c178d23b92a05.gttast": "4d9afaa61f10e70669f35854d5de24861c4dba5e80164b9ce464b2098078af9d",
+    "78d166e7aa5fe717e31391d5f9a1c793ced1d9041cb4f5f6e8ca533224932259.gttast": "0c7cff00edd89cd7be350d250a24b87dc376ed253d8913fed7b2a4e784c94616",
+    "7960802893448b74402ce2b1f93ff30430dd44e607c60826a7fbcd2738a620f0.gttast": "afc56401f8c22c4e1ec28cc173f958041472394f14d4293cdf51cade3cf72915",
+    "7adccd3be75bcba2f098633b6d23c202e094af19a8b39ad9d7d3a10d7768c9a0.gttast": "a38a9abde7dfab7baa47a1341e2c4bab0e2657fd02987ea169629757d4b9f6b5",
+    "7d61bda1e18ffb0e3976798e3cbf5f4e2507e087fbd9b9dd64acd285b1413ea3.gttast": "1b08f99a6ced42e3ac4eb45ae0389d948fe5cc0a2fab2753d494af7234e07254",
+    "7d8a0a87729f89f839103b0dbf18c5e91a5ffe0b614b209165be8419eee291ef.gttast": "e2732bb2154b93f93b0aed245efee6eadb1ca63e8d4e8881caedd9c6197a36e6",
+    "7f1cf1e697ab4c04f0520871c8eaf707078402d64057b0d049b500a088b82b9a.gttast": "5d230ece19d3453ed8e8a02b5c9b304c55967ff175e5753e58776df82f627307",
+    "8256b6c7be374a4f20559f31d469b3ff159d1b561f2b652a88133fd5a04b3fa5.gttast": "65574887d2c70ad7bbe013ff0c4df33b11a4bddb75a06304055970db9dd76dde",
+    "85819aff7d2abe465efbc55ad0183aaa94117af4504dfb913e545ff3705027a4.gttast": "09554fa8e92192dbdc238b7774554e368f2a50e1dc063bab4d39a1ebcb696b97",
+    "8b263ba72d77178b8aa7ca877315c414466aa4c9193586816015ac3721675561.gttast": "18c1df64be386069f106ebcc1f454f4ddc863760f9638a86d657c54f48fff5fe",
+    "94e37b05afeeedbab186bfc75caf1a4a3b3d95e4434a0592e44891a22679754c.gttast": "d86d133426889b748f02fbe9fc3b29fd1f33a56abb2c63717f29470359f78ca2",
+    "951e0e988ea6a6bce78a1257994883e0ca12863f145a34d5757aec85e394f8c4.gttast": "3785a891857c38ebce12e17d18e24aba03fe29d38dfcc11d00dfaa3fd341099c",
+    "95cb2b4a7f9993001b5f4e28027008e15c242dff782e491a0bfad14bfe42b2c8.gttast": "a1af1c955dbe59d1f75b2f271409b744f415bdc5d0f50f4afc115a9db51c2977",
+    "96cf0a101f07282dfcb8f6928d57c3599b1dd4a9be4f43d2157cfdebd4b7f75b.gttast": "85858d68baab6c8864a8d3b9d4abcc02718031c301b7e9e814e0c7683f97a548",
+    "99aa357e39caa696e0e61ffb563bc5f50ab41bf6f5854dcfcd0f70b48f401b59.gttast": "589ce1533d2092dac008f6a0c62e876a583b859fe2f07fcc9270d1d4d77a61a2",
+    "9a741ea20dba5dcf4bb81427b471c86e71e604245642d8d8b446dada756c023e.gttast": "55adfab356599b65b1f9a845a2fc644ae80884fc2878eeb185992db89f3e5dfb",
+    "a909d73de6b1c5d45bd1bd4a0dadcc859104d7ffb72c0cbd178c2fb5904cc34d.gttast": "d1df25633de611b26de4c487bc83e83c5f8447edafe9969f980a8be4a7b68c78",
+    "aae369cfeaaf1c88cd3260c4757b5c47b25970ba6afbd07cf53f4760a83df5d2.gttast": "e2d96a74f89b5146a858896335688bddf71fdf5e353d5fbf09cb93841acb44e6",
+    "ae4f9fc655b6395ba8b6bb2db85aa763fa57f7323e6bf649dff267ffe8af7e28.gttast": "fdd1ff994efd4656b58f080d68bf495fcf286bbd67c7615020377ae2877ccf54",
+    "b0487ac8e8824258342ec6d519f4287d8fd0e3a68801f8eb4ce01cb0ff557dc4.gttast": "8410987b68fdcda86cc15c7ff35e8ad674360e8711fc50dfc681b26857bffde8",
+    "b10ac3441afe79b72a32328b971ee4b3a4fc4156b645ba6a69c538812a3c2ca3.gttast": "66d49a13346aa089fe66d80cae6392c2bff8b4e72989a71feff09b515c7957f9",
+    "b268b271ea936fdb49eca442302e70f210bb74370e80af8fe170e4bdee2e1b57.gttast": "94d019ed42aa4e632f3f0d92897444f4968a4be77d72490306693c4f8f458a0d",
+    "b40110592a85ce1b5f8c035f867837beb5b04d23d5971ffe8abdf5e222318609.gttast": "e907a021bbb4df114746cf7c9c160a19e4998e4b162dd2886327b11089f60d71",
+    "c1fa367689615a4896da87d4283eba43b4e3e530bb957259bfcd13d94f4d10cd.gttast": "8759ebb359ddabbf47b3894816d1698f347603235c4f09a34a3d5dfb5f246583",
+    "c3f2dcfca361bf075575aaf5be987bcb5a3d4ef6e8fe148c554da651cf581592.gttast": "517c1601acfc0b0cea76160d5aeaabb5547a2e91b7439095dfb5ed55e4621441",
+    "c75ee7738c1529812eacc8455edc45ad671beff0ae5084656ff94863944bc0a0.gttast": "1ee246441ae055ec85f4f8cf1d7f35fe680fada7b84787ba529948fbd491380a",
+    "c7d98c9dd1a6e8967353c470010c5dbd5ccc8e0854a3324600f3d0dfbf183a28.gttast": "c83d44f6f42806050e18da4a97988e96faedde21cbaa8284757fe6b21b7f3c16",
+    "c9eec8175a4b92bd4eed558c800b09a7bb7dc80edf8edd0013a6d97199e21d76.gttast": "19b2fcd92db78f878c439e895c3fcd12785f094edf9db71553d89ba8f04eaeee",
+    "ca9fad4158ad24fa08102711fabf71d8612268d683551798bd3e0606da43d061.gttast": "a7a50ef841b96be4aa2913ac2984f947a2fa66a5d0b69b7b41a07181d77e4d1e",
+    "cd69c4b8f6496cfb3a7e312c44ea62b787d5114cb38ad3ca22df4c82e893b725.gttast": "72d1a131d8a9b20382a0372b57ab6303c5432d61f4a44d55edbfd50fca234014",
+    "d311cce6641a06588b02e05ae8a1196ef7f64ece59e40dda9c77803406478e4f.gttast": "d9a74069c325cc2e99f8ae880550958f13eba7f40676d5cb7039ff800aba8202",
+    "d92fa93d8e635cc2ab38671d48bf2741fab8821b99fe27eca24844497f1c31a2.gttast": "f16fe269fbf9d456767917dfb4eaaeb55a420ea557e4b9d8a3499ac0f151b1ef",
+    "d98ffc8e8f69c3115af43bf296c802e27f22f6694f605414946d389debb92466.gttast": "881c34fbf1a7414fe9686a37c6c56115dc2cd85affe164a1ff85a2c46dadafb2",
+    "dbc0724b88663499ab6082ea314a747fe163d7bc975d5b96e34e596d5a97d4a2.gttast": "6dfbe11225ceb13fd9b2d94967944854a759efede44f96abf51a24a776da15fd",
+    "dec3f8f72ac7ccbc9013342dd03985ca11e7417c3d6ae4545be1757e42d02242.gttast": "a2236e4246c8a5581bc836887bedb03dff1b27bbe72f65504117e9376b06b767",
+    "e119feb07e45a6ff468901224186bdcb0b71a96d5d0d73e4882b80576b8653a5.gttast": "6125748e8ec6cb0c8e5a6c31064ec15c105a8e225e30e4882af815b99eb998d4",
+    "e203737cc221a0dfbbc2d9ff3b4abf8ba72b28efbc24964cd7f890928ee0b3a9.gttast": "9ea02f7f0ec24d3b03f471d439c62cf47b3615afb0b9c679d68a03c522c2e3c6",
+    "e27f9476e55daf7b043588c1f6fc598b6952b3d6ec4bb8f5b2cf6b553b0256eb.gttast": "b3513534bcbeb5a9c33ccfd449b5eb7c80c7e5fb3abddfe43d55ce242df511e8",
+    "e6980c26ecac4cdb8d699ee94d76a754c11659690da620609478bf98d05294f6.gttast": "e0cbee73c59474e2f099e247bb6a307e714140a929aa769a9cb27e707c3ae953",
+    "eb3ec9f4a5bdc9eef626dbb7e137c2065983a89c68788f4388dc38b3a392b728.gttast": "331c4d7c0360229df9dcc6a1f206e93cf010ed0ac5143556c62197db55808092",
+    "ef37490cdaf51b1255650f0e308ecc6198acb72560cea4a8b781d981ed46ea13.gttast": "b9f20717ecd8b88aad5d3927a9dffb288fc0c9e08a94f92d781c2acaaf2fc3a9",
+    "f43114efa77f5d2eeaa35a565bf051c3abcfcbb2433981c8d37fdb100d4ed17c.gttast": "3360f3ef55656822e74d38f72cda280d57b8c59a8ec4739f36535993d6697868",
+    "f956db4643b76fb1e1b388772ad61e17a1479758699c2a63a3f70bc7f2e7551e.gttast": "018701eac9f442935c5b7bc67af6cf5d99e742dc5d3b8f002bef92e963e68e4b",
+    "fa52cc2f2fe4f45a2d280fe78eae4e7ebf4a64ca8e020a7d2450b307de8a9fc7.gttast": "8bbb01926c79758bea80a6c749186dbaff3cd228e790b531edcf5eb9fde2c92f",
+    "fd669c8103dae38ccc590c836a8cf16d6d4e32e0366d894b5198f1fbdbc8a94f.gttast": "77d9c418866bcec3e56c6208422ce1a02d7357dd3f98707310511297c3edfc70",
+    "fe624fa1487175ff7bc92c98dd05143eaf4d40d1d9c990a7f67157e18f237c50.gttast": "c88e4aedb17118bde04df100a0b49cd918ba094c9a195c0fe4acad65c4597606"
+  },
+  "rule_parse_cache": {
+    "BundledHits": 0,
+    "Errors": 0,
+    "Hits": 533,
+    "MemoryHits": 533,
+    "Misses": 97,
+    "Repairs": 0,
+    "WritableHits": 0,
+    "Writes": 97
+  },
+  "schedule_requirements": [
+    {
+      "set_uid": "adaycarvedfromrisingwinds",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "archaicpetra",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "aubadeofmorningstarandmoon",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "blizzardstrayer",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "bloodstainedchivalry",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "celestialgift",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "crimsonwitchofflames",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "deepwoodmemories",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "desertpavilionchronicle",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": true,
+          "reasons": [
+            "attack_speed_source"
+          ]
+        }
+      ]
+    },
+    {
+      "set_uid": "disenchantmentindeepshadow",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "echoesofanoffering",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "emblemofseveredfate",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "finaleofthedeepgalleries",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "flowerofparadiselost",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "fragmentofharmonicwhimsy",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "gildeddreams",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "gladiatorsfinale",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "goldentroupe",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "heartofdepth",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "huskofopulentdreams",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "longnightsoath",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "maidenbeloved",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "marechausseehunter",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "nightoftheskysunveiling",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "nighttimewhispersintheechoingwoods",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "noblesseoblige",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "nymphsdream",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "obsidiancodex",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "oceanhuedclam",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": true,
+          "reasons": [
+            "queued_attack_source"
+          ]
+        }
+      ]
+    },
+    {
+      "set_uid": "paleflame",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "retracingbolide",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "scrolloftheheroofcindercity",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "shimenawasreminiscence",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "silkenmoonsserenade",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "songofdayspast",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "tenacityofthemillelith",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "thunderingfury",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "unfinishedreverie",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "vermillionhereafter",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "viridescentvenerer",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "vourukashasglow",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    },
+    {
+      "set_uid": "wandererstroupe",
+      "tiers": [
+        {
+          "analysis_complete": true,
+          "pieces": 2,
+          "potential": false
+        },
+        {
+          "analysis_complete": true,
+          "pieces": 4,
+          "potential": false
+        }
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "sets": 42,
+  "source_manifest_sha256": "9a2475aa2eb8b8676d4778de1c1be92d965b8c9cf97c4d0b8b2b648caad21ebe",
+  "source_preparation_seconds": 0.7546971
+}

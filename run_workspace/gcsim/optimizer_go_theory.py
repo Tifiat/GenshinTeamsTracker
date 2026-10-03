@@ -14,10 +14,8 @@ from .optimizer_go_all import (
     all_sets_available,
 )
 from .selected_team_config import VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE
-from .optimizer_go_selected import (
-    GcsimOptimizerGoSelectedError,
-    _format_optimizer_warning,
-)
+from .optimizer_go_requests import GcsimOptimizerGoError
+from .optimizer_go_result_text import format_optimizer_warning
 
 
 GCSIM_OPTIMIZER_GO_THEORY_RESULT_KIND = "gtt_gcsim_optimizer_theory_result_v1"
@@ -38,7 +36,7 @@ class GcsimOptimizerGoTheorySession(GcsimOptimizerGoAllSetsSession):
 
     def _prepare_formula_inputs(self, *, prepared, run_dir, started):
         if not self.request.infinite_energy_enabled:
-            raise GcsimOptimizerGoSelectedError(
+            raise GcsimOptimizerGoError(
                 "theory_finite_energy_unsupported",
                 "Theory does not yet optimize energy requirements.",
             )
@@ -151,7 +149,7 @@ def format_gcsim_optimizer_go_theory_result(payload: Mapping[str, Any]) -> str:
     )
     if warnings:
         lines.extend(
-            ("", "Warnings: " + ", ".join(_format_optimizer_warning(value) for value in warnings))
+            ("", "Warnings: " + ", ".join(format_optimizer_warning(value) for value in warnings))
         )
     lines.append(f"Debug: {result.get('debug_receipt_path') or payload.get('run_dir') or '-'}")
     return "\n".join(lines)

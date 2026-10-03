@@ -11,6 +11,7 @@ import (
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
 	energyconstraint "genshinteamstracker/native/gcsim_optimizer/internal/energy"
 	"genshinteamstracker/native/gcsim_optimizer/internal/search"
+	"genshinteamstracker/native/gcsim_optimizer/internal/searchcontrol"
 	"genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
 	"genshinteamstracker/native/gcsim_optimizer/internal/seteffects"
 )
@@ -18,6 +19,8 @@ import (
 // Limits are supplied once by the outer run, never renewed per package. Product
 // defaults remain gated by the combined account benchmark and finalist budget.
 type CoordinatorConfig struct {
+	Progress                                                          func(string, int, int) `json:"-"`
+	ResultGroups, ResultAlternatives                                  int
 	MaxContexts, MaxGuides, SingleQueue, TransferQueue, FinalistLimit int
 	DeepContextLimit                                                  int
 	MaxSearchExpansions                                               int
@@ -44,6 +47,12 @@ type ContextWork struct {
 	FormulaDPS                    float64 `json:"formula_dps"`
 	CaptureSeconds, SearchSeconds float64
 	Expansions                    int
+	Packages                      [4]string         `json:"packages"`
+	Assignment                    domain.Assignment `json:"assignment"`
+	BoundEvaluations              int               `json:"bound_evaluations"`
+	BoundPrunedBuilds             int64             `json:"bound_pruned_builds"`
+	BudgetUnexpanded              int64             `json:"budget_unexpanded"`
+	ReducedNodes                  int               `json:"reduced_nodes"`
 }
 
 type CoordinatorResult struct {
@@ -53,7 +62,15 @@ type CoordinatorResult struct {
 	Guides, Queued, Unqueued, SkippedDuplicate, Pending, CaptureMembers, SearchExpansions int
 	GuideSeconds, ProposalSeconds, TotalSeconds                                           float64
 	StopReason                                                                            string
+	ReservationDeferred                                                                   int
 	Boundaries                                                                            []string
+	NeutralCycles                                                                         []NeutralCycleCoverage
+	NeutralModel                                                                          setcontext.NeutralModelStats
+	NeutralSeedSeconds, NeutralPotentialSeconds                                           float64
+	NeutralJointRan                                                                       bool
+	NeutralJointSeconds                                                                   float64
+	NeutralStabilization                                                                  []search.Stabilization
+	NeutralPackageJoint                                                                   []PackageJointStats
 }
 
 type contextProposal struct {
@@ -77,11 +94,15 @@ type scoutedCandidate struct {
 // A deadline/budget ends discovery visibly with completed results intact.
 // Provenance/engine errors remain errors, not successful unknown mechanics.
 func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sources *seteffects.SourceCatalog, provider setcontext.CaptureProvider, cfg CoordinatorConfig) (out CoordinatorResult, err error) {
-	if index == nil || base == nil || sources == nil || provider == nil || cfg.MaxContexts < 1 || cfg.MaxContexts > 32 || cfg.MaxGuides < 1 || cfg.MaxGuides > cfg.MaxContexts || cfg.SingleQueue < 1 || cfg.SingleQueue > 64 || cfg.TransferQueue < 1 || cfg.TransferQueue > 16 || cfg.FinalistLimit < 3 || cfg.FinalistLimit > 32 || cfg.DeepContextLimit < 0 || cfg.DeepContextLimit > cfg.MaxContexts || cfg.MaxSearchExpansions < 1 || cfg.SearchTime <= 0 {
+	if index == nil || base == nil || sources == nil || provider == nil || cfg.MaxContexts < 1 || cfg.MaxContexts > 64 || cfg.MaxGuides < 1 || cfg.MaxGuides > cfg.MaxContexts || cfg.SingleQueue < 0 || cfg.SingleQueue > 64 || cfg.TransferQueue < 0 || cfg.TransferQueue > 16 || cfg.FinalistLimit < 3 || cfg.FinalistLimit > 32 || cfg.DeepContextLimit < 0 || cfg.DeepContextLimit > cfg.MaxContexts || cfg.MaxSearchExpansions < 1 || cfg.SearchTime < 0 {
 		return out, fmt.Errorf("invalid bounded All Sets coordinator configuration")
 	}
 	started := time.Now()
-	runCtx, cancel := context.WithTimeout(ctx, cfg.SearchTime)
+	runCtx, cancel := context.WithCancel(ctx)
+	if cfg.SearchTime > 0 {
+		cancel()
+		runCtx, cancel = context.WithTimeout(ctx, cfg.SearchTime)
+	}
 	defer cancel()
 	session, e := setcontext.NewSession(provider, cfg.MaxContexts*len(base.Seeds()))
 	if e != nil {
@@ -104,7 +125,27 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 				out.Pending++
 			}
 		}
-		out.Finalists = chooseFinalists(pool, out.Initial, out.Selected, cfg.FinalistLimit)
+		out.Finalists = chooseFinalists(pool, cfg.FinalistLimit)
+		if cfg.ResultGroups > 0 {
+			// Legacy finite route keeps its evaluated pool; output limits are
+			// separate from capture/search budgets and reserve no control row.
+			archive := newResultArchive(cfg.ResultAlternatives)
+			originals := map[domain.Assignment]Candidate{}
+			for _, c := range pool {
+				if c.Energy != nil && !c.Energy.Feasible {
+					continue
+				}
+				archive.offer(c)
+				old, ok := originals[c.Score.Assignment]
+				if !ok || candidateBefore(c, old) {
+					originals[c.Score.Assignment] = c
+				}
+			}
+			out.Finalists = nil
+			for _, c := range archive.top(cfg.ResultGroups) {
+				out.Finalists = append(out.Finalists, originals[c.Score.Assignment])
+			}
+		}
 		if len(out.Finalists) > 0 {
 			out.Leader = out.Finalists[0]
 		}
@@ -164,6 +205,7 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	}
 	out.Initial, out.Selected, out.Leader = initial, initial, initial
 	pool = append(pool, initial)
+	searchcontrol.Ready(runCtx)
 	seen[base.Key()] = true
 	catalog := []domain.SetCapability{}
 	for _, s := range sources.Sets {
@@ -186,8 +228,8 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		if e != nil {
 			return seed, e
 		}
-		var energyModel *energyconstraint.Model
-		if finiteEnergy {
+		energyModel := seed.EnergyModel
+		if finiteEnergy && energyModel == nil {
 			members, memberErr := seed.Handle.EnergyMembers()
 			if memberErr != nil {
 				return seed, memberErr
@@ -197,26 +239,28 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 				return seed, e
 			}
 		}
-		solver, e := search.New(seed.Index, p, sc, energyModel)
+		solver, e := search.NewInventory(seed.Index, p, sc, energyModel)
 		if e != nil {
 			return seed, e
 		}
 		reserved := 4 * sc.MaxCycles * sc.MaxExpandedPerActor
 		out.SearchExpansions += reserved // failed/cancelled work cannot silently refund its allowance
 		start := time.Now()
-		result, e := solver.Run(runCtx)
+		result, runErr := solver.Run(runCtx)
 		elapsed := time.Since(start).Seconds()
-		if e != nil {
-			return seed, e
+		if runErr != nil && !errors.Is(runErr, context.DeadlineExceeded) && !errors.Is(runErr, context.Canceled) {
+			return seed, runErr
 		}
-		actual := 0
+		actual := result.PairEvaluated
 		for _, step := range result.Steps {
 			actual += step.Expanded
 		}
 		if actual > reserved {
 			return seed, fmt.Errorf("artifact solver exceeded reserved expansion budget")
 		}
-		out.SearchExpansions -= reserved - actual
+		if runErr == nil {
+			out.SearchExpansions -= reserved - actual
+		}
 		best := seed
 		best.Score = result.Leader
 		best.Energy = result.Energy
@@ -239,8 +283,21 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 			pool = append(pool, candidate)
 		}
 		pool = append(pool, best)
-		out.Work = append(out.Work, ContextWork{seed.Context.Key(), lane, best.Score.DPS, captureSeconds, elapsed, actual})
-		return best, nil
+		work := ContextWork{ContextSHA256: seed.Context.Key(), Lane: lane, FormulaDPS: best.Score.DPS, CaptureSeconds: captureSeconds, SearchSeconds: elapsed, Expansions: actual, Assignment: best.Score.Assignment}
+		for actor, p := range seed.Packages {
+			work.Packages[actor] = p.Key()
+		}
+		for _, step := range result.Steps {
+			work.BoundEvaluations += step.BoundEvaluations
+			work.BoundPrunedBuilds += step.BoundPrunedBuilds
+			work.BudgetUnexpanded += step.BudgetUnexpanded
+			work.ReducedNodes += step.ReducedNodes
+		}
+		out.Work = append(out.Work, work)
+		if cfg.SingleQueue == 0 {
+			seed.Handle.ReleaseCaptureInputs()
+		}
+		return best, runErr
 	}
 	selected, e := refine(initial, "selected", captureSeconds, cfg.Search)
 	if e != nil {
@@ -252,7 +309,13 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	}
 	queue := func(anchor Candidate) error {
 		begin := time.Now()
-		guide, e := BuildGuide(runCtx, anchor.Index, anchor.Handle, sources)
+		var guide *Guide
+		var e error
+		if cfg.SingleQueue == 0 {
+			guide, e = BuildDiscoveryGuide(anchor.Index, anchor.Handle, sources)
+		} else {
+			guide, e = BuildGuide(runCtx, anchor.Index, anchor.Handle, sources)
+		}
 		out.GuideSeconds += time.Since(begin).Seconds()
 		if e != nil {
 			return e
@@ -264,7 +327,10 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		if e != nil {
 			return e
 		}
-		joint, e := guide.ProposeTransfers(runCtx, anchor.Index, anchor.Handle, catalog, cfg.TransferQueue)
+		var joint TransferReport
+		if cfg.TransferQueue > 0 {
+			joint, e = guide.ProposeTransfers(runCtx, anchor.Index, anchor.Handle, catalog, cfg.TransferQueue)
+		}
 		out.ProposalSeconds += time.Since(begin).Seconds()
 		if e != nil {
 			return e
@@ -278,8 +344,19 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		for _, p := range joint.Queue {
 			batch = append(batch, contextProposal{source: anchor, packages: p.Packages, seed: p.Seed, lane: "joint", wearer: -1})
 		}
+		if cfg.SingleQueue == 0 {
+			permuted, e := permutedPackages(runCtx, anchor)
+			if e != nil {
+				return e
+			}
+			batch = append(batch, permuted...)
+		}
 		out.Queued += len(batch)
 		out.Unqueued += single.Unqueued + joint.Unqueued
+		out.ReservationDeferred += single.ReservationDeferred
+		if single.ReservationDeferred > 0 {
+			out.Boundaries = append(out.Boundaries, "joint_reservation_feasibility_unresolved")
+		}
 		pending = append(batch, pending...)
 		return nil
 	}
@@ -288,6 +365,7 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	}
 	twoStage := cfg.DeepContextLimit > 0 && cfg.Scout.MaxCycles > 0
 	cursor, wearer := 0, 0
+	discovered := map[string]bool{}
 	for {
 		if e = runCtx.Err(); e != nil {
 			return out, stop(e)
@@ -300,13 +378,21 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 			out.StopReason = "search_expansion_budget"
 			break
 		}
-		n := pickProposal(pending, &cursor, &wearer)
+		n := -1
+		if cfg.SingleQueue == 0 {
+			n = pickInventoryProposal(pending, &wearer, discovered)
+		} else {
+			n = pickProposal(pending, &cursor, &wearer)
+		}
 		if n < 0 {
 			out.StopReason = "proposal_queue_exhausted"
 			break
 		}
 		pending[n].consumed = true
 		p := pending[n]
+		if cfg.SingleQueue == 0 && p.wearer >= 0 {
+			discovered[fmt.Sprintf("%d:%s", p.wearer, p.packages[p.wearer].Key())] = true
+		}
 		view, e := p.source.Index.ForPackages(p.packages, p.seed, p.source.Index.Coordinates)
 		if e != nil {
 			return out, e
@@ -320,6 +406,7 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 			if p.packages[actor].Key() == p.source.Packages[actor].Key() {
 				continue
 			}
+			changes[w.WearerKey] = nil // Explicitly remove the previous bonus for "none".
 			for _, s := range counts[actor] {
 				changes[w.WearerKey] = append(changes[w.WearerKey], setcontext.Set{UID: s.SetUID, Count: s.Count})
 			}
@@ -417,12 +504,54 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	return out, nil
 }
 
+// Breadth is over package SHAPES, not a named short list of allegedly good
+// sets. Previously unobserved wearer/package combinations get first access;
+// every remainder stays in pending, with budget exhaustion visible to callers.
+func pickInventoryProposal(pending []contextProposal, turn *int, discovered map[string]bool) int {
+	shapes := []string{"none", "four", "shared_four", "four", "pair", "four", "single", "joint"}
+	for tries := 0; tries < len(shapes)*4; tries++ {
+		actor := *turn % 4
+		shape := shapes[(*turn/4)%len(shapes)]
+		*turn++
+		for _, fresh := range []bool{true, false} {
+			for i, p := range pending {
+				if p.consumed {
+					continue
+				}
+				if shape == "joint" {
+					if p.lane == "joint" {
+						return i
+					}
+					continue
+				}
+				if p.wearer != actor {
+					continue
+				}
+				pack := p.packages[actor]
+				if fresh && discovered[fmt.Sprintf("%d:%s", actor, pack.Key())] {
+					continue
+				}
+				match := shape == "none" && len(pack.Sets) == 0 || shape == "four" && len(pack.Sets) == 1 && pack.Sets[0].Count == 4 || shape == "shared_four" && len(pack.Sets) == 1 && pack.Sets[0].Count == 4 && p.hint.Shared || shape == "pair" && len(pack.Sets) == 2 || shape == "single" && len(pack.Sets) == 1 && pack.Sets[0].Count == 2
+				if match {
+					return i
+				}
+			}
+		}
+	}
+	for i, p := range pending {
+		if !p.consumed {
+			return i
+		}
+	}
+	return -1
+}
+
 func chooseDeepCandidates(rows []scoutedCandidate, limit int) []scoutedCandidate {
 	if limit <= 0 || len(rows) == 0 {
 		return nil
 	}
 	ordered := append([]scoutedCandidate(nil), rows...)
-	sort.SliceStable(ordered, func(i, j int) bool { return betterCandidate(ordered[i].Candidate, ordered[j].Candidate) })
+	sort.SliceStable(ordered, func(i, j int) bool { return candidateBefore(ordered[i].Candidate, ordered[j].Candidate) })
 	out := []scoutedCandidate{ordered[0]}
 	used := map[string]bool{ordered[0].Candidate.Context.Key(): true}
 	if len(out) < limit {
@@ -473,7 +602,7 @@ func pickProposal(pending []contextProposal, cursor, wearer *int) int {
 	return -1
 }
 
-func chooseFinalists(pool []Candidate, initial, selected Candidate, limit int) []Candidate {
+func chooseFinalists(pool []Candidate, limit int) []Candidate {
 	hasFeasibleEnergy := false
 	for _, candidate := range pool {
 		hasFeasibleEnergy = hasFeasibleEnergy || candidate.Energy != nil && candidate.Energy.Feasible
@@ -495,15 +624,7 @@ func chooseFinalists(pool []Candidate, initial, selected Candidate, limit int) [
 	for _, c := range unique {
 		ordered = append(ordered, c)
 	}
-	sort.Slice(ordered, func(i, j int) bool {
-		if betterCandidate(ordered[i], ordered[j]) {
-			return true
-		}
-		if betterCandidate(ordered[j], ordered[i]) {
-			return false
-		}
-		return fmt.Sprint(ordered[i].Score.Assignment) < fmt.Sprint(ordered[j].Score.Assignment)
-	})
+	sort.Slice(ordered, func(i, j int) bool { return candidateBefore(ordered[i], ordered[j]) })
 	result := []Candidate{}
 	used := map[domain.Assignment]bool{}
 	take := func(c Candidate) {
@@ -512,28 +633,47 @@ func chooseFinalists(pool []Candidate, initial, selected Candidate, limit int) [
 			result = append(result, c)
 		}
 	}
-	// Retain the two baseline anchors, then breadth across observed contexts,
-	// then formula rank. No hint priority ever becomes a finalist's DPS.
-	if len(ordered) > 0 {
-		take(ordered[0])
-	}
-	take(selected)
-	take(initial)
+	// Take the strongest representative of each package before considering
+	// additional physical alternatives.
 	contexts := map[string]bool{}
-	for _, c := range result {
-		contexts[c.Context.Key()] = true
-	}
 	for _, c := range ordered {
-		if !contexts[c.Context.Key()] {
+		key := packageIdentity(c.Packages)
+		if !contexts[key] {
 			take(c)
-			contexts[c.Context.Key()] = true
+			contexts[key] = true
 		}
 	}
 	for _, c := range ordered {
 		take(c)
 	}
-	sort.SliceStable(result, func(i, j int) bool { return betterCandidate(result[i], result[j]) })
+	sort.SliceStable(result, func(i, j int) bool { return candidateBefore(result[i], result[j]) })
 	return result
+}
+
+// Sorting needs a transitive total order; tolerance-based acceptance does not
+// define one. Keep the numerical improvement tolerance in betterCandidate ONLY.
+func candidateBefore(left, right Candidate) bool {
+	if left.Energy != nil && right.Energy != nil {
+		if left.Energy.Feasible != right.Energy.Feasible {
+			return left.Energy.Feasible
+		}
+		if !left.Energy.Feasible && left.Energy.MaximumShortage != right.Energy.MaximumShortage {
+			return left.Energy.MaximumShortage < right.Energy.MaximumShortage
+		}
+	} else if left.Energy != nil || right.Energy != nil {
+		return left.Energy != nil
+	}
+	if left.Score.DPS != right.Score.DPS {
+		return left.Score.DPS > right.Score.DPS
+	}
+	for actor := range left.Score.Assignment {
+		for slot, id := range left.Score.Assignment[actor] {
+			if id != right.Score.Assignment[actor][slot] {
+				return id < right.Score.Assignment[actor][slot]
+			}
+		}
+	}
+	return packageIdentity(left.Packages) < packageIdentity(right.Packages)
 }
 
 func betterCandidate(left, right Candidate) bool {

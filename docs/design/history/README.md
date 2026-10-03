@@ -1,6 +1,6 @@
 # History visual design workspace
 
-Updated 2026-09-17. The user approved Concept A as the basis for the first
+Updated 2026-09-18. The user approved Concept A as the basis for the first
 implementation and asked to see it in the app before further refinement.
 The first implementation was subsequently rejected for unreadable small text,
 empty space, weak styling and appending a separate expanded report. The second
@@ -12,12 +12,16 @@ The user then rejected v3's collapsed scale: heads should grow relative to
 dense Akasha-like rows, not inflate the whole report. After v5's equipment,
 tooltip and layout corrections, the user explicitly removed compact DPS and
 requested stronger time/bonus hierarchy plus alternating record brightness.
-The user now likes the compact composition and approved v7's front-portrait
-team identity. V7 removes expanded team-header bars, groups art/bonuses/time
-on the left and normalizes side-icon faces like the Artifact Browser. The
-later splash-art investigation was explicitly cancelled; side icons are the
-chosen character view and front portraits the default team art. Final v7
-corrections and custom-art interaction still have the scoped checks below.
+The user likes the wide compact composition and approved v7's front-portrait
+team identity. V8 added the 1366/RDP fallback. V9 kept inline team/chamber
+timers at the roughly 1000 logical pixels produced by a 2K display at 150%,
+and removed detached resonance and expanded-number boxes. V10 corrects the
+remaining responsive-height and Roman-gutter geometry: a collapsed run is 84px
+tall, four columns remain stable down to 560px, and I/II now occupy the card's
+actual rounded edge instead of an inset strip. The later splash-art investigation was
+explicitly cancelled; side icons remain the character view and front portraits
+the default team art. Native v10 review and custom-art interaction still have
+the scoped checks below.
 Concept approval must never be recorded as acceptance of the finished UI.
 
 Product/architecture and implementation status are owned by
@@ -56,6 +60,24 @@ assets, not these reference screenshots.
 | [Unequal heads A](references/user-unequal-heads-a.png) / [B](references/user-unequal-heads-b.png) | `c8595763-717a-457d-84f8-13438502a3a9` / `6395ff5f-2498-41b5-a3c1-736f17e75048` | Per-character alpha fitting was rejected |
 | [Approved portrait direction](references/user-approved-team-portrait.png) | `b55dbb87-9ddc-423e-99e8-c53010b9bf4c` | Keep front portrait as team image; no splash downloads |
 | [Header balance feedback](references/user-expanded-header-feedback.png) | `65d7310f-32ca-4c56-adbe-89822bc1aaec` | Move total to the left without a label, center title/month-range to replace the empty middle |
+| [RDP compact overflow](references/user-rdp-1366-compact-wrap.png) | `768211bc-1884-4b31-87e1-d3665569fcdb` | At 1366/RDP, secondary timer rows doubled compact height and defeated fast scrolling |
+| [Large-monitor compact baseline](references/user-large-monitor-compact.png) | `de3a9d86-ae56-4e3d-9aef-7410b6a042a9` | Same records at the accepted wide density |
+| [One-line header request](references/user-expanded-header-one-line.png) | `2618d261-f960-4752-910d-4ae6cda5391f` | Total left, title centered and period right on one line |
+| [Period/boss controls feedback](references/user-period-bosses-feedback.png) | `6e8eff68-2915-42c2-b50e-ca9f6492b859` | Period selector should be the heading; boss details should take no collapsed height |
+| [Boss/total refinement](references/user-v8-boss-total-feedback.png) | `07e295f0-a050-46b0-87e0-15dd5a1c4acc` | Put chamber, larger boss images and styled HP on one row; remove total-column team tags and spend the width on bonuses |
+| [Period-menu refinement](references/user-v8-period-menu-feedback.png) | `5af6e132-7d7b-4f3e-9525-7e406b74c54d` | Make period choices large and readable; omit periods with no saved runs |
+| [Resonance-column correction](references/user-v8-resonance-column-feedback.png) | `21c41876-db4d-49ad-a102-c17fac8da72c` | Keep the overall timer completely clear; collapse bonuses into a separate two-high column and hide Roman marks first |
+| [2K / 150% compact result](references/user-v9-150pct-compact.png) | `5a472be6-ce94-4c4a-8f70-a4b34d193a70` | Roughly 1000 logical pixels still need the wide team/chamber timer detail |
+| [Wide detail target](references/user-v9-wide-detail-reference.png) | `6c3124b5-3079-4c2e-9151-9bc87d838c6b` | Preserve the right-hand timing hierarchy while reducing height |
+| [Compact resonance frames](references/user-v9-compact-resonance-frame.png) / [row height](references/user-v9-resonance-row-height.png) | `be8a7e52-6bbb-49f5-b89a-32ad59175aa2` / `1a279265-a947-4cd6-9340-870e5e64a659` | Remove icon boxes and make the bonus row close to chamber-row height |
+| [Compact lower padding](references/user-v9-compact-bottom-padding.png) | `2a918b1a-c585-42f0-871b-2c95ec3204df` | Reclaim unused vertical padding from each compact team strip |
+| [Roman gutter](references/user-v9-roman-gutter.png) | `21e2e8f3-805e-4d79-9716-6aec0b810015` | Center I/II inside the rounded team edge without a detached rectangle |
+| [Expanded legacy number](references/user-v9-expanded-number-badge.png) | `4d15b864-af33-4474-b4d4-b1cdacb8cccc` | Remove the obsolete 01/02 badge |
+| [Expanded resonance frames](references/user-v9-expanded-resonance-frame.png) | `b39e62b8-2450-4184-8c98-eb0e7c81f2d1` | Borderless resonance grid; center team label and timer |
+| [Narrow-window failure](references/user-v10-narrow-window-breakage.png) / [card crop](references/user-v10-narrow-card-breakage.png) | `66d3b1ab-c324-4f39-b148-4ec5d78ae784` / `c7e5f417-8e45-4893-b60d-361d1119c7f5` | V9 became tall and text collapsed when the History pane narrowed |
+| [Wide](references/user-v10-wide-layout-reference.png) / [narrow](references/user-v10-narrow-layout-reference.png) comparison | `cb351bef-d5b5-4bb9-a12e-e15d5a9b518a` / `a6a54ad5-88e0-4c8e-99e5-cb49fa20f15c` | Keep the same dense reading order while width changes; hide lower-priority detail before breaking rows |
+| [Name-collapse crop](references/user-v10-name-collapse.png) | `b81b6f5c-6f4c-4da0-bea6-0bd92cd4c63a` | Character names must not degrade into overlapping initials merely to retain four columns |
+| [Detached gutter](references/user-v10-detached-roman-gutter.png) / [integrated-edge sketch](references/user-v10-integrated-roman-sketch.png) | `02d9af27-4a33-4521-b139-23a6ab0070d1` / `a13e5751-fe3e-4f77-9093-e70fb8da6c33` | The outer rounded frame itself owns I/II; one narrow divider separates it from characters, with no inset gap or second background |
 
 The exact generation prompt is retained in
 [Concept A prompt](concepts/history-collage-a-prompt.txt). Its sample teams,
@@ -100,9 +122,24 @@ visual specification; do not use it to overrule these concrete references.
   Latest wide-panel composition: four dense character groups on the left,
   results on the right. Place C beside the name and overall total in a shared
   prominent block for the run; no duplicate Abyss/floor/date header in compact.
-  Alternate whole-run brightness. Order team name -> large bonuses -> team time;
-  place room times on one line. Total time leads, bonuses/team time follow,
-  chamber times have the third level of emphasis.
+  Alternate whole-run brightness. From 980px, a narrow centered `I`/`II`
+  marker sits inside the card's outer rounded edge; one divider leads directly
+  into the character grid, with no inset strip or gap. It disappears before
+  resonance data as width contracts. At 960px
+  and above, both normal and 2+2 builds retain inline team/chamber timers.
+  Large bonuses precede team time and room times stay on one line.
+  Total time leads, bonuses/team time follow, chamber times have the third level
+  of emphasis. On narrow/RDP layouts, hide both secondary timer levels and keep
+  only the overall time; never move them into two full-width rows beneath the
+  characters. The timer remains a clean independent zone. A separate 28px
+  resonance column may show two borderless icons vertically per team and
+  disappears as a whole below its width threshold; overflow clips silently.
+- The selected period uses one accent selector/heading in the form `Abyss 12 ·
+  9.2026–10.2026`. Boss/enemy details are separately expandable and occupy no
+  height by default. Its popup lists only periods with saved runs and uses
+  full-height readable choices. When bosses are open, each chamber is one
+  horizontal `room | bosses | HP` group with no title row; chamber/half
+  association must be clear and icons larger than the old 28px preview.
 - The expanded/export card should include compact overall character stats and
   active artifact sets, but no individual artifact pieces or artifact substats.
 - Include the actual Abyss enemies/bosses for each half, with an unambiguous
@@ -117,7 +154,118 @@ visual specification; do not use it to overrule these concrete references.
   or simple element-based graphics. No new character-art parsing/download
   dependency is requested. No namecard asset is required by this iteration.
 
-## V7: current expanded identity and normalized heads
+## V10: stable narrow reflow and true edge-integrated team markers
+
+2026-09-18. V9 removed the marker's explicit rectangle but left the character
+surface inset from the outer frame. At reduced pane widths it also switched a
+slightly narrow character cell to a 64px wrapped row, doubling the collapsed
+card height and reducing names to fragments. V10 removes that intermediate
+surface. The outer rounded card is the team background; a 14px I/II allocation
+starts at its left edge, one vertical divider follows it, and the first
+character begins immediately after the divider. The marker text is centered in
+each team half and remains lower priority than resonance data.
+
+The compact team rows are now 41px and the complete two-team card is 84 logical
+pixels high, down from 104. Icons scale within a fixed 36px character row, so a
+2+2 build cannot trigger a taller layout. Four character columns remain from
+560px upward; below that point the card uses a bounded 2x2 layout rather than
+overlapping content. Inline team/chamber timing begins at 960px, allowing a
+1004px History workspace with 28px of layout margins to retain the detail at
+150% desktop scale. I/II appear from 980px and therefore still yield first.
+
+| Evidence | Scope |
+| --- | --- |
+| [704px History workspace](implementation-v10/history-704-collapsed.png) | Production workspace over the saved-run catalog; each inner card is 676x84 with four non-overlapping character columns and the timer-only fallback |
+| [1004px workspace at 150%](implementation-v10/history-1004-150pct-collapsed.png) | 1506 physical pixels; 976px inner cards retain inline team/chamber timing at 84 logical / 126 physical pixels high |
+| [1004px card at 150%](implementation-v10/card-1004-150pct-collapsed.png) | Direct production-card render showing the centered I/II edge allocation, single divider and no inset gutter |
+| [520px two-column fallback](implementation-v10/card-520-collapsed.png) | Extreme-width fallback keeps all eight hit regions in bounds without overlap |
+
+Fifteen focused History-card tests and four AppShell History checks pass. The
+responsive test covers 520, 560, 704, 960 and 980px, all eight character hit
+regions, row count, bounds and horizontal non-overlap. The evidence is direct
+hidden Qt rendering; the real app was not taken over while the user was using
+it, so this is not user visual acceptance.
+
+## V9: 2K/150% density and integrated markers
+
+2026-09-18. A 2K monitor at 150% leaves about 1000 logical pixels for the
+History pane even though the card is roughly 1500 physical pixels wide. The
+old 1160/1320 thresholds incorrectly selected the stripped narrow composition.
+V9 uses the inline result composition from 980px for both 4p and 2+2 builds.
+Each team strip is 50px and the whole collapsed run remains 104 logical pixels
+(156 physical pixels in the direct 150% render), while retaining team time and
+all three chamber times. The result column is 224px; its borderless 22px bonus
+row and chamber row use nearly equal height.
+
+The narrow two-icon resonance fallback now paints directly on the team
+background with no side box, fill or divider. The 10px Roman allocation also
+uses the shared rounded band with centered text and no separate rectangle.
+The total remains an independent 86px column. Expanded identity removes the
+obsolete `01`/`02` badges and individual resonance frames. Bonuses form an
+in-bounds grid of up to two rows with an in-bounds `+N` overflow cell; the team
+label and timer are centered together in their panel.
+
+| Evidence | Scope |
+| --- | --- |
+| [2K/150% compact card](implementation-v9/history-1004-150pct-collapsed.png) | Production History card over the real saved-run catalog: 1004 logical / 1506 physical px, inline details, 104 logical / 156 physical px high |
+| [Expanded card](implementation-v9/card-expanded-1004.png) | Production painter with legacy number badges and bonus frames removed; team/timer centered |
+
+Fourteen focused History-card tests and four AppShell History checks pass,
+including 1000px inline 4p/2+2 geometry, 864px fallback and an eleven-bonus
+expanded overflow grid. The production launcher started successfully, but the
+available Computer Use provider returned no native-app inventory, so no real
+click-through is claimed. The captures above are direct native Qt renders, not
+user visual acceptance.
+
+## V8: retained narrow/RDP and period-control basis
+
+2026-09-17. The 1366/RDP capture showed that sub-1 startup scaling caused the
+old fallback to add one 42px results band per team, making an ordinary collapsed
+run roughly 180px tall. V8 uses a dedicated narrow composition: four character
+groups remain in each team row and the separate result bands disappear. The
+86px overall-timer column is rectangular, fills the card height, contains no
+bonus or team marker, and uses a compact suffix without a separating space
+(`444с`). A separate 28px resonance column shows at most two vertically stacked
+icons for each team and disappears below 720 design pixels. The flat 14px
+full-height `I`/`II` gutter appears only from 1000 design pixels, so it yields
+before resonance information. Wide compact mode keeps inline team/chamber times
+and its full resonance heading. Additional set content and a truly two-column
+character layout may still add character height.
+
+The expanded report header is one 38px row with total/title/period anchored
+left/center/right. The selected-period control is one accent heading and a
+styled 14px popup with approximately 45px click rows; cache-only periods with
+zero saved runs are omitted. Its adjacent Show bosses button reveals an
+approximately 126px preview. Each chamber uses a left 40px room badge, two
+half-rows with boss images (50px for up to three enemies; 36px for four), and a
+fixed-width HP pill with 15px type at the right. Removing the separate chamber
+title row enlarges the images without increasing preview height. While hidden,
+the whole preview contributes zero height.
+
+| Evidence | Scope |
+| --- | --- |
+| [Narrow History](implementation-v8/history-864-collapsed.png) | Production widgets rendered at 864px: two 104px runs, separate two-high resonance column and clean rectangular total |
+| [Bosses expanded](implementation-v8/history-864-bosses.png) | Same widget with the optional 126px horizontal room/boss/HP preview |
+| [Styled period menu](implementation-v8/history-period-menu.png) | Native hidden render with two run-bearing periods; cache-only zero-run options are absent |
+| [Wide compact](implementation-v8/history-1220-collapsed.png) | Native hidden render retaining team and chamber timing beside all four character groups |
+| [Expanded one-line header](implementation-v8/card-expanded-864.png) | 836px card inside the 864px workspace, total/title/period on one line |
+| [Sub-1 startup scale](implementation-v8/history-rdp-startup-scale.png) | Hidden native render: 1220 logical at scale 0.711458 becomes 868 physical; Roman marks yield while the resonance column remains |
+
+The permanent warning was traced to the preserved 2026-06-13 schema-v1 file,
+whose absolute asset paths predate autonomous v2 bundles. Listing now retains
+older schemas in `ignored_legacy`; it still reports corrupt, missing-version or
+future schemas as errors. The current project root therefore yields three
+records and zero visible errors without deleting or rewriting the v1 file.
+
+Fifty-two focused automated checks passed: 13 History card/period, 2 catalog,
+18 snapshot, 4 AppShell History and 15 scaling/HiDPI tests. The native app was
+not controlled because the user had asked to postpone checks while using it.
+The images above are hidden-window/direct renders, not acceptance of the actual
+RDP path. Repeatable review: restart at 1366/RDP -> open History -> confirm two
+~105px rows -> open/close bosses -> expand a run -> inspect the one-line header
+and unchanged frozen right panel.
+
+## V7: retained expanded identity and normalized heads
 
 2026-09-17. The overall timer is large at top left without `Total`; the title
 and 14px month range are centered on the full card (`Abyss · 12`,
@@ -484,7 +632,7 @@ The maximized and smaller windows exercise both chamber placement layouts.
 
 The user assessed v2 as closer but still too empty and hard to read. These
 captures document the superseded v2 runtime, not accepted final appearance.
-The immediate review is v7 above; technology choice remains open.
+The immediate review is v8 above; technology choice remains open.
 
 The rejected first pass remains unchanged for comparison: [profile export](implementation/export-profile.png),
 [portrait export](implementation/export-portrait.png), [compact](implementation/app-compact.png),
@@ -499,8 +647,9 @@ The saved-build adapter now uses live Run's main-property-id formatter, yielding
 Only the two obsolete formula-not-included warning codes are suppressed in
 slot decoration; other warnings and immutable provenance remain intact.
 Real History selection was checked after restart. The separate top-level
-unreadable-snapshot notice remains truthful: this workspace has one legacy v1
-bundle unsupported by the v2 reader. It was neither hidden nor deleted.
+unreadable-snapshot notice was later traced to one legacy v1 bundle unsupported
+by the strict v2 reader. V8 preserves that file but classifies it as ignored
+legacy, so it no longer produces a permanent warning; genuine read failures do.
 
 ## Keeping these references useful
 

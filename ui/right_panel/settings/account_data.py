@@ -3,10 +3,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QProcess, QTimer, Signal
+from PySide6.QtCore import QProcess, QTimer, Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QColorDialog,
     QFileDialog,
@@ -16,6 +17,8 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -40,7 +43,13 @@ from run_workspace.abyss.fact_dps_settings import (
     set_abyss_fact_dps_multi_target_enabled,
 )
 from run_workspace.gcsim.settings import (
+    optimizer_output_limits,
+    effective_gcsim_optimizer_settings,
     is_gcsim_boosted_energy_enabled,
+    set_gcsim_optimizer_builds_per_group,
+    set_gcsim_optimizer_expanded_limits_enabled,
+    set_gcsim_optimizer_fast_mode_enabled,
+    set_gcsim_optimizer_set_group_limit,
     set_gcsim_boosted_energy_enabled,
 )
 from ui.utils.toggle_switch import ToggleSwitch
@@ -61,6 +70,8 @@ HOYOLAB_IMPORT_STATUSES = {
     "exporting_image": ("loader.exporting_image", 0.15),
     "opening_character_list": ("loader.opening_character_list", 0.18),
     "collecting_inventory": ("loader.collecting_inventory", 0.24),
+    "collecting_asset_urls": ("loader.collecting_asset_urls", 0.29),
+    "downloading_assets": ("loader.downloading_assets", 0.55),
     "waiting_export_images": ("loader.waiting_export_images", 0.30),
     "opening_share_menu": ("loader.opening_share_menu", 0.34),
     "starting_image_download": ("loader.starting_image_download", 0.38),
@@ -72,7 +83,7 @@ HOYOLAB_IMPORT_STATUSES = {
     "downloading_image": ("loader.downloading_image", 0.48),
     "image_downloaded": ("loader.image_downloaded", 0.52),
     "building_layout": ("loader.building_layout", 0.58),
-    "writing_inventory": ("loader.writing_inventory", 0.63),
+    "writing_inventory": ("loader.writing_inventory", 0.35),
     "fetching_character_details": ("loader.fetching_character_details", 0.70),
     "fetching_abyss_period": ("loader.fetching_abyss_period", 0.735),
     "updating_artifact_catalog": ("loader.updating_artifact_catalog", 0.76),
@@ -121,6 +132,7 @@ class AccountDataPage(QWidget):
         self._hoyolab_import_lines: list[str] = []
         self._hoyolab_import_cooldown_active = False
         self._updating_language_combo = False
+        self._suppress_optimizer_fast_mode_warning = False
 
         self._hoyolab_auth_timer = QTimer(self)
         self._hoyolab_auth_timer.setInterval(1000)
@@ -137,6 +149,24 @@ class AccountDataPage(QWidget):
         self.title_label = QLabel(tr("app_shell.account.title"))
         self.title_label.setObjectName("SectionTitle")
         root.addWidget(self.title_label)
+
+        self.settings_scroll = QScrollArea()
+        self.settings_scroll.setObjectName("accountSettingsScrollArea")
+        self.settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.settings_scroll.setWidgetResizable(True)
+        self.settings_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.settings_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.settings_content = QWidget()
+        self.settings_content.setObjectName("accountSettingsContent")
+        content_layout = QVBoxLayout(self.settings_content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(8)
+        self.settings_scroll.setWidget(self.settings_content)
+        root.addWidget(self.settings_scroll, 1)
 
         account_frame = QFrame()
         account_frame.setObjectName("InfoBlock")
@@ -175,6 +205,10 @@ class AccountDataPage(QWidget):
         self.btn_profile_menu.setMenu(self.profile_menu)
         action_row.addWidget(self.btn_profile_menu)
         account_layout.addLayout(action_row)
+        self.btn_images_refresh = QPushButton(tr("hoyolab.refresh_images_button"))
+        self.btn_images_refresh.setObjectName("GhostButton")
+        self.btn_images_refresh.clicked.connect(lambda _checked=False: self.run_hoyolab_export(images_only=True))
+        account_layout.addWidget(self.btn_images_refresh)
         equipment_row = QHBoxLayout()
         self.change_equipment_label = QLabel(tr("hoyolab.change_equipment"))
         self.change_equipment_switch = ToggleSwitch()
@@ -186,7 +220,7 @@ class AccountDataPage(QWidget):
         equipment_row.addWidget(self.change_equipment_label, 1)
         equipment_row.addWidget(self.change_equipment_switch)
         account_layout.addLayout(equipment_row)
-        root.addWidget(account_frame)
+        content_layout.addWidget(account_frame)
 
         language_frame = QFrame()
         language_frame.setObjectName("InfoBlock")
@@ -203,7 +237,7 @@ class AccountDataPage(QWidget):
         self.language_combo.currentIndexChanged.connect(self.on_language_changed)
         language_layout.addWidget(self.language_label)
         language_layout.addWidget(self.language_combo, 1)
-        root.addWidget(language_frame)
+        content_layout.addWidget(language_frame)
 
         dps_frame = QFrame()
         dps_frame.setObjectName("InfoBlock")
@@ -233,7 +267,7 @@ class AccountDataPage(QWidget):
         dps_toggle_row.addWidget(self.fact_dps_multi_target_label, 1)
         dps_toggle_row.addWidget(self.fact_dps_multi_target_switch)
         dps_layout.addLayout(dps_toggle_row)
-        root.addWidget(dps_frame)
+        content_layout.addWidget(dps_frame)
 
         gcsim_frame = QFrame()
         gcsim_frame.setObjectName("InfoBlock")
@@ -273,7 +307,94 @@ class AccountDataPage(QWidget):
         tooltip = tr("settings.gcsim.boosted_energy.description")
         self.gcsim_boosted_energy_label.setToolTip(tooltip)
         self.gcsim_boosted_energy_switch.setToolTip(tooltip)
-        root.addWidget(gcsim_frame)
+
+        optimizer_settings = effective_gcsim_optimizer_settings(
+            settings_file=self._settings_file
+        )
+        group_max, build_max = optimizer_output_limits(optimizer_settings.fast_mode, optimizer_settings.expanded_limits)
+        self._optimizer_heavy_notice = False
+        self.gcsim_optimizer_limits_note = QLabel(tr("settings.gcsim.optimizer.output_limits"))
+        self.gcsim_optimizer_limits_note.setWordWrap(True)
+        gcsim_layout.addWidget(self.gcsim_optimizer_limits_note)
+        self.gcsim_optimizer_set_group_limit_label = QLabel(
+            tr("settings.gcsim.optimizer.set_group_limit")
+        )
+        self.gcsim_optimizer_set_group_limit_spin = QSpinBox()
+        self.gcsim_optimizer_set_group_limit_spin.setObjectName(
+            "gcsimOptimizerSetGroupLimit"
+        )
+        self.gcsim_optimizer_set_group_limit_spin.setRange(1, group_max)
+        self.gcsim_optimizer_set_group_limit_spin.setValue(
+            optimizer_settings.set_group_limit
+        )
+        self.gcsim_optimizer_set_group_limit_spin.setFixedWidth(64)
+        self.gcsim_optimizer_set_group_limit_spin.valueChanged.connect(
+            self.on_gcsim_optimizer_set_group_limit_changed
+        )
+        group_limit_row = QHBoxLayout()
+        group_limit_row.setContentsMargins(0, 0, 0, 0)
+        group_limit_row.setSpacing(8)
+        group_limit_row.addWidget(self.gcsim_optimizer_set_group_limit_label, 1)
+        group_limit_row.addWidget(self.gcsim_optimizer_set_group_limit_spin)
+        gcsim_layout.addLayout(group_limit_row)
+
+        self.gcsim_optimizer_builds_per_group_label = QLabel(
+            tr("settings.gcsim.optimizer.builds_per_group")
+        )
+        self.gcsim_optimizer_builds_per_group_spin = QSpinBox()
+        self.gcsim_optimizer_builds_per_group_spin.setObjectName(
+            "gcsimOptimizerBuildsPerGroup"
+        )
+        self.gcsim_optimizer_builds_per_group_spin.setRange(0, build_max - 1)
+        self.gcsim_optimizer_builds_per_group_spin.setValue(
+            optimizer_settings.builds_per_group - 1
+        )
+        self.gcsim_optimizer_builds_per_group_spin.setFixedWidth(64)
+        self.gcsim_optimizer_builds_per_group_spin.valueChanged.connect(
+            self.on_gcsim_optimizer_builds_per_group_changed
+        )
+        builds_per_group_row = QHBoxLayout()
+        builds_per_group_row.setContentsMargins(0, 0, 0, 0)
+        builds_per_group_row.setSpacing(8)
+        builds_per_group_row.addWidget(
+            self.gcsim_optimizer_builds_per_group_label, 1
+        )
+        builds_per_group_row.addWidget(self.gcsim_optimizer_builds_per_group_spin)
+        gcsim_layout.addLayout(builds_per_group_row)
+
+        fast_mode_row = QHBoxLayout()
+        fast_mode_row.setContentsMargins(0, 0, 0, 0)
+        fast_mode_row.setSpacing(8)
+        self.gcsim_optimizer_fast_mode_label = QLabel(
+            tr("settings.gcsim.optimizer.fast_mode")
+        )
+        self.gcsim_optimizer_fast_mode_switch = ToggleSwitch()
+        self.gcsim_optimizer_fast_mode_switch.setObjectName(
+            "gcsimOptimizerFastMode"
+        )
+        self.gcsim_optimizer_fast_mode_switch.setChecked(
+            optimizer_settings.fast_mode
+        )
+        self.gcsim_optimizer_fast_mode_switch.toggled.connect(
+            self.on_gcsim_optimizer_fast_mode_changed
+        )
+        fast_mode_row.addWidget(self.gcsim_optimizer_fast_mode_label, 1)
+        fast_mode_row.addWidget(self.gcsim_optimizer_fast_mode_switch)
+        gcsim_layout.addLayout(fast_mode_row)
+        self.gcsim_optimizer_expanded_limits_checkbox = QCheckBox(
+            tr("settings.gcsim.optimizer.expanded_limits")
+        )
+        self.gcsim_optimizer_expanded_limits_checkbox.setObjectName("gcsimOptimizerExpandedLimits")
+        self.gcsim_optimizer_expanded_limits_checkbox.setChecked(optimizer_settings.expanded_limits)
+        self.gcsim_optimizer_expanded_limits_checkbox.toggled.connect(
+            self.on_gcsim_optimizer_expanded_limits_changed
+        )
+        gcsim_layout.addWidget(self.gcsim_optimizer_expanded_limits_checkbox)
+        self.gcsim_optimizer_expanded_limits_note = QLabel(tr("settings.gcsim.optimizer.expanded_limits_note"))
+        self.gcsim_optimizer_expanded_limits_note.setWordWrap(True)
+        self.gcsim_optimizer_expanded_limits_note.setVisible(optimizer_settings.expanded_limits)
+        gcsim_layout.addWidget(self.gcsim_optimizer_expanded_limits_note)
+        content_layout.addWidget(gcsim_frame)
 
         pvp_frame = QFrame()
         pvp_frame.setObjectName("InfoBlock")
@@ -311,9 +432,9 @@ class AccountDataPage(QWidget):
         self.pvp_colors_reset_button.setObjectName("GhostButton")
         self.pvp_colors_reset_button.clicked.connect(self.reset_pvp_colors)
         pvp_layout.addWidget(self.pvp_colors_reset_button)
-        root.addWidget(pvp_frame)
+        content_layout.addWidget(pvp_frame)
         self._refresh_pvp_color_controls()
-        root.addStretch(1)
+        content_layout.addStretch(1)
 
     def _dialog_parent(self) -> QWidget:
         return self.window() or self
@@ -330,6 +451,10 @@ class AccountDataPage(QWidget):
         import_cooldown = self._hoyolab_import_cooldown_active
 
         self.btn_profile_menu.setEnabled(not import_running and not import_cooldown)
+        self.btn_images_refresh.setEnabled(
+            not import_running and not import_cooldown and not login_running
+            and status == AuthStatus.LOGGED_IN and local_profile_exists
+        )
         self.change_equipment_switch.setEnabled(not import_running and not import_cooldown)
 
         if import_running:
@@ -523,7 +648,7 @@ class AccountDataPage(QWidget):
         self.account_data_changed.emit(True)
         self.refresh_hoyolab_auth_status()
 
-    def run_hoyolab_export(self) -> None:
+    def run_hoyolab_export(self, images_only: bool = False) -> None:
         if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
             return
         if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
@@ -536,7 +661,9 @@ class AccountDataPage(QWidget):
         process = QProcess(self)
         process.setProgram(sys.executable)
         arguments = ["-m", "hoyolab_export.run_import"]
-        if self.change_equipment_switch.isChecked():
+        if images_only:
+            arguments.append("--images-only")
+        elif self.change_equipment_switch.isChecked():
             arguments.append("--change-equipment")
         process.setArguments(arguments)
         process.setWorkingDirectory(str(PROJECT_ROOT))
@@ -549,6 +676,7 @@ class AccountDataPage(QWidget):
         self._hoyolab_import_output_buffer = ""
         self._hoyolab_import_lines = []
         self.btn_hoyolab_export.setEnabled(False)
+        self.btn_images_refresh.setEnabled(False)
         self.btn_profile_menu.setEnabled(False)
         self.change_equipment_switch.setEnabled(False)
         self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
@@ -759,6 +887,76 @@ class AccountDataPage(QWidget):
         )
         self.gcsim_boosted_energy_changed.emit(bool(enabled))
 
+    def on_gcsim_optimizer_set_group_limit_changed(self, value: int) -> None:
+        set_gcsim_optimizer_set_group_limit(
+            value,
+            settings_file=self._settings_file,
+        )
+        self._warn_optimizer_output_work()
+
+    def on_gcsim_optimizer_builds_per_group_changed(self, value: int) -> None:
+        set_gcsim_optimizer_builds_per_group(
+            value + 1,
+            settings_file=self._settings_file,
+        )
+        self._warn_optimizer_output_work()
+
+    def _warn_optimizer_output_work(self) -> None:
+        settings = effective_gcsim_optimizer_settings(settings_file=self._settings_file)
+        heavy = not settings.fast_mode and settings.set_group_limit * settings.builds_per_group > 12
+        if heavy and not self._optimizer_heavy_notice and not self._suppress_optimizer_fast_mode_warning:
+            QMessageBox.warning(
+                self._dialog_parent(),
+                tr("settings.gcsim.optimizer.output_work.title"),
+                tr("settings.gcsim.optimizer.output_work.body"),
+            )
+        self._optimizer_heavy_notice = heavy
+
+    def _refresh_optimizer_output_limits(self) -> None:
+        settings = effective_gcsim_optimizer_settings(settings_file=self._settings_file)
+        group_max, build_max = optimizer_output_limits(settings.fast_mode, settings.expanded_limits)
+        for spin, minimum, maximum, value in (
+            (self.gcsim_optimizer_set_group_limit_spin, 1, group_max, settings.set_group_limit),
+            (self.gcsim_optimizer_builds_per_group_spin, 0, build_max - 1, settings.builds_per_group - 1),
+        ):
+            previous = spin.blockSignals(True)
+            spin.setRange(minimum, maximum)
+            spin.setValue(value)
+            spin.blockSignals(previous)
+        self._warn_optimizer_output_work()
+
+    def on_gcsim_optimizer_expanded_limits_changed(self, enabled: bool) -> None:
+        set_gcsim_optimizer_expanded_limits_enabled(enabled, settings_file=self._settings_file)
+        self.gcsim_optimizer_expanded_limits_note.setVisible(enabled)
+        self._refresh_optimizer_output_limits()
+
+    def on_gcsim_optimizer_fast_mode_changed(self, enabled: bool) -> None:
+        set_gcsim_optimizer_fast_mode_enabled(
+            enabled,
+            settings_file=self._settings_file,
+        )
+        self._refresh_optimizer_output_limits()
+        if enabled and not self._suppress_optimizer_fast_mode_warning:
+            QMessageBox.warning(
+                self._dialog_parent(),
+                tr("settings.gcsim.optimizer.fast_mode.warning_title"),
+                tr("settings.gcsim.optimizer.fast_mode.warning_body"),
+            )
+
+    def set_gcsim_optimizer_fast_mode_enabled(self, enabled: bool) -> None:
+        """Restore the shared fast-mode switch without showing its warning."""
+
+        normalized = bool(enabled)
+        self._suppress_optimizer_fast_mode_warning = True
+        try:
+            self.gcsim_optimizer_fast_mode_switch.setChecked(normalized)
+        finally:
+            self._suppress_optimizer_fast_mode_warning = False
+        set_gcsim_optimizer_fast_mode_enabled(
+            normalized,
+            settings_file=self._settings_file,
+        )
+
     def set_gcsim_boosted_energy_enabled(self, enabled: bool) -> None:
         """Update the settings-side view of the shared energy switch."""
 
@@ -816,6 +1014,7 @@ class AccountDataPage(QWidget):
         self.title_label.setText(tr("app_shell.account.title"))
         self.hoyolab_label.setText(tr("common.hoyolab"))
         self.change_equipment_label.setText(tr("hoyolab.change_equipment"))
+        self.btn_images_refresh.setText(tr("hoyolab.refresh_images_button"))
         self.change_equipment_switch.setAccessibleName(tr("hoyolab.change_equipment"))
         self.btn_profile_menu.setText(tr("profile.menu_button"))
         self.action_export_profile.setText(tr("profile.export"))
@@ -833,6 +1032,18 @@ class AccountDataPage(QWidget):
         self.gcsim_boosted_energy_description.setText(
             tr("settings.gcsim.boosted_energy.description")
         )
+        self.gcsim_optimizer_set_group_limit_label.setText(
+            tr("settings.gcsim.optimizer.set_group_limit")
+        )
+        self.gcsim_optimizer_limits_note.setText(tr("settings.gcsim.optimizer.output_limits"))
+        self.gcsim_optimizer_builds_per_group_label.setText(
+            tr("settings.gcsim.optimizer.builds_per_group")
+        )
+        self.gcsim_optimizer_fast_mode_label.setText(
+            tr("settings.gcsim.optimizer.fast_mode")
+        )
+        self.gcsim_optimizer_expanded_limits_checkbox.setText(tr("settings.gcsim.optimizer.expanded_limits"))
+        self.gcsim_optimizer_expanded_limits_note.setText(tr("settings.gcsim.optimizer.expanded_limits_note"))
         self.pvp_settings_label.setText(tr("settings.pvp.title"))
         self.pvp_color_labels["player_1"].setText(
             tr("settings.pvp.player_color").format(player=1)

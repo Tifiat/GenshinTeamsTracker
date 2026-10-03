@@ -42,6 +42,15 @@ func (request OptimizerRequest) validate(theory bool) error {
 	if err := validateHeader(request.SchemaVersion, request.SchemaKind, RequestSchemaKind); err != nil {
 		return err
 	}
+	if options := request.ResultOptions; options != nil {
+		limit := options.ResultLimit()
+		if options.SetGroupLimit < 1 || options.SetGroupLimit > options.GroupLimit() {
+			return fmt.Errorf("result_options.set_group_limit must be between 1 and %d", options.GroupLimit())
+		}
+		if options.BuildsPerGroup < 1 || options.BuildsPerGroup > limit {
+			return fmt.Errorf("result_options.builds_per_group must be between 1 and %d", limit)
+		}
+	}
 	if request.StrategyID != StrategyID {
 		return fmt.Errorf("unsupported strategy_id %q", request.StrategyID)
 	}
@@ -267,8 +276,17 @@ func (request OptimizerRequest) validatePolicies(artifacts map[int64]Artifact, t
 	} else if request.Stochastic.TopologyStabilityProofSHA256 != "" {
 		return fmt.Errorf("topology proof is allowed only for one-trace mode")
 	}
-	if request.Budgets.ProductTimeoutMS <= 0 || request.Budgets.DevelopmentTimeoutMS < request.Budgets.ProductTimeoutMS {
-		return fmt.Errorf("budgets must be positive and development must cover product")
+	productTimeout := request.Budgets.ProductTimeoutMS
+	developmentTimeout := request.Budgets.DevelopmentTimeoutMS
+	if productTimeout < 0 || developmentTimeout < 0 {
+		return fmt.Errorf("budgets must not be negative")
+	}
+	if theory {
+		if productTimeout == 0 || developmentTimeout < productTimeout {
+			return fmt.Errorf("theory budgets must be positive and development must cover product")
+		}
+	} else if developmentTimeout > 0 && (productTimeout == 0 || developmentTimeout < productTimeout) {
+		return fmt.Errorf("positive development budget must cover product unless development budget is unlimited")
 	}
 	if request.Finalists != nil {
 		if err := validateToken("finalists.policy_id", request.Finalists.PolicyID); err != nil {

@@ -287,6 +287,31 @@ def load_character_trait_catalog(
     )
 
 
+def load_or_refresh_character_trait_catalog(
+    *,
+    language: str = DEFAULT_HOYOWIKI_LANGUAGE,
+    cache_path: str | Path = CHARACTER_TRAIT_CATALOG_PATH,
+    max_age_seconds: int = 6 * 60 * 60,
+) -> CharacterTraitCatalog:
+    """Use a recent trait source during normal import; explicit refresh stays fresh."""
+    requested_language = normalize_hoyowiki_language(language)
+    cached = read_character_trait_catalog_cache(cache_path)
+    if cached is not None and cached.language == requested_language and cached.fetched_at:
+        try:
+            fetched = datetime.fromisoformat(cached.fetched_at)
+            age = (datetime.now(timezone.utc) - fetched.astimezone(timezone.utc)).total_seconds()
+        except (ValueError, TypeError):
+            age = max_age_seconds
+        if 0 <= age < max_age_seconds:
+            return load_character_trait_catalog(cache_path)
+    try:
+        return refresh_character_trait_catalog(language=requested_language, cache_path=cache_path)
+    except Exception:
+        if cached is None:
+            raise
+        return load_character_trait_catalog(cache_path)
+
+
 def refresh_character_trait_catalog(
     *,
     language: str = DEFAULT_HOYOWIKI_LANGUAGE,

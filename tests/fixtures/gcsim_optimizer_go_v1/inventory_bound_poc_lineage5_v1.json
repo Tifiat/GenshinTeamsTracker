@@ -1,0 +1,1263 @@
+{
+  "engine_capture_calls": 6,
+  "ordinary_simulator_calls": 0,
+  "proof_scope": "All evaluated/pruned bounds checked against exhaustive fixed-formula scores; no proof of schedule invariance or complete opaque ancestry, no full-account set scheduler or twenty-slot search.",
+  "real_cases": [
+    {
+      "best_ids": [
+        1537,
+        1535,
+        63,
+        64,
+        1565
+      ],
+      "bound_evaluations": 271,
+      "capture_context_sha256": "42cf114d847844b25830dfdbc7f163cf03f49215a9c3a49810d6f1185f884bde",
+      "capture_ms": 9511.1135,
+      "combinations": 576,
+      "compile_ms": 543.1251,
+      "config_sha256": "75e95725b565a5065316873d4d16c420bd6d4ade9ac6f53407b3838518ba3220",
+      "coordinates": [
+        "flins.atk",
+        "flins.atk_percent",
+        "flins.crit_damage",
+        "flins.crit_rate",
+        "flins.damage_bonus",
+        "flins.electro_damage_bonus",
+        "flins.em"
+      ],
+      "covered_by_pruned_regions": 575,
+      "exact_scored_unique": 20,
+      "independent_box_root_upper": 171205.80070946625,
+      "name": "witness_4p",
+      "opaque_boundary_counts": {
+        "attack_field_operand_dependency_frozen": 2,
+        "callback_provider_unattributed": 2,
+        "contributor_membership_schedule_frozen": 2,
+        "flat_damage_previous_producer_missing": 2,
+        "flat_dmg_expression_collapsed": 2,
+        "gadget_wave_state_lineage_not_instrumented": 2,
+        "max_hp_candidate_dependency_incomplete": 2,
+        "modifier_candidate_dependency_incomplete": 2,
+        "modifier_source_parameter_binding_incomplete": 2,
+        "multiplier_source_expression_not_instrumented": 2,
+        "numeric_expression_candidate_dependency_incomplete": 2,
+        "numeric_marker_replay_not_recomputed": 2,
+        "numeric_recipe_input_frozen_atk_elevation": 2,
+        "numeric_recipe_input_frozen_atk_info_mult": 2,
+        "numeric_recipe_input_frozen_defmod": 2,
+        "numeric_recipe_input_frozen_elevation": 2,
+        "numeric_recipe_input_frozen_grpmult": 2,
+        "numeric_recipe_input_frozen_mult": 2,
+        "post_damage_callback_state_effects_unmodeled": 2,
+        "provider_transition_timeline_incomplete": 2,
+        "reaction_bonus_provider_paths_incomplete": 2,
+        "reaction_bonus_schedule_frozen": 2,
+        "reaction_parent_lineage_not_instrumented": 2,
+        "reaction_topology_aggregate_only": 2,
+        "saved_stat_vector_schedule_frozen": 2,
+        "stat_mod_dependency_expression_collapsed": 2,
+        "stat_read_external_dependencies_incomplete": 2,
+        "stats_container_observed_schedule": 2,
+        "unknown_reaction_operator": 2,
+        "untyped_callback_state_effects_unmodeled": 2
+      },
+      "oracle_best": 147393.3870137157,
+      "oracle_ids": [
+        1537,
+        1535,
+        63,
+        64,
+        1565
+      ],
+      "oracle_ms": 504.6707,
+      "parity_check_ms": 39.543,
+      "reduced_nodes": 2965,
+      "reduced_point_max_error": 5.820766091346741e-11,
+      "root_gap_percent": 10.47543150170338,
+      "root_upper": 162833.48030837806,
+      "search_best": 147393.3870137157,
+      "search_ms": 440.8721,
+      "source_ir_nodes": 144726,
+      "topology_sha256": [
+        "9b970b239aa2f04fcd7f7e0010aec5318606875e2e80a4232ea0e8daa3f7fc71",
+        "7bbda127dd0bebb5bc3985ffd02452c105a39f8b9d67fee1a6bbd777c0c8b8fa"
+      ],
+      "validation_ms": 6.1227,
+      "worst_upper_bound_violation": 0
+    },
+    {
+      "best_ids": [
+        80,
+        81,
+        1576,
+        88,
+        1578
+      ],
+      "bound_evaluations": 179,
+      "capture_context_sha256": "166ddea1e79d52622590a999fe18332026c08cd6a3df2b26f0557d0e571154dd",
+      "capture_ms": 9045.5754,
+      "combinations": 1024,
+      "compile_ms": 531.5009,
+      "config_sha256": "9724d97472868fdfa2293bdd0710fd9c672408d7334ac3f298d8e6b6840f94fe",
+      "coordinates": [
+        "flins.atk",
+        "flins.atk_percent",
+        "flins.crit_damage",
+        "flins.crit_rate",
+        "flins.damage_bonus",
+        "flins.electro_damage_bonus",
+        "flins.em"
+      ],
+      "covered_by_pruned_regions": 1023,
+      "exact_scored_unique": 28,
+      "independent_box_root_upper": 185248.73511112801,
+      "name": "inactive_4p",
+      "opaque_boundary_counts": {
+        "attack_field_operand_dependency_frozen": 2,
+        "callback_provider_unattributed": 2,
+        "contributor_membership_schedule_frozen": 2,
+        "flat_damage_previous_producer_missing": 2,
+        "flat_dmg_expression_collapsed": 2,
+        "gadget_wave_state_lineage_not_instrumented": 2,
+        "max_hp_candidate_dependency_incomplete": 2,
+        "modifier_candidate_dependency_incomplete": 2,
+        "modifier_source_parameter_binding_incomplete": 2,
+        "multiplier_source_expression_not_instrumented": 2,
+        "numeric_expression_candidate_dependency_incomplete": 2,
+        "numeric_marker_replay_not_recomputed": 2,
+        "numeric_recipe_input_frozen_atk_elevation": 2,
+        "numeric_recipe_input_frozen_atk_info_mult": 2,
+        "numeric_recipe_input_frozen_defmod": 2,
+        "numeric_recipe_input_frozen_elevation": 2,
+        "numeric_recipe_input_frozen_grpmult": 2,
+        "numeric_recipe_input_frozen_mult": 2,
+        "post_damage_callback_state_effects_unmodeled": 2,
+        "provider_transition_timeline_incomplete": 2,
+        "reaction_bonus_provider_paths_incomplete": 2,
+        "reaction_bonus_schedule_frozen": 2,
+        "reaction_parent_lineage_not_instrumented": 2,
+        "reaction_topology_aggregate_only": 2,
+        "saved_stat_vector_schedule_frozen": 2,
+        "stat_mod_dependency_expression_collapsed": 2,
+        "stat_read_external_dependencies_incomplete": 2,
+        "stats_container_observed_schedule": 2,
+        "unknown_reaction_operator": 2,
+        "untyped_callback_state_effects_unmodeled": 2
+      },
+      "oracle_best": 133391.70689243852,
+      "oracle_ids": [
+        80,
+        81,
+        1576,
+        88,
+        1578
+      ],
+      "oracle_ms": 788.9218,
+      "parity_check_ms": 61.1566,
+      "reduced_nodes": 2806,
+      "reduced_point_max_error": 2.9103830456733704e-11,
+      "root_gap_percent": 27.717857716945836,
+      "root_upper": 170365.03041509006,
+      "search_best": 133391.70689243852,
+      "search_ms": 295.1824,
+      "source_ir_nodes": 140985,
+      "topology_sha256": [
+        "9b970b239aa2f04fcd7f7e0010aec5318606875e2e80a4232ea0e8daa3f7fc71",
+        "7bbda127dd0bebb5bc3985ffd02452c105a39f8b9d67fee1a6bbd777c0c8b8fa"
+      ],
+      "validation_ms": 8.0537,
+      "worst_upper_bound_violation": 0
+    },
+    {
+      "best_ids": [
+        1417,
+        81,
+        92,
+        103,
+        1617
+      ],
+      "bound_evaluations": 191,
+      "capture_context_sha256": "8f071b4ed2f323a2b429de380869ac433dde7425616360a9f6ce55fc569fd88c",
+      "capture_ms": 8965.6149,
+      "combinations": 1024,
+      "compile_ms": 533.7179,
+      "config_sha256": "5a22e184964e4f737646bb537f3bba6cc6c937429e6dae4444115c7fbbcf4b31",
+      "coordinates": [
+        "flins.atk",
+        "flins.atk_percent",
+        "flins.crit_damage",
+        "flins.crit_rate",
+        "flins.damage_bonus",
+        "flins.electro_damage_bonus",
+        "flins.em"
+      ],
+      "covered_by_pruned_regions": 1023,
+      "exact_scored_unique": 28,
+      "independent_box_root_upper": 212612.42605042688,
+      "name": "zero_bonus",
+      "opaque_boundary_counts": {
+        "attack_field_operand_dependency_frozen": 2,
+        "callback_provider_unattributed": 2,
+        "contributor_membership_schedule_frozen": 2,
+        "flat_damage_previous_producer_missing": 2,
+        "flat_dmg_expression_collapsed": 2,
+        "gadget_wave_state_lineage_not_instrumented": 2,
+        "max_hp_candidate_dependency_incomplete": 2,
+        "modifier_candidate_dependency_incomplete": 2,
+        "modifier_source_parameter_binding_incomplete": 2,
+        "multiplier_source_expression_not_instrumented": 2,
+        "numeric_expression_candidate_dependency_incomplete": 2,
+        "numeric_marker_replay_not_recomputed": 2,
+        "numeric_recipe_input_frozen_atk_elevation": 2,
+        "numeric_recipe_input_frozen_atk_info_mult": 2,
+        "numeric_recipe_input_frozen_defmod": 2,
+        "numeric_recipe_input_frozen_elevation": 2,
+        "numeric_recipe_input_frozen_grpmult": 2,
+        "numeric_recipe_input_frozen_mult": 2,
+        "post_damage_callback_state_effects_unmodeled": 2,
+        "provider_transition_timeline_incomplete": 2,
+        "reaction_bonus_provider_paths_incomplete": 2,
+        "reaction_bonus_schedule_frozen": 2,
+        "reaction_parent_lineage_not_instrumented": 2,
+        "reaction_topology_aggregate_only": 2,
+        "saved_stat_vector_schedule_frozen": 2,
+        "stat_mod_dependency_expression_collapsed": 2,
+        "stat_read_external_dependencies_incomplete": 2,
+        "stats_container_observed_schedule": 2,
+        "unknown_reaction_operator": 2,
+        "untyped_callback_state_effects_unmodeled": 2
+      },
+      "oracle_best": 127879.41248717431,
+      "oracle_ids": [
+        1417,
+        81,
+        92,
+        103,
+        1617
+      ],
+      "oracle_ms": 782.0956,
+      "parity_check_ms": 61.3216,
+      "reduced_nodes": 2806,
+      "reduced_point_max_error": 2.9103830456733704e-11,
+      "root_gap_percent": 41.23347554001302,
+      "root_upper": 180608.53875578567,
+      "search_best": 127879.41248717431,
+      "search_ms": 316.323,
+      "source_ir_nodes": 140985,
+      "topology_sha256": [
+        "9b970b239aa2f04fcd7f7e0010aec5318606875e2e80a4232ea0e8daa3f7fc71",
+        "7bbda127dd0bebb5bc3985ffd02452c105a39f8b9d67fee1a6bbd777c0c8b8fa"
+      ],
+      "validation_ms": 8.0717,
+      "worst_upper_bound_violation": 0
+    }
+  ],
+  "synthetic": [
+    {
+      "best_ids": [
+        3
+      ],
+      "bound_evaluations": 3,
+      "combinations": 3,
+      "covered_by_pruned_regions": 2,
+      "exact_scored_unique": 3,
+      "independent_box_root_upper": 1.7661866666727761,
+      "name": "balanced_10cr_22cd",
+      "oracle_best": 1.732,
+      "oracle_ids": [
+        3
+      ],
+      "oracle_ms": 0,
+      "parity_check_ms": 0,
+      "reduced_nodes": 9,
+      "reduced_point_max_error": 0,
+      "root_gap_percent": 0.5146266362083596,
+      "root_upper": 1.740913333339129,
+      "search_best": 1.732,
+      "search_ms": 0,
+      "validation_ms": 0,
+      "worst_upper_bound_violation": 0
+    },
+    {
+      "best_ids": [
+        1
+      ],
+      "bound_evaluations": 3,
+      "combinations": 3,
+      "covered_by_pruned_regions": 2,
+      "exact_scored_unique": 3,
+      "independent_box_root_upper": 2.230000000012199,
+      "name": "crit_cap_not_crit_mass",
+      "oracle_best": 2.23,
+      "oracle_ids": [
+        1
+      ],
+      "oracle_ms": 0,
+      "parity_check_ms": 0,
+      "reduced_nodes": 10,
+      "reduced_point_max_error": 0,
+      "root_gap_percent": 5.470512931537996e-10,
+      "root_upper": 2.230000000012199,
+      "search_best": 2.23,
+      "search_ms": 0,
+      "validation_ms": 0,
+      "worst_upper_bound_violation": 0
+    },
+    {
+      "best_ids": [
+        1
+      ],
+      "bound_evaluations": 3,
+      "combinations": 2,
+      "covered_by_pruned_regions": 1,
+      "exact_scored_unique": 2,
+      "independent_box_root_upper": 128.0000000003204,
+      "name": "flat_plus_percent_attack",
+      "oracle_best": 110,
+      "oracle_ids": [
+        1
+      ],
+      "oracle_ms": 0,
+      "parity_check_ms": 0,
+      "reduced_nodes": 5,
+      "reduced_point_max_error": 0,
+      "root_gap_percent": 2.2581936320875684e-10,
+      "root_upper": 110.0000000002484,
+      "search_best": 110,
+      "search_ms": 0.5299,
+      "validation_ms": 0,
+      "worst_upper_bound_violation": 0
+    },
+    {
+      "best_ids": [
+        32,
+        132
+      ],
+      "bound_evaluations": 21,
+      "combinations": 1024,
+      "covered_by_pruned_regions": 1023,
+      "exact_scored_unique": 63,
+      "independent_box_root_upper": 7.290000000017392,
+      "name": "one_great_among_many_weak",
+      "oracle_best": 7.290000000000001,
+      "oracle_ids": [
+        32,
+        132
+      ],
+      "oracle_ms": 0.5264,
+      "parity_check_ms": 0,
+      "reduced_nodes": 6,
+      "reduced_point_max_error": 0,
+      "root_gap_percent": 2.3856472353145364e-10,
+      "root_upper": 7.290000000017392,
+      "search_best": 7.290000000000001,
+      "search_ms": 0.5255,
+      "validation_ms": 1.0585,
+      "worst_upper_bound_violation": 0
+    },
+    {
+      "best_ids": [
+        3,
+        12
+      ],
+      "bound_evaluations": 9,
+      "combinations": 9,
+      "covered_by_pruned_regions": 8,
+      "exact_scored_unique": 6,
+      "independent_box_root_upper": 15.000000000164482,
+      "name": "saturation_branch_and_cross_input",
+      "oracle_best": 12.333333333333334,
+      "oracle_ids": [
+        3,
+        12
+      ],
+      "oracle_ms": 0,
+      "parity_check_ms": 0,
+      "reduced_nodes": 12,
+      "reduced_point_max_error": 0,
+      "root_gap_percent": 21.621621622955246,
+      "root_upper": 15.000000000164482,
+      "search_best": 12.333333333333334,
+      "search_ms": 0.5269,
+      "validation_ms": 0,
+      "worst_upper_bound_violation": 0
+    }
+  ],
+  "schema_version": 1,
+  "engine": {
+    "binary_path": "C:/Users/user/Desktop/GenshinTeamsTracker/data/gcsim/engines/engines/gcsim-v2.45.0-observed-modifier-lineage5-20260919/build/gtt-gcsim.exe",
+    "artifact_sha256": "9d107ed713a171c64509ce35348c5d8f7bc08d81bea785db0f308b46d8869d50",
+    "binding_sha256": "ed2387d80a153b8131926c7f066b6100dc1497e8d05efed7770302d2153a3b4c",
+    "source_manifest_sha256": "6d3d46da738259a269f1ffd92f7bf95e27f6c7c2b597aec750b13dace9d4a97e",
+    "patch_manifest_sha256": "680ec766adb897e423f933d9ae49e3ddef565d26edc8a70ee0b25b3dcfdb3275",
+    "capabilities": [
+      "built_artifact_runtime_probe",
+      "gtt_compact_equation_v1",
+      "gtt_effect_inputs_v1",
+      "gtt_energy_ledger_v1",
+      "gtt_engine_marker",
+      "gtt_info_probe",
+      "gtt_patch_stack_boundary",
+      "gtt_source_manifest_v1",
+      "gtt_trace_equation_v2",
+      "gtt_trace_equation_v3",
+      "gtt_trace_equation_v4",
+      "gtt_trace_equation_v5",
+      "gtt_trace_equation_v6",
+      "gtt_trace_provenance_v1",
+      "gtt_wave_scenario_payload",
+      "local_build_artifact",
+      "official_source_layout"
+    ]
+  },
+  "seeds": [
+    742031889,
+    742031890
+  ],
+  "catalog_sha256": "9049ed5ed5c33196961bf8bb2f1e8a54be37a0a658491f356d6c34079597c722",
+  "inputs": [
+    {
+      "name": "witness_4p",
+      "set_uid": "nightoftheskysunveiling",
+      "config": "flins char lvl=90/90 cons=0 talent=9,9,9;\nflins add weapon=\"bloodsoakedruins\" refine=1 lvl=90/90;\nflins add set=\"nightoftheskysunveiling\" count=4;\nflins add stats hp=5079 atk=383 def=35 atk%=1.112 def%=0.124 em=149 cr=0.33 cd=1.478;\n\nineffa char lvl=90/90 cons=0 talent=9,9,9;\nineffa add weapon=\"fracturedhalo\" refine=1 lvl=90/90;\nineffa add set=\"silkenmoonsserenade\" count=4;\nineffa add stats hp=5049 atk=343 def=63 hp%=0.047 atk%=1.34 em=243 er=0.117 cr=0.435 cd=0.629;\n\ncolumbina char lvl=90/90 cons=0 talent=9,9,9;\ncolumbina add weapon=\"sacrificialjade\" refine=1 lvl=90/90;\ncolumbina add set=\"tenacityofthemillelith\" count=4;\ncolumbina add stats hp=5318 atk=356 def=44 hp%=1.136 atk%=0.246 em=119 er=0.117 cr=0.159 cd=1.648;\n\njahoda char lvl=90/90 cons=0 talent=9,9,9;\njahoda add weapon=\"skywardharp\" refine=1 lvl=90/90;\njahoda add set=\"viridescentvenerer\" count=4;\njahoda add stats hp=4780 atk=372 def=42 hp%=0.053 atk%=0.717 def%=0.051 em=23 er=0.11 cr=0.517 cd=1.283 hydro%=0.466;\n\noptions swap_delay=12 ignore_burst_energy=true iteration=500 workers=4;\nenergy every interval=480,720 amount=1;\ntarget lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;\n\nactive ineffa;\nfor let i=0; i<4; i=i+1 {\n  ineffa skill;\n  if !is_even(i) {\n    ineffa burst;\n  } else {\n    ineffa attack;\n  }\n\n  columbina skill;\n  if is_even(i) {\n    columbina burst;\n  } else {\n    columbina attack;\n  }\n\n  # Jahoda stays in Shadow Pursuit until the flask resolves; no burst.\n  jahoda attack, skill;\n\n  flins skill, attack,\n        skill, attack, burst,\n        attack:4, dash, attack:4, dash, attack:2,\n        skill, attack, burst,\n        attack:4;\n}\n",
+      "reference_ids": {
+        "columbina": {
+          "flower": 1395,
+          "plume": 1598,
+          "sands": 8,
+          "goblet": 1563,
+          "circlet": 1614
+        },
+        "flins": {
+          "flower": 1,
+          "plume": 1533,
+          "sands": 63,
+          "goblet": 88,
+          "circlet": 1565
+        },
+        "ineffa": {
+          "flower": 120,
+          "plume": 219,
+          "sands": 68,
+          "goblet": 1566,
+          "circlet": 124
+        },
+        "jahoda": {
+          "flower": 1468,
+          "plume": 1472,
+          "sands": 1474,
+          "goblet": 1590,
+          "circlet": 165
+        }
+      },
+      "actor": "flins",
+      "pools": [
+        [
+          {
+            "id": 1,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "crit_damage": 0.21,
+              "def": 16.0,
+              "def_percent": 0.073,
+              "em": 79.0
+            }
+          },
+          {
+            "id": 1538,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "crit_damage": 0.132,
+              "crit_rate": 0.105,
+              "def": 23.0,
+              "energy_recharge": 0.149
+            }
+          },
+          {
+            "id": 61,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk": 35.0,
+              "crit_damage": 0.264,
+              "em": 16.0,
+              "energy_recharge": 0.104
+            }
+          },
+          {
+            "id": 1537,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk_percent": 0.041,
+              "crit_damage": 0.202,
+              "crit_rate": 0.07,
+              "energy_recharge": 0.097
+            }
+          }
+        ],
+        [
+          {
+            "id": 1533,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "atk_percent": 0.093,
+              "crit_damage": 0.21,
+              "crit_rate": 0.035,
+              "em": 47.0
+            }
+          },
+          {
+            "id": 1535,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "atk_percent": 0.058,
+              "crit_damage": 0.187,
+              "crit_rate": 0.101,
+              "hp": 478.0
+            }
+          },
+          {
+            "id": 2,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "atk_percent": 0.047,
+              "crit_damage": 0.218,
+              "crit_rate": 0.07,
+              "energy_recharge": 0.091
+            }
+          },
+          {
+            "id": 1536,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "crit_damage": 0.187,
+              "def_percent": 0.066,
+              "em": 82.0,
+              "hp": 209.0
+            }
+          }
+        ],
+        [
+          {
+            "id": 63,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "sands",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.148,
+              "crit_rate": 0.124,
+              "def_percent": 0.051,
+              "em": 23.0
+            }
+          },
+          {
+            "id": 3,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "sands",
+            "stats": {
+              "def_percent": 0.583,
+              "atk": 35.0,
+              "crit_damage": 0.194,
+              "crit_rate": 0.07,
+              "em": 35.0
+            }
+          },
+          {
+            "id": 205,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "sands",
+            "stats": {
+              "atk_percent": 0.466,
+              "atk": 18.0,
+              "crit_damage": 0.179,
+              "crit_rate": 0.062,
+              "def_percent": 0.182
+            }
+          }
+        ],
+        [
+          {
+            "id": 88,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "stats": {
+              "atk_percent": 0.466,
+              "atk": 35.0,
+              "crit_damage": 0.288,
+              "crit_rate": 0.039,
+              "def": 19.0
+            }
+          },
+          {
+            "id": 54,
+            "set_uid": "silkenmoonsserenade",
+            "slot": "goblet",
+            "stats": {
+              "def_percent": 0.583,
+              "atk": 16.0,
+              "crit_damage": 0.132,
+              "crit_rate": 0.167,
+              "em": 23.0
+            }
+          },
+          {
+            "id": 19,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "stats": {
+              "geo_damage_bonus": 0.466,
+              "atk_percent": 0.041,
+              "crit_damage": 0.358,
+              "def": 39.0,
+              "energy_recharge": 0.045
+            }
+          },
+          {
+            "id": 64,
+            "set_uid": "wandererstroupe",
+            "slot": "goblet",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.303,
+              "em": 63.0,
+              "energy_recharge": 0.065,
+              "hp": 239.0
+            }
+          }
+        ],
+        [
+          {
+            "id": 1565,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "circlet",
+            "stats": {
+              "crit_damage": 0.622,
+              "atk": 37.0,
+              "atk_percent": 0.087,
+              "crit_rate": 0.132,
+              "hp": 299.0
+            }
+          },
+          {
+            "id": 1543,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "circlet",
+            "stats": {
+              "crit_rate": 0.311,
+              "crit_damage": 0.272,
+              "def": 21.0,
+              "def_percent": 0.051,
+              "energy_recharge": 0.097
+            }
+          },
+          {
+            "id": 5,
+            "set_uid": "nightoftheskysunveiling",
+            "slot": "circlet",
+            "stats": {
+              "crit_damage": 0.622,
+              "atk": 49.0,
+              "crit_rate": 0.074,
+              "def_percent": 0.182,
+              "em": 19.0
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "name": "inactive_4p",
+      "set_uid": "obsidiancodex",
+      "config": "flins char lvl=90/90 cons=0 talent=9,9,9;\nflins add weapon=\"bloodsoakedruins\" refine=1 lvl=90/90;\nflins add set=\"obsidiancodex\" count=4;\nflins add stats hp=4780 atk=397 def=19 atk%=1.125 em=135 er=0.065 cr=0.696 cd=1.027;\n\nineffa char lvl=90/90 cons=0 talent=9,9,9;\nineffa add weapon=\"fracturedhalo\" refine=1 lvl=90/90;\nineffa add set=\"silkenmoonsserenade\" count=4;\nineffa add stats hp=5049 atk=343 def=63 hp%=0.047 atk%=1.34 em=243 er=0.117 cr=0.435 cd=0.629;\n\ncolumbina char lvl=90/90 cons=0 talent=9,9,9;\ncolumbina add weapon=\"sacrificialjade\" refine=1 lvl=90/90;\ncolumbina add set=\"tenacityofthemillelith\" count=4;\ncolumbina add stats hp=5318 atk=356 def=44 hp%=1.136 atk%=0.246 em=119 er=0.117 cr=0.159 cd=1.648;\n\njahoda char lvl=90/90 cons=0 talent=9,9,9;\njahoda add weapon=\"skywardharp\" refine=1 lvl=90/90;\njahoda add set=\"viridescentvenerer\" count=4;\njahoda add stats hp=4780 atk=372 def=42 hp%=0.053 atk%=0.717 def%=0.051 em=23 er=0.11 cr=0.517 cd=1.283 hydro%=0.466;\n\noptions swap_delay=12 ignore_burst_energy=true iteration=500 workers=4;\nenergy every interval=480,720 amount=1;\ntarget lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;\n\nactive ineffa;\nfor let i=0; i<4; i=i+1 {\n  ineffa skill;\n  if !is_even(i) {\n    ineffa burst;\n  } else {\n    ineffa attack;\n  }\n\n  columbina skill;\n  if is_even(i) {\n    columbina burst;\n  } else {\n    columbina attack;\n  }\n\n  # Jahoda stays in Shadow Pursuit until the flask resolves; no burst.\n  jahoda attack, skill;\n\n  flins skill, attack,\n        skill, attack, burst,\n        attack:4, dash, attack:4, dash, attack:2,\n        skill, attack, burst,\n        attack:4;\n}\n",
+      "reference_ids": {
+        "columbina": {
+          "flower": 1395,
+          "plume": 1598,
+          "sands": 8,
+          "goblet": 1563,
+          "circlet": 1614
+        },
+        "flins": {
+          "flower": 80,
+          "plume": 81,
+          "sands": 1576,
+          "goblet": 88,
+          "circlet": 1578
+        },
+        "ineffa": {
+          "flower": 120,
+          "plume": 219,
+          "sands": 68,
+          "goblet": 1566,
+          "circlet": 124
+        },
+        "jahoda": {
+          "flower": 1468,
+          "plume": 1472,
+          "sands": 1474,
+          "goblet": 1590,
+          "circlet": 165
+        }
+      },
+      "actor": "flins",
+      "pools": [
+        [
+          {
+            "id": 80,
+            "set_uid": "obsidiancodex",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk_percent": 0.099,
+              "crit_damage": 0.187,
+              "crit_rate": 0.101,
+              "em": 19.0
+            }
+          },
+          {
+            "id": 204,
+            "set_uid": "obsidiancodex",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk": 19.0,
+              "crit_damage": 0.117,
+              "crit_rate": 0.124,
+              "energy_recharge": 0.11
+            }
+          },
+          {
+            "id": 85,
+            "set_uid": "obsidiancodex",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk": 19.0,
+              "atk_percent": 0.058,
+              "crit_damage": 0.334,
+              "energy_recharge": 0.058
+            }
+          },
+          {
+            "id": 1571,
+            "set_uid": "obsidiancodex",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk_percent": 0.111,
+              "crit_damage": 0.288,
+              "crit_rate": 0.027,
+              "em": 23.0
+            }
+          }
+        ],
+        [
+          {
+            "id": 81,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "atk_percent": 0.053,
+              "crit_damage": 0.148,
+              "crit_rate": 0.136,
+              "em": 37.0
+            }
+          },
+          {
+            "id": 77,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "atk_percent": 0.105,
+              "crit_damage": 0.326,
+              "energy_recharge": 0.058,
+              "hp": 209.0
+            }
+          },
+          {
+            "id": 42,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "crit_damage": 0.202,
+              "crit_rate": 0.089,
+              "energy_recharge": 0.11,
+              "hp_percent": 0.058
+            }
+          },
+          {
+            "id": 86,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "crit_damage": 0.194,
+              "crit_rate": 0.082,
+              "def_percent": 0.139,
+              "em": 19.0
+            }
+          }
+        ],
+        [
+          {
+            "id": 1576,
+            "set_uid": "nighttimewhispersintheechoingwoods",
+            "slot": "sands",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.124,
+              "crit_rate": 0.109,
+              "em": 58.0,
+              "energy_recharge": 0.065
+            }
+          },
+          {
+            "id": 13,
+            "set_uid": "marechausseehunter",
+            "slot": "sands",
+            "stats": {
+              "hp_percent": 0.466,
+              "atk_percent": 0.093,
+              "crit_damage": 0.054,
+              "crit_rate": 0.179,
+              "em": 16.0
+            }
+          },
+          {
+            "id": 92,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.311,
+              "crit_rate": 0.062,
+              "def": 42.0,
+              "energy_recharge": 0.052
+            }
+          },
+          {
+            "id": 38,
+            "set_uid": "noblesseoblige",
+            "slot": "sands",
+            "stats": {
+              "atk_percent": 0.466,
+              "atk": 64.0,
+              "crit_damage": 0.117,
+              "crit_rate": 0.074,
+              "def_percent": 0.058
+            }
+          }
+        ],
+        [
+          {
+            "id": 88,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "stats": {
+              "atk_percent": 0.466,
+              "atk": 35.0,
+              "crit_damage": 0.288,
+              "crit_rate": 0.039,
+              "def": 19.0
+            }
+          },
+          {
+            "id": 123,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.14,
+              "crit_rate": 0.101,
+              "energy_recharge": 0.091,
+              "hp_percent": 0.058
+            }
+          },
+          {
+            "id": 19,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "stats": {
+              "geo_damage_bonus": 0.466,
+              "atk_percent": 0.041,
+              "crit_damage": 0.358,
+              "def": 39.0,
+              "energy_recharge": 0.045
+            }
+          },
+          {
+            "id": 128,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "stats": {
+              "em": 187.0,
+              "atk": 16.0,
+              "crit_rate": 0.086,
+              "energy_recharge": 0.155,
+              "hp": 598.0
+            }
+          }
+        ],
+        [
+          {
+            "id": 1578,
+            "set_uid": "obsidiancodex",
+            "slot": "circlet",
+            "stats": {
+              "crit_rate": 0.311,
+              "atk": 51.0,
+              "atk_percent": 0.041,
+              "crit_damage": 0.28,
+              "em": 21.0
+            }
+          },
+          {
+            "id": 84,
+            "set_uid": "obsidiancodex",
+            "slot": "circlet",
+            "stats": {
+              "crit_damage": 0.622,
+              "crit_rate": 0.058,
+              "def": 19.0,
+              "em": 75.0,
+              "hp": 508.0
+            }
+          },
+          {
+            "id": 1615,
+            "set_uid": "obsidiancodex",
+            "slot": "circlet",
+            "stats": {
+              "crit_damage": 0.622,
+              "atk": 19.0,
+              "atk_percent": 0.105,
+              "crit_rate": 0.097,
+              "def": 56.0
+            }
+          },
+          {
+            "id": 89,
+            "set_uid": "obsidiancodex",
+            "slot": "circlet",
+            "stats": {
+              "crit_damage": 0.622,
+              "crit_rate": 0.097,
+              "em": 23.0,
+              "energy_recharge": 0.058,
+              "hp": 717.0
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "name": "zero_bonus",
+      "set_uid": null,
+      "config": "flins char lvl=90/90 cons=0 talent=9,9,9;\nflins add weapon=\"bloodsoakedruins\" refine=1 lvl=90/90;\nflins add stats hp=5318 atk=327 def=23 hp%=0.099 atk%=0.985 def%=0.27 em=56 er=0.155 cr=0.832 cd=0.598;\n\nineffa char lvl=90/90 cons=0 talent=9,9,9;\nineffa add weapon=\"fracturedhalo\" refine=1 lvl=90/90;\nineffa add set=\"silkenmoonsserenade\" count=4;\nineffa add stats hp=5049 atk=343 def=63 hp%=0.047 atk%=1.34 em=243 er=0.117 cr=0.435 cd=0.629;\n\ncolumbina char lvl=90/90 cons=0 talent=9,9,9;\ncolumbina add weapon=\"sacrificialjade\" refine=1 lvl=90/90;\ncolumbina add set=\"tenacityofthemillelith\" count=4;\ncolumbina add stats hp=5318 atk=356 def=44 hp%=1.136 atk%=0.246 em=119 er=0.117 cr=0.159 cd=1.648;\n\njahoda char lvl=90/90 cons=0 talent=9,9,9;\njahoda add weapon=\"skywardharp\" refine=1 lvl=90/90;\njahoda add set=\"viridescentvenerer\" count=4;\njahoda add stats hp=4780 atk=372 def=42 hp%=0.053 atk%=0.717 def%=0.051 em=23 er=0.11 cr=0.517 cd=1.283 hydro%=0.466;\n\noptions swap_delay=12 ignore_burst_energy=true iteration=500 workers=4;\nenergy every interval=480,720 amount=1;\ntarget lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;\n\nactive ineffa;\nfor let i=0; i<4; i=i+1 {\n  ineffa skill;\n  if !is_even(i) {\n    ineffa burst;\n  } else {\n    ineffa attack;\n  }\n\n  columbina skill;\n  if is_even(i) {\n    columbina burst;\n  } else {\n    columbina attack;\n  }\n\n  # Jahoda stays in Shadow Pursuit until the flask resolves; no burst.\n  jahoda attack, skill;\n\n  flins skill, attack,\n        skill, attack, burst,\n        attack:4, dash, attack:4, dash, attack:2,\n        skill, attack, burst,\n        attack:4;\n}\n",
+      "reference_ids": {
+        "columbina": {
+          "flower": 1395,
+          "plume": 1598,
+          "sands": 8,
+          "goblet": 1563,
+          "circlet": 1614
+        },
+        "flins": {
+          "flower": 1417,
+          "plume": 81,
+          "sands": 1600,
+          "goblet": 103,
+          "circlet": 50
+        },
+        "ineffa": {
+          "flower": 120,
+          "plume": 219,
+          "sands": 68,
+          "goblet": 1566,
+          "circlet": 124
+        },
+        "jahoda": {
+          "flower": 1468,
+          "plume": 1472,
+          "sands": 1474,
+          "goblet": 1590,
+          "circlet": 165
+        }
+      },
+      "actor": "flins",
+      "pools": [
+        [
+          {
+            "id": 1417,
+            "set_uid": "noblesseoblige",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk": 16.0,
+              "crit_damage": 0.14,
+              "crit_rate": 0.136,
+              "hp_percent": 0.058
+            }
+          },
+          {
+            "id": 176,
+            "set_uid": "noblesseoblige",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk": 37.0,
+              "atk_percent": 0.087,
+              "crit_damage": 0.264,
+              "energy_recharge": 0.045
+            }
+          },
+          {
+            "id": 1415,
+            "set_uid": "noblesseoblige",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "atk": 14.0,
+              "atk_percent": 0.122,
+              "crit_damage": 0.218,
+              "energy_recharge": 0.052
+            }
+          },
+          {
+            "id": 36,
+            "set_uid": "noblesseoblige",
+            "slot": "flower",
+            "stats": {
+              "hp": 4780.0,
+              "crit_damage": 0.07,
+              "crit_rate": 0.101,
+              "em": 82.0,
+              "hp_percent": 0.047
+            }
+          }
+        ],
+        [
+          {
+            "id": 81,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "atk_percent": 0.053,
+              "crit_damage": 0.148,
+              "crit_rate": 0.136,
+              "em": 37.0
+            }
+          },
+          {
+            "id": 77,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "atk_percent": 0.105,
+              "crit_damage": 0.326,
+              "energy_recharge": 0.058,
+              "hp": 209.0
+            }
+          },
+          {
+            "id": 42,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "crit_damage": 0.202,
+              "crit_rate": 0.089,
+              "energy_recharge": 0.11,
+              "hp_percent": 0.058
+            }
+          },
+          {
+            "id": 86,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "stats": {
+              "atk": 311.0,
+              "crit_damage": 0.194,
+              "crit_rate": 0.082,
+              "def_percent": 0.139,
+              "em": 19.0
+            }
+          }
+        ],
+        [
+          {
+            "id": 1600,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.054,
+              "crit_rate": 0.117,
+              "def_percent": 0.146,
+              "em": 19.0
+            }
+          },
+          {
+            "id": 92,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.311,
+              "crit_rate": 0.062,
+              "def": 42.0,
+              "energy_recharge": 0.052
+            }
+          },
+          {
+            "id": 112,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "stats": {
+              "em": 187.0,
+              "atk": 14.0,
+              "crit_damage": 0.148,
+              "crit_rate": 0.097,
+              "hp_percent": 0.099
+            }
+          },
+          {
+            "id": 201,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "stats": {
+              "energy_recharge": 0.518,
+              "atk_percent": 0.099,
+              "crit_damage": 0.078,
+              "em": 56.0,
+              "hp": 837.0
+            }
+          }
+        ],
+        [
+          {
+            "id": 103,
+            "set_uid": "viridescentvenerer",
+            "slot": "goblet",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.124,
+              "crit_rate": 0.132,
+              "def": 23.0,
+              "def_percent": 0.124
+            }
+          },
+          {
+            "id": 1477,
+            "set_uid": "viridescentvenerer",
+            "slot": "goblet",
+            "stats": {
+              "electro_damage_bonus": 0.466,
+              "atk_percent": 0.058,
+              "crit_damage": 0.35,
+              "em": 19.0,
+              "hp": 239.0
+            }
+          },
+          {
+            "id": 98,
+            "set_uid": "viridescentvenerer",
+            "slot": "goblet",
+            "stats": {
+              "atk_percent": 0.466,
+              "crit_damage": 0.155,
+              "em": 68.0,
+              "energy_recharge": 0.123,
+              "hp": 299.0
+            }
+          },
+          {
+            "id": 155,
+            "set_uid": "viridescentvenerer",
+            "slot": "goblet",
+            "stats": {
+              "em": 187.0,
+              "crit_rate": 0.031,
+              "def": 86.0,
+              "hp": 269.0,
+              "hp_percent": 0.093
+            }
+          }
+        ],
+        [
+          {
+            "id": 50,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "circlet",
+            "stats": {
+              "crit_rate": 0.311,
+              "crit_damage": 0.132,
+              "energy_recharge": 0.155,
+              "hp": 538.0,
+              "hp_percent": 0.041
+            }
+          },
+          {
+            "id": 1617,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "circlet",
+            "stats": {
+              "crit_damage": 0.622,
+              "crit_rate": 0.136,
+              "def": 63.0,
+              "energy_recharge": 0.045,
+              "hp": 239.0
+            }
+          },
+          {
+            "id": 134,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "circlet",
+            "stats": {
+              "atk_percent": 0.466,
+              "atk": 19.0,
+              "crit_rate": 0.066,
+              "em": 40.0,
+              "energy_recharge": 0.181
+            }
+          },
+          {
+            "id": 195,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "circlet",
+            "stats": {
+              "em": 187.0,
+              "atk": 33.0,
+              "crit_damage": 0.117,
+              "crit_rate": 0.101,
+              "def": 21.0
+            }
+          }
+        ]
+      ]
+    }
+  ],
+  "total_before_cleanup_seconds": 60.714208999997936,
+  "scope": "research_only_three_one_actor_domains_fixed_other_fifteen_ids_not_UI_or_full_inventory_acceptance"
+}

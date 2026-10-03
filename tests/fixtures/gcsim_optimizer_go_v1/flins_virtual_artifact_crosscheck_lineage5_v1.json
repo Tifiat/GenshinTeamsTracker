@@ -1,0 +1,108 @@
+{
+  "account_minus_virtual_dps": 36753.86633121279,
+  "cases": [
+    {
+      "artifact_ids": {
+        "columbina": {
+          "circlet": 1614,
+          "flower": 1395,
+          "goblet": 1563,
+          "plume": 1598,
+          "sands": 8
+        },
+        "flins": {
+          "circlet": 124,
+          "flower": 120,
+          "goblet": 1566,
+          "plume": 219,
+          "sands": 68
+        },
+        "ineffa": {
+          "circlet": 1578,
+          "flower": 80,
+          "goblet": 88,
+          "plume": 81,
+          "sands": 1576
+        },
+        "jahoda": {
+          "circlet": 165,
+          "flower": 1588,
+          "goblet": 1545,
+          "plume": 57,
+          "sands": 58
+        }
+      },
+      "config_sha256": "c98572ec594f67dedc63d3df75797a4645c8a084429f9b9440d26108442e18ea",
+      "dps": 107979.65826041276,
+      "duration_mean": 72.46666666666667,
+      "failed_actions": [
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"swap_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}}",
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"swap_cd\": {\"max\": 0.18333333333333332, \"mean\": 0.18333333333333332, \"min\": 0.18333333333333332, \"sd\": 0}}",
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0.7833333333333333, \"mean\": 0.7833333333333333, \"min\": 0.7833333333333333, \"sd\": 0}, \"swap_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}}",
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0.3, \"mean\": 0.3, \"min\": 0.3, \"sd\": 0}, \"swap_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}}"
+      ],
+      "iterations": 1000,
+      "name": "virtual_top1",
+      "non_artifact_sha256": "4ce764f144d1ea0055814cd51ca017e5491d85d8d30cb15ef68a62b8d183b57b",
+      "source_receipt": "tests/fixtures/gcsim_optimizer_go_v1/flins_virtual_lunar_charged_lineage5_recheck_v1.json",
+      "standard_error": 100.89516043670889
+    },
+    {
+      "artifact_ids": {
+        "columbina": {
+          "circlet": 1614,
+          "flower": 1395,
+          "goblet": 1563,
+          "plume": 1598,
+          "sands": 8
+        },
+        "flins": {
+          "circlet": 1565,
+          "flower": 1,
+          "goblet": 88,
+          "plume": 1533,
+          "sands": 63
+        },
+        "ineffa": {
+          "circlet": 124,
+          "flower": 120,
+          "goblet": 1566,
+          "plume": 219,
+          "sands": 68
+        },
+        "jahoda": {
+          "circlet": 165,
+          "flower": 1468,
+          "goblet": 1590,
+          "plume": 1472,
+          "sands": 1474
+        }
+      },
+      "config_sha256": "bc9115028e6fe093decbe2fe9b772bf5e45d881f45aecb28e28fd094a58320e9",
+      "dps": 144733.52459162555,
+      "duration_mean": 72.46666666666667,
+      "failed_actions": [
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"swap_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}}",
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"swap_cd\": {\"max\": 0.18333333333333332, \"mean\": 0.18333333333333332, \"min\": 0.18333333333333332, \"sd\": 0}}",
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0.7833333333333333, \"mean\": 0.7833333333333333, \"min\": 0.7833333333333333, \"sd\": 0}, \"swap_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}}",
+        "{\"burst_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"dash_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_energy\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"insufficient_stamina\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}, \"skill_cd\": {\"max\": 0.3, \"mean\": 0.3, \"min\": 0.3, \"sd\": 0}, \"swap_cd\": {\"max\": 0, \"mean\": 0, \"min\": 0, \"sd\": 0}}"
+      ],
+      "iterations": 1000,
+      "name": "account_top1",
+      "non_artifact_sha256": "4ce764f144d1ea0055814cd51ca017e5491d85d8d30cb15ef68a62b8d183b57b",
+      "source_receipt": "tests/fixtures/gcsim_optimizer_go_v1/flins_jahoda_all_sets_lineage5_exact_recheck_v1.json",
+      "standard_error": 127.85203370433068
+    }
+  ],
+  "database_variant": "live_read_only",
+  "energy_mode": "infinite",
+  "engine_artifact_sha256": "9d107ed713a171c64509ce35348c5d8f7bc08d81bea785db0f308b46d8869d50",
+  "engine_id": "gcsim-v2.45.0-observed-modifier-lineage5-20260919",
+  "iterations_per_case": 1000,
+  "manifest": "tools/experiments/gcsim/mode_matrix/archetype_manifest_v1.json",
+  "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/lunar_charged_jahoda.txt",
+  "rotation_normalized": false,
+  "schema_version": 1,
+  "scope": "virtual_lunar_charged_same_profiles_rotation_engine_change_artifacts_only",
+  "status": "complete_backend_control_not_ui_click"
+}

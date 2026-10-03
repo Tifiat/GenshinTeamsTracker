@@ -8,6 +8,7 @@ not import the historical Python search or trace-analysis packages.
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 import math
@@ -15,10 +16,12 @@ from pathlib import Path
 import re
 import sqlite3
 from typing import Any
+from urllib.parse import quote
 
-from hoyolab_export.artifact_db import calculate_raw_build_summary
-
-from .optimizer_artifact_database import GcsimOptimizerArtifactDatabaseInput
+from .optimizer_artifact_database import (
+    GcsimOptimizerArtifactDatabaseInput,
+    gcsim_optimizer_artifact_database_input_sha256_from_connection,
+)
 from .optimizer_artifact_materializer import (
     materialize_gcsim_optimizer_artifact_stat_vector,
 )
@@ -234,28 +237,58 @@ def load_selected_equipped_team_snapshot(
     path = Path(database_path).expanduser().resolve()
     if not path.is_file():
         raise GcsimOptimizerGoSelectedInputError("snapshot database does not exist")
+    connection: sqlite3.Connection | None = None
     try:
-        with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as conn:
-            conn.row_factory = sqlite3.Row
-            conn.execute("BEGIN")
-            rows = conn.execute(
-                """
-                SELECT characters.character_id, characters.gcsim_character_key,
-                       equipped.slot_key, equipped.artifact_id
-                FROM account_characters AS characters
-                JOIN account_character_equipped_artifacts AS equipped
-                  ON equipped.character_id = characters.character_id
-                WHERE lower(characters.gcsim_character_key) IN (?, ?, ?, ?)
-                ORDER BY lower(characters.gcsim_character_key),
-                         equipped.slot_key, equipped.artifact_id
-                """,
-                tuple(key.casefold() for key in character_keys),
-            ).fetchall()
-            conn.rollback()
+        connection = sqlite3.connect(
+            f"file:{quote(path.as_posix(), safe='/:')}?mode=ro",
+            uri=True,
+            timeout=5.0,
+        )
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA query_only = ON")
+        connection.execute("BEGIN")
+        rows = connection.execute(
+            """
+            SELECT characters.character_id, characters.gcsim_character_key,
+                   equipped.slot_key, equipped.artifact_id
+            FROM account_characters AS characters
+            JOIN account_character_equipped_artifacts AS equipped
+              ON equipped.character_id = characters.character_id
+            WHERE lower(characters.gcsim_character_key) IN (?, ?, ?, ?)
+            ORDER BY lower(characters.gcsim_character_key),
+                     equipped.slot_key, equipped.artifact_id
+            """,
+            tuple(key.casefold() for key in character_keys),
+        ).fetchall()
+        try:
+            current_artifact_input_sha256 = (
+                gcsim_optimizer_artifact_database_input_sha256_from_connection(
+                    connection
+                )
+            )
+        except (sqlite3.Error, ValueError) as exc:
+            raise GcsimOptimizerGoSelectedInputError(
+                f"artifact inventory recheck failed: {exc}"
+            ) from exc
+        if (
+            current_artifact_input_sha256
+            != artifact_database.artifact_database_input_sha256
+        ):
+            raise GcsimOptimizerGoSelectedInputError(
+                "artifact inventory changed between optimizer input loading and "
+                "the equipment snapshot; reopen the artifact optimizer and retry"
+            )
     except sqlite3.Error as exc:
         raise GcsimOptimizerGoSelectedInputError(
             f"selected equipment read failed: {exc}"
         ) from exc
+    finally:
+        if connection is not None:
+            try:
+                if connection.in_transaction:
+                    connection.rollback()
+            finally:
+                connection.close()
 
     virtual_key_set = set(normalized_virtual_keys)
     frozen_rows = tuple(
@@ -359,41 +392,34 @@ def load_selected_equipped_team_snapshot(
     )
 
 
-def load_virtual_inventory_baseline_summaries(
-    database_path: str | Path,
+def selected_virtual_inventory_baseline_summaries(
+    artifact_database: GcsimOptimizerArtifactDatabaseInput,
     *,
     snapshot: SelectedEquippedTeamSnapshot,
 ) -> dict[str, dict[str, Any]]:
-    """Materialize exact service-only virtual anchors for config rendering."""
+    """Summarize virtual anchors from the frozen optimizer inventory input."""
 
-    path = Path(database_path).expanduser().resolve()
-    if not path.is_file():
+    if not isinstance(artifact_database, GcsimOptimizerArtifactDatabaseInput):
+        raise GcsimOptimizerGoSelectedInputError("artifact database is invalid")
+    if not isinstance(snapshot, SelectedEquippedTeamSnapshot):
         raise GcsimOptimizerGoSelectedInputError(
-            "virtual baseline database does not exist"
+            "selected equipment snapshot is invalid"
+        )
+    if (
+        snapshot.artifact_database_input_sha256
+        != artifact_database.artifact_database_input_sha256
+    ):
+        raise GcsimOptimizerGoSelectedInputError(
+            "selected equipment snapshot uses a different artifact database input"
         )
     result: dict[str, dict[str, Any]] = {}
-    try:
-        with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as conn:
-            conn.row_factory = sqlite3.Row
-            conn.execute("BEGIN")
-            for row in snapshot.wearers:
-                if row.wearer.account_character_id is not None:
-                    continue
-                slots = {
-                    index: row.assignment.artifact_ids_by_slot[slot]
-                    for index, slot in enumerate(
-                        GCSIM_OPTIMIZER_ARTIFACT_SLOTS, start=1
-                    )
-                }
-                result[row.wearer.gcsim_character_key] = calculate_raw_build_summary(
-                    conn,
-                    slots=slots,
-                )
-            conn.rollback()
-    except (sqlite3.Error, ValueError) as exc:
-        raise GcsimOptimizerGoSelectedInputError(
-            f"virtual inventory baseline materialization failed: {exc}"
-        ) from exc
+    for row in snapshot.wearers:
+        if row.wearer.account_character_id is not None:
+            continue
+        result[row.wearer.gcsim_character_key] = _snapshot_artifact_summary(
+            artifact_database,
+            row.assignment.artifact_ids_by_slot,
+        )
     return result
 
 
@@ -470,6 +496,230 @@ def _virtual_anchor_artifact_order(artifact: Any) -> tuple[int, int]:
     return max(0, int(artifact.level or 0)), int(artifact.artifact_id)
 
 
+def selected_team_with_equipped_snapshot_artifacts(
+    selected_team: Any,
+    *,
+    artifact_database: GcsimOptimizerArtifactDatabaseInput,
+    snapshot: SelectedEquippedTeamSnapshot,
+) -> dict[str, Any]:
+    """Copy the selected team with physical slots sourced from one frozen snapshot.
+
+    The UI's attached artifact summaries are display snapshots and can lag behind
+    current equipment. Replace only the physical slot's artifact summary, using
+    the IDs and artifact rows already frozen for this optimizer request. Explicit
+    virtual profiles stay as provided by their owner.
+    """
+
+    if not isinstance(artifact_database, GcsimOptimizerArtifactDatabaseInput):
+        raise GcsimOptimizerGoSelectedInputError("artifact database is invalid")
+    if not isinstance(snapshot, SelectedEquippedTeamSnapshot):
+        raise GcsimOptimizerGoSelectedInputError(
+            "selected equipment snapshot is invalid"
+        )
+    if (
+        snapshot.artifact_database_input_sha256
+        != artifact_database.artifact_database_input_sha256
+    ):
+        raise GcsimOptimizerGoSelectedInputError(
+            "selected equipment snapshot uses a different artifact database input"
+        )
+    to_dict = getattr(selected_team, "to_dict", None)
+    source = to_dict() if callable(to_dict) else selected_team
+    if isinstance(source, Mapping):
+        team = dict(source)
+        raw_slots = source.get("slots") or ()
+    else:
+        team = {}
+        raw_slots = source or ()
+    try:
+        slots = tuple(raw_slots)
+    except TypeError as exc:
+        raise GcsimOptimizerGoSelectedInputError(
+            "selected team slots are invalid"
+        ) from exc
+
+    snapshot_by_character_id = {
+        row.wearer.account_character_id: row
+        for row in snapshot.wearers
+        if row.wearer.account_character_id is not None
+    }
+    copied_slots: list[dict[str, Any]] = []
+    for raw_slot in slots:
+        slot_to_dict = getattr(raw_slot, "to_dict", None)
+        slot_value = slot_to_dict() if callable(slot_to_dict) else raw_slot
+        if not isinstance(slot_value, Mapping):
+            raise GcsimOptimizerGoSelectedInputError(
+                "selected team slot is invalid"
+            )
+        slot = dict(slot_value)
+        virtual_override = slot.get("gcsim_virtual_override")
+        if not isinstance(virtual_override, Mapping) or not virtual_override:
+            character_id = _selected_team_account_character_id(slot)
+            if character_id is not None:
+                selected = snapshot_by_character_id.get(character_id)
+                if selected is None:
+                    raise GcsimOptimizerGoSelectedInputError(
+                        "selected equipment snapshot is missing account character "
+                        f"{character_id}"
+                    )
+                summary = _snapshot_artifact_summary(
+                    artifact_database,
+                    selected.assignment.artifact_ids_by_slot,
+                )
+                details_value = slot.get("character_details_data")
+                details = (
+                    dict(details_value)
+                    if isinstance(details_value, Mapping)
+                    else {}
+                )
+                stat_snapshot_value = details.get("stat_snapshot")
+                stat_snapshot = (
+                    dict(stat_snapshot_value)
+                    if isinstance(stat_snapshot_value, Mapping)
+                    else {}
+                )
+                artifact_value = stat_snapshot.get("artifact")
+                artifact = (
+                    dict(artifact_value)
+                    if isinstance(artifact_value, Mapping)
+                    else {}
+                )
+                artifact["summary"] = summary
+                stat_snapshot["artifact"] = artifact
+                details["stat_snapshot"] = stat_snapshot
+                slot["character_details_data"] = details
+        copied_slots.append(slot)
+
+    team["slots"] = copied_slots
+    return team
+
+
+def _selected_team_account_character_id(slot: Mapping[str, Any]) -> int | None:
+    details = slot.get("character_details_data")
+    details = details if isinstance(details, Mapping) else {}
+    account_character = details.get("account_character")
+    account_character = account_character if isinstance(account_character, Mapping) else {}
+    character = slot.get("character")
+    character = character if isinstance(character, Mapping) else {}
+    for source in (account_character, character):
+        for key in ("character_id", "id", "project_character_id"):
+            value = source.get(key)
+            if value in (None, ""):
+                continue
+            try:
+                character_id = int(value)
+            except (TypeError, ValueError):
+                continue
+            if character_id > 0:
+                return character_id
+    return None
+
+
+def _snapshot_artifact_summary(
+    artifact_database: GcsimOptimizerArtifactDatabaseInput,
+    artifact_ids_by_slot: Mapping[str, int],
+) -> dict[str, Any]:
+    artifacts = []
+    for slot in GCSIM_OPTIMIZER_ARTIFACT_SLOTS:
+        artifact_id = artifact_ids_by_slot.get(slot)
+        artifact = (
+            artifact_database.artifact_by_id(int(artifact_id))
+            if artifact_id is not None
+            else None
+        )
+        if artifact is None or artifact.position_key != slot:
+            raise GcsimOptimizerGoSelectedInputError(
+                "selected snapshot artifact is missing or in the wrong slot"
+            )
+        artifacts.append(artifact)
+
+    stats_by_type: dict[int, dict[str, Any]] = {}
+    set_counts: dict[str, dict[str, Any]] = {}
+    proc_count = 0
+
+    def add_stat(property_type: Any, property_name: Any, value: Any) -> None:
+        if property_type is None or value is None:
+            return
+        try:
+            property_type_int = int(property_type)
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            return
+        if not math.isfinite(numeric_value):
+            return
+        stat = stats_by_type.setdefault(
+            property_type_int,
+            {
+                "property_type": property_type_int,
+                "property_name": property_name or "",
+                "raw_value": 0.0,
+            },
+        )
+        if not stat["property_name"] and property_name:
+            stat["property_name"] = property_name
+        stat["raw_value"] += numeric_value
+
+    for artifact in artifacts:
+        raw_columns = dict(artifact.raw_columns)
+        set_uid = str(artifact.set_uid or "")
+        set_name = str(raw_columns.get("set_name") or "")
+        set_key = set_uid or set_name
+        set_count = set_counts.setdefault(
+            set_key,
+            {"set_uid": set_uid, "set_name": set_name, "count": 0},
+        )
+        set_count["count"] += 1
+        add_stat(
+            artifact.main_property_type,
+            artifact.main_property_name,
+            artifact.main_numeric_value,
+        )
+        for substat in artifact.substats:
+            add_stat(
+                substat.property_type,
+                substat.property_name,
+                substat.numeric_value,
+            )
+            proc_count += int(substat.times or 0)
+
+    totals = [
+        {
+            "property_type": item["property_type"],
+            "property_name": item["property_name"],
+            "raw_value": round(float(item["raw_value"]), 6),
+        }
+        for item in sorted(
+            stats_by_type.values(), key=lambda row: row["property_type"]
+        )
+    ]
+    crit_rate = next(
+        (item["raw_value"] for item in totals if item["property_type"] == 20),
+        0.0,
+    )
+    crit_damage = next(
+        (item["raw_value"] for item in totals if item["property_type"] == 22),
+        0.0,
+    )
+    return {
+        "artifact_ids_by_pos": {
+            str(index): artifact.artifact_id
+            for index, artifact in enumerate(artifacts, start=1)
+        },
+        "missing_positions": [],
+        "set_counts": sorted(
+            set_counts.values(),
+            key=lambda item: (
+                -int(item["count"]),
+                str(item["set_name"]).casefold(),
+                str(item["set_uid"]).casefold(),
+            ),
+        ),
+        "total_stats": totals,
+        "crit_value": round(float(crit_rate) * 2 + float(crit_damage), 1),
+        "proc_count": proc_count,
+    }
+
+
 def bind_selected_report_config_and_snapshot(
     payload: dict[str, Any],
     *,
@@ -504,7 +754,8 @@ def bind_selected_report_config_and_snapshot(
         )
         if prepared_ids != snapshot_ids:
             raise GcsimOptimizerGoSelectedInputError(
-                f"prepared config artifact IDs differ for {actor}"
+                f"prepared config artifact IDs differ for {actor}: "
+                f"prepared={prepared_ids}, snapshot={snapshot_ids}"
             )
 
         totals: dict[str, Decimal] = {}
@@ -608,5 +859,5 @@ __all__ = [
     "bind_selected_report_config_and_snapshot",
     "enforce_gcsim_optimizer_mvp_energy_policy",
     "load_selected_equipped_team_snapshot",
-    "load_virtual_inventory_baseline_summaries",
+    "selected_virtual_inventory_baseline_summaries",
 ]

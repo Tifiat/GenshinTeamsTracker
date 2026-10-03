@@ -10,10 +10,17 @@ from urllib.parse import unquote, urlsplit
 
 ROOT_BUDGETS = {
     "AGENTS.md": 2000,
-    "CODEX.md": 32000,
-    "TODO.md": 18000,
-    "docs/handoff/README.md": 16000,
-    "docs/handoff/HANDOFF_MAINTENANCE.md": 16000,
+    "CODEX.md": 8000,
+    "TODO.md": 8000,
+    "docs/handoff/README.md": 5000,
+    "docs/handoff/CATALOG.md": 16000,
+    "docs/handoff/HANDOFF_MAINTENANCE.md": 8000,
+}
+SCOPED_BUDGETS = {
+    "docs/handoff/OPTIMIZER_WORK_RULES.md": 8000,
+    "docs/handoff/UI_WORK_RULES.md": 7000,
+    "docs/handoff/DATA_WORK_RULES.md": 5000,
+    "docs/handoff/WORK_BACKLOG.md": 12000,
 }
 CURRENT_START = re.compile(r"<!-- handoff-current: ([a-z0-9-]+) -->")
 CURRENT_BLOCK = re.compile(
@@ -87,16 +94,21 @@ def check_repository(root: Path) -> list[Issue]:
         except (OSError, UnicodeError) as exc:
             issue("unreadable", path, str(exc))
             continue
-        budget = ROOT_BUDGETS.get(path.relative_to(root).as_posix())
+        relative = path.relative_to(root).as_posix()
+        budget = ROOT_BUDGETS.get(relative, SCOPED_BUDGETS.get(relative))
         if budget and len(raw.replace(b"\r\n", b"\n")) > budget:
-            issue("root-budget", path, f"compact to at most {budget} UTF-8 bytes")
+            code = "root-budget" if relative in ROOT_BUDGETS else "scoped-budget"
+            issue(code, path, f"compact to at most {budget} UTF-8 bytes")
 
     agents = root / "AGENTS.md"
     for required in ("CODEX.md", "docs/handoff/HANDOFF_MAINTENANCE.md"):
         if required not in prose(documents.get(agents, "")):
             issue("missing-routing", agents, f"must route agents to {required}")
 
-    index = handoff / "README.md"
+    router = handoff / "README.md"
+    if "CATALOG.md" not in prose(documents.get(router, "")):
+        issue("missing-routing", router, "must route to optional CATALOG.md")
+    index = handoff / "CATALOG.md"
     indexed: list[Path] = []
     scopes: dict[str, Path] = {}
     owner_blocks: dict[Path, list[tuple[str, str]]] = {}
@@ -162,7 +174,10 @@ def check_repository(root: Path) -> list[Issue]:
             }
             for section, keys in required.items():
                 values = data.get(section)
-                if not isinstance(values, dict) or any(not values.get(key) for key in keys):
+                if not isinstance(values, dict) or any(
+                    key not in values or (not values[key] and not (key == "rollback_engine_id" and values[key] is None))
+                    for key in keys
+                ):
                     issue("missing-current-fields", path, f"{section}: required live fields are missing")
         for section in ("current_state", "current_next_block"):
             live = data.get(section, {})
@@ -187,7 +202,8 @@ def check_repository(root: Path) -> list[Issue]:
             if key not in state:
                 continue
             values = re.findall(rf"^- {re.escape(label)}:\s*\x60([^\x60]+)\x60\s*$", body, re.M)
-            if values != [state[key]]:
+            projected_value = "none" if state[key] is None else state[key]
+            if values != [projected_value]:
                 issue("current-projection", path, f"{key} differs from {owner.name} ({label})")
         if optimizer_manifest:
             if data.get("status") != state.get("acceptance_status"):

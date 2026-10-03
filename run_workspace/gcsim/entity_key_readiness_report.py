@@ -28,6 +28,7 @@ from hoyolab_export.weapon_stats_catalog import (
     WEAPON_STATS_CACHE_PATH,
     read_weapon_stats_cache,
 )
+from run_workspace.gcsim.engine_store import GcsimEngineStore
 from run_workspace.gcsim.key_mapping import (
     DEFAULT_GCSIM_KEY_MAPPING_SEED_PATH,
     ENTITY_ARTIFACT_SET,
@@ -83,19 +84,6 @@ WARNING_EXPLICIT_SEED_NOT_READY = "explicit_seed_not_ready"
 
 KIND = "gcsim_entity_key_readiness_report"
 SCHEMA_VERSION = 1
-
-DEFAULT_GCSIM_SOURCE_ROOT = (
-    PROJECT_ROOT / "data" / "gcsim" / "sources" / "expanded" / "v2.42.2"
-)
-DEFAULT_CHARACTER_SHORTCUT_SOURCE = (
-    DEFAULT_GCSIM_SOURCE_ROOT / "pkg" / "shortcut" / "characters.go"
-)
-DEFAULT_WEAPON_SHORTCUT_SOURCE = (
-    DEFAULT_GCSIM_SOURCE_ROOT / "pkg" / "shortcut" / "weapons.go"
-)
-DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE = (
-    DEFAULT_GCSIM_SOURCE_ROOT / "pkg" / "shortcut" / "artifacts.go"
-)
 
 _GO_MAP_KEY_RE = re.compile(r'(?m)^\s*"([^"\n]+)"\s*:')
 _POSSESSIVE_RE = re.compile(r"([a-z0-9])['\u2019]s\b")
@@ -276,13 +264,34 @@ def load_gcsim_shortcut_keys(path: str | Path) -> tuple[str, ...]:
 
 def load_gcsim_entity_registry(
     *,
-    character_source_path: str | Path = DEFAULT_CHARACTER_SHORTCUT_SOURCE,
-    weapon_source_path: str | Path = DEFAULT_WEAPON_SHORTCUT_SOURCE,
-    artifact_set_source_path: str | Path = DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE,
+    character_source_path: str | Path | None = None,
+    weapon_source_path: str | Path | None = None,
+    artifact_set_source_path: str | Path | None = None,
 ) -> GcsimEntityRegistry:
-    character_source = Path(character_source_path)
-    weapon_source = Path(weapon_source_path)
-    artifact_set_source = Path(artifact_set_source_path)
+    explicit_paths = (character_source_path, weapon_source_path, artifact_set_source_path)
+    if any(path is not None for path in explicit_paths):
+        if not all(path is not None for path in explicit_paths):
+            raise ValueError(
+                "Specify all three GCSIM registry sources together; "
+                "partial overrides can mix engine versions."
+            )
+        character_source, weapon_source, artifact_set_source = (
+            Path(path) for path in explicit_paths
+        )
+    else:
+        active = GcsimEngineStore().get_active_engine()
+        if active is None:
+            raise FileNotFoundError(
+                "No active GCSIM engine is configured for shortcut discovery."
+            )
+        shortcut_root = active.path / "pkg" / "shortcut"
+
+        def source(current: str, legacy: str) -> Path:
+            generated = shortcut_root / current
+            return generated if generated.is_file() else shortcut_root / legacy
+        character_source = source("character.dm.go", "characters.go")
+        weapon_source = source("weapon.dm.go", "weapons.go")
+        artifact_set_source = source("artifact.dm.go", "artifacts.go")
     return GcsimEntityRegistry(
         character_keys=load_gcsim_shortcut_keys(character_source),
         weapon_keys=load_gcsim_shortcut_keys(weapon_source),
@@ -868,15 +877,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--character-registry-source",
-        default=str(DEFAULT_CHARACTER_SHORTCUT_SOURCE),
+        default=None,
     )
     parser.add_argument(
         "--weapon-registry-source",
-        default=str(DEFAULT_WEAPON_SHORTCUT_SOURCE),
+        default=None,
     )
     parser.add_argument(
         "--artifact-set-registry-source",
-        default=str(DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE),
+        default=None,
     )
     parser.add_argument("--character-cache", default=str(CHARACTER_BASE_STATS_CACHE_PATH))
     parser.add_argument("--weapon-cache", default=str(WEAPON_STATS_CACHE_PATH))

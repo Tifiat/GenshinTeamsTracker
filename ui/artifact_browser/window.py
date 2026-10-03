@@ -50,6 +50,8 @@ from ui.character_assets import (
     CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
+    filter_icon_path,
+    refresh_imported_element_filter_icons,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
@@ -1458,7 +1460,9 @@ class ArtifactBrowserWindow(QWidget):
         button.setObjectName("target_filter_button")
         button.setCheckable(True)
         button.setStyleSheet(TARGET_FILTER_BUTTON_STYLE)
-        button.setIcon(QIcon(str(FILTER_ASSETS_DIR / icon_name)))
+        if icon_name.startswith("element_"):
+            button.setProperty("elementIconName", icon_name)
+        button.setIcon(QIcon(str(filter_icon_path(icon_name))))
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
         button.clicked.connect(
             lambda checked=False, v=value, values=selected_values: self.on_build_target_filter_clicked(
@@ -1897,14 +1901,18 @@ class ArtifactBrowserWindow(QWidget):
         elif self._right_panel_operation_target is not None and new_key:
             self._ensure_operation_target_item(self._right_panel_operation_target)
 
-        self.refresh_equipment_target_state()
         if selection_changed:
             self.refresh_build_target_list()
             self.refresh_build_preset_list()
-            self.update_build_panel()
-            self.update_edit_selection_mode()
+            slots = self.update_build_panel()
+            highlight_ids = (
+                set(self.editing_custom_artifact_ids)
+                if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET
+                else set(slots.values())
+            )
+            self.update_edit_selection_mode(highlight_ids=highlight_ids)
             if self.edit_selection_mode == EDIT_MODE_NONE:
-                self.apply_current_filters()
+                self.apply_current_filters(priority_ids=highlight_ids)
         else:
             self._sync_build_target_button_selection()
             self.update_build_panel()
@@ -1998,9 +2006,10 @@ class ArtifactBrowserWindow(QWidget):
         if not hasattr(self, "equipment_target_label"):
             return
 
-        self.equipment_zone_frame.setProperty("equipMode", self.equip_mode_enabled)
-        self.equipment_zone_frame.style().unpolish(self.equipment_zone_frame)
-        self.equipment_zone_frame.style().polish(self.equipment_zone_frame)
+        if self.equipment_zone_frame.property("equipMode") != self.equip_mode_enabled:
+            self.equipment_zone_frame.setProperty("equipMode", self.equip_mode_enabled)
+            self.equipment_zone_frame.style().unpolish(self.equipment_zone_frame)
+            self.equipment_zone_frame.style().polish(self.equipment_zone_frame)
 
         self.equipment_target_label.setText("")
         self.equipment_target_label.setVisible(False)
@@ -2044,16 +2053,10 @@ class ArtifactBrowserWindow(QWidget):
         return key in self.selected_build_target_keys
 
     def _sync_build_target_button_selection(self) -> None:
-        operation_key = self._right_panel_operation_target_key()
         if self.build_target_reset_button is not None:
             self.build_target_reset_button.setEnabled(bool(self.selected_build_target_keys))
         for key, button in self.build_target_buttons_by_key.items():
-            was_blocked = button.blockSignals(True)
-            button.setChecked(self._target_button_checked(key))
-            button.setProperty("operationTarget", key == operation_key)
-            button.style().unpolish(button)
-            button.style().polish(button)
-            button.blockSignals(was_blocked)
+            self._sync_build_target_button_state(key, button)
 
     def set_position(self, pos: int) -> None:
         self.current_pos = pos
@@ -2245,7 +2248,7 @@ class ArtifactBrowserWindow(QWidget):
         if hasattr(self, "sets_button"):
             self.sets_button.setFilterChecked(not self.sets_filter_enabled)
 
-    def apply_current_filters(self) -> None:
+    def apply_current_filters(self, *, priority_ids: set[int] | None = None) -> None:
         total_start = perf_now()
         if not self.store.database_exists:
             model_start = perf_now()
@@ -2291,7 +2294,8 @@ class ArtifactBrowserWindow(QWidget):
         sort_ms = perf_ms(sort_start)
 
         priority_start = perf_now()
-        priority_ids = self.current_highlight_artifact_ids()
+        if priority_ids is None:
+            priority_ids = self.current_highlight_artifact_ids()
         if priority_ids:
             visible_ids = sorted(
                 visible_ids,
@@ -2483,6 +2487,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_panel()
 
     def refresh_account_data(self, character_asset_items: list[dict]) -> None:
+        refresh_imported_element_filter_icons(self)
         self._preloaded_character_asset_items = list(character_asset_items)
         self.reload_from_database()
 
@@ -3034,7 +3039,7 @@ class ArtifactBrowserWindow(QWidget):
     def _region_icon_path(self, region_key: str) -> Path | None:
         icon_name = REGION_ICON_FILES.get(region_key)
         if icon_name:
-            path = FILTER_ASSETS_DIR / icon_name
+            path = filter_icon_path(icon_name)
             if path.exists():
                 return path
 
@@ -4280,7 +4285,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_panel()
         self.update_edit_selection_mode()
 
-    def update_build_panel(self) -> None:
+    def update_build_panel(self) -> dict[int, int]:
         self.refresh_equipment_target_state()
         if self.delegate.set_current_owner_character_id(
             self.operation_target_character_id
@@ -4295,8 +4300,9 @@ class ArtifactBrowserWindow(QWidget):
             self.update_build_slot_row(pos, artifact_id)
 
         self.update_build_target_preview()
-        self.update_build_summary()
+        self.update_build_summary(slots)
         self.update_build_create_controls()
+        return slots
 
     def _preview_slots(self) -> dict[int, int]:
         if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
@@ -4718,12 +4724,13 @@ class ArtifactBrowserWindow(QWidget):
     def _compact_main_stat_text(self, artifact) -> str:
         return self._stat_badge_text(artifact.main_property_type)
 
-    def update_build_summary(self) -> None:
+    def update_build_summary(self, slots: dict[int, int] | None = None) -> None:
         self._clear_layout(self.build_bonus_layout)
         self._clear_layout(self.build_summary_stats_layout)
 
         editing = self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
-        slots = self._preview_slots()
+        if slots is None:
+            slots = self._preview_slots()
 
         if not slots:
             self.fill_build_stat_summary({})
@@ -5081,9 +5088,9 @@ class ArtifactBrowserWindow(QWidget):
         elif self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
             self.cancel_custom_set_edit()
 
-    def update_edit_selection_mode(self) -> None:
+    def update_edit_selection_mode(self, *, highlight_ids: set[int] | None = None) -> None:
         editing = self.edit_selection_mode != EDIT_MODE_NONE
-        ids = self.current_highlight_artifact_ids()
+        ids = self.current_highlight_artifact_ids() if highlight_ids is None else highlight_ids
         self.delegate.set_edit_selection_artifact_ids(ids)
 
         self.update_json_import_actions()

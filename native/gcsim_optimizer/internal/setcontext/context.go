@@ -190,7 +190,7 @@ func New(binding Binding, prepared string) (*Context, error) {
 }
 
 func validateSets(sets []Set) error {
-	if len(sets) == 0 || len(sets) > 5 {
+	if len(sets) > 5 {
 		return fmt.Errorf("invalid set row count")
 	}
 	seen, count := map[string]bool{}, 0

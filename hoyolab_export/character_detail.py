@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 
 DETAIL_URL = "https://sg-public-api.hoyolab.com/event/game_record/genshin/api/character/detail"
@@ -160,17 +160,22 @@ async def fetch_character_details_batch(
     character_ids: list[int] | list[dict[str, Any]],
     *,
     language: str | None = None,
+    role_id: str | None = None,
+    server: str | None = None,
+    json_fetcher: Callable[..., Awaitable[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
+    fetch_json = json_fetcher or browser_fetch_json
     ids = real_character_ids(character_ids)
     if not ids:
         raise RuntimeError("No real character ids found for HoYoLAB character/detail request.")
 
-    roles_result = await browser_fetch_json(page, ROLES_URL, language=language)
-    if not roles_result.get("ok") or (roles_result.get("json") or {}).get("retcode") != 0:
-        raise RuntimeError("HoYoLAB roles request failed; check the account session.")
-    role_id, server = pick_genshin_role(roles_result.get("json") or {})
+    if not (role_id and server):
+        roles_result = await fetch_json(page, ROLES_URL, language=language)
+        if not roles_result.get("ok") or (roles_result.get("json") or {}).get("retcode") != 0:
+            raise RuntimeError("HoYoLAB roles request failed; check the account session.")
+        role_id, server = pick_genshin_role(roles_result.get("json") or {})
 
-    result = await browser_fetch_json(
+    result = await fetch_json(
         page,
         DETAIL_URL,
         method="POST",

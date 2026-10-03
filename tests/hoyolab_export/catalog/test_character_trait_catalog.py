@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 from hoyolab_export.character_trait_catalog import (
     CHARACTER_TRAIT_CATALOG_SCHEMA_VERSION,
@@ -24,12 +26,14 @@ from hoyolab_export.character_trait_catalog import (
     hexerei_tooltip_reference,
     init_character_trait_reference_storage,
     list_seed_character_traits,
+    load_or_refresh_character_trait_catalog,
     normalize_character_trait_name,
     parse_hexerei_sections_from_hoyowiki_page,
     refresh_character_trait_catalog,
     rebuild_character_trait_reference_from_catalog,
     traits_for_character_name,
     upsert_character_trait_tooltip_sections,
+    write_character_trait_catalog_cache,
 )
 
 
@@ -183,6 +187,20 @@ class CharacterTraitCatalogTest(unittest.TestCase):
                     ("Traveler", TRAIT_STANDARD_5_STAR),
                 ],
             )
+
+    def test_normal_import_reuses_recent_trait_catalog(self) -> None:
+        with TemporaryDirectory() as tmp:
+            cache_path = Path(tmp) / "traits.json"
+            write_character_trait_catalog_cache(
+                CharacterTraitCatalog(
+                    entries=(), language="en-us",
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                ), cache_path,
+            )
+            with patch("hoyolab_export.character_trait_catalog.refresh_character_trait_catalog") as refresh:
+                catalog = load_or_refresh_character_trait_catalog(cache_path=cache_path)
+            refresh.assert_not_called()
+            self.assertTrue(catalog.entries)
 
     def test_parses_hexerei_tooltip_sections_from_en_us_custom_table(self) -> None:
         page = _hexerei_page(

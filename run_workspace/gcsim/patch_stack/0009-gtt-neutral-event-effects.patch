@@ -1,0 +1,3346 @@
+diff --git a/internal/template/character/character.go b/internal/template/character/character.go
+--- a/internal/template/character/character.go
++++ b/internal/template/character/character.go
+@@ -74,8 +74,9 @@
+ 
+ 	// snapshot the stats
+ 	if c.Core.GTTTrace.Enabled() {
++		query := c.Core.GTTTrace.NewStatQuery(false)
+ 		s.Stats, debug, s.GTTStatContributions = c.GTTStats()
+-		s.GTTStatsOrigin = info.GTTNewStatsOrigin(c.Core.GTTTrace, c.Index(), s.Stats, s.GTTStatContributions)
++		s.GTTStatsOrigin = info.GTTNewStatsOrigin(c.Core.GTTTrace, c.Index(), s.Stats, s.GTTStatContributions, query)
+ 	} else {
+ 		s.Stats, debug = c.Stats()
+ 	}
+diff --git a/internal/template/character/heal.go b/internal/template/character/heal.go
+--- a/internal/template/character/heal.go
++++ b/internal/template/character/heal.go
+@@ -146,6 +146,9 @@
+ 			c.Core.GTTTrace.RecordHealthFieldBinding(operationID, "input_value", hi.GTTTraceInputEventID, hi.Src)
+ 			c.Core.GTTTrace.RecordHealthFieldBinding(operationID, "adjusted_input_value", hi.GTTTraceInputEventID, hi.Src)
+ 		}
++		if hi.GTTTraceBonusEventID != "" {
++			c.Core.GTTTrace.RecordHealthFieldBinding(operationID, "source_bonus", hi.GTTTraceBonusEventID, hi.Bonus)
++		}
+ 		if maxHPBeforeEventID != "" {
+ 			c.Core.GTTTrace.RecordHealthFieldBinding(operationID, "max_hp_before", maxHPBeforeEventID, maxHPBefore)
+ 		}
+diff --git a/pkg/core/attack.go b/pkg/core/attack.go
+--- a/pkg/core/attack.go
++++ b/pkg/core/attack.go
+@@ -171,6 +171,7 @@
+ 	case snapshotDelay < 0:
+ 		// snapshotDelay < 0 means we don't need a snapshot; optimization for reaction
+ 		// damage essentially
++		ae.GTTNoStatSnapshot = true
+ 		c.queueDmg(&ae, dmgDelay)
+ 	case snapshotDelay == 0:
+ 		c.generateSnapshot(&ae)
+diff --git a/pkg/core/core.go b/pkg/core/core.go
+--- a/pkg/core/core.go
++++ b/pkg/core/core.go
+@@ -110,6 +110,12 @@
+ 			GTTTrace:     c.GTTTrace,
+ 		},
+ 	)
++	c.GTTTrace.BindActiveIndex(c.Player.Active)
++	c.GTTTrace.BindNeutralWorld(func() []gtttrace.NeutralModifierIdentity {
++		out := []gtttrace.NeutralModifierIdentity{}
++		for _, char := range c.Player.Chars() { out = append(out, char.GTTNeutralModifierIdentities()...) }
++		return out
++	})
+ 	c.Combat = combat.New(combat.Opt{
+ 		Events:       c.Events,
+ 		Team:         c.Player,
+@@ -122,6 +128,8 @@
+ 		Tasks:        c.Tasks,
+ 	})
+ 
++	c.GTTTrace.BindNeutralTargets(c.gttNeutralTargets)
++	c.GTTTrace.BindNeutralResources(c.gttNeutralResources)
+ 	return c, nil
+ }
+ 
+diff --git a/pkg/core/event/event.go b/pkg/core/event/event.go
+--- a/pkg/core/event/event.go
++++ b/pkg/core/event/event.go
+@@ -211,6 +211,9 @@
+ 		}
+ 		return
+ 	}
++	var order uint64
++	if h.trace.NeutralEnabled() { order = h.trace.BeginCombatEvent(int(e), info.GTTCombatEventValues(args)) }
++	defer h.trace.EndCombatEvent(order)
+ 	for _, v := range h.events[e] {
+ 		if v.f != nil {
+ 			v.provider = gtttrace.NormalizeProvider(v.provider)
+diff --git a/pkg/core/event/gtt_combat_event_test.go b/pkg/core/event/gtt_combat_event_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/event/gtt_combat_event_test.go
+@@ -0,0 +1,59 @@
++package event
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func TestNeutralEventWithoutSubscriptionAndNestedOrder(t *testing.T) {
++	rt := gtttrace.NewRuntime()
++	rt.Enable()
++	frame, active := 10, 2
++	rt.BindFrame(&frame)
++	rt.BindActiveIndex(func() int { return active })
++	h := New(rt)
++	h.Emit(OnSwirlElectro, 7, &info.AttackEvent{Info: info.AttackInfo{ActorIndex: 2}})
++	first := rt.CombatEvents()
++	if len(first.Events) != 1 || first.Events[0].Event != int(OnSwirlElectro) || first.Events[0].Active != 2 {
++		t.Fatal("unsubscribed reaction was lost", first)
++	}
++	calls := 0
++	h.Subscribe(OnNightsoulConsume, func(args ...any) {
++		calls++
++		h.Emit(OnCharacterSwap, 2, 1)
++	}, "test-only")
++	h.Emit(OnNightsoulConsume, 2, 1.0)
++	rows := rt.CombatEvents().Events
++	if calls != 1 || len(rows) != 3 || rows[2].ParentOrder != rows[1].Order ||
++		rows[2].EndOrder >= rows[1].EndOrder || rows[0].EndOrder >= rows[1].Order {
++		t.Fatal("event observation repeated or reordered gameplay", calls, rows)
++	}
++}
++
++func TestNeutralEventPayloadCapturedBeforeMutation(t *testing.T) {
++	rt := gtttrace.NewRuntime()
++	rt.Enable()
++	h := New(rt)
++	atk := &info.AttackEvent{Info: info.AttackInfo{ActorIndex: 1, FlatDmg: 3}}
++	h.Subscribe(OnApplyAttack, func(args ...any) { args[0].(*info.AttackEvent).Info.FlatDmg = 9 }, "mutate")
++	h.Emit(OnApplyAttack, atk)
++	row := rt.CombatEvents().Events[0]
++	if row.Arguments[0].Fields["Info"].Fields["FlatDmg"].Number != 3 || atk.Info.FlatDmg != 9 {
++		t.Fatal("stored payload aliases gameplay")
++	}
++	row.Arguments[0].Fields["Info"].Fields["FlatDmg"] = gtttrace.EventValue{Kind: "number", Number: 77}
++	if rt.CombatEvents().Events[0].Arguments[0].Fields["Info"].Fields["FlatDmg"].Number != 3 {
++		t.Fatal("export mutated retained tape")
++	}
++}
++
++func TestNeutralEventDisabledAndUnknownPayload(t *testing.T) {
++	rt := gtttrace.NewRuntime()
++	h := New(rt)
++	h.Emit(OnTick)
++	if len(rt.CombatEvents().Events) != 0 { t.Fatal("ordinary simulation allocated event evidence") }
++	rt.Enable()
++	h.Emit(OnTick, func(){})
++	if rt.CombatEvents().Events[0].Arguments[0].Kind != "unknown" { t.Fatal("unknown payload silently erased") }
++}
+diff --git a/pkg/core/gtt_neutral_resources.go b/pkg/core/gtt_neutral_resources.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/gtt_neutral_resources.go
+@@ -0,0 +1,27 @@
++package core
++
++// Pure resource identities, positions and existing scalar fields. No stat
++// getter, modifier Amount, callback, random draw or gameplay mutation.
++import (
++ "github.com/genshinsim/gcsim/pkg/core/construct"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++ "github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++func (c *Core) gttNeutralResources() gtttrace.EventValue {
++ encode:=func(value any)gtttrace.EventValue{return info.GTTCombatEventValues([]any{value})[0]}
++ chars:=[]gtttrace.EventValue{}
++ for _,char:=range c.Player.Chars(){chars=append(chars,gtttrace.EventValue{Kind:"object",Fields:map[string]gtttrace.EventValue{"Energy":encode(char.Energy),"EnergyMax":encode(char.EnergyMax)}})}
++ shields:=[]gtttrace.EventValue{}
++ for _,s:=range c.Player.Shields.List(){shields=append(shields,encode(s))}
++ objects:=[]gtttrace.EventValue{}
++ // ConstructsByType returns both limited and unlimited lists, partitioned.
++ yes,no:=c.Constructs.ConstructsByType(construct.GeoConstructInvalid)
++ for _,s:=range append(yes,no...){objects=append(objects,gtttrace.EventValue{Kind:"observation",Type:"github.com/genshinsim/gcsim/pkg/core/construct.Construct",Fields:map[string]gtttrace.EventValue{"Type":encode(s.Type()),"Expiry":encode(s.Expiry()),"Pos":gttNeutralPosition(s.Pos())}})}
++ position:=gtttrace.EventValue{Kind:"unknown",Text:"player_not_initialized"}
++ if player:=c.Combat.Player();player!=nil {position=gttNeutralPosition(player.Pos())}
++ return gtttrace.EventValue{Kind:"object",Fields:map[string]gtttrace.EventValue{
++  "Characters":{Kind:"array",Items:chars},"Shields":{Kind:"array",Items:shields},"Constructs":{Kind:"array",Items:objects},
++  "Statuses":encode(c.Status.GTTNeutralExpiries()),"Custom":encode(c.Flags.Custom),"IgnoreBurstEnergy":encode(c.Flags.IgnoreBurstEnergy),"Position":position,
++ }}
++}
++func gttNeutralPosition(p info.Point)gtttrace.EventValue{return gtttrace.EventValue{Kind:"observation",Type:"github.com/genshinsim/gcsim/pkg/core/info.Point",Fields:map[string]gtttrace.EventValue{"X":{Kind:"number",Number:p.X},"Y":{Kind:"number",Number:p.Y}}}}
+diff --git a/pkg/core/gtt_neutral_targets.go b/pkg/core/gtt_neutral_targets.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/gtt_neutral_targets.go
+@@ -0,0 +1,32 @@
++package core
++
++// Pure target identity/interface/aura observation. It never evaluates stats,
++// modifier Amounts or callbacks. The aura implementation remains engine-owned.
++import (
++ "github.com/genshinsim/gcsim/pkg/core/attributes"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++ "github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func (c *Core) gttNeutralTargets() []gtttrace.EventValue {
++ out:=[]gtttrace.EventValue{}
++ for _, target:=range c.Combat.Enemies() {
++  value:=info.GTTCombatEventValues([]any{target})[0]
++  reactable, hasReactable:=target.(Reactable)
++  _, hasAuraTarget:=target.(info.TargetWithAura)
++  value.Fields["Interfaces"]=gtttrace.EventValue{Kind:"map",Fields:map[string]gtttrace.EventValue{
++   "github.com/genshinsim/gcsim/pkg/core/info.Target":{Kind:"bool",Boolean:true},
++   "github.com/genshinsim/gcsim/pkg/core/info.TargetWithAura":{Kind:"bool",Boolean:hasAuraTarget},
++   "github.com/genshinsim/gcsim/pkg/core.Reactable":{Kind:"bool",Boolean:hasReactable},
++  }}
++  if hasReactable {
++   auras:=make([]gtttrace.EventValue,attributes.EndEleType)
++   for ele:=attributes.Element(0);ele<attributes.EndEleType;ele++ {
++    auras[ele]=gtttrace.EventValue{Kind:"bool",Boolean:reactable.AuraContains(ele)}
++   }
++   value.Fields["Auras"]=gtttrace.EventValue{Kind:"array",Items:auras}
++  }
++  out=append(out,value)
++ }
++ return out
++}
+diff --git a/pkg/core/info/combat.go b/pkg/core/info/combat.go
+--- a/pkg/core/info/combat.go
++++ b/pkg/core/info/combat.go
+@@ -17,6 +17,11 @@
+ 	// GTTTraceContext is set only by the opt-in GTT trace collector. It is
+ 	// copied with the attack when combat fans one attack out to its targets.
+ 	GTTTraceContext *GTTTraceAttackContext `json:"-"`
++	// Only QueueAttack's explicit negative snapshot delay attests this. A nil
++	// origin alone can also mean a custom snapshot or lost provenance. Keep
++	// this on the attack: QueueAttackWithSnap must not inherit this assertion.
++	// This observer flag changes no combat values.
++	GTTNoStatSnapshot bool `json:"-"`
+ 	// GTTTraceHit is target-local and is allocated by the target handler.
+ 	GTTTraceHit                      *GTTTraceHit              `json:"-"`
+ 	GTTTraceProvider                 gtttrace.Provider         `json:"-"`
+diff --git a/pkg/core/info/gtt_combat_event.go b/pkg/core/info/gtt_combat_event.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_combat_event.go
+@@ -0,0 +1,114 @@
++package info
++
++import (
++	"math"
++	"reflect"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++// Copy event arguments without walking the mutable core graph or calling game
++// stat getters. Engine-owned payload field names/types survive into the tape;
++// unsupported payloads are unknown, never silently empty/zero.
++func GTTCombatEventValues(args []any) []gtttrace.EventValue {
++	if len(args) > 64 { return []gtttrace.EventValue{{Kind: "unknown", Text: "argument_limit"}} }
++	out := make([]gtttrace.EventValue, len(args))
++	for i, value := range args { out[i] = gttCombatValue(value) }
++	return out
++}
++func gttCombatValue(value any) gtttrace.EventValue {
++	if value != nil { reflected := reflect.ValueOf(value); if (reflected.Kind() == reflect.Pointer || reflected.Kind() == reflect.Interface) && reflected.IsNil() { return gtttrace.EventValue{Kind: "nil"} } }
++	switch v := value.(type) {
++	case interface { ShieldOwner() int; ShieldTarget() int; Expiry() int; Element() attributes.Element }:
++		// The enum-returning Type method cannot appear in this interface without
++		// a package import cycle. Validate its exact signature before calling it.
++		m:=reflect.ValueOf(value).MethodByName("Type")
++		if !m.IsValid() || m.Type().NumIn()!=0 || m.Type().NumOut()!=1 || eventType(m.Type().Out(0))!="github.com/genshinsim/gcsim/pkg/core/player/shield.Type" {return gtttrace.EventValue{Kind:"unknown",Text:"shield_type_signature"}}
++		return gtttrace.EventValue{Kind:"observation",Type:"github.com/genshinsim/gcsim/pkg/core/player/shield.Shield",Fields:map[string]gtttrace.EventValue{
++		 "Type":eventData(m.Call(nil)[0],0),"Expiry":{Kind:"number",Number:float64(v.Expiry())},"Element":eventData(reflect.ValueOf(v.Element()),0),
++		 "ShieldOwner":{Kind:"number",Number:float64(v.ShieldOwner())},"ShieldTarget":{Kind:"number",Number:float64(v.ShieldTarget())},
++		}}
++	case *AttackEvent:
++		if v == nil { return gtttrace.EventValue{Kind: "nil"} }
++		return gtttrace.EventValue{Kind: "object", Type: eventType(reflect.TypeOf(v)),
++			Fields: map[string]gtttrace.EventValue{
++				"HitID": {Kind:"number",Number:func()float64{if v.GTTTraceHit!=nil{return float64(v.GTTTraceHit.HitID)};return 0}()},
++				"Info": eventData(reflect.ValueOf(v.Info), 0),
++				"SourceFrame": {Kind: "number", Number: float64(v.SourceFrame)},
++				"Reacted": {Kind: "bool", Boolean: v.Reacted},
++				"Snapshot": {Kind: "object", Fields: map[string]gtttrace.EventValue{
++					"SourceFrame": {Kind: "number", Number: float64(v.Snapshot.SourceFrame)},
++					"Stats": eventData(reflect.ValueOf(v.Snapshot.Stats), 0),
++				}},
++			}}
++	case Target:
++		return gtttrace.EventValue{Kind: "target", Type: eventType(reflect.TypeOf(v)),
++			Fields: map[string]gtttrace.EventValue{
++				"Key": {Kind: "number", Number: float64(v.Key())},
++				"Type": {Kind: "number", Number: float64(v.Type())},
++			}}
++	case interface{ Index() int }:
++		return gtttrace.EventValue{Kind: "character", Type: eventType(reflect.TypeOf(v)),
++			Fields: map[string]gtttrace.EventValue{"Index": {Kind: "number", Number: float64(v.Index())}}}
++	default:
++		return eventData(reflect.ValueOf(value), 0)
++	}
++}
++func eventType(t reflect.Type) string {
++	if t == nil { return "" }
++	if t.Kind() == reflect.Pointer { return "*" + eventType(t.Elem()) }
++	if t.PkgPath() == "" { return t.String() }
++	return t.PkgPath() + "." + t.Name()
++}
++func eventData(v reflect.Value, depth int) gtttrace.EventValue {
++	if !v.IsValid() { return gtttrace.EventValue{Kind: "nil"} }
++	unknown := gtttrace.EventValue{Kind: "unknown", Type: eventType(v.Type())}
++	if depth > 4 { unknown.Text = "payload_depth"; return unknown }
++	if v.Kind() == reflect.Interface {
++		if v.IsNil() { return gtttrace.EventValue{Kind: "nil"} }
++		return eventData(v.Elem(), depth+1)
++	}
++	out := gtttrace.EventValue{Type: eventType(v.Type())}
++	switch v.Kind() {
++	case reflect.Bool:
++		out.Kind, out.Boolean = "bool", v.Bool()
++	case reflect.String:
++		if v.Len() > 4096 { unknown.Text = "text_limit"; return unknown }
++		out.Kind, out.Text = "string", v.String()
++	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
++		if v.Int() > 1<<53 || v.Int() < -(1<<53) { unknown.Text = "integer_precision"; return unknown }
++		out.Kind, out.Number = "number", float64(v.Int())
++	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
++		if v.Uint() > 1<<53 { unknown.Text = "integer_precision"; return unknown }
++		out.Kind, out.Number = "number", float64(v.Uint())
++	case reflect.Float32, reflect.Float64:
++		if math.IsNaN(v.Float()) || math.IsInf(v.Float(), 0) { unknown.Text = "non_finite"; return unknown }
++		out.Kind, out.Number = "number", v.Float()
++	case reflect.Pointer:
++		// Only explicitly value-like engine health request pointers are admitted.
++		if v.IsNil() { return gtttrace.EventValue{Kind: "nil"} }
++		if v.Type() != reflect.TypeOf((*DrainInfo)(nil)) && v.Type() != reflect.TypeOf((*HealInfo)(nil)) { return unknown }
++		out = eventData(v.Elem(), depth+1)
++		out.Type = eventType(v.Type())
++	case reflect.Struct:
++		out.Kind, out.Fields = "object", map[string]gtttrace.EventValue{}
++		for i := 0; i < v.NumField(); i++ {
++			field := v.Type().Field(i)
++			if field.PkgPath != "" || field.Tag.Get("json") == "-" { continue }
++			out.Fields[field.Name] = eventData(v.Field(i), depth+1)
++		}
++	case reflect.Slice, reflect.Array:
++		if v.Len() > 128 { unknown.Text = "array_limit"; return unknown }
++		out.Kind, out.Items = "array", make([]gtttrace.EventValue, v.Len())
++		for i := 0; i < v.Len(); i++ { out.Items[i] = eventData(v.Index(i), depth+1) }
++	case reflect.Map:
++		if v.Type().Key().Kind() != reflect.String || v.Len() > 64 { return unknown }
++		out.Kind, out.Fields = "map", map[string]gtttrace.EventValue{}
++		iter := v.MapRange()
++		for iter.Next() { out.Fields[iter.Key().String()] = eventData(iter.Value(), depth+1) }
++	default:
++		return unknown
++	}
++	return out
++}
+diff --git a/pkg/core/info/gtt_contributor_group.go b/pkg/core/info/gtt_contributor_group.go
+--- a/pkg/core/info/gtt_contributor_group.go
++++ b/pkg/core/info/gtt_contributor_group.go
+@@ -17,6 +17,7 @@
+ }
+ 
+ type GTTContributorGroup struct {
++	runtime *gtttrace.Runtime
+ 	Version, SourceSHA256 string
+ 	Contributors          []GTTContributor
+ 	Weights               []float64
+@@ -27,7 +28,7 @@
+ 	if !rt.Enabled() {
+ 		return nil
+ 	}
+-	return &GTTContributorGroup{}
++	return &GTTContributorGroup{runtime: rt}
+ }
+ 
+ // A participant snapshot is captured after its original callbacks. It retains
+@@ -37,6 +38,10 @@
+ 		return nil
+ 	}
+ 	h := &GTTTraceHit{
++		Frame: group.runtime.Frame(), HitOrder: group.runtime.NextNeutralObservationOrder(),
++		SnapshotFrame: a.Snapshot.SourceFrame, SnapshotOrder: GTTStatsObservationOrder(a.Snapshot.GTTStatsOrigin),
++		NoStatSnapshot: a.GTTNoStatSnapshot && a.Snapshot.GTTStatsOrigin == nil,
++		AttackTag: int(a.Info.AttackTag), Element: a.Info.Element.String(),
+ 		ActorIndex: a.Info.ActorIndex, FlatDmg: a.Info.FlatDmg,
+ 		BaseDmgBonus: a.Info.BaseDmgBonus, FlatProducer: a.Info.GTTFlatProducer,
+ 		NumericFieldWrites: append([]GTTNumericFieldWrite(nil), a.GTTNumericFieldWrites...),
+diff --git a/pkg/core/info/gtt_health_stats_test.go b/pkg/core/info/gtt_health_stats_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_health_stats_test.go
+@@ -0,0 +1,28 @@
++package info
++import("testing";"github.com/genshinsim/gcsim/pkg/core/attributes";"github.com/genshinsim/gcsim/pkg/gtttrace")
++type healthStatsOwner struct {rt *gtttrace.Runtime; frame *int; calls int}
++func(c *healthStatsOwner)Index()int{return 2}
++func(c *healthStatsOwner)GTTTraceRuntime()*gtttrace.Runtime{return c.rt}
++func(c *healthStatsOwner)GTTStats()([attributes.EndStatType]float64,[]any,[]GTTTraceStatContribution){
++ c.calls++;*c.frame=9
++ var stats [attributes.EndStatType]float64;stats[attributes.Heal]=.2
++ return stats,[]any{"debug"},[]GTTTraceStatContribution{{Accepted:true,Extra:true,ModifierEvalEventID:"extra"}}
++}
++func TestGTTStatsHealthOriginKeepsGetterTimeAndSingleEvaluation(t *testing.T){
++ rt:=gtttrace.NewRuntime();rt.Enable();frame:=8;rt.BindFrame(&frame)
++ owner:=&healthStatsOwner{rt:rt,frame:&frame};fallbackCalls:=0
++ fallback:=func()([attributes.EndStatType]float64,[]any){fallbackCalls++;return [attributes.EndStatType]float64{},nil}
++ values,debug,origin:=GTTReadStats(rt,owner,fallback)
++ if owner.calls!=1||fallbackCalls!=0||origin==nil||values[attributes.Heal]!=.2||debug[0]!="debug"{t.Fatal("getter count/values changed")}
++ observations,complete:=rt.NeutralStatObservations()
++ if !complete||len(observations)!=1||observations[0].Frame!=8||observations[0].Owner!=2||observations[0].Mode!="stat"||observations[0].ExtraModifiers==nil||len(*observations[0].ExtraModifiers)!=1{t.Fatal("original full Stats query lost",observations)}
++ frame=44
++ GTTStatsCellRef(rt,origin,values,attributes.Heal,.2)
++ rows:=rt.StateEvents();last:=rows[len(rows)-1]
++ if last.Channel==nil||*last.Channel!="stat_input:stat"||last.NumericPayload[1].Value!=8||*last.OwnerIndex!=2{t.Fatal("later read replaced original query",last)}
++ values[attributes.Heal]=.3
++ GTTStatsCellRef(rt,origin,values,attributes.Heal,.3)
++ rows=rt.StateEvents();if *rows[len(rows)-1].Operation!="frozen_attack_operand"{t.Fatal("mutation was not rejected")}
++ _,_,foreign:=GTTReadStats(rt,struct{}{},fallback);if foreign!=nil||fallbackCalls!=1{t.Fatal("unknown owner inferred")}
++ _,_,disabled:=GTTReadStats(nil,owner,fallback);if disabled!=nil||owner.calls!=1||fallbackCalls!=2{t.Fatal("disabled getter changed")}
++}
+diff --git a/pkg/core/info/gtt_live_stats.go b/pkg/core/info/gtt_live_stats.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_live_stats.go
+@@ -0,0 +1,49 @@
++package info
++
++import (
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++// GTTReadStats keeps a raw Stats() array's ordinary Stat query at the getter
++// site while returning the same gameplay values exactly once. The fallback is
++// used unchanged when tracing or typed owner provenance is unavailable.
++func GTTReadStats(rt *gtttrace.Runtime, owner any, fallback func() ([attributes.EndStatType]float64, []any)) ([attributes.EndStatType]float64, []any, *GTTStatsOrigin) {
++	if rt == nil || !rt.Enabled() {
++		stats, debug := fallback()
++		return stats, debug, nil
++	}
++	c, ok := owner.(interface {
++		Index() int
++		GTTStats() ([attributes.EndStatType]float64, []any, []GTTTraceStatContribution)
++	})
++	if !ok || GTTStatOwnerRuntime(owner) != rt {
++		stats, debug := fallback()
++		return stats, debug, nil
++	}
++	query := rt.NewStatQuery(false)
++	stats, debug, contributions := c.GTTStats()
++	origin := GTTNewStatsOrigin(rt, c.Index(), attributes.Stats(stats), contributions, query)
++	return stats, debug, origin
++}
++
++// GTTStatsCellRef relates an already-observed array cell to the original
++// ordinary Stats() query. Mutation or owner/query mismatch stays frozen.
++func GTTStatsCellRef(rt *gtttrace.Runtime, origin *GTTStatsOrigin, values [attributes.EndStatType]float64, key attributes.Stat, observed float64) gtttrace.NumericRef {
++	freeze := func() gtttrace.NumericRef {
++		if rt == nil || !rt.Enabled() {
++			return gtttrace.LiteralRef(observed)
++		}
++		return gtttrace.EventRef(rt.RecordNumericEval("", "frozen_attack_operand", nil, observed, gtttrace.IncompleteEvidence("stats_container_origin_unproven_or_mutated")))
++	}
++	if rt == nil || !rt.Enabled() {
++		return gtttrace.LiteralRef(observed)
++	}
++	if origin == nil || origin.runtime != rt || origin.Values != attributes.Stats(values) || key <= attributes.NoStat || key >= attributes.EndStatType || values[key] != observed {
++		return freeze()
++	}
++	if key >= attributes.DelimBaseStat {
++		return gtttrace.LiteralRef(observed)
++	}
++	return gtttrace.EventRef(rt.RecordStatQuery(origin.Owner, key.String(), observed, origin.ModifierIDs, origin.query))
++}
+diff --git a/pkg/core/info/gtt_neutral_resources_test.go b/pkg/core/info/gtt_neutral_resources_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_neutral_resources_test.go
+@@ -0,0 +1,17 @@
++package info_test
++import (
++ "testing"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++ "github.com/genshinsim/gcsim/pkg/core/attributes"
++ "github.com/genshinsim/gcsim/pkg/core/player/shield"
++)
++func TestNeutralShieldAndHitPayload(t *testing.T){
++ s:=&shield.Tmpl{ShieldType:shield.IneffaSkill,Expires:123,Ele:attributes.Electro}
++ value:=info.GTTCombatEventValues([]any{s})[0]
++ if value.Kind!="observation" || value.Fields["Type"].Number!=float64(shield.IneffaSkill) || value.Fields["Expiry"].Number!=123 {t.Fatal(value)}
++ s.Expires=0
++ if value.Fields["Expiry"].Number!=123{t.Fatal("shield snapshot is live")}
++ attack:=&info.AttackEvent{GTTTraceHit:&info.GTTTraceHit{HitID:7}}
++ value=info.GTTCombatEventValues([]any{attack})[0]
++ if value.Fields["HitID"].Number!=7{t.Fatal("hit identity lost",value)}
++}
+diff --git a/pkg/core/info/gtt_neutral_stat_reads_test.go b/pkg/core/info/gtt_neutral_stat_reads_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_neutral_stat_reads_test.go
+@@ -0,0 +1,21 @@
++package info
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++func TestNeutralLatentStatVectorsKeepOriginalValuesAndFilters(t *testing.T){
++	r:=gtttrace.NewRuntime();r.Enable()
++	frame:=5;r.BindFrame(&frame)
++	stats:=attributes.Stats{};stats[attributes.ER]=1.2;stats[attributes.EM]=50
++	q:=r.NewStatQuery(false)
++	GTTNewStatsOrigin(r,2,stats,[]GTTTraceStatContribution{{Accepted:true,Extra:true,ModifierEvalEventID:"extra"}},q)
++	stats[attributes.ER]=9
++	frame=8
++	q=GTTNewSelectedStatQuery(r,true,attributes.EM)
++	GTTStatsOriginAtQuery(r,1,stats,nil,q)
++	rows,complete:=r.NeutralStatObservations()
++	if !complete||len(rows)!=2||rows[0].Owner!=2||rows[0].Frame!=5||rows[0].Values["er"]!=1.2||rows[0].ExtraModifiers==nil||len(*rows[0].ExtraModifiers)!=1 {t.Fatal(rows)}
++	if rows[1].Mode!="non_extra_stat"||len(rows[1].Values)!=1||rows[1].Values["em"]!=50||rows[1].Keys==nil||len(*rows[1].Keys)!=1 {t.Fatal(rows[1])}
++}
+diff --git a/pkg/core/info/gtt_parametric_query_test.go b/pkg/core/info/gtt_parametric_query_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_parametric_query_test.go
+@@ -0,0 +1,35 @@
++package info
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func TestParametricSnapshotQueryKeepsOriginalFilterAndTime(t *testing.T) {
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	frame := 8
++	r.BindFrame(&frame)
++	var values attributes.Stats
++	values[attributes.BaseDEF], values[attributes.DEFP], values[attributes.DEF] = 100, .2, 10
++	origin := GTTStatsOriginFromModifiers(r, 2, values, nil, true)
++	frame = 44
++	ref := GTTStatsTotalRef(r, origin, values, attributes.BaseDEF, attributes.DEFP, attributes.DEF, 130)
++	if ref.EventID == nil {
++		t.Fatal("missing total ref")
++	}
++	reads := 0
++	for _, row := range r.StateEvents() {
++		if row.Operation == nil || *row.Operation != "artifact_stat_read" {
++			continue
++		}
++		reads++
++		if *row.Channel != "stat_input:non_extra_stat" || row.NumericPayload[1].Value != 8 || *row.OwnerIndex != 2 {
++			t.Fatal("saved getter became an ordinary/later getter", row)
++		}
++	}
++	if reads != 2 {
++		t.Fatal("flat/percent lineage missing", reads)
++	}
++}
+diff --git a/pkg/core/info/gtt_snapshot_stats.go b/pkg/core/info/gtt_snapshot_stats.go
+--- a/pkg/core/info/gtt_snapshot_stats.go
++++ b/pkg/core/info/gtt_snapshot_stats.go
+@@ -11,6 +11,7 @@
+ 	// Private: receipt metadata must not become a second discoverable path to
+ 	// a character's runtime (e.g. through a saved Snapshot field).
+ 	runtime     *gtttrace.Runtime
++	query       gtttrace.StatQueryContext
+ 	Owner       int
+ 	Values      attributes.Stats
+ 	ModifierIDs []string
+@@ -21,11 +22,12 @@
+ 		Index() int
+ 		GTTSelectStat(bool, ...attributes.Stat) (attributes.Stats, []string)
+ 	}); ok {
++		query := GTTNewSelectedStatQuery(rt, nonExtra, keys...)
+ 		value, ids := c.GTTSelectStat(nonExtra, keys...)
+ 		if !rt.Enabled() {
+ 			return value, nil
+ 		}
+-		return value, GTTStatsOriginFromModifiers(rt, c.Index(), value, ids)
++		return value, GTTStatsOriginAtQuery(rt, c.Index(), value, ids, query)
+ 	}
+ 	return fallback(), nil
+ }
+@@ -48,7 +50,7 @@
+ 		if key >= attributes.DelimBaseStat {
+ 			refs = append(refs, gtttrace.LiteralRef(stats[key]))
+ 		} else {
+-			refs = append(refs, gtttrace.EventRef(rt.RecordArtifactStatRead(origin.Owner, key.String(), stats[key], origin.ModifierIDs)))
++			refs = append(refs, gtttrace.EventRef(rt.RecordStatQuery(origin.Owner, key.String(), stats[key], origin.ModifierIDs, origin.query)))
+ 		}
+ 	}
+ 	if stats[base]*(1+stats[percent])+stats[flat] != observed {
+@@ -62,24 +64,28 @@
+ 	return record("add", []gtttrace.NumericRef{x, refs[2]}, observed)
+ }
+ 
+-func GTTNewStatsOrigin(rt *gtttrace.Runtime, owner int, values attributes.Stats, contributions []GTTTraceStatContribution) *GTTStatsOrigin {
++func GTTNewStatsOrigin(rt *gtttrace.Runtime, owner int, values attributes.Stats, contributions []GTTTraceStatContribution, queries ...gtttrace.StatQueryContext) *GTTStatsOrigin {
+ 	if !rt.Enabled() {
+ 		return nil
+ 	}
+ 	ids := []string{}
++	extraIDs := []string{}
+ 	for _, c := range contributions {
+ 		if c.Accepted && c.ModifierEvalEventID != "" {
+ 			ids = append(ids, c.ModifierEvalEventID)
++			if c.Extra { extraIDs=append(extraIDs,c.ModifierEvalEventID) }
+ 		}
+ 	}
++	if len(queries) == 1 { return GTTStatsOriginAtQuery(rt, owner, values, ids, queries[0], extraIDs) }
+ 	return GTTStatsOriginFromModifiers(rt, owner, values, ids)
+ }
+ 
+-func GTTStatsOriginFromModifiers(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string) *GTTStatsOrigin {
+-	if !rt.Enabled() {
++func GTTStatsOriginFromModifiers(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string, nonExtra ...bool) *GTTStatsOrigin {
++	if !rt.Enabled() || len(nonExtra) > 1 {
+ 		return nil
+ 	}
+-	return &GTTStatsOrigin{runtime: rt, Owner: owner, Values: values, ModifierIDs: append([]string(nil), ids...)}
++	filtered := len(nonExtra) == 1 && nonExtra[0]
++	return &GTTStatsOrigin{runtime: rt, query: rt.NewStatQuery(filtered), Owner: owner, Values: values, ModifierIDs: append([]string(nil), ids...)}
+ }
+ 
+ // observed is the value already read by gameplay, not a fresh getter call.
+@@ -92,7 +98,7 @@
+ 	if key >= attributes.DelimBaseStat {
+ 		return gtttrace.LiteralRef(observed)
+ 	}
+-	return gtttrace.EventRef(rt.RecordArtifactStatRead(origin.Owner, key.String(), observed, origin.ModifierIDs))
++	return gtttrace.EventRef(rt.RecordStatQuery(origin.Owner, key.String(), observed, origin.ModifierIDs, origin.query))
+ }
+ 
+ // GTTSnapshotTotalRef preserves the three artifact-stat leaves behind the
+@@ -152,3 +158,27 @@
+ 	}
+ 	return snapshot.GTTStatsOrigin.runtime
+ }
++
++// Original getter query retained by value, before any modifier Amount executes.
++func GTTStatsOriginAtQuery(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string, query gtttrace.StatQueryContext, extraIDs ...[]string) *GTTStatsOrigin {
++	if !rt.Enabled() { return nil }
++	if rt.NeutralEnabled() {
++	observed:=map[string]float64{}
++	if keys:=query.SelectedKeys();keys!=nil {
++		for _,key:=range *keys {
++			for stat:=attributes.NoStat+1;stat<attributes.EndStatType;stat++ {
++				if stat.String()==key {observed[key]=values[stat];break}
++			}
++		}
++	} else {
++		for stat:=attributes.NoStat+1;stat<attributes.EndStatType;stat++ {observed[stat.String()]=values[stat]}
++	}
++	rt.RecordNeutralStatVector(owner,observed,ids,query,extraIDs...)
++	}
++	return &GTTStatsOrigin{runtime: rt, query: query, Owner: owner, Values: values, ModifierIDs: append([]string(nil), ids...)}
++}
++func GTTNewSelectedStatQuery(rt *gtttrace.Runtime, nonExtra bool, keys ...attributes.Stat) gtttrace.StatQueryContext {
++	names := make([]string, len(keys))
++	for i, key := range keys { names[i] = key.String() }
++	return rt.NewSelectedStatQuery(nonExtra, names)
++}
+diff --git a/pkg/core/info/gtt_stats_observation.go b/pkg/core/info/gtt_stats_observation.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_stats_observation.go
+@@ -0,0 +1,6 @@
++package info
++
++func GTTStatsObservationOrder(origin *GTTStatsOrigin) uint64 {
++	if origin == nil { return 0 }
++	return origin.query.ObservationOrder()
++}
+diff --git a/pkg/core/info/gtt_trace.go b/pkg/core/info/gtt_trace.go
+--- a/pkg/core/info/gtt_trace.go
++++ b/pkg/core/info/gtt_trace.go
+@@ -158,6 +158,7 @@
+ }
+ 
+ type GTTTraceStatContribution struct {
++	Extra bool `json:"-"`
+ 	ModifierKey         string             `json:"modifier_key"`
+ 	ModifierEvalEventID string             `json:"modifier_eval_event_id"`
+ 	RecipientIndex      int                `json:"recipient_index"`
+@@ -291,6 +292,11 @@
+ 	Frame              int                    `json:"frame"`
+ 	SourceFrame        int                    `json:"source_frame"`
+ 	SnapshotFrame      int                    `json:"snapshot_frame"`
++	SnapshotOrder uint64 `json:"-"`
++	NoStatSnapshot bool `json:"-"`
++	HitOrder uint64 `json:"-"`
++	AttackModOrder uint64 `json:"-"`
++	NeutralAttack *gtttrace.EventValue `json:"-"`
+ 	ActorIndex         int                    `json:"actor_index"`
+ 	DamageSrc          int                    `json:"damage_src"`
+ 	Ability            string                 `json:"ability"`
+diff --git a/pkg/core/info/heal.go b/pkg/core/info/heal.go
+--- a/pkg/core/info/heal.go
++++ b/pkg/core/info/heal.go
+@@ -12,6 +12,7 @@
+ 	GTTTraceSourceTemplateSHA256 string                    `json:"-"`
+ 	GTTTraceSourceParameters     []GTTTraceSourceParameter `json:"-"`
+ 	GTTTraceInputEventID         string                    `json:"-"`
++	GTTTraceBonusEventID         string                    `json:"-"`
+ }
+ 
+ type HealType int
+diff --git a/pkg/core/player/character/gtt_neutral_world.go b/pkg/core/player/character/gtt_neutral_world.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/player/character/gtt_neutral_world.go
+@@ -0,0 +1,11 @@
++package character
++
++import "github.com/genshinsim/gcsim/pkg/gtttrace"
++
++// Includes the shared modifier list, not only Status. Expired entries are kept:
++// FindCheckExpiry and actual amount evaluation have distinct boundary rules.
++func (c *CharWrapper) GTTNeutralModifierIdentities() []gtttrace.NeutralModifierIdentity {
++ out := make([]gtttrace.NeutralModifierIdentity,0,len(c.mods))
++ for _, m := range c.mods { out = append(out,gtttrace.NeutralModifierIdentity{Owner:c.Index(),Key:m.Key(),Expiry:m.Expiry()}) }
++ return out
++}
+diff --git a/pkg/core/player/character/gtt_parametric_query_test.go b/pkg/core/player/character/gtt_parametric_query_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/player/character/gtt_parametric_query_test.go
+@@ -0,0 +1,78 @@
++package character
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/modifier"
++)
++
++func TestParametricGetterFilterDoesNotReevaluateModifiers(t *testing.T) {
++	frame := 17
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	r.BindFrame(&frame)
++	c := &CharWrapper{index: 1, f: &frame, gttTrace: r}
++	c.BaseStats[attributes.EM] = 100
++	calls := 0
++	extra := &StatMod{Base: modifier.NewBase("query-test-extra", -1), AffectedStat: attributes.EM, Extra: true,
++		Amount: func() []float64 {
++			calls++
++			v := make([]float64, attributes.EndStatType)
++			v[attributes.EM] = 25
++			return v
++		}}
++	extra.SetExpiry(frame)
++	c.mods = append(c.mods, extra)
++	for _, filtered := range []bool{true, false} {
++		var got float64
++		if filtered {
++			got, _ = c.GTTNonExtraStat(attributes.EM)
++		} else {
++			got, _ = c.GTTStat(attributes.EM)
++		}
++		rows := r.StateEvents()
++		row := rows[len(rows)-1]
++		mode, want := "stat_input:stat", 125.0
++		if filtered {
++			mode, want = "stat_input:non_extra_stat", 100
++		}
++		if got != want || row.Channel == nil || *row.Channel != mode {
++			t.Fatal(got, want, row)
++		}
++	}
++	if calls != 1 {
++		t.Fatal("observer changed gameplay evaluation count", calls)
++	}
++}
++
++func TestParametricQueryStartsBeforeAmountAndRetainsSelectedKeys(t *testing.T) {
++	frame := 17
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	r.BindFrame(&frame)
++	c := &CharWrapper{index: 0, f: &frame, gttTrace: r}
++	c.BaseStats[attributes.EM] = 100
++	calls := 0
++	m := &StatMod{Base: modifier.NewBase("mutating-query-test", -1), AffectedStat: attributes.EM,
++		Amount: func() []float64 { calls++; frame++; v := make([]float64, attributes.EndStatType); v[attributes.EM] = 1; return v }}
++	m.SetExpiry(frame)
++	c.mods = append(c.mods, m)
++	value, _ := c.GTTStat(attributes.EM)
++	rows := r.StateEvents()
++	row := rows[len(rows)-1]
++	queryFrame := -1
++	for _, p := range row.NumericPayload { if p.Key == "stat_query_frame" { queryFrame = int(p.Value) } }
++	if value != 101 || calls != 1 || queryFrame != 17 || row.Frame != 18 || row.NeutralStatKeys == nil || len(*row.NeutralStatKeys) != 1 || (*row.NeutralStatKeys)[0] != "em" { t.Fatal(value, calls, queryFrame, row) }
++}
++
++func TestNeutralHitlagObservedWithoutAnyModifiers(t *testing.T) {
++	frame := 3
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	r.BindFrame(&frame)
++	c := &CharWrapper{index: 2, f: &frame, gttTrace: r}
++	c.ApplyHitlag(0.25, 8)
++	ledger := r.NeutralHitlag()
++	if !ledger.Complete || len(ledger.Events) != 1 || ledger.Events[0].Owner != 2 || ledger.Events[0].Target != -1 || ledger.Events[0].Extension != 6 || ledger.Events[0].Order == 0 { t.Fatal(ledger) }
++}
+diff --git a/pkg/core/player/character/hitlag.go b/pkg/core/player/character/hitlag.go
+--- a/pkg/core/player/character/hitlag.go
++++ b/pkg/core/player/character/hitlag.go
+@@ -68,6 +68,7 @@
+ 			SetEnded(*c.f + int(math.Ceil(dur)))
+ 	}
+ 
++	c.gttTrace.RecordNeutralHitlag(c.Index(), -1, ext)
+ 	for i, v := range c.mods {
+ 		if v.AffectedByHitlag() && v.Expiry() != -1 && v.Expiry() > *c.f {
+ 			mod := c.mods[i]
+diff --git a/pkg/core/player/character/mods.go b/pkg/core/player/character/mods.go
+--- a/pkg/core/player/character/mods.go
++++ b/pkg/core/player/character/mods.go
+@@ -439,6 +439,11 @@
+ 		return nil
+ 	}
+ 
++	if a.GTTTraceHit != nil {
++		a.GTTTraceHit.AttackModOrder = c.gttTrace.NextNeutralObservationOrder()
++		input := info.GTTCombatEventValues([]any{a})[0]
++		a.GTTTraceHit.NeutralAttack = &input
++	}
+ 	var sb strings.Builder
+ 	var logDetails []any
+ 
+@@ -716,7 +721,7 @@
+ 			operation = "literal"
+ 		}
+ 		id := c.gttTrace.RecordEffectRead(c.gttTrace.CurrentSourceID(), "reaction_bonus", c.Index(), int(atk.AttackTag), operation, bonusRefs, amt,
+-			gtttrace.IncompleteEvidence("reaction_bonus_schedule_frozen"))
++			gtttrace.IncompleteEvidence("reaction_bonus_schedule_frozen"), info.GTTCombatEventValues([]any{atk})[0])
+ 		trace.ReactionBonusRef = gtttrace.EventRef(id)
+ 	}
+ 	return amt
+diff --git a/pkg/core/player/character/stats.go b/pkg/core/player/character/stats.go
+--- a/pkg/core/player/character/stats.go
++++ b/pkg/core/player/character/stats.go
+@@ -83,6 +83,7 @@
+ 		}
+ 		if capture {
+ 			contributions = append(contributions, info.GTTTraceStatContribution{
++				Extra: m.Extra,
+ 				ModifierKey: m.Key(), ModifierEvalEventID: modifierEvalEventID,
+ 				RecipientIndex: c.Index(), Accepted: !reject, Values: values,
+ 				Provider: m.GTTSource(), SourceID: m.GTTSourceID(),
+@@ -150,10 +151,11 @@
+ 	if !c.gttTrace.Enabled() {
+ 		return c.Stat(s), ""
+ 	}
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, false, s)
+ 	capture := c.gttTrace.BeginModifierEvalCapture()
+ 	value := c.Stat(s)
+ 	ids := c.gttTrace.EndModifierEvalCapture(capture)
+-	return value, c.gttTrace.RecordArtifactStatRead(c.Index(), s.String(), value, ids)
++	return value, c.gttTrace.RecordStatQuery(c.Index(), s.String(), value, ids, query)
+ }
+ 
+ func (c *CharWrapper) NonExtraStat(s attributes.Stat) float64 {
+@@ -186,10 +188,11 @@
+ 	if !c.gttTrace.Enabled() {
+ 		return c.NonExtraStat(s), ""
+ 	}
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, true, s)
+ 	capture := c.gttTrace.BeginModifierEvalCapture()
+ 	value := c.NonExtraStat(s)
+ 	ids := c.gttTrace.EndModifierEvalCapture(capture)
+-	return value, c.gttTrace.RecordArtifactStatRead(c.Index(), s.String(), value, ids)
++	return value, c.gttTrace.RecordStatQuery(c.Index(), s.String(), value, ids, query)
+ }
+ 
+ func (c *CharWrapper) SelectStat(nonExtra bool, stat ...attributes.Stat) attributes.Stats {
+@@ -246,13 +249,14 @@
+ 		stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
+ 		return stats.MaxHP(), ""
+ 	}
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, false, attributes.BaseHP, attributes.HPP, attributes.HP)
+ 	capture := c.gttTrace.BeginModifierEvalCapture()
+ 	stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
+ 	modifierEvalIDs := c.gttTrace.EndModifierEvalCapture(capture)
+ 	value := stats.MaxHP()
+ 	eventID := c.gttTrace.RecordMaxHPRead(
+ 		c.Index(), stats[attributes.BaseHP], stats[attributes.HPP], stats[attributes.HP],
+-		value, modifierEvalIDs,
++		value, modifierEvalIDs, query,
+ 	)
+ 	return value, eventID
+ }
+@@ -264,12 +268,13 @@
+ 
+ // Same central getter, one modifier evaluation, with an immutable numeric ref.
+ func (c *CharWrapper) GTTTotalAtk() (float64, gtttrace.NumericRef) {
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
+ 	stats, ids := c.GTTSelectStat(false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
+ 	value := stats.TotalATK()
+ 	if !c.gttTrace.Enabled() {
+ 		return value, gtttrace.NumericRef{}
+ 	}
+-	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids)
++	origin := info.GTTStatsOriginAtQuery(c.gttTrace, c.Index(), stats, ids, query)
+ 	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseATK, attributes.ATKP, attributes.ATK, value)
+ }
+ 
+@@ -277,12 +282,13 @@
+ // modifier ancestry used by TotalDef.  It is the typed counterpart of
+ // GTTTotalAtk for source-generated secondary DEF scaling.
+ func (c *CharWrapper) GTTTotalDef(nonExtra bool) (float64, gtttrace.NumericRef) {
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
+ 	stats, ids := c.GTTSelectStat(nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
+ 	value := stats.TotalDEF()
+ 	if !c.gttTrace.Enabled() {
+ 		return value, gtttrace.NumericRef{}
+ 	}
+-	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids)
++	origin := info.GTTStatsOriginAtQuery(c.gttTrace, c.Index(), stats, ids, query)
+ 	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseDEF, attributes.DEFP, attributes.DEF, value)
+ }
+ 
+diff --git a/pkg/core/status/gtt_neutral_resources.go b/pkg/core/status/gtt_neutral_resources.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/status/gtt_neutral_resources.go
+@@ -0,0 +1,8 @@
++package status
++
++// Observation only; do not execute or refresh any status.
++func (t *Handler) GTTNeutralExpiries() map[string]int {
++ out:=map[string]int{}
++ for key,value:=range t.status {out[key]=value.expiry}
++ return out
++}
+diff --git a/pkg/enemy/gtt_trace.go b/pkg/enemy/gtt_trace.go
+--- a/pkg/enemy/gtt_trace.go
++++ b/pkg/enemy/gtt_trace.go
+@@ -13,6 +13,7 @@
+ 		return
+ 	}
+ 	atk.GTTTraceHit = &info.GTTTraceHit{
++		HitID: e.Core.GTTTrace.NextHitID(),
+ 		FlatProducer:               atk.Info.GTTFlatProducer,
+ 		ContributorGroup:           atk.Info.GTTContributorGroup,
+ 		NumericFieldWrites:         append([]info.GTTNumericFieldWrite(nil), atk.GTTNumericFieldWrites...),
+@@ -20,6 +21,8 @@
+ 		Frame:                      e.Core.F,
+ 		SourceFrame:                atk.SourceFrame,
+ 		SnapshotFrame:              atk.Snapshot.SourceFrame,
++		SnapshotOrder: info.GTTStatsObservationOrder(atk.Snapshot.GTTStatsOrigin),
++		NoStatSnapshot: atk.GTTNoStatSnapshot && atk.Snapshot.GTTStatsOrigin == nil,
+ 		ActorIndex:                 atk.Info.ActorIndex,
+ 		DamageSrc:                  int(atk.Info.DamageSrc),
+ 		Ability:                    atk.Info.Abil,
+@@ -89,6 +92,7 @@
+ 	if trace == nil {
+ 		return
+ 	}
++	trace.HitOrder = e.Core.GTTTrace.NextNeutralObservationOrder()
+ 	trace.ActorIndex = atk.Info.ActorIndex
+ 	trace.DamageSrc = int(atk.Info.DamageSrc)
+ 	trace.Ability = atk.Info.Abil
+diff --git a/pkg/enemy/hitlag.go b/pkg/enemy/hitlag.go
+--- a/pkg/enemy/hitlag.go
++++ b/pkg/enemy/hitlag.go
+@@ -24,6 +24,7 @@
+ 			SetEnded(e.Core.F + int(math.Ceil(dur)))
+ 	}
+ 
++	e.Core.GTTTrace.RecordNeutralHitlag(-1, int(e.Key()), ext)
+ 	// check resist mods
+ 	for i, v := range e.mods {
+ 		if v.AffectedByHitlag() && v.Expiry() != -1 && v.Expiry() > e.Core.F {
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -17,6 +17,7 @@
+ 	TraceEquationV6Capability   = "gtt_trace_equation_v6"
+ 	CompactEquationV1Capability = "gtt_compact_equation_v1"
+ 	EffectInputsV1Capability    = "gtt_effect_inputs_v1"
++	NeutralInputsV1Capability   = "gtt_neutral_inputs_v1"
+ 	SourceManifestV1Capability  = "gtt_source_manifest_v1"
+ 	TraceProvenanceV1Capability = "gtt_trace_provenance_v1"
+ 	EnergyLedgerV1Capability    = "gtt_energy_ledger_v1"
+@@ -37,7 +38,7 @@
+ 	return EngineInfo{
+ 		GTTEngine:                true,
+ 		GTTPatchVersion:          PatchVersion,
+-		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, EffectInputsV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability, EnergyLedgerV1Capability},
++		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, EffectInputsV1Capability, NeutralInputsV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability, EnergyLedgerV1Capability},
+ 		SequentialWaves:          true,
+ 		WaveSchedulerStage:       "scenario_payload_v1",
+ 		UpstreamVersion:          upstreamVersion,
+diff --git a/pkg/gttcompact/attack_fields.go b/pkg/gttcompact/attack_fields.go
+--- a/pkg/gttcompact/attack_fields.go
++++ b/pkg/gttcompact/attack_fields.go
+@@ -159,7 +159,14 @@
+ 	producer := hit
+ 	producer.FlatDmg = attackFieldInitial(hit, "FlatDmg", hit.FlatDmg)
+ 	initial := c.compileFlatDamage(producer, actor, dynamic)
+-	return c.compileAttackField(hit, "FlatDmg", initial, hit.FlatDmg)
++	flat:=c.compileAttackField(hit, "FlatDmg", initial, hit.FlatDmg)
++	if c.b.neutral && hit.HitID!=0 && hit.AttackModOrder!=0 {
++		zero:=c.b.constant(0)
++		point:=neutralHitPoint(hit);point.Order=hit.AttackModOrder;point.Frame=hit.Frame;point.Mode="stat"
++		c.b.neutralInputs=append(c.b.neutralInputs,NeutralStatInput{NodeID:zero.id,Kind:"flat_event",Owner:actor,Stat:"FlatDmg",Point:point})
++		flat=c.b.add(flat,zero)
++	}
++	return flat
+ }
+ 
+ func (c *directCompiler) compileBaseBonus(hit info.GTTTraceHit) compiledNode {
+diff --git a/pkg/gttcompact/builder.go b/pkg/gttcompact/builder.go
+--- a/pkg/gttcompact/builder.go
++++ b/pkg/gttcompact/builder.go
+@@ -18,6 +18,10 @@
+ }
+ 
+ type nodeBuilder struct {
++	neutral bool
++	neutralReads []NeutralReadRoot
++	inputPoint NeutralInputPoint
++	neutralInputs []NeutralStatInput
+ 	nodes            []IRNode
+ 	resistanceInputs []ResistanceInput
+ 	resistanceByHit  map[uint64]compiledNode
+@@ -38,9 +42,24 @@
+ 	return b.append(IRNode{Operation: "opaque_frozen", Inputs: []IRInput{}, Value: decimal(value)}, value, nil)
+ }
+ 
++func (b *nodeBuilder) snapshotDelta(actorKey, statKey string) compiledNode {
++	// An explicitly unsnapshotted attack never inherited character artifacts
++	// or StatMods. AttackMods still execute at impact and need their own ports.
++	// Independent source/reaction reads retain their own event input points.
++	if b.inputPoint.noStatSnapshot {
++		n := b.constant(0)
++		if b.neutral { return b.withNeutralStatInputs(n, actorKey, statKey, true) }
++		return n
++	}
++	return b.artifactDelta(actorKey, statKey)
++}
++
++// Generic source/reaction reads must never infer stat absence from a hit.
+ func (b *nodeBuilder) artifactDelta(actorKey, statKey string) compiledNode {
+ 	coordinate := normalizeCoordinate(actorKey, statKey)
+-	return b.append(IRNode{Operation: "artifact_stat", Inputs: []IRInput{}, Coordinate: coordinate}, 0, map[string]struct{}{coordinate: {}})
++	n := b.append(IRNode{Operation: "artifact_stat", Inputs: []IRInput{}, Coordinate: coordinate}, 0, map[string]struct{}{coordinate: {}})
++	if b.neutral { return b.withNeutralStatInputs(n, actorKey, statKey) }
++	return n
+ }
+ 
+ func (b *nodeBuilder) add(values ...compiledNode) compiledNode {
+diff --git a/pkg/gttcompact/compile.go b/pkg/gttcompact/compile.go
+--- a/pkg/gttcompact/compile.go
++++ b/pkg/gttcompact/compile.go
+@@ -23,7 +23,7 @@
+ 	if len(characterKeys) == 0 {
+ 		return IRSeedMember{}, Audit{}, fmt.Errorf("compact adapter requires character keys")
+ 	}
+-	builder := &nodeBuilder{nodes: make([]IRNode, 0, len(buffer.Hits)*32)}
++	builder := &nodeBuilder{nodes: make([]IRNode, 0, len(buffer.Hits)*32), neutral: buffer.NeutralContext.NoSets}
+ 	support := compileSupportProgram(builder, buffer, characterKeys)
+ 	runtime.ReadMemStats(&checkpointMemory)
+ 	if checkpointMemory.HeapInuse > peakHeap {
+@@ -76,6 +76,7 @@
+ 	if endMemory.HeapInuse > peakHeap {
+ 		peakHeap = endMemory.HeapInuse
+ 	}
++	audit.Neutral = builder.collectNeutralInputs(buffer, channels)
+ 	audit.AdapterElapsedNS = time.Since(started).Nanoseconds()
+ 	audit.HeapInuseStartBytes = startMemory.HeapInuse
+ 	audit.HeapInusePeakBytes = peakHeap
+diff --git a/pkg/gttcompact/contributor_group.go b/pkg/gttcompact/contributor_group.go
+--- a/pkg/gttcompact/contributor_group.go
++++ b/pkg/gttcompact/contributor_group.go
+@@ -112,6 +112,7 @@
+ 	pre, cr, cd := make([]compiledNode, n), make([]compiledNode, n), make([]compiledNode, n)
+ 	for i, part := range g.Contributors {
+ 		h := part.Hit
++		c.b.inputPoint = neutralHitPoint(h)
+ 		if h.ActorIndex >= len(c.characterKeys) {
+ 			return fail()
+ 		}
+@@ -120,7 +121,7 @@
+ 		pre[i] = c.compileNumericRecipePart(h, actor, false, 0, &budget, true)
+ 		dynamic := c.dynamicStatDeltas(h)
+ 		stat := func(key string, observed float64) compiledNode {
+-			v := c.b.add(c.b.constant(observed), c.b.artifactDelta(actor, key))
++			v := c.b.add(c.b.constant(observed), c.b.snapshotDelta(actor, key))
+ 			if d, ok := dynamic[key]; ok {
+ 				v = c.b.add(v, d)
+ 			}
+diff --git a/pkg/gttcompact/direct.go b/pkg/gttcompact/direct.go
+--- a/pkg/gttcompact/direct.go
++++ b/pkg/gttcompact/direct.go
+@@ -75,6 +75,9 @@
+ }
+ 
+ func (c *directCompiler) compileHit(hit info.GTTTraceHit, actor string) (compiledNode, string) {
++	previous := c.b.inputPoint
++	c.b.inputPoint = neutralHitPoint(hit)
++	defer func(){ c.b.inputPoint = previous }()
+ 	if hit.ContributorGroup != nil {
+ 		return c.compileContributorGroup(hit), "reaction"
+ 	}
+@@ -109,7 +112,7 @@
+ 		observed := hit.SnapshotStats[key]
+ 		values := []compiledNode{c.b.constant(observed)}
+ 		if artifactVariableStat(key) {
+-			values = append(values, c.b.artifactDelta(actor, key))
++			values = append(values, c.b.snapshotDelta(actor, key))
+ 		}
+ 		if value, ok := dynamic[key]; ok {
+ 			values = append(values, value)
+@@ -132,9 +135,9 @@
+ 		c.b.multiply(c.compileTalentMultiplier(hit), scaling),
+ 		flat,
+ 	)
+-	bonusValues := []compiledNode{c.b.constant(1 + hit.DamageBonus), c.b.artifactDelta(actor, "dmg%")}
++	bonusValues := []compiledNode{c.b.constant(1 + hit.DamageBonus), c.b.snapshotDelta(actor, "dmg%")}
+ 	if hit.Element != "" && hit.Element != "none" && hit.Element != "n/a" {
+-		bonusValues = append(bonusValues, c.b.artifactDelta(actor, hit.Element+"%"))
++		bonusValues = append(bonusValues, c.b.snapshotDelta(actor, hit.Element+"%"))
+ 	}
+ 	for _, key := range []string{"dmg%", hit.Element + "%"} {
+ 		if value, ok := dynamic[key]; ok {
+@@ -142,11 +145,11 @@
+ 		}
+ 	}
+ 	bonus := c.b.add(bonusValues...)
+-	cr := c.b.add(c.b.constant(hit.RawCritRate), c.b.artifactDelta(actor, "cr"))
++	cr := c.b.add(c.b.constant(hit.RawCritRate), c.b.snapshotDelta(actor, "cr"))
+ 	if value, ok := dynamic["cr"]; ok {
+ 		cr = c.b.add(cr, value)
+ 	}
+-	cd := c.b.add(c.b.constant(hit.CritDamage), c.b.artifactDelta(actor, "cd"))
++	cd := c.b.add(c.b.constant(hit.CritDamage), c.b.snapshotDelta(actor, "cd"))
+ 	if value, ok := dynamic["cd"]; ok {
+ 		cd = c.b.add(cd, value)
+ 	}
+@@ -167,8 +170,8 @@
+ func (c *directCompiler) scalingStat(observed, base float64, actor, percentKey, flatKey string, dynamic map[string]compiledNode) compiledNode {
+ 	values := []compiledNode{
+ 		c.b.constant(observed),
+-		c.b.multiply(c.b.constant(base), c.b.artifactDelta(actor, percentKey)),
+-		c.b.artifactDelta(actor, flatKey),
++		c.b.multiply(c.b.constant(base), c.b.snapshotDelta(actor, percentKey)),
++		c.b.snapshotDelta(actor, flatKey),
+ 	}
+ 	if value, ok := dynamic[percentKey]; ok {
+ 		values = append(values, c.b.multiply(c.b.constant(base), value))
+diff --git a/pkg/gttcompact/empty_snapshot_test.go b/pkg/gttcompact/empty_snapshot_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/empty_snapshot_test.go
+@@ -0,0 +1,62 @@
++package gttcompact
++
++import (
++    "testing"
++    "github.com/genshinsim/gcsim/pkg/core/info"
++    "github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func TestNoStatSnapshotKeepsAttackInputsOnly(t *testing.T) {
++    hit := info.GTTTraceHit{NoStatSnapshot: true, Frame: 9, HitOrder: 31, AttackModOrder: 27}
++    for _, neutral := range []bool{false, true} {
++        b := &nodeBuilder{neutral: neutral, inputPoint: neutralHitPoint(hit)}
++        got := b.snapshotDelta("owner", "cr")
++        if got.baseline != 0 || len(got.coords) != 0 { t.Fatal("invented artifact inheritance", got) }
++        for _, n := range b.nodes { if n.Operation == "artifact_stat" { t.Fatal("raw artifact leaf survived", n) } }
++        if !neutral {
++            if len(b.neutralInputs) != 0 { t.Fatal("Selected gained effect ports") }
++            continue
++        }
++        if len(b.neutralInputs) != 1 { t.Fatal("wrong ports", b.neutralInputs) }
++        p := b.neutralInputs[0]
++        if p.Kind != "attack" || p.Point.Order != 27 || p.Point.Frame != 9 { t.Fatal(p) }
++    }
++}
++
++func TestNoStatSnapshotDoesNotBlessMissingOrigin(t *testing.T) {
++    // No explicit producer attestation: even all-zero observations must retain
++    // the unresolved stat query. A custom/lost snapshot is not a known zero.
++    b := &nodeBuilder{neutral: true, inputPoint: neutralHitPoint(info.GTTTraceHit{AttackModOrder: 27})}
++    got := b.snapshotDelta("owner", "cr")
++    if len(got.coords) != 1 || len(b.neutralInputs) != 2 || b.neutralInputs[0].Kind != "stat" || b.neutralInputs[0].Point.Order != 0 {
++        t.Fatal("missing origin silently treated as empty", b.neutralInputs)
++    }
++}
++
++func TestNoStatSnapshotLeavesIndependentReadsVariable(t *testing.T) {
++    b := &nodeBuilder{neutral: true, inputPoint: neutralHitPoint(info.GTTTraceHit{NoStatSnapshot: true})}
++    b.snapshotDelta("owner", "em")
++    channel := "stat_input:stat"
++    b.inputPoint = neutralEventPoint(gtttrace.StateEvent{ObservationOrder: 15, Channel: &channel})
++    got := b.artifactDelta("reaction_owner", "em")
++    if len(got.coords) != 1 || len(b.neutralInputs) != 1 || b.neutralInputs[0].Point.Order != 15 {
++        t.Fatal("independent reaction/buff read frozen", got, b.neutralInputs)
++    }
++}
++
++func TestNoStatSnapshotGenericHitLocalReadNotFrozen(t *testing.T) {
++    b := &nodeBuilder{neutral: true, inputPoint: neutralHitPoint(info.GTTTraceHit{NoStatSnapshot: true})}
++    got := b.artifactDelta("producer", "em")
++    if len(got.coords) != 1 || len(b.neutralInputs) != 1 || b.neutralInputs[0].Point.Order != 0 {
++        t.Fatal("live producer dependency frozen or missing query fabricated", got, b.neutralInputs)
++    }
++}
++
++func TestNoStatSnapshotPreservesAuraHitsInSidecar(t *testing.T) {
++    // The point retains hit and attack identity even when no stat read occurred.
++    hit := info.GTTTraceHit{NoStatSnapshot: true, HitID: 42, Frame: 9, HitOrder: 31, AttackModOrder: 27, Element: "hydro"}
++    p := neutralHitPoint(hit)
++    if p.HitID != 42 || p.HitOrder != 31 || p.AttackOrder != 27 || p.Element != "hydro" || p.Mode != "snapshot" || !p.noStatSnapshot {
++        t.Fatal("aura/event identity lost", p)
++    }
++}
+diff --git a/pkg/gttcompact/health_bonus_test.go b/pkg/gttcompact/health_bonus_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/health_bonus_test.go
+@@ -0,0 +1,24 @@
++package gttcompact
++import("testing";"github.com/genshinsim/gcsim/pkg/gtttrace")
++func TestSourceBonusUsesActualBindingNotCallerGuess(t *testing.T){
++ for _,mode:=range []string{"literal","foreign","missing"}{t.Run(mode,func(t *testing.T){
++  b:=&nodeBuilder{neutral:true,inputPoint:NeutralInputPoint{Mode:"stat",Frame:9,Order:12}}
++  id:="health";caller:=0;kind:=gtttrace.HealthHealTypeAbsolute;bonus:=.15;incoming:=0.0
++  op:=gtttrace.HealthOperation{OperationID:id,Kind:gtttrace.HealthOperationHeal,CallerIndex:&caller,TargetIndex:1,
++   HealType:&kind,SourceBonus:&bonus,HealBonusTotal:&incoming,InputValue:100,AdjustedInputValue:100,
++   MaxHPBefore:1000,MaxHPAfter:1000,HPBefore:0,HPAfter:115}
++  bindings:=map[string]compiledNode{}
++  if mode!="missing"{bindings["source_bonus"]=b.constant(.15)}
++  if mode=="foreign"{bindings["source_bonus"]=b.add(bindings["source_bonus"],b.artifactDelta("receiver","heal"))}
++  c:=supportCompiler{b:b,characterKeys:[]string{"caller","receiver"},unknown:map[string]struct{}{},
++   operationByID:map[string]gtttrace.HealthOperation{id:op},bindings:map[string]map[string]compiledNode{id:bindings},
++   previousHP:map[int]observedNode{},healthNodes:map[string]map[string]compiledNode{}}
++  c.compileHealthOperation(gtttrace.StateEvent{HealthOperationID:&id})
++  want:=115.0;if mode=="foreign"{want=135}
++  got:=evalContributorGraph(t,b,c.healthNodes[id]["raw_amount"],map[string]float64{"caller.healing_bonus":99,"receiver.healing_bonus":.2})
++  if got<want-1e-9||got>want+1e-9{t.Fatal(mode,got,want)}
++  _,unknown:=c.unknown["health_source_bonus_origin_unbound"]
++  if unknown!=(mode=="missing"){t.Fatal("missing origin must stay diagnosed",c.unknown)}
++  for _,port:=range b.neutralInputs{if port.Kind=="stat"&&port.Owner=="caller"{t.Fatal("invented caller stat",port)}}
++ })}
++}
+diff --git a/pkg/gttcompact/model.go b/pkg/gttcompact/model.go
+--- a/pkg/gttcompact/model.go
++++ b/pkg/gttcompact/model.go
+@@ -79,6 +79,7 @@
+ // include it in a GOB-2 receipt, and tests use it to prove that compaction did
+ // not silently discard an executed path.
+ type Audit struct {
++	Neutral *NeutralInputs `json:"neutral,omitempty"`
+ 	ResistanceInputs        []ResistanceInput `json:"resistance_inputs,omitempty"`
+ 	EffectInputs            []EffectInput
+ 	SourceHitCount          int
+diff --git a/pkg/gttcompact/neutral_inputs.go b/pkg/gttcompact/neutral_inputs.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/neutral_inputs.go
+@@ -0,0 +1,148 @@
++package gttcompact
++
++import (
++	"strconv"
++	"strings"
++
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
++)
++
++// These ports supplement RAW artifact leaves, never old-set replacement. All
++// producers are bound to a no-set capture. Missing query/branch coverage remains
++// explicit; ports preserve zero-valued future inputs before consumer reduction.
++type NeutralInputPoint struct {
++	noStatSnapshot bool // internal producer attestation, not a consumer flag
++	StatKeys *[]string `json:"stat_keys,omitempty"`
++	Frame int `json:"frame"`
++	Order uint64 `json:"order"`
++	HitFrame int `json:"hit_frame"`
++	HitOrder uint64 `json:"hit_order"`
++	AttackOrder uint64 `json:"attack_order"`
++	HitID uint64 `json:"hit_id"`
++	TargetKey int `json:"target_key"`
++	EventID string `json:"event_id,omitempty"`
++	Mode string `json:"mode"`
++	AttackTag string `json:"attack_tag,omitempty"`
++	Element string `json:"element,omitempty"`
++}
++type NeutralStatInput struct {
++	NodeID uint32 `json:"node_id"`
++	Kind string `json:"kind"`
++	Owner string `json:"owner"`
++	Stat string `json:"stat"`
++	Point NeutralInputPoint `json:"point"`
++}
++type NeutralStatePoint struct {
++	Order uint64 `json:"order"`
++	Frame int `json:"frame"`
++	Kind string `json:"kind"`
++	Owner int `json:"owner"`
++	Key string `json:"key"`
++	Expiry *int `json:"expiry,omitempty"`
++}
++type NeutralHitPoint struct {
++	TargetKeys []string `json:"target_keys"`
++	Attack *gtttrace.EventValue `json:"attack,omitempty"`
++	HitID uint64 `json:"hit_id"`
++	Actor int `json:"actor"`
++	Point NeutralInputPoint `json:"point"`
++}
++type NeutralEffectPoint struct {
++	EventID string `json:"event_id"`
++	Order uint64 `json:"order"`
++	Frame int `json:"frame"`
++	Input *gtttrace.EventValue `json:"input,omitempty"`
++}
++type NeutralInputs struct {
++	Reads []NeutralReadRoot `json:"reads"`
++	ReadsComplete bool `json:"reads_complete"`
++	Hitlag *gtttrace.NeutralHitlagLedger `json:"hitlag,omitempty"`
++	Effects []NeutralEffectPoint `json:"effects"`
++	World *gtttrace.NeutralWorldLedger `json:"world,omitempty"`
++	SchemaVersion int `json:"schema_version"`
++	Context optstats.GTTNeutralContext `json:"context"`
++	Ledger gtttrace.CombatEventLedger `json:"ledger"`
++	States []NeutralStatePoint `json:"states"`
++	Stats []NeutralStatInput `json:"stats"`
++	Hits []NeutralHitPoint `json:"hits"`
++	Uncertainty []string `json:"uncertainty"`
++}
++func neutralEventPoint(e gtttrace.StateEvent) NeutralInputPoint {
++	p := NeutralInputPoint{StatKeys: e.NeutralStatKeys, Frame: e.Frame, Order: e.ObservationOrder, EventID: e.EventID, Mode: "unresolved"}
++	if e.Channel != nil && strings.HasPrefix(*e.Channel, "stat_input:") { p.Mode = strings.TrimPrefix(*e.Channel, "stat_input:") }
++	if e.Kind == gtttrace.StateEventMaxHPRead { p.Mode = "stat" }
++	for _, f := range e.NumericPayload {
++		switch f.Key {
++		case "stat_query_frame": p.Frame = int(f.Value)
++		case "stat_query_order": p.Order = uint64(f.Value)
++		}
++	}
++	return p
++}
++func neutralHitPoint(h info.GTTTraceHit) NeutralInputPoint {
++	return NeutralInputPoint{Frame: h.SnapshotFrame, Order: h.SnapshotOrder,
++		noStatSnapshot: h.NoStatSnapshot,
++		HitFrame: h.Frame, HitOrder: h.HitOrder, AttackOrder: h.AttackModOrder, HitID: h.HitID, TargetKey: h.TargetKey,
++		Mode: "snapshot", AttackTag: "tag/" + strconv.Itoa(h.AttackTag), Element: h.Element}
++}
++func (b *nodeBuilder) withNeutralStatInputs(raw compiledNode, owner, stat string, omittedSnapshot ...bool) compiledNode {
++	// Direct-hit artifact coordinates historically use Element.String()+"%".
++	// The engine's physical element and stat labels differ; export the actual
++	// stat label while retaining the existing raw artifact coordinate.
++	if attributes.StrToStatType(stat) < 0 && strings.HasSuffix(stat, "%") {
++		key := attributes.EleToDmgP(attributes.StringToEle(strings.TrimSuffix(stat, "%")))
++		if key >= 0 { stat = key.String() }
++	}
++	add := func(kind string, point NeutralInputPoint) compiledNode {
++		n := b.constant(0)
++		b.neutralInputs = append(b.neutralInputs, NeutralStatInput{NodeID: n.id, Kind: kind, Owner: owner, Stat: stat, Point: point})
++		return n
++	}
++	p := b.inputPoint
++	if p.Mode == "" { p.Mode = "unresolved" }
++	node := raw
++	if len(omittedSnapshot) != 1 || !omittedSnapshot[0] { node = b.add(node, add("stat", p)) }
++	if p.Mode == "snapshot" && p.AttackOrder != 0 {
++		p.Frame, p.Order = p.HitFrame, p.AttackOrder
++		node = b.add(node, add("attack", p))
++	}
++	return node
++}
++func (b *nodeBuilder) collectNeutralInputs(buffer optstats.GTTTraceEquationBuffer, channels []IRChannel) *NeutralInputs {
++	if !b.neutral { return nil }
++	out := &NeutralInputs{Reads: append([]NeutralReadRoot{},b.neutralReads...), ReadsComplete: buffer.NeutralStatObservationsComplete, Hitlag: &buffer.NeutralHitlag, World: &buffer.NeutralWorld, SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
++		States: []NeutralStatePoint{}, Stats: []NeutralStatInput{}, Hits: []NeutralHitPoint{}, Effects: []NeutralEffectPoint{},
++		Uncertainty: []string{"event_state_schedule_observed_not_counterfactual", "unresolved_query_modes_require_effect_coverage"}}
++	live := make([]bool, len(b.nodes)+1)
++	stack := []uint32{}
++	for _, ch := range channels { stack = append(stack, ch.RootNodeID) }
++	for _, read := range b.neutralReads {stack=append(stack,read.NodeID)}
++	for len(stack) != 0 {
++		id := stack[len(stack)-1]; stack = stack[:len(stack)-1]
++		if id == 0 || int(id) > len(b.nodes) || live[id] { continue }
++		live[id] = true
++		for _, in := range b.nodes[id-1].Inputs { stack = append(stack, in.NodeID) }
++	}
++	for _, p := range b.neutralInputs { if live[p.NodeID] { out.Stats = append(out.Stats, p) } }
++	for _, e := range buffer.StateEvents {
++		if e.Channel != nil && strings.HasPrefix(*e.Channel, "effect_input:") {
++			out.Effects = append(out.Effects, NeutralEffectPoint{e.EventID, e.ObservationOrder, e.Frame, e.NeutralInput})
++		}
++		if e.OwnerIndex == nil || e.Key == nil { continue }
++		switch e.Kind {
++		case gtttrace.StateEventStatusAdd, gtttrace.StateEventStatusDelete:
++			out.States = append(out.States, NeutralStatePoint{e.ObservationOrder, e.Frame, e.Kind, *e.OwnerIndex, *e.Key, e.ExpiryFrame})
++		}
++	}
++	for _, h := range buffer.Hits {
++		keys, seen := []string{}, map[string]bool{}
++		for _, m := range h.TargetModContributions {
++			if m.ModifierKey != "" && !seen[m.ModifierKey] { keys = append(keys, m.ModifierKey); seen[m.ModifierKey] = true }
++		}
++		out.Hits = append(out.Hits, NeutralHitPoint{TargetKeys: keys, Attack: h.NeutralAttack, HitID: h.HitID, Actor: h.ActorIndex, Point: neutralHitPoint(h)})
++	}
++	return out
++}
+diff --git a/pkg/gttcompact/neutral_inputs_test.go b/pkg/gttcompact/neutral_inputs_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/neutral_inputs_test.go
+@@ -0,0 +1,44 @@
++package gttcompact
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++func TestNeutralPortsKeepZeroIdentityAndQueryPoint(t *testing.T) {
++	b := &nodeBuilder{neutral: true, inputPoint: NeutralInputPoint{Frame: 17, Order: 31, Mode: "non_extra_stat", EventID: "saved"}}
++	a := b.artifactDelta("owner", "em")
++	z := b.artifactDelta("owner", "em")
++	if a.id == z.id || len(b.neutralInputs) != 2 || b.neutralInputs[0].NodeID == b.neutralInputs[1].NodeID ||
++		b.neutralInputs[0].Point.Mode != "non_extra_stat" || b.neutralInputs[0].Point.Order != 31 {
++		t.Fatal("equal zero ports were merged or query identity lost", b.neutralInputs)
++	}
++	b.neutral = false
++	b.artifactDelta("owner", "em")
++	if len(b.neutralInputs) != 2 { t.Fatal("non-neutral capture gained replacement ports") }
++}
++func TestNeutralSnapshotAndAttackInputsHaveDifferentTimes(t *testing.T) {
++	b := &nodeBuilder{neutral: true, inputPoint: NeutralInputPoint{Mode: "snapshot", Frame: 5, Order: 10, HitFrame: 12, HitOrder: 30, AttackOrder: 20}}
++	b.artifactDelta("owner", "cr")
++	if len(b.neutralInputs) != 2 || b.neutralInputs[0].Kind != "stat" ||
++		b.neutralInputs[0].Point.Order != 10 || b.neutralInputs[1].Kind != "attack" || b.neutralInputs[1].Point.Order != 20 {
++		t.Fatal("saved snapshot and per-hit bonus share one time", b.neutralInputs)
++	}
++}
++func TestNeutralQueryUsesOriginalObservationOrder(t *testing.T) {
++	channel := "stat_input:non_extra_stat"
++	point := neutralEventPoint(gtttrace.StateEvent{Frame: 50, ObservationOrder: 90, Channel: &channel,
++		NumericPayload: []gtttrace.NumericPayload{{Key: "stat_query_frame", Value: 3}, {Key: "stat_query_order", Value: 7}}})
++	if point.Frame != 3 || point.Order != 7 || point.Mode != "non_extra_stat" { t.Fatal(point) }
++}
++
++func TestNeutralElementInputUsesEngineStatLabel(t *testing.T) {
++	b := &nodeBuilder{neutral: true, inputPoint: NeutralInputPoint{Mode: "snapshot", Order: 1}}
++	b.artifactDelta("owner", "physical%")
++	if len(b.neutralInputs) != 1 || b.neutralInputs[0].Stat != "phys%" { t.Fatal(b.neutralInputs) }
++}
++
++func TestNeutralQueryRetainsSelectedStatFilter(t *testing.T) {
++	keys := []string{"base_def", "def%", "def"}
++	point := neutralEventPoint(gtttrace.StateEvent{NeutralStatKeys: &keys})
++	if point.StatKeys == nil || len(*point.StatKeys) != 3 || (*point.StatKeys)[1] != "def%" { t.Fatal(point) }
++}
+diff --git a/pkg/gttcompact/neutral_stat_reads.go b/pkg/gttcompact/neutral_stat_reads.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/neutral_stat_reads.go
+@@ -0,0 +1,64 @@
++package gttcompact
++
++import (
++	"sort"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++type NeutralReadRoot struct {
++	NodeID uint32 `json:"node_id"`
++	Owner string `json:"owner"`
++	Stat string `json:"stat"`
++	Observed string `json:"observed"`
++	Point NeutralInputPoint `json:"point"`
++	Projection bool `json:"projection"`
++	Uncertainty []string `json:"uncertainty"`
++}
++func(c *supportCompiler) compileNeutralStatReads(){
++	rows:=append([]gtttrace.NeutralStatObservation{},c.buffer.NeutralStatObservations...)
++	sort.SliceStable(rows,func(i,j int)bool{return rows[i].Order<rows[j].Order})
++	for _,row:=range rows{
++		if row.Owner<0||row.Owner>=len(c.characterKeys)||row.Order==0{continue}
++		c.compileNeutralVector(row,false)
++		// Removing already observed Extra amounts is a projection of this
++		// full-vector query, NOT an exact new single-stat NonExtraStat query.
++		if row.Mode=="stat"&&row.ExtraModifiers!=nil{c.compileNeutralVector(row,true)}
++	}
++}
++func(c *supportCompiler) compileNeutralVector(row gtttrace.NeutralStatObservation,projection bool){
++	excluded:=map[string]bool{}
++	mode:=row.Mode
++	if projection {
++		mode="non_extra_stat"
++		for _,id:=range *row.ExtraModifiers{excluded[id]=true}
++	}
++	keys:=make([]string,0,len(row.Values))
++	for key:=range row.Values{if key!=""{keys=append(keys,key)}}
++	sort.Strings(keys)
++	for _,key:=range keys{
++		observed:=row.Values[key]
++		if projection {for id:=range excluded{observed-=c.eventByID[id].Output[key]}}
++		actor:=c.characterKeys[row.Owner]
++		node:=c.b.constant(observed)
++		// This root excludes the DIRECT set contribution, supplied by the rule
++		// getter itself. Nested neutral buff ancestry still keeps its own ports.
++		if artifactVariableStat(key){
++			neutral:=c.b.neutral;c.b.neutral=false
++			raw:=c.b.artifactDelta(actor,key)
++			c.b.neutral=neutral
++			node=c.b.add(node,raw)
++		}
++		unknown:=[]string{}
++		for _,id:=range row.Modifiers{
++			if excluded[id]{continue}
++			event,ok:=c.eventByID[id]
++			if !ok{unknown=append(unknown,"neutral_modifier_observation_missing");continue}
++			if candidate,ok:=c.eventOutputs[id][key];ok{
++				node=c.b.add(node,c.b.subtract(candidate,c.b.constant(event.Output[key])))
++			}else if _,has:=event.Output[key];has{
++				unknown=append(unknown,"neutral_modifier_stat_expression_missing")
++			}
++		}
++		c.b.neutralReads=append(c.b.neutralReads,NeutralReadRoot{NodeID:node.id,Owner:actor,Stat:key,Observed:decimal(observed),Point:NeutralInputPoint{Frame:row.Frame,Order:row.Order,Mode:mode,StatKeys:row.Keys},Projection:projection,Uncertainty:unknown})
++	}
++}
+diff --git a/pkg/gttcompact/neutral_stat_reads_test.go b/pkg/gttcompact/neutral_stat_reads_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/neutral_stat_reads_test.go
+@@ -0,0 +1,16 @@
++package gttcompact
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
++)
++func TestNeutralLatentReadExcludesDirectSetInputAndProjectsExtra(t *testing.T){
++	extra:=[]string{"extra"}
++	b:=&nodeBuilder{neutral:true}
++	c:=&supportCompiler{b:b,characterKeys:[]string{"owner"},eventByID:map[string]gtttrace.StateEvent{"extra":{Output:map[string]float64{"er":.2}}},eventOutputs:map[string]map[string]compiledNode{"extra":{"er":b.constant(.2)}},buffer:optstats.GTTTraceEquationBuffer{NeutralStatObservations:[]gtttrace.NeutralStatObservation{{Owner:0,Order:4,Frame:3,Mode:"stat",Values:map[string]float64{"er":1.2},Modifiers:[]string{"extra"},ExtraModifiers:&extra}}}}
++	c.compileNeutralStatReads()
++	if len(b.neutralReads)!=2||len(b.neutralInputs)!=0 {t.Fatal(b.neutralReads,b.neutralInputs)}
++	if b.neutralReads[0].Observed!="1.2"||b.neutralReads[0].Projection||b.neutralReads[1].Observed!="1"||!b.neutralReads[1].Projection||b.neutralReads[1].Point.Mode!="non_extra_stat"{t.Fatal(b.neutralReads)}
++	for _,r:=range b.neutralReads{if r.NodeID==0||r.Owner!="owner"||r.Stat!="er"||r.Point.Order!=4||len(r.Uncertainty)!=0{t.Fatal(r)}}
++}
+diff --git a/pkg/gttcompact/numeric_recipe.go b/pkg/gttcompact/numeric_recipe.go
+--- a/pkg/gttcompact/numeric_recipe.go
++++ b/pkg/gttcompact/numeric_recipe.go
+@@ -35,7 +35,7 @@
+ 	}
+ 	dynamic := c.dynamicStatDeltas(hit)
+ 	stat := func(key string, value float64) compiledNode {
+-		n := c.b.add(c.b.constant(value), c.b.artifactDelta(actor, key))
++		n := c.b.add(c.b.constant(value), c.b.snapshotDelta(actor, key))
+ 		if delta, ok := dynamic[key]; ok {
+ 			n = c.b.add(n, delta)
+ 		}
+diff --git a/pkg/gttcompact/support.go b/pkg/gttcompact/support.go
+--- a/pkg/gttcompact/support.go
++++ b/pkg/gttcompact/support.go
+@@ -74,6 +74,7 @@
+ 		}
+ 		c.compileEvent(event)
+ 	}
++	if b.neutral { c.compileNeutralStatReads() }
+ 	return supportProgram{eventNodes: c.eventNodes, eventOutputs: c.eventOutputs, unknown: c.unknown, ancestorIDs: ancestorIDs}
+ }
+ 
+@@ -158,6 +159,7 @@
+ 		}
+ 	}
+ 	pending := make([]string, 0)
++	if buffer.NeutralContext.NoSets {for _,query:=range buffer.NeutralStatObservations {pending=append(pending,query.Modifiers...)}}
+ 	hits := append([]info.GTTTraceHit(nil), buffer.Hits...)
+ 	for _, hit := range buffer.Hits {
+ 		if hit.ContributorGroup != nil && len(hit.ContributorGroup.Contributors) <= 4 {
+@@ -213,6 +215,9 @@
+ }
+ 
+ func (c *supportCompiler) compileEvent(event gtttrace.StateEvent) {
++	previous := c.b.inputPoint
++	c.b.inputPoint = neutralEventPoint(event)
++	defer func(){ c.b.inputPoint = previous }()
+ 	switch event.Kind {
+ 	case gtttrace.StateEventSlotRegister:
+ 		value := valueOr(event.Value, 0)
+@@ -595,11 +600,18 @@
+ 			c.healthNodes[operation.OperationID] = c.observedHealthNodes(operation)
+ 			return
+ 		}
+-		sourceBonus = c.b.constant(*operation.SourceBonus)
+-		if operation.CallerIndex != nil && *operation.CallerIndex >= 0 && *operation.CallerIndex < len(c.characterKeys) {
+-			sourceBonus = c.b.add(sourceBonus, c.b.artifactDelta(c.characterKeys[*operation.CallerIndex], "heal"))
+-		}
+-		raw = c.b.multiply(base, c.b.add(c.b.constant(1+*operation.HealBonusTotal), sourceBonus))
++		sourceBonus = get("source_bonus", *operation.SourceBonus)
++		if _, bound := bindings["source_bonus"]; !bound {
++			c.markUnknown("health_source_bonus_origin_unbound")
++		}
++		incoming:=c.b.constant(1+*operation.HealBonusTotal)
++		if c.b.neutral && operation.TargetIndex>=0 && operation.TargetIndex<len(c.characterKeys) {
++			zero:=c.b.constant(0)
++			point:=neutralEventPoint(event);point.Mode="stat"
++			c.b.neutralInputs=append(c.b.neutralInputs,NeutralStatInput{NodeID:zero.id,Kind:"heal_bonus",Owner:c.characterKeys[operation.TargetIndex],Stat:"heal_bonus",Point:point})
++			incoming=c.b.add(incoming,zero)
++		}
++		raw = c.b.multiply(base, c.b.add(incoming, sourceBonus))
+ 		eventAmount = raw
+ 		effective = c.b.min(eventAmount, c.b.max(c.b.constant(0), c.b.subtract(maxAfter, hpBefore)))
+ 		hpAfter = c.b.min(maxAfter, c.b.add(hpBefore, effective))
+diff --git a/pkg/gttsourcegen/attack_fields.go b/pkg/gttsourcegen/attack_fields.go
+--- a/pkg/gttsourcegen/attack_fields.go
++++ b/pkg/gttsourcegen/attack_fields.go
+@@ -15,6 +15,7 @@
+ 	fset                     *token.FileSet
+ 	rt, source, prefix, info string
+ 	refs                     map[string]string
++	selectedTotals           map[string]string
+ 	constants                map[string]bool
+ 	serial, visits           int
+ 	code                     strings.Builder
+@@ -50,6 +51,11 @@
+ 	c.serial++
+ 	name := c.prefix + "_n" + strconv.Itoa(c.serial)
+ 	ref := name + "_ref"
++	if binding, ok := c.selectedTotals[text]; ok {
++		fmt.Fprintf(&c.code, "%s := (%s);\n", name, text)
++		fmt.Fprintf(&c.code, "%s := %s;\n", ref, fmt.Sprintf(binding, name))
++		return fieldValue{name, ref}, nil
++	}
+ 	operation := ""
+ 	var operands []ast.Expr
+ 	switch v := e.(type) {
+diff --git a/pkg/gttsourcegen/health_field_capture.go b/pkg/gttsourcegen/health_field_capture.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_field_capture.go
+@@ -0,0 +1,82 @@
++package gttsourcegen
++
++import (
++ "fmt"
++ "go/ast"
++ "go/token"
++ "sort"
++ "strconv"
++)
++
++// Follow a unique scalar definition through lexical ancestor blocks. The
++// receipt is created where gameplay evaluates the expression, including before
++// a returned closure, not where that closure eventually consumes the value.
++// Name shadowing, writes, aliases and additional consumers fail conservatively.
++func healthFieldOrigin(fn *ast.FuncDecl, stmt ast.Stmt, value ast.Expr) (ast.Expr, ast.Stmt, bool) {
++ id, local := value.(*ast.Ident)
++ if !local { return value, stmt, true }
++ blocks := []*ast.BlockStmt{}
++ ast.Inspect(fn.Body,func(n ast.Node)bool{
++  if b,ok:=n.(*ast.BlockStmt);ok && b.Pos()<stmt.Pos() && b.End()>stmt.End(){blocks=append(blocks,b)}
++  return true
++ })
++ sort.Slice(blocks,func(i,j int)bool{return blocks[i].End()-blocks[i].Pos()<blocks[j].End()-blocks[j].Pos()})
++ for _,block:=range blocks {
++  for _,s:=range block.List {
++   a,ok:=s.(*ast.AssignStmt)
++   if !ok || a.End()>=stmt.Pos(){continue}
++   for _,lhs:=range a.Lhs {
++    name,ok:=lhs.(*ast.Ident);if !ok || name.Name!=id.Name{continue}
++    if a.Tok!=token.DEFINE || len(a.Lhs)!=1 || len(a.Rhs)!=1{return value,stmt,false}
++    uses:=0
++    ast.Inspect(block,func(n ast.Node)bool{if v,ok:=n.(*ast.Ident);ok&&v.Name==id.Name{uses++};return true})
++    if uses!=2{return value,stmt,false}
++    return a.Rhs[0],a,true
++   }
++  }
++ }
++ return value,stmt,false
++}
++
++// Evaluate a field exactly once and bind the actual NumericRef. A copied stat
++// array is accepted only with explicit producer provenance (healthStatsRefs).
++func healthFieldCapture(fs *token.FileSet,tf *token.File,data []byte,file *ast.File,fn *ast.FuncDecl,lit *ast.CompositeLit,field *ast.KeyValueExpr,entry SourceEntry,rt string,requireTyped bool)([]textEdit,string,bool){
++ stmt:=containingStatement(fn.Body,lit);if stmt==nil{return nil,"",false}
++ original,at,proven:=healthFieldOrigin(fn,stmt,field.Value)
++ if !proven && requireTyped{return nil,"",false}
++ if !proven {original,at=field.Value,stmt}
++ refs,originEdits:=healthStatsRefs(fs,tf,file,fn,original,rt)
++ if requireTyped && !hasFieldStatInput(original,refs,fs){return nil,"",false}
++ prefix:=fmt.Sprintf("gttHealthInput_%d",field.Pos())
++ expr:=fieldExpression{fset:fs,rt:rt,source:strconv.Quote(entry.SourceID),prefix:prefix,info:vectorInfoAlias(file),refs:refs,constants:sourceNamedConstants(file)}
++ value,err:=expr.emit(original,0);if err!=nil{return nil,"",false}
++ event:=prefix+"_event"
++ capture:=fmt.Sprintf("func()float64{if !%s.Enabled(){return %s};%s\n%s=%s.RecordNumericEval(%s,\"identity\",[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(\"health_input_branch_schedule_frozen\"));return float64(%s)}()",rt,rootText(fs,original),expr.code.String(),event,rt,strconv.Quote(entry.SourceID),traceImportAlias,value.ref,value.value,traceImportAlias,value.value)
++ edits:=append(originEdits,
++  textEdit{start:tf.Offset(at.Pos()),end:tf.Offset(at.Pos()),replacement:"var "+event+" string;\n"+indentationBefore(data,tf.Offset(at.Pos()))},
++  textEdit{start:tf.Offset(original.Pos()),end:tf.Offset(original.End()),replacement:capture})
++ return edits,event,true
++}
++
++func healthBonusCapture(fs *token.FileSet,tf *token.File,data []byte,file *ast.File,fn *ast.FuncDecl,lit *ast.CompositeLit,entry SourceEntry,rt string)([]textEdit,string){
++ if selectorFinalName(lit.Type)!="HealInfo"{return nil,""}
++ if field:=compositeKeyValue(lit,"Bonus");field!=nil {
++  edits,event,ok:=healthFieldCapture(fs,tf,data,file,fn,lit,field,entry,rt,false)
++  if ok{return edits,"GTTTraceBonusEventID:"+event+","}
++  return nil,""
++ }
++ // Omitted bonus is a literal zero, not the caller's Heal stat at heal time.
++ return nil,fmt.Sprintf("GTTTraceBonusEventID:%s.RecordNumericEval(%s,\"identity\",[]%s.NumericRef{%s.LiteralRef(0)},0,%s.IncompleteEvidence(\"health_input_branch_schedule_frozen\")),",rt,strconv.Quote(entry.SourceID),traceImportAlias,traceImportAlias,traceImportAlias)
++}
++
++func typedHealthInputEdits(fs *token.FileSet,tf *token.File,data []byte,file *ast.File,fn *ast.FuncDecl,lit *ast.CompositeLit,entry SourceEntry,rt string)([]textEdit,bool){
++ qual:=vectorInfoAlias(file)
++ if qual=="" || expressionQualifier(lit.Type)!=qual{return nil,false}
++ field:=compositeKeyValue(lit,entry.healthInput.ValueField);if field==nil{return nil,false}
++ edits,event,ok:=healthFieldCapture(fs,tf,data,file,fn,lit,field,entry,rt,true)
++ if !ok{return nil,false}
++ bonusEdits,bonusMetadata:=healthBonusCapture(fs,tf,data,file,fn,lit,entry,rt)
++ edits=append(edits,bonusEdits...)
++ metadata:=healthMetadataInsertion(data,tf,lit,entry,"nil")+"GTTTraceInputEventID:"+event+","+bonusMetadata
++ return append(edits,textEdit{start:tf.Offset(lit.Rbrace),end:tf.Offset(lit.Rbrace),replacement:metadata}),true
++}
+diff --git a/pkg/gttsourcegen/health_field_capture_test.go b/pkg/gttsourcegen/health_field_capture_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_field_capture_test.go
+@@ -0,0 +1,25 @@
++package gttsourcegen
++import("go/ast";"go/parser";"go/token";"strings";"testing")
++func TestHealthClosureCapturesBeforeDelayedConsumer(t *testing.T){
++ source:=`package arbitrary
++ import "github.com/genshinsim/gcsim/pkg/core/info"
++ func(p *provider) makeHeal()func(){
++  amount:=p.MaxHP()*0.2
++  bonus:=p.NonExtraStat(attributes.Heal)
++  changeState()
++  return func(){p.Core.Player.Heal(info.HealInfo{Caller:p.Index(),Src:amount,Bonus:bonus})}
++ }`
++ fs:=token.NewFileSet();file,err:=parser.ParseFile(fs,"test.go",source,parser.SkipObjectResolution);if err!=nil{t.Fatal(err)}
++ fn:=file.Decls[1].(*ast.FuncDecl);var lit *ast.CompositeLit
++ ast.Inspect(fn,func(n ast.Node)bool{if x,ok:=n.(*ast.CompositeLit);ok{lit=x};return true})
++ entry:=SourceEntry{SourceID:strings.Repeat("a",64),healthInput:&healthInputPlan{ValueField:"Src"}}
++ edits,ok:=typedHealthInputEdits(fs,fs.File(file.Pos()),[]byte(source),file,fn,lit,entry,"p.Core.GTTTrace")
++ if !ok{t.Fatal("outer lexical definition was rejected")}
++ out,err:=applyTextEdits([]byte(source),edits);if err!=nil{t.Fatal(err)}
++ if _,err=parser.ParseFile(token.NewFileSet(),"out.go",out,0);err!=nil{t.Fatal(err,string(out))}
++ text:=string(out)
++ for _,name:=range []string{"GTTReadMaxHP(","GTTReadNonExtraStat("}{
++  if strings.Count(text,name)!=1||strings.Index(text,name)>strings.Index(text,"changeState()"){t.Fatal(name,text)}
++ }
++ if strings.Count(text,"GTTTraceBonusEventID:")!=1{t.Fatal(text)}
++}
+diff --git a/pkg/gttsourcegen/health_input.go b/pkg/gttsourcegen/health_input.go
+deleted file mode 100644
+--- a/pkg/gttsourcegen/health_input.go
++++ /dev/null
+@@ -1,89 +0,0 @@
+-package gttsourcegen
+-
+-import (
+-	"fmt"
+-	"go/ast"
+-	"go/token"
+-	"strconv"
+-)
+-
+-// Capture the original typed receiver at the original evaluation position.
+-// The narrow local case requires one definition and one use in the same block;
+-// reassignments, aliases, escaping references and shared consumers stay on the
+-// existing explicitly frozen path. Loop iterations get distinct local receipts.
+-func typedHealthInputEdits(fs *token.FileSet, tf *token.File, data []byte, file *ast.File, fn *ast.FuncDecl, lit *ast.CompositeLit, entry SourceEntry, rt string) ([]textEdit, bool) {
+-	qual := vectorInfoAlias(file)
+-	if qual == "" || expressionQualifier(lit.Type) != qual {
+-		return nil, false
+-	}
+-	field := compositeKeyValue(lit, entry.healthInput.ValueField)
+-	if field == nil {
+-		return nil, false
+-	}
+-	stmt := containingStatement(fn.Body, lit)
+-	if stmt == nil {
+-		return nil, false
+-	}
+-	original := field.Value
+-	at := stmt
+-	if id, ok := original.(*ast.Ident); ok {
+-		var block *ast.BlockStmt
+-		ast.Inspect(fn.Body, func(n ast.Node) bool {
+-			b, ok := n.(*ast.BlockStmt)
+-			if ok && b.Pos() < stmt.Pos() && b.End() > stmt.End() {
+-				if block == nil || b.End()-b.Pos() < block.End()-block.Pos() {
+-					block = b
+-				}
+-			}
+-			return true
+-		})
+-		if block == nil {
+-			return nil, false
+-		}
+-		uses := 0
+-		ast.Inspect(block, func(n ast.Node) bool {
+-			if v, ok := n.(*ast.Ident); ok && v.Name == id.Name {
+-				uses++
+-			}
+-			return true
+-		})
+-		if uses != 2 {
+-			return nil, false
+-		}
+-		var definition *ast.AssignStmt
+-		for _, s := range block.List {
+-			a, ok := s.(*ast.AssignStmt)
+-			if !ok || a.Tok != token.DEFINE || len(a.Lhs) != 1 || len(a.Rhs) != 1 || a.End() >= stmt.Pos() {
+-				continue
+-			}
+-			name, ok := a.Lhs[0].(*ast.Ident)
+-			if ok && name.Name == id.Name {
+-				definition = a
+-			}
+-		}
+-		if definition == nil {
+-			return nil, false
+-		}
+-		original = definition.Rhs[0]
+-		at = definition
+-	}
+-	// Stat APIs are typed again at runtime. Arbitrary arithmetic leaves remain
+-	// explicitly frozen, never guessed from an equal value or a variable name.
+-	if !hasFieldStatInput(original, nil, fs) {
+-		return nil, false
+-	}
+-	prefix := fmt.Sprintf("gttHealthInput_%d", field.Pos())
+-	expr := fieldExpression{fset: fs, rt: rt, source: strconv.Quote(entry.SourceID), prefix: prefix, info: qual, constants: sourceNamedConstants(file)}
+-	value, err := expr.emit(original, 0)
+-	if err != nil {
+-		return nil, false
+-	}
+-	event := prefix + "_event"
+-	capture := fmt.Sprintf("func()float64{if !%s.Enabled(){return %s};%s\n%s=%s.RecordNumericEval(%s,\"identity\",[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(\"health_input_branch_schedule_frozen\"));return float64(%s)}()", rt, rootText(fs, original), expr.code.String(), event, rt, strconv.Quote(entry.SourceID), traceImportAlias, value.ref, value.value, traceImportAlias, value.value)
+-	metadata := healthMetadataInsertion(data, tf, lit, entry, "nil") + "GTTTraceInputEventID:" + event + ","
+-	return []textEdit{
+-		{start: tf.Offset(at.Pos()), end: tf.Offset(at.Pos()), replacement: "var " + event + " string;\n" + indentationBefore(data, tf.Offset(at.Pos()))},
+-		{start: tf.Offset(original.Pos()), end: tf.Offset(original.End()), replacement: capture},
+-		{start: tf.Offset(lit.Rbrace), end: tf.Offset(lit.Rbrace), replacement: metadata},
+-	}, true
+-}
+diff --git a/pkg/gttsourcegen/health_stats_origin.go b/pkg/gttsourcegen/health_stats_origin.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_stats_origin.go
+@@ -0,0 +1,411 @@
++package gttsourcegen
++
++import (
++	"fmt"
++	"go/ast"
++	"go/token"
++	"strconv"
++	"strings"
++)
++
++// healthStatsRefs transports raw Stats() provenance only through a private,
++// same-file helper whose every callsite and array read is syntactically proven.
++// Unsupported aliases, writes, escapes, or unresolved callsites stay frozen.
++func healthStatsRefs(fs *token.FileSet, tf *token.File, file *ast.File, fn *ast.FuncDecl, original ast.Expr, rt string) (map[string]string, []textEdit) {
++	empty := map[string]string{}
++	if fs == nil || tf == nil || file == nil || fn == nil || fn.Body == nil || fn.Recv == nil || fn.Name == nil || ast.IsExported(fn.Name.Name) || strings.TrimSpace(rt) == "" {
++		return empty, nil
++	}
++	imports := sourceImportAliases(file)
++	infoAlias, attributesAlias := "", ""
++	for alias, path := range imports {
++		if path == "github.com/genshinsim/gcsim/pkg/core/info" {
++			infoAlias = alias
++		}
++		if path == "github.com/genshinsim/gcsim/pkg/core/attributes" {
++			attributesAlias = alias
++		}
++	}
++	if infoAlias == "" || attributesAlias == "" || len(fn.Recv.List) != 1 || len(fn.Recv.List[0].Names) != 1 {
++		return empty, nil
++	}
++	arrayName, arrayParamIndex, ok := healthStatsArrayParam(fs, fn, attributesAlias)
++	if !ok {
++		return empty, nil
++	}
++	parents := healthASTParents(file)
++	keys := map[string]string{}
++	addCell := func(expr ast.Expr) bool {
++		cell, ok := expr.(*ast.IndexExpr)
++		if !ok {
++			return false
++		}
++		base, ok := cell.X.(*ast.Ident)
++		if !ok || base.Name != arrayName {
++			return false
++		}
++		key, ok := cell.Index.(*ast.SelectorExpr)
++		if !ok {
++			return false
++		}
++		pkg, ok := key.X.(*ast.Ident)
++		if !ok || imports[pkg.Name] != "github.com/genshinsim/gcsim/pkg/core/attributes" || key.Sel == nil {
++			return false
++		}
++		keys[rootText(fs, cell)] = rootText(fs, cell.Index)
++		return true
++	}
++	// Only raw indexed reads are accepted. Scalar locals must first be proven
++	// and resolved to their original RHS by healthFieldOrigin.
++	ast.Inspect(original, func(n ast.Node) bool {
++		if cell, ok := n.(*ast.IndexExpr); ok && cell.X != nil {
++			addCell(cell)
++		}
++		return true
++	})
++	if len(keys) == 0 || !healthStatsParamReadOnly(fn, arrayName, parents) {
++		return empty, nil
++	}
++
++	// The private method name must have one declaration in this file, and every
++	// same-file selector reference must be a direct call with a proven Stats()
++	// array. Package-private references from other files are caught by the full
++	// overlay compile after the transport is applied.
++	for _, decl := range file.Decls {
++		other, ok := decl.(*ast.FuncDecl)
++		if ok && other != fn && other.Name != nil && other.Name.Name == fn.Name.Name {
++			return empty, nil
++		}
++	}
++	selectors := []*ast.SelectorExpr{}
++	ast.Inspect(file, func(n ast.Node) bool {
++		if sel, ok := n.(*ast.SelectorExpr); ok && sel.Sel != nil && sel.Sel.Name == fn.Name.Name {
++			selectors = append(selectors, sel)
++		}
++		return true
++	})
++	if len(selectors) == 0 {
++		return empty, nil
++	}
++	originParam := "gttStatsOrigin_" + strconv.Itoa(tf.Offset(fn.Pos()))
++	if healthHasIdent(file, originParam) {
++		return empty, nil
++	}
++	callEdits := []textEdit{}
++	assignments := map[*ast.AssignStmt]string{}
++	callArrayUses := map[*ast.Ident]bool{}
++	for _, sel := range selectors {
++		call, callOK := parents[sel].(*ast.CallExpr)
++		if !callOK || call.Fun != sel || arrayParamIndex >= len(call.Args) {
++			continue
++		}
++		if arrayArg, argOK := call.Args[arrayParamIndex].(*ast.Ident); argOK {
++			callArrayUses[arrayArg] = true
++		}
++	}
++	for _, sel := range selectors {
++		call, ok := parents[sel].(*ast.CallExpr)
++		if !ok || call.Fun != sel || call.Rparen == token.NoPos || arrayParamIndex >= len(call.Args) || len(call.Args) <= arrayParamIndex {
++			return empty, nil
++		}
++		arrayArg, ok := call.Args[arrayParamIndex].(*ast.Ident)
++		if !ok {
++			return empty, nil
++		}
++		caller := healthEnclosingFunc(call, parents)
++		if caller == nil || caller.Body == nil {
++			return empty, nil
++		}
++		if !healthSameReceiverCall(fs, fn, caller, sel) {
++			return empty, nil
++		}
++		owner := rootText(fs, sel.X)
++		assignment, getter, ok := healthStatsAssignment(fs, caller, call, arrayArg.Name, owner)
++		if !ok || !healthStatsLocalUsesProven(caller, assignment, arrayArg.Name, callArrayUses) {
++			return empty, nil
++		}
++		origin, exists := assignments[assignment]
++		if !exists {
++			origin = "gttStatsOrigin_" + strconv.Itoa(tf.Offset(assignment.Pos()))
++			if healthHasIdent(file, origin) {
++				return empty, nil
++			}
++			assignments[assignment] = origin
++			callEdits = append(callEdits,
++				textEdit{start: tf.Offset(assignment.Lhs[len(assignment.Lhs)-1].End()), end: tf.Offset(assignment.Lhs[len(assignment.Lhs)-1].End()), replacement: ", " + origin},
++				textEdit{start: tf.Offset(getter.Pos()), end: tf.Offset(getter.End()), replacement: fmt.Sprintf("%s.GTTReadStats(%s.GTTStatOwnerRuntime(%s),%s,%s.Stats)", infoAlias, infoAlias, owner, owner, owner)},
++			)
++		}
++		callEdits = append(callEdits, textEdit{start: tf.Offset(call.Rparen), end: tf.Offset(call.Rparen), replacement: ", " + origin})
++	}
++	if len(assignments) == 0 || fn.Type == nil || fn.Type.Params == nil {
++		return empty, nil
++	}
++	comma := ""
++	if len(fn.Type.Params.List) > 0 {
++		comma = ", "
++	}
++	callEdits = append(callEdits, textEdit{
++		start: tf.Offset(fn.Type.Params.Closing), end: tf.Offset(fn.Type.Params.Closing),
++		replacement: comma + originParam + " *" + infoAlias + ".GTTStatsOrigin",
++	})
++	refs := make(map[string]string, len(keys))
++	for cell, key := range keys {
++		refs[cell] = fmt.Sprintf("%s.GTTStatsCellRef(%s,%s,%s,%s,float64(%s))", infoAlias, rt, originParam, arrayName, key, cell)
++	}
++	return refs, callEdits
++}
++
++func healthStatsArrayParam(fs *token.FileSet, fn *ast.FuncDecl, attributesAlias string) (string, int, bool) {
++	if fn.Type == nil || fn.Type.Params == nil {
++		return "", 0, false
++	}
++	found := ""
++	index := 0
++	for _, field := range fn.Type.Params.List {
++		if len(field.Names) != 1 || rootText(fs, field.Type) != "["+attributesAlias+".EndStatType]float64" {
++			index += len(field.Names)
++			continue
++		}
++		if found != "" {
++			return "", 0, false
++		}
++		found = field.Names[0].Name
++		index += len(field.Names)
++		// Only a uniquely named fixed Stats() array parameter is transportable.
++		for _, candidate := range fn.Type.Params.List {
++			for _, name := range candidate.Names {
++				if name.Name == found && candidate != field {
++					return "", 0, false
++				}
++			}
++		}
++	}
++	if found == "" {
++		return "", 0, false
++	}
++	paramIndex := 0
++	for _, field := range fn.Type.Params.List {
++		if len(field.Names) > 0 && field.Names[0].Name == found {
++			return found, paramIndex, true
++		}
++		paramIndex += len(field.Names)
++	}
++	return "", 0, false
++}
++
++func healthStatsParamReadOnly(fn *ast.FuncDecl, name string, parents map[ast.Node]ast.Node) bool {
++	valid := true
++	ast.Inspect(fn.Body, func(n ast.Node) bool {
++		id, ok := n.(*ast.Ident)
++		if !ok || id.Name != name {
++			return true
++		}
++		cell, ok := parents[id].(*ast.IndexExpr)
++		if !ok || cell.X != id || healthStatsWriteTarget(cell, parents) {
++			valid = false
++			return false
++		}
++		return true
++	})
++	return valid
++}
++
++func healthStatsWriteTarget(expr ast.Expr, parents map[ast.Node]ast.Node) bool {
++	node := ast.Node(expr)
++	for node != nil {
++		parent := parents[node]
++		switch value := parent.(type) {
++		case *ast.ParenExpr:
++			node = parent
++		case *ast.AssignStmt:
++			for _, lhs := range value.Lhs {
++				if lhs.Pos() <= node.Pos() && node.End() <= lhs.End() {
++					return true
++				}
++			}
++			return false
++		case *ast.IncDecStmt:
++			return true
++		case *ast.UnaryExpr:
++			return value.Op == token.AND
++		default:
++			return false
++		}
++	}
++	return false
++}
++
++func healthASTParents(root ast.Node) map[ast.Node]ast.Node {
++	parents := map[ast.Node]ast.Node{}
++	stack := []ast.Node{}
++	ast.Inspect(root, func(node ast.Node) bool {
++		if node == nil {
++			if len(stack) > 0 {
++				stack = stack[:len(stack)-1]
++			}
++			return false
++		}
++		if len(stack) > 0 {
++			parents[node] = stack[len(stack)-1]
++		}
++		stack = append(stack, node)
++		return true
++	})
++	return parents
++}
++
++func healthEnclosingFunc(node ast.Node, parents map[ast.Node]ast.Node) *ast.FuncDecl {
++	for current := parents[node]; current != nil; current = parents[current] {
++		if fn, ok := current.(*ast.FuncDecl); ok {
++			return fn
++		}
++	}
++	return nil
++}
++
++func healthSameReceiverCall(fs *token.FileSet, target, caller *ast.FuncDecl, call *ast.SelectorExpr) bool {
++	if target.Recv == nil || caller.Recv == nil || len(target.Recv.List) != 1 || len(caller.Recv.List) != 1 || len(target.Recv.List[0].Names) != 1 || len(caller.Recv.List[0].Names) != 1 {
++		return false
++	}
++	targetType := rootText(fs, target.Recv.List[0].Type)
++	if targetType == "" || rootText(fs, caller.Recv.List[0].Type) != targetType {
++		return false
++	}
++	receiverName := caller.Recv.List[0].Names[0].Name
++	callReceiver, ok := call.X.(*ast.Ident)
++	if !ok || callReceiver.Name != receiverName || healthReceiverShadowed(caller.Body, receiverName) {
++		return false
++	}
++	return true
++}
++
++func healthReceiverShadowed(body *ast.BlockStmt, name string) bool {
++	shadowed := false
++	ast.Inspect(body, func(n ast.Node) bool {
++		if shadowed {
++			return false
++		}
++		defines := func(id *ast.Ident) bool { return id != nil && id.Name == name }
++		switch value := n.(type) {
++		case *ast.AssignStmt:
++			for _, lhs := range value.Lhs {
++				if id, ok := lhs.(*ast.Ident); ok && defines(id) { shadowed = true; return false }
++			}
++		case *ast.ValueSpec:
++			for _, id := range value.Names { if defines(id) { shadowed = true; return false } }
++		case *ast.RangeStmt:
++			if id, ok := value.Key.(*ast.Ident); ok && defines(id) { shadowed = true; return false }
++			if id, ok := value.Value.(*ast.Ident); ok && defines(id) { shadowed = true; return false }
++		case *ast.FuncLit:
++			for _, list := range []*ast.FieldList{value.Type.Params, value.Type.Results} {
++				if list == nil { continue }
++				for _, field := range list.List { for _, id := range field.Names { if defines(id) { shadowed = true; return false } } }
++			}
++		}
++		return true
++	})
++	return shadowed
++}
++
++func healthStatsAssignment(fs *token.FileSet, caller *ast.FuncDecl, call *ast.CallExpr, arrayName, owner string) (*ast.AssignStmt, *ast.CallExpr, bool) {
++	callBlock := healthContainingBlock(caller.Body, call.Pos())
++	if callBlock == nil {
++		return nil, nil, false
++	}
++	var found *ast.AssignStmt
++	var getter *ast.CallExpr
++	ast.Inspect(caller.Body, func(n ast.Node) bool {
++		assignment, ok := n.(*ast.AssignStmt)
++		if !ok || assignment.Tok != token.DEFINE || len(assignment.Lhs) != 2 || len(assignment.Rhs) != 1 || assignment.End() >= call.Pos() {
++			return true
++		}
++		name, ok := assignment.Lhs[0].(*ast.Ident)
++		discard, discardOK := assignment.Lhs[1].(*ast.Ident)
++		if !ok || name.Name != arrayName || !discardOK || discard.Name != "_" {
++			return true
++		}
++		rhs, ok := assignment.Rhs[0].(*ast.CallExpr)
++		if !ok || len(rhs.Args) != 0 {
++			return true
++		}
++		selector, ok := rhs.Fun.(*ast.SelectorExpr)
++		if !ok || selector.Sel.Name != "Stats" || rootText(fs, selector.X) != owner {
++			return true
++		}
++		defBlock := healthContainingBlock(caller.Body, assignment.Pos())
++		if defBlock == nil || !(defBlock == callBlock || (defBlock.Pos() < callBlock.Pos() && defBlock.End() > callBlock.End())) {
++			return true
++		}
++		if found != nil {
++			found = nil
++			getter = nil
++			return false
++		}
++		found, getter = assignment, rhs
++		return true
++	})
++	return found, getter, found != nil && getter != nil
++}
++
++func healthContainingBlock(root ast.Node, pos token.Pos) *ast.BlockStmt {
++	var best *ast.BlockStmt
++	ast.Inspect(root, func(n ast.Node) bool {
++		block, ok := n.(*ast.BlockStmt)
++		if ok && block.Pos() <= pos && pos <= block.End() && (best == nil || block.End()-block.Pos() < best.End()-best.Pos()) {
++			best = block
++		}
++		return true
++	})
++	return best
++}
++
++func healthStatsLocalUsesProven(caller *ast.FuncDecl, definition *ast.AssignStmt, name string, allowed map[*ast.Ident]bool) bool {
++	parents := healthASTParents(caller.Body)
++	valid := true
++	ast.Inspect(caller.Body, func(n ast.Node) bool {
++		id, ok := n.(*ast.Ident)
++		if !ok || id.Name != name || allowed[id] {
++			return true
++		}
++		parent := parents[id]
++		if parent == definition {
++			return true
++		}
++		valid = false
++		return false
++	})
++	return valid
++}
++
++func healthHasIdent(root ast.Node, name string) bool {
++	found := false
++	ast.Inspect(root, func(n ast.Node) bool {
++		if id, ok := n.(*ast.Ident); ok && id.Name == name {
++			found = true
++			return false
++		}
++		return true
++	})
++	return found
++}
++
++// Root collection may request the same transport edits for Src and Bonus.
++// Deduplicate only exact edits carrying this transport's generated markers;
++// conflicting edits remain visible to applyTextEdits as overlap errors.
++func healthOriginEditsOnce(edits []textEdit) []textEdit {
++	seen := map[string]bool{}
++	out := make([]textEdit, 0, len(edits))
++	for _, edit := range edits {
++		marked := strings.Contains(edit.replacement, "GTTReadStats(") || strings.Contains(edit.replacement, "GTTStatsOrigin") || strings.Contains(edit.replacement, "gttStatsOrigin_")
++		key := strconv.Itoa(edit.start) + ":" + strconv.Itoa(edit.end) + ":" + edit.replacement
++		if marked && seen[key] {
++			continue
++		}
++		if marked {
++			seen[key] = true
++		}
++		out = append(out, edit)
++	}
++	return out
++}
+diff --git a/pkg/gttsourcegen/health_stats_origin_test.go b/pkg/gttsourcegen/health_stats_origin_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_stats_origin_test.go
+@@ -0,0 +1,70 @@
++package gttsourcegen
++
++import (
++	"go/ast"
++	"go/parser"
++	"go/token"
++	"strings"
++	"testing"
++)
++
++func TestHealthStatsOriginTransportRequiresProvenRawStats(t *testing.T) {
++	source := `package arbitrary
++import (
++ "github.com/genshinsim/gcsim/pkg/core/attributes"
++ "github.com/genshinsim/gcsim/pkg/core/info"
++)
++type char struct{}
++type other struct{}
++func (p *char) burst() {
++ stats, _ := p.Stats()
++ p.apply(stats, false)
++}
++func (c *char) apply(stats [attributes.EndStatType]float64, first bool) {
++ hpplus := stats[attributes.Heal]
++ if !first { c.Core.Player.Heal(info.HealInfo{Bonus: hpplus}) }
++}`
++	for _, tc := range []struct {
++		name, source string
++		want         bool
++	}{
++		{"direct private helper", source, true},
++		{"mutated helper array", strings.Replace(source, "hpplus := stats[attributes.Heal]", "stats[attributes.Heal] = 4; hpplus := stats[attributes.Heal]", 1), false},
++		{"unproven call argument", strings.Replace(source, "p.apply(stats, false)", "p.apply(other, false)", 1), false},
++		{"escaped caller array", strings.Replace(source, "p.apply(stats, false)", "consume(stats); p.apply(stats, false)", 1), false},
++		{"foreign enclosing receiver", strings.Replace(source, "func (p *char) burst()", "func (p *other) burst()", 1), false},
++		{"foreign call receiver", strings.Replace(source, "p.apply(stats, false)", "other := &char{}; other.apply(stats, false)", 1), false},
++	} {
++		if tc.name != "direct private helper" && tc.source == source {
++			t.Fatalf("negative fixture %q did not change the source", tc.name)
++		}
++		t.Run(tc.name, func(t *testing.T) {
++			fs := token.NewFileSet()
++			file, err := parser.ParseFile(fs, "test.go", tc.source, parser.SkipObjectResolution)
++			if err != nil { t.Fatal(err) }
++			var fn *ast.FuncDecl
++			for _, decl := range file.Decls {
++				if candidate, ok := decl.(*ast.FuncDecl); ok && candidate.Name.Name == "apply" { fn = candidate }
++			}
++			if fn == nil { t.Fatal("missing helper") }
++			var original ast.Expr
++			ast.Inspect(fn, func(n ast.Node) bool {
++				if a, ok := n.(*ast.AssignStmt); ok && len(a.Lhs)==1 && rootText(fs,a.Lhs[0])=="hpplus" {
++					original = a.Rhs[0]
++				}
++				return true
++			})
++			refs, edits := healthStatsRefs(fs, fs.File(file.Pos()), file, fn, original, "c.Core.GTTTrace")
++			if (len(refs) != 0 && len(edits) != 0) != tc.want { t.Fatalf("refs=%v edits=%v", refs, edits) }
++			if !tc.want { return }
++			if refs["stats[attributes.Heal]"] == "" || !strings.Contains(refs["stats[attributes.Heal]"], "GTTStatsCellRef") { t.Fatal(refs) }
++			out, err := applyTextEdits([]byte(tc.source), healthOriginEditsOnce(append(edits, edits...)))
++			if err != nil { t.Fatal(err) }
++			if _, err := parser.ParseFile(token.NewFileSet(), "out.go", out, 0); err != nil { t.Fatal(err, string(out)) }
++			text := string(out)
++			for _, want := range []string{"GTTReadStats(info.GTTStatOwnerRuntime(p),p,p.Stats)", "gttStatsOrigin_", "GTTStatsOrigin"} {
++				if !strings.Contains(text, want) { t.Fatal(want, text) }
++			}
++		})
++	}
++}
+diff --git a/pkg/gttsourcegen/neutral_selected_test.go b/pkg/gttsourcegen/neutral_selected_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/neutral_selected_test.go
+@@ -0,0 +1,50 @@
++package gttsourcegen
++
++import (
++	"go/ast"
++	"go/parser"
++	"go/token"
++	"strings"
++	"testing"
++)
++
++func TestNeutralSelectedStatsExpression(t *testing.T) {
++	base := `package x
++import(info "github.com/genshinsim/gcsim/pkg/core/info";a "github.com/genshinsim/gcsim/pkg/core/attributes")
++func(q *provider)tick(){
++ stats:=q.SelectStat(true,a.BaseATK,a.ATKP,a.ATK)
++ // CHANGE
++ q.bank[a.EM]=stats.TotalATK()*.06
++}`
++	for _, tc := range []struct{name, change string; supported bool}{
++		{"direct total", "", true},
++		{"mutation", "stats[a.ATKP]=1", false},
++		{"escape", "observe(&stats)", false},
++		{"alias", "other:=stats;_ = other", false},
++		{"reassign", "stats=q.SelectStat(false,a.ATKP)", false},
++	} {
++		t.Run(tc.name, func(t *testing.T){
++			src:=strings.Replace(base,"// CHANGE",tc.change,1)
++			fs:=token.NewFileSet()
++			file,err:=parser.ParseFile(fs,"test.go",src,0)
++			if err!=nil{t.Fatal(err)}
++			fn:=file.Decls[1].(*ast.FuncDecl)
++			write:=fn.Body.List[len(fn.Body.List)-1].(*ast.AssignStmt)
++			refs,totals,edits:=selectedStatsBindings(fs,fs.File(file.Pos()),file,write.Pos(),"q.Core.GTTTrace",write.Rhs[0])
++			if (len(totals)>0)!=tc.supported{t.Fatalf("bindings=%v",totals)}
++			if !tc.supported{return}
++			expr:=fieldExpression{fset:fs,rt:"q.Core.GTTTrace",source:`"test"`,prefix:"probe",info:"info",refs:refs,selectedTotals:totals}
++			v,err:=expr.emit(write.Rhs[0],0)
++			if err!=nil{t.Fatal(err)}
++			edits=append(edits,textEdit{start:fs.File(file.Pos()).Offset(write.Pos()),end:fs.File(file.Pos()).Offset(write.End()),replacement:expr.code.String()+";q.bank[a.EM]="+v.value})
++			out,err:=applyTextEdits([]byte(src),edits)
++			if err!=nil{t.Fatal(err)}
++			if _,err=parser.ParseFile(token.NewFileSet(),"out.go",out,0);err!=nil{t.Fatal(err,string(out))}
++			for _,token:=range []string{"GTTSelectStats", "GTTStatsTotalRef", "stats.TotalATK()", "q.SelectStat("}{
++				if strings.Count(string(out),token)!=1{t.Fatalf("not single eval %s: %s",token,out)}
++			}
++			if !strings.Contains(string(out),"q,true,[]a.Stat"){t.Fatal("lost receiver/filter",string(out))}
++			if strings.Contains(string(out),"frozen_attack_operand"){t.Fatal("selected total frozen",string(out))}
++		})
++	}
++}
+diff --git a/pkg/gttsourcegen/overlay.go b/pkg/gttsourcegen/overlay.go
+--- a/pkg/gttsourcegen/overlay.go
++++ b/pkg/gttsourcegen/overlay.go
+@@ -474,6 +474,7 @@
+ 			replacement: "//line " + rel + ":" + strconv.Itoa(originalLine) + "\n",
+ 		})
+ 	}
++	edits = healthOriginEditsOnce(edits)
+ 	rewritten, err := applyTextEdits(data, edits)
+ 	if err != nil {
+ 		return nil, err
+@@ -501,7 +502,7 @@
+ 	if value == nil {
+ 		return nil, fmt.Errorf("supported health entry %s has no %s field", entry.LookupKey, entry.healthInput.ValueField)
+ 	}
+-	for _, reserved := range []string{"GTTTraceSourceID", "GTTTraceSourceTemplateSHA256", "GTTTraceSourceParameters", "GTTTraceInputEventID"} {
++	for _, reserved := range []string{"GTTTraceSourceID", "GTTTraceSourceTemplateSHA256", "GTTTraceSourceParameters", "GTTTraceInputEventID", "GTTTraceBonusEventID"} {
+ 		if compositeKeyValue(composite, reserved) != nil {
+ 			return nil, fmt.Errorf("health info already contains %s", reserved)
+ 		}
+@@ -578,12 +579,13 @@
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	metadata := healthMetadataInsertion(data, tokenFile, composite, entry, parameters)
+-	return []textEdit{
++	bonusEdits, bonusMetadata := healthBonusCapture(fset, tokenFile, data, file, fn, composite, entry, traceExpression)
++	metadata := healthMetadataInsertion(data, tokenFile, composite, entry, parameters) + bonusMetadata
++	return append(bonusEdits, []textEdit{
+ 		{start: tokenFile.Offset(statement.Pos()), end: tokenFile.Offset(statement.Pos()), replacement: declarations.String()},
+ 		{start: tokenFile.Offset(value.Value.Pos()), end: tokenFile.Offset(value.Value.End()), replacement: inputTemp},
+ 		{start: tokenFile.Offset(composite.Rbrace), end: tokenFile.Offset(composite.Rbrace), replacement: metadata},
+-	}, nil
++	}...), nil
+ }
+ 
+ func healthMetadataInsertion(data []byte, tokenFile *token.File, composite *ast.CompositeLit, entry SourceEntry, parameters string) string {
+diff --git a/pkg/gttsourcegen/saved_vector.go b/pkg/gttsourcegen/saved_vector.go
+--- a/pkg/gttsourcegen/saved_vector.go
++++ b/pkg/gttsourcegen/saved_vector.go
+@@ -319,6 +319,9 @@
+ 			}
+ 			prefix := fmt.Sprintf("gttVector_%d_%d", pos.Line, pos.Column)
+ 			expr := fieldExpression{fset: fs, rt: rt, source: strconv.Quote(owned.entry.SourceID), prefix: prefix, info: alias, refs: localVectorRefs(fs, file, wanted, stmt.Pos(), rt), constants: sourceNamedConstants(file)}
++			selectedRefs, selectedTotals, selectedEdits := selectedStatsBindings(fs, tf, file, stmt.Pos(), rt, stmt.Rhs[0])
++			for key, ref := range selectedRefs { expr.refs[key] = ref }
++			expr.selectedTotals = selectedTotals
+ 			value, extra, pure := pureLocalValue(fs, tf, file, stmt.Pos(), stmt.Rhs[0], &expr)
+ 			var err error
+ 			if pure {
+@@ -335,6 +338,9 @@
+ 				expr.code.Reset()
+ 				value = fieldValue{value: rootText(fs, stmt.Rhs[0]), ref: traceImportAlias + ".NumericRef{}"}
+ 			}
++			if err == nil {
++				for _, edit := range selectedEdits { inputEdits[edit.start] = edit }
++			}
+ 			// Go evaluates the indexed LHS address before RHS calls; keep that order.
+ 			code := fmt.Sprintf("if !%s.Enabled() {%s} else {\n%s_ptr := &%s\n%s\n*%s_ptr=%s\n%s.StoreStatCell(%s_ptr,%s)\n}",
+ 				rt, rootText(fs, stmt), prefix, rootText(fs, stmt.Lhs[0]), expr.code.String(), prefix, value.value, rt, prefix, value.ref)
+diff --git a/pkg/gttsourcegen/select_stats.go b/pkg/gttsourcegen/select_stats.go
+--- a/pkg/gttsourcegen/select_stats.go
++++ b/pkg/gttsourcegen/select_stats.go
+@@ -11,6 +11,15 @@
+ // innermost executed block/case. Foreign getters fall back at the typed runtime
+ // interface; ambiguous mutable locals are not granted character ownership.
+ func selectStatsRefs(fs *token.FileSet, tf *token.File, file *ast.File, at token.Pos, rt string) (map[string]string, []textEdit) {
++	refs, _, edits := selectedStatsBindings(fs, tf, file, at, rt, nil)
++	return refs, edits
++}
++
++// Direct totals on an already selected vector retain the query origin too.
++// The expression emitter supplies its single evaluated total as the final
++// argument; no mutable getter is re-read while attaching provenance.
++func selectedStatsBindings(fs *token.FileSet, tf *token.File, file *ast.File, at token.Pos, rt string, expression ast.Expr) (map[string]string, map[string]string, []textEdit) {
++	totals := map[string]string{}
+ 	refs := map[string]string{}
+ 	edits := []textEdit{}
+ 	alias := vectorInfoAlias(file)
+@@ -21,7 +30,7 @@
+ 		}
+ 	}
+ 	if alias == "" || attr == "" {
+-		return refs, edits
++		return refs, totals, edits
+ 	}
+ 	var statements []ast.Stmt
+ 	span := int(^uint(0) >> 1)
+@@ -119,6 +128,44 @@
+ 		refs[id.Name] = fmt.Sprintf("%s.GTTStatsTotalRef(%s,%s,%s,%s,%s)", alias, rt, saved.origin, rootText(fs, method.X), strings.Join(keys, ","), id.Name)
+ 		used[rootText(fs, method.X)] = true
+ 	}
++	// A selected vector must not escape or be edited after selection. Accept
++	// only its declaration and the official pure total methods. This is
++	// deliberately conservative for arrays passed to unknown helpers.
++	if expression != nil {
++		parents := vectorParents(file)
++		ast.Inspect(expression, func(n ast.Node) bool {
++			call, ok := n.(*ast.CallExpr)
++			if !ok || len(call.Args) != 0 { return true }
++			method, ok := call.Fun.(*ast.SelectorExpr)
++			if !ok { return true }
++			name := rootText(fs, method.X)
++			saved, ok := containers[name]
++			if !ok { return true }
++			keys := map[string][]string{"TotalATK": {"BaseATK", "ATKP", "ATK"}, "MaxHP": {"BaseHP", "HPP", "HP"}, "TotalDEF": {"BaseDEF", "DEFP", "DEF"}}[method.Sel.Name]
++			if len(keys) != 3 { return true }
++			valid := true
++			for _, statement := range statements {
++				ast.Inspect(statement, func(use ast.Node) bool {
++					id, ok := use.(*ast.Ident)
++					if !ok || id.Name != name { return true }
++					if id == saved.stmt.Lhs[0] { return true }
++					selector, ok := parents[id].(*ast.SelectorExpr)
++					if !ok || selector.X != id { valid = false; return false }
++					call, ok := parents[selector].(*ast.CallExpr)
++					if !ok || call.Fun != selector || len(call.Args) != 0 ||
++						(selector.Sel.Name != "TotalATK" && selector.Sel.Name != "MaxHP" && selector.Sel.Name != "TotalDEF") {
++						valid = false
++					}
++					return true
++				})
++			}
++			if !valid { return true }
++			for i := range keys { keys[i] = attr + "." + keys[i] }
++			totals[rootText(fs, call)] = fmt.Sprintf("%s.GTTStatsTotalRef(%s,%s,%s,%s,%%s)", alias, rt, saved.origin, name, strings.Join(keys, ","))
++			used[name] = true
++			return false
++		})
++	}
+ 	for name := range used {
+ 		s := containers[name]
+ 		keys := []string{}
+@@ -128,5 +175,5 @@
+ 		code := fmt.Sprintf("%s,%s := %s.GTTSelectStats(%s,%s,%s,[]%s.Stat{%s},func()%s.Stats{return %s})", name, s.origin, alias, rt, rootText(fs, s.method.X), rootText(fs, s.call.Args[0]), attr, strings.Join(keys, ","), attr, rootText(fs, s.call))
+ 		edits = append(edits, textEdit{start: tf.Offset(s.stmt.Pos()), end: tf.Offset(s.stmt.End()), replacement: code})
+ 	}
+-	return refs, edits
++	return refs, totals, edits
+ }
+diff --git a/pkg/gtttrace/combat_events.go b/pkg/gtttrace/combat_events.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/combat_events.go
+@@ -0,0 +1,86 @@
++package gtttrace
++
++// Subscription-independent, observation-only event tape. Values are copied at
++// emission, before callbacks; no Amount/getter/task is executed to reconstruct
++// missing gameplay. Unknown payloads and truncation are explicit boundaries.
++type EventValue struct {
++	Kind string `json:"kind"`
++	Type string `json:"type,omitempty"`
++	Number float64 `json:"number,omitempty"`
++	Text string `json:"text,omitempty"`
++	Boolean bool `json:"boolean,omitempty"`
++	Fields map[string]EventValue `json:"fields,omitempty"`
++	Items []EventValue `json:"items,omitempty"`
++}
++type CombatEvent struct {
++	Order uint64 `json:"order"`
++	EndOrder uint64 `json:"end_order"`
++	ParentOrder uint64 `json:"parent_order"`
++	Frame int `json:"frame"`
++	Event int `json:"event"`
++	Active int `json:"active"`
++	StateSequence int `json:"state_sequence"`
++	Provider Provider `json:"provider"`
++	Arguments []EventValue `json:"arguments"`
++}
++type CombatEventLedger struct {
++	Events []CombatEvent `json:"events"`
++	Truncated bool `json:"truncated"`
++}
++const maxCombatEventRows = 100000
++
++func (r *Runtime) BindActiveIndex(active func() int) {
++	if r != nil { r.combatActive = active }
++}
++func (r *Runtime) NextObservationOrder() uint64 {
++	if !r.Enabled() { return 0 }
++	r.observationOrder++
++	return r.observationOrder
++}
++func (r *Runtime) BeginCombatEvent(event int, args []EventValue) uint64 {
++	if !r.NeutralEnabled() { return 0 }
++	order := r.NextNeutralObservationOrder()
++	if len(r.combatEvents) >= maxCombatEventRows {
++		r.combatEventsTruncated = true
++		return 0
++	}
++	active, parent := -1, uint64(0)
++	if r.combatActive != nil { active = r.combatActive() }
++	if n := len(r.combatEventStack); n > 0 { parent = r.combatEvents[r.combatEventStack[n-1]].Order }
++	row := CombatEvent{Order: order, ParentOrder: parent, Frame: r.Frame(),
++		Event: event, Active: active, StateSequence: len(r.stateEvents),
++		Provider: r.Current(), Arguments: cloneEventValues(args)}
++	r.combatEventStack = append(r.combatEventStack, len(r.combatEvents))
++	r.combatEvents = append(r.combatEvents, row)
++	return order
++}
++func (r *Runtime) EndCombatEvent(order uint64) {
++	if !r.Enabled() || order == 0 { return }
++	n := len(r.combatEventStack)
++	if n == 0 || r.combatEvents[r.combatEventStack[n-1]].Order != order {
++		r.combatEventsTruncated = true
++		return
++	}
++	r.combatEvents[r.combatEventStack[n-1]].EndOrder = r.NextObservationOrder()
++	r.combatEventStack = r.combatEventStack[:n-1]
++}
++func (r *Runtime) CombatEvents() CombatEventLedger {
++	out := CombatEventLedger{Events: []CombatEvent{}}
++	if r == nil { return out }
++	out.Truncated = r.combatEventsTruncated || len(r.combatEventStack) != 0
++	out.Events = append(out.Events, r.combatEvents...)
++	for i := range out.Events { out.Events[i].Arguments = cloneEventValues(out.Events[i].Arguments) }
++	return out
++}
++func cloneEventValues(values []EventValue) []EventValue {
++	out := make([]EventValue, len(values))
++	for i, v := range values {
++		out[i] = v
++		if v.Items != nil { out[i].Items = cloneEventValues(v.Items) }
++		if v.Fields != nil {
++			out[i].Fields = make(map[string]EventValue, len(v.Fields))
++			for k, f := range v.Fields { out[i].Fields[k] = cloneEventValues([]EventValue{f})[0] }
++		}
++	}
++	return out
++}
+diff --git a/pkg/gtttrace/effect_read.go b/pkg/gtttrace/effect_read.go
+--- a/pkg/gtttrace/effect_read.go
++++ b/pkg/gtttrace/effect_read.go
+@@ -3,7 +3,7 @@
+ // Annotates the already existing
+ // numeric sum; no extra event, modifier evaluation or gameplay/RNG operation.
+ // Exported only through the opt-in neutral effect-input sidecar.
+-func (r *Runtime) RecordEffectRead(source, channel string, owner, tag int, operator string, inputs []NumericRef, value float64, evidence DependencyEvidence) string {
++func (r *Runtime) RecordEffectRead(source, channel string, owner, tag int, operator string, inputs []NumericRef, value float64, evidence DependencyEvidence, input ...EventValue) string {
+ 	id := r.RecordNumericEval(source, operator, inputs, value, evidence)
+ 	if id == "" || len(r.stateEvents) == 0 {
+ 		return id
+@@ -12,6 +12,8 @@
+ 	if row.EventID != id {
+ 		return id
+ 	}
++	if len(input) == 1 { value := cloneEventValues(input)[0]; row.NeutralInput = &value }
++	r.CaptureNeutralWorldAt(row.ObservationOrder)
+ 	row.Channel = optionalString("effect_input:" + channel)
+ 	row.OwnerIndex = optionalInt(owner)
+ 	row.NumericPayload = []NumericPayload{{Key: "attack_tag", Value: float64(tag), Reference: LiteralRef(float64(tag))}}
+diff --git a/pkg/gtttrace/hit_identity.go b/pkg/gtttrace/hit_identity.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/hit_identity.go
+@@ -0,0 +1,10 @@
++package gtttrace
++
++// NextHitID is trace-only, per core, and independent of observation ordering.
++// Allocate before OnEnemyHit is copied so event writes and the terminal formula
++// share one identity, including multiple targets or hits in the same frame.
++func (r *Runtime) NextHitID() uint64 {
++	if !r.Enabled() { return 0 }
++	r.nextHitID++
++	return r.nextHitID
++}
+diff --git a/pkg/gtttrace/hit_identity_test.go b/pkg/gtttrace/hit_identity_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/hit_identity_test.go
+@@ -0,0 +1,12 @@
++package gtttrace
++import "testing"
++func TestHitIdentityIsPerCoreAndTraceOnly(t *testing.T) {
++ var absent *Runtime
++ if absent.NextHitID()!=0 {t.Fatal("nil trace allocated an ID")}
++ a,b:=NewRuntime(),NewRuntime()
++ if a.NextHitID()!=0 {t.Fatal("disabled trace allocated an ID")}
++ a.Enable();b.Enable()
++ for i:=uint64(1);i<=100;i++ {if a.NextHitID()!=i {t.Fatal("nonunique hit ID")}}
++ if b.NextHitID()!=1 {t.Fatal("identity leaked across simulations")}
++ if a.NextObservationOrder()!=1 {t.Fatal("hit numbering changed event order")}
++}
+diff --git a/pkg/gtttrace/neutral_hitlag.go b/pkg/gtttrace/neutral_hitlag.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_hitlag.go
+@@ -0,0 +1,27 @@
++package gtttrace
++
++// Observe the extension already computed by each central ApplyHitlag, even
++// when no modifier exists. Never calculate hitlag again or change gameplay.
++type NeutralHitlagEvent struct {
++	Order uint64 `json:"order"`
++	Frame int `json:"frame"`
++	Owner int `json:"owner"`
++	Target int `json:"target"`
++	Extension int `json:"extension"`
++}
++type NeutralHitlagLedger struct {
++	Complete bool `json:"complete"`
++	Events []NeutralHitlagEvent `json:"events"`
++}
++func (r *Runtime) RecordNeutralHitlag(owner, target, extension int) {
++	if !r.NeutralEnabled() { return }
++	if len(r.neutralHitlag) >= maxCombatEventRows { r.neutralHitlagTruncated = true; return }
++	r.neutralHitlag = append(r.neutralHitlag, NeutralHitlagEvent{r.NextNeutralObservationOrder(), r.Frame(), owner, target, extension})
++}
++func (r *Runtime) NeutralHitlag() NeutralHitlagLedger {
++	out := NeutralHitlagLedger{Events: []NeutralHitlagEvent{}}
++	if !r.NeutralEnabled() { return out }
++	out.Complete = !r.neutralHitlagTruncated
++	out.Events = append(out.Events, r.neutralHitlag...)
++	return out
++}
+diff --git a/pkg/gtttrace/neutral_resources_test.go b/pkg/gtttrace/neutral_resources_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_resources_test.go
+@@ -0,0 +1,13 @@
++package gtttrace
++import "testing"
++func TestNeutralResourceSnapshotsDoNotAlias(t *testing.T){
++ r:=NewRuntime();r.Enable();r.BindNeutralWorld(func()[]NeutralModifierIdentity{return []NeutralModifierIdentity{}})
++ facts:=EventValue{Kind:"object",Fields:map[string]EventValue{"Energy":{Kind:"number",Number:15}}}
++ r.BindNeutralResources(func()EventValue{return facts})
++ r.NextNeutralObservationOrder();r.NextNeutralObservationOrder()
++ facts.Fields["Energy"]=EventValue{Kind:"number",Number:0};r.NextNeutralObservationOrder()
++ rows:=r.NeutralWorld().States
++ if len(rows)!=2 || rows[0].Facts.Fields["Energy"].Number!=15 || rows[1].Facts.Fields["Energy"].Number!=0 {t.Fatal(rows)}
++ rows[0].Facts.Fields["Energy"]=EventValue{Kind:"number",Number:999}
++ if r.NeutralWorld().States[0].Facts.Fields["Energy"].Number!=15{t.Fatal("export aliases stored facts")}
++}
+diff --git a/pkg/gtttrace/neutral_stat_reads.go b/pkg/gtttrace/neutral_stat_reads.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_stat_reads.go
+@@ -0,0 +1,34 @@
++package gtttrace
++
++// Already-computed stat vectors, never a new Amount/getter evaluation. These
++// latent inputs may become damage-relevant after changing an artifact bonus.
++type NeutralStatObservation struct {
++	Owner int
++	Order uint64
++	Frame int
++	Mode string
++	Keys *[]string
++	Values map[string]float64
++	Modifiers []string
++	ExtraModifiers *[]string
++}
++func (r *Runtime) RecordNeutralStatVector(owner int, values map[string]float64, modifiers []string, q StatQueryContext, extra ...[]string) {
++	if !r.NeutralEnabled() || q.runtime!=r || q.id==0 || owner<0 { return }
++	if len(r.neutralStatObservations)>=20000 { r.neutralStatObservationsTruncated=true;return }
++	mode:="stat";if q.nonExtra {mode="non_extra_stat"}
++	copied:=make(map[string]float64,len(values))
++	for key,value:=range values {
++		if !finite(value) {r.neutralStatObservationsTruncated=true;return}
++		copied[key]=value
++	}
++	row:=NeutralStatObservation{Owner:owner,Order:q.order,Frame:q.frame,Mode:mode,Keys:q.selectedKeys,Values:copied,Modifiers:append([]string{},modifiers...)}
++	if len(extra)==1 {ids:=append([]string{},extra[0]...);row.ExtraModifiers=&ids}
++	r.neutralStatObservations=append(r.neutralStatObservations,row)
++}
++func (r *Runtime) NeutralStatObservations() ([]NeutralStatObservation,bool) {
++	return append([]NeutralStatObservation{},r.neutralStatObservations...),!r.neutralStatObservationsTruncated
++}
++func (q StatQueryContext) SelectedKeys() *[]string {
++	if q.selectedKeys==nil{return nil}
++	keys:=append([]string{},(*q.selectedKeys)...);return &keys
++}
+diff --git a/pkg/gtttrace/neutral_world.go b/pkg/gtttrace/neutral_world.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_world.go
+@@ -0,0 +1,70 @@
++package gtttrace
++
++import ("sort";"reflect")
++
++// Pure identity/expiry snapshots. Never evaluate a modifier Amount or stat
++// getter. Intern unchanged world states so many formula reads share one row.
++type NeutralModifierIdentity struct {
++ Owner int `json:"owner"`
++ Key string `json:"key"`
++ Expiry int `json:"expiry"`
++}
++type NeutralWorldState struct {
++ Facts *EventValue `json:"facts,omitempty"`
++ Targets []EventValue `json:"targets,omitempty"`
++ Order uint64 `json:"order"`
++ Frame int `json:"frame"`
++ Active int `json:"active"`
++ Modifiers []NeutralModifierIdentity `json:"modifiers"`
++}
++type NeutralWorldLedger struct {
++ Complete bool `json:"complete"`
++ States []NeutralWorldState `json:"states"`
++}
++// The production entrypoint decides this before character/weapon/set setup.
++// Query identities remain enabled for Selected; only neutral-only observers stop.
++func (r *Runtime) SetNeutralObservationEnabled(enabled bool) { if r != nil { r.neutralObservationDisabled = !enabled } }
++func (r *Runtime) NeutralEnabled() bool { return r.Enabled() && !r.neutralObservationDisabled }
++func (r *Runtime) BindNeutralWorld(read func() []NeutralModifierIdentity) {
++ if r != nil { r.neutralWorldReader = read }
++}
++func (r *Runtime) BindNeutralTargets(read func() []EventValue) { if r != nil { r.neutralTargetReader = read } }
++func (r *Runtime) BindNeutralResources(read func() EventValue) { if r != nil { r.neutralResourceReader = read } }
++func (r *Runtime) NextNeutralObservationOrder() uint64 {
++ order := r.NextObservationOrder()
++ r.CaptureNeutralWorldAt(order)
++ return order
++}
++func (r *Runtime) CaptureNeutralWorldAt(order uint64) {
++ if !r.NeutralEnabled() || order == 0 || r.neutralWorldReader == nil { return }
++ mods := r.neutralWorldReader()
++ var targets []EventValue
++ if r.neutralTargetReader != nil { targets = r.neutralTargetReader() }
++ var facts *EventValue
++ if r.neutralResourceReader != nil { value:=r.neutralResourceReader();facts=&value }
++ sort.Slice(mods, func(i,j int) bool { if mods[i].Owner != mods[j].Owner { return mods[i].Owner < mods[j].Owner }; return mods[i].Key < mods[j].Key })
++ active := -1
++ if r.combatActive != nil { active = r.combatActive() }
++ if len(r.neutralWorldStates) > 0 {
++  previous := r.neutralWorldStates[len(r.neutralWorldStates)-1]
++  equal := previous.Active == active && len(previous.Modifiers) == len(mods) && ((len(previous.Targets)==0 && len(targets)==0) || reflect.DeepEqual(previous.Targets, targets))
++  equal = equal && reflect.DeepEqual(previous.Facts,facts)
++  if equal { for i, m := range mods { if previous.Modifiers[i] != m { equal = false; break } } }
++  if equal { return }
++ }
++ if len(r.neutralWorldStates) >= maxCombatEventRows { r.neutralWorldTruncated = true; return }
++ if facts!=nil {value:=cloneEventValues([]EventValue{*facts})[0];facts=&value}
++ r.neutralWorldStates = append(r.neutralWorldStates, NeutralWorldState{Order:order,Frame:r.Frame(),Active:active,Modifiers:append([]NeutralModifierIdentity{},mods...),Targets:cloneEventValues(targets),Facts:facts})
++}
++func (r *Runtime) NeutralWorld() NeutralWorldLedger {
++ out := NeutralWorldLedger{States: []NeutralWorldState{}}
++ if r == nil { return out }
++ out.Complete = r.NeutralEnabled() && r.neutralWorldReader != nil && !r.neutralWorldTruncated
++ for _, row := range r.neutralWorldStates {
++  row.Modifiers = append([]NeutralModifierIdentity{},row.Modifiers...)
++  row.Targets = cloneEventValues(row.Targets)
++  if row.Facts!=nil {value:=cloneEventValues([]EventValue{*row.Facts})[0];row.Facts=&value}
++  out.States = append(out.States,row)
++ }
++ return out
++}
+diff --git a/pkg/gtttrace/neutral_world_test.go b/pkg/gtttrace/neutral_world_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_world_test.go
+@@ -0,0 +1,38 @@
++package gtttrace
++
++import "testing"
++
++func TestNeutralWorldKeepsExpiryRefreshAndInternsStableState(t *testing.T) {
++ r:=NewRuntime(); r.Enable(); frame,active:=3,0; r.BindFrame(&frame);r.BindActiveIndex(func()int{return active})
++ mods:=[]NeutralModifierIdentity{{Owner:1,Key:"shared",Expiry:30}}
++ calls:=0;r.BindNeutralWorld(func()[]NeutralModifierIdentity{calls++;return append([]NeutralModifierIdentity(nil),mods...)})
++ first:=r.NextNeutralObservationOrder();frame=4;r.NextNeutralObservationOrder()
++ mods[0].Expiry=35;r.NextNeutralObservationOrder();active=1;r.NextNeutralObservationOrder()
++ out:=r.NeutralWorld()
++ if !out.Complete || len(out.States)!=3 || out.States[0].Order!=first || out.States[0].Modifiers[0].Expiry!=30 || out.States[1].Modifiers[0].Expiry!=35 || calls!=4 {t.Fatal(out,calls)}
++ out.States[0].Modifiers[0].Expiry=-1
++ if r.NeutralWorld().States[0].Modifiers[0].Expiry!=30 {t.Fatal("mutable world export")}
++ var disabled *Runtime
++ if disabled.NextNeutralObservationOrder()!=0 || disabled.NeutralWorld().Complete {t.Fatal("disabled evidence")}
++}
++
++func TestNeutralWorldRetainsAuraChangesWithoutAliasing(t *testing.T) {
++ r:=NewRuntime();r.Enable();r.BindNeutralWorld(func()[]NeutralModifierIdentity{return []NeutralModifierIdentity{}})
++ target:=EventValue{Kind:"target",Fields:map[string]EventValue{"Key":{Kind:"number",Number:1},"Auras":{Kind:"array",Items:[]EventValue{{Kind:"bool"}}}}}
++ r.BindNeutralTargets(func()[]EventValue{return []EventValue{target}})
++ r.NextNeutralObservationOrder();r.NextNeutralObservationOrder()
++ target.Fields["Auras"].Items[0].Boolean=true;r.NextNeutralObservationOrder()
++ out:=r.NeutralWorld()
++ if len(out.States)!=2 || out.States[0].Targets[0].Fields["Auras"].Items[0].Boolean || !out.States[1].Targets[0].Fields["Auras"].Items[0].Boolean {t.Fatal(out)}
++ out.States[1].Targets[0].Fields["Auras"].Items[0].Boolean=false
++ if !r.NeutralWorld().States[1].Targets[0].Fields["Auras"].Items[0].Boolean {t.Fatal("target export aliases live facts")}
++}
++
++func TestNeutralObserversDisabledButQueryIdentitySurvives(t *testing.T) {
++ r:=NewRuntime();r.Enable();r.SetNeutralObservationEnabled(false)
++ calls:=0;r.BindNeutralWorld(func()[]NeutralModifierIdentity{calls++;return nil})
++ if r.NextNeutralObservationOrder()==0 || r.BeginCombatEvent(0,nil)!=0 || calls!=0 || r.NeutralWorld().Complete {t.Fatal("neutral-only observer ran")}
++ if !r.Enabled() || r.NeutralEnabled() {t.Fatal("disabled ordinary trace")}
++ r.SetNeutralObservationEnabled(true);r.NextNeutralObservationOrder()
++ if calls!=1 || !r.NeutralWorld().Complete {t.Fatal("neutral observer not reenabled")}
++}
+diff --git a/pkg/gtttrace/observation_order.go b/pkg/gtttrace/observation_order.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/observation_order.go
+@@ -0,0 +1,5 @@
++package gtttrace
++
++// Shared ordering joins stat queries with event emissions, including same-frame
++// nested callbacks. Original query time survives later snapshot use.
++func (q StatQueryContext) ObservationOrder() uint64 { return q.order }
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -119,11 +119,19 @@
+ // Runtime belongs to exactly one core. Simulations may run concurrently, but
+ // a single core executes its event/task callbacks serially.
+ type Runtime struct {
++	nextHitID uint64
++	neutralResourceReader func() EventValue
++	neutralObservationDisabled bool
++	neutralStatObservations []NeutralStatObservation
++	neutralStatObservationsTruncated bool
++	neutralHitlag []NeutralHitlagEvent
++	neutralHitlagTruncated bool
+ 	enabled                           bool
+ 	frame                             *int
+ 	stack                             []ExecutionFrame
+ 	transitions                       []ModifierTransition
+ 	nextNodeID                        uint64
++	nextStatQueryID                   uint64
+ 	sourceOccurrences                 []SourceOccurrence
+ 	sourceValueBindings               []SourceValueBinding
+ 	healthOperations                  []HealthOperation
+@@ -146,6 +154,16 @@
+ 	taskNumericContexts               [][]NumericPayload
+ 	nextTaskQueueID                   uint64
+ 	nextTaskID                        uint64
++	neutralWorldReader                func() []NeutralModifierIdentity
++	neutralTargetReader               func() []EventValue
++	neutralWorldStates                []NeutralWorldState
++	neutralWorldTruncated             bool
++	observationOrder                  uint64
++	combatActive                      func() int
++	combatEvents                      []CombatEvent
++	combatEventStack                   []int
++	combatEventsTruncated              bool
++
+ }
+ 
+ func (r *Runtime) BindFrame(frame *int) {
+diff --git a/pkg/gtttrace/stat_query.go b/pkg/gtttrace/stat_query.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/stat_query.go
+@@ -0,0 +1,60 @@
++package gtttrace
++
++// A query belongs to the instant at which gameplay evaluated its getter, not
++// the later use of a saved snapshot. It records identity and Extra filtering
++// only: it does not prove a changed set's lifecycle or call any modifier again.
++type StatQueryContext struct {
++	runtime  *Runtime
++	id       uint64
++	frame    int
++	sequence int
++	order    uint64
++	nonExtra bool
++	selectedKeys *[]string
++}
++
++func (r *Runtime) NewStatQuery(nonExtra bool) StatQueryContext {
++	if !r.Enabled() || r.nextStatQueryID >= 1<<53-1 {
++		return StatQueryContext{}
++	}
++	r.nextStatQueryID++
++	return StatQueryContext{runtime: r, id: r.nextStatQueryID, frame: r.Frame(), sequence: len(r.stateEvents), order: r.NextNeutralObservationOrder(), nonExtra: nonExtra}
++}
++
++func (r *Runtime) RecordStatQuery(owner int, key string, value float64, modifiers []string, query StatQueryContext) string {
++	if !r.Enabled() || query.runtime != r || query.id == 0 || owner < 0 || key == "" || !finite(value) {
++		return ""
++	}
++	mode := "stat"
++	if query.nonExtra {
++		mode = "non_extra_stat"
++	}
++	row := StateEvent{
++		Frame: r.Frame(), Kind: StateEventNumericEval, OwnerIndex: optionalInt(owner),
++		Operation: optionalString("artifact_stat_read"), Key: optionalString(key),
++		Channel: optionalString("stat_input:" + mode),
++		Value: optionalFloat(value), ModifierEvalIDs: modifiers,
++		CandidateDependencyComplete: false, UncertaintyCodes: []string{"stat_read_external_dependencies_incomplete"},
++	}
++	query.annotate(&row)
++	return r.appendStateEvent(row)
++}
++
++// Selected queries differ from a full snapshot even if their output numbers
++// coincide: AffectedStat controls which modifier closures are evaluated.
++func (r *Runtime) NewSelectedStatQuery(nonExtra bool, keys []string) StatQueryContext {
++	q := r.NewStatQuery(nonExtra)
++	copy := append([]string{}, keys...)
++	q.selectedKeys = &copy
++	return q
++}
++func (q StatQueryContext) annotate(row *StateEvent) {
++	if q.id == 0 { return }
++	row.NeutralStatKeys = q.selectedKeys
++	payload := func(key string, value float64) NumericPayload {
++		return NumericPayload{Key: key, Value: value, Reference: LiteralRef(value)}
++	}
++	row.NumericPayload = append(row.NumericPayload,
++		payload("stat_query_id", float64(q.id)), payload("stat_query_frame", float64(q.frame)),
++		payload("stat_query_sequence", float64(q.sequence)), payload("stat_query_order", float64(q.order)))
++}
+diff --git a/pkg/gtttrace/stat_query_test.go b/pkg/gtttrace/stat_query_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/stat_query_test.go
+@@ -0,0 +1,40 @@
++package gtttrace
++
++import "testing"
++
++func TestParametricStatQueryIdentityAndCaptureTime(t *testing.T) {
++	r := NewRuntime()
++	r.Enable()
++	frame := 10
++	r.BindFrame(&frame)
++	q := r.NewStatQuery(true)
++	frame = 35
++	a := r.RecordStatQuery(2, "em", 125, nil, q)
++	b := r.RecordStatQuery(2, "em", 125, nil, q)
++	if a == "" || a == b {
++		t.Fatal("source uses must retain separate event identities")
++	}
++	rows := r.StateEvents()
++	for _, row := range rows {
++		if row.Channel == nil || *row.Channel != "stat_input:non_extra_stat" || row.Frame != 35 ||
++			row.NumericPayload[0].Value != 1 || row.NumericPayload[1].Value != 10 ||
++			row.NumericPayload[2].Value != 0 || row.CandidateDependencyComplete {
++			t.Fatal("query time/filter lost or unproved replacement accepted", row)
++		}
++	}
++	r.RecordArtifactStatRead(2, "em", 125, nil)
++	rows = r.StateEvents()
++	last := rows[len(rows)-1]
++	if *last.Channel != "stat_input:stat" || last.NumericPayload[0].Value != 2 || last.NumericPayload[1].Value != 35 {
++		t.Fatal("equal values merged distinct reads", last)
++	}
++	other := NewRuntime()
++	other.Enable()
++	if other.RecordStatQuery(2, "em", 125, nil, q) != "" {
++		t.Fatal("foreign runtime query accepted")
++	}
++	var disabled *Runtime
++	if disabled.RecordArtifactStatRead(0, "em", 1, nil) != "" {
++		t.Fatal("disabled trace produced evidence")
++	}
++}
+diff --git a/pkg/gtttrace/state.go b/pkg/gtttrace/state.go
+--- a/pkg/gtttrace/state.go
++++ b/pkg/gtttrace/state.go
+@@ -190,6 +190,9 @@
+ // empty. Keeping one exact shape makes cross-language fail-closed decoding
+ // possible without changing the inherited v1-v5 arrays.
+ type StateEvent struct {
++	NeutralStatKeys *[]string `json:"-"`
++	ObservationOrder uint64 `json:"-"`
++	NeutralInput *EventValue `json:"-"`
+ 	SequenceIndex               int                    `json:"sequence_index"`
+ 	EventID                     string                 `json:"event_id"`
+ 	Frame                       int                    `json:"frame"`
+@@ -249,6 +252,7 @@
+ 	if !r.Enabled() {
+ 		return ""
+ 	}
++	row.ObservationOrder = r.NextObservationOrder()
+ 	row.SequenceIndex = len(r.stateEvents)
+ 	row.EventID = r.nextStateEventID()
+ 	if row.Frame < 0 {
+@@ -749,17 +753,20 @@
+ 	ownerIndex int,
+ 	baseHP, hpp, hp, maxHP float64,
+ 	modifierEvalIDs []string,
++	queries ...StatQueryContext,
+ ) string {
+ 	if !r.Enabled() || ownerIndex < 0 || !finite(baseHP) || !finite(hpp) || !finite(hp) || !finite(maxHP) {
+ 		return ""
+ 	}
+-	return r.appendStateEvent(StateEvent{
++	row := StateEvent{
+ 		Frame: r.Frame(), Kind: StateEventMaxHPRead, OwnerIndex: optionalInt(ownerIndex),
+ 		ModifierEvalIDs:             modifierEvalIDs,
+ 		Output:                      map[string]float64{"base_hp": baseHP, "hp%": hpp, "hp": hp, "max_hp": maxHP},
+ 		CandidateDependencyComplete: false,
+ 		UncertaintyCodes:            []string{"max_hp_candidate_dependency_incomplete"},
+-	})
++	}
++	if len(queries) == 1 { queries[0].annotate(&row) }
++	return r.appendStateEvent(row)
+ }
+ 
+ func (r *Runtime) RecordHealthFieldBinding(operationID, fieldKey, boundEventID string, value float64) string {
+@@ -778,15 +785,7 @@
+ // A typed character getter result, including its already executed modifiers.
+ // Reuses numeric_eval wire shape; it is not an arbitrary named source formula.
+ func (r *Runtime) RecordArtifactStatRead(owner int, key string, value float64, modifiers []string) string {
+-	if !r.Enabled() || owner < 0 || key == "" || !finite(value) {
+-		return ""
+-	}
+-	return r.appendStateEvent(StateEvent{
+-		Frame: r.Frame(), Kind: StateEventNumericEval, OwnerIndex: optionalInt(owner),
+-		Operation: optionalString("artifact_stat_read"), Key: optionalString(key),
+-		Value: optionalFloat(value), ModifierEvalIDs: modifiers,
+-		CandidateDependencyComplete: false, UncertaintyCodes: []string{"stat_read_external_dependencies_incomplete"},
+-	})
++	return r.RecordStatQuery(owner, key, value, modifiers, r.NewStatQuery(false))
+ }
+ 
+ func (r *Runtime) EnterHealthOperation(operationID string) func() {
+diff --git a/pkg/optimization/gtt_effect_inputs.go b/pkg/optimization/gtt_effect_inputs.go
+--- a/pkg/optimization/gtt_effect_inputs.go
++++ b/pkg/optimization/gtt_effect_inputs.go
+@@ -17,6 +17,7 @@
+ // digest in the consumer. Context, source/config, seed and initialization order
+ // remain explicit. Neither a port nor its observed value is a set-effect proof.
+ type GTTEffectInputs struct {
++	Neutral *gttcompact.NeutralInputs `json:"neutral,omitempty"`
+ 	SchemaVersion            int                          `json:"schema_version"`
+ 	Capability               string                       `json:"capability"`
+ 	MemberContentSHA256      string                       `json:"member_content_sha256"`
+@@ -45,7 +46,7 @@
+ 		ContextSHA256:       request.ContextSHA256, InputConfigSHA256: traceTextSHA256(inputConfig), SourceConfigSHA256: traceTextSHA256(config),
+ 		SourceManifestBodySHA256: gttsource.ManifestBodySHA256(),
+ 		Seed:                     request.Seed, CharacterKeys: append([]string(nil), owners...),
+-		EffectInputs: effects, ResistanceInputs: resistance,
++		EffectInputs: effects, ResistanceInputs: resistance, Neutral: audit.Neutral,
+ 	})
+ }
+ 
+diff --git a/pkg/optimization/gtt_health_bonus_test.go b/pkg/optimization/gtt_health_bonus_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_health_bonus_test.go
+@@ -0,0 +1,17 @@
++package optimization
++import("testing";"github.com/genshinsim/gcsim/pkg/gtttrace")
++func TestHealthSourceBonusBindingRequiresExactOriginalValue(t *testing.T){
++ bonus,wrong:=.2,.3
++ operation,key,boundID:="heal","source_bonus","bonus"
++ v:=gttStateValidation{health:map[string]gtttrace.HealthOperation{operation:{SourceBonus:&bonus}},events:map[string]gtttrace.StateEvent{boundID:{Kind:gtttrace.StateEventNumericEval,Value:&bonus}}}
++ row:=gtttrace.StateEvent{Kind:gtttrace.StateEventHealthFieldBinding,HealthOperationID:&operation,Key:&key,Value:&bonus,BoundEventID:&boundID}
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err!=nil{t.Fatal(err)}
++ row.Value=&wrong
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err==nil{t.Fatal("accepted changed operation value")}
++ row.Value=&bonus
++ v.events[boundID]=gtttrace.StateEvent{Kind:gtttrace.StateEventNumericEval,Value:&wrong}
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err==nil{t.Fatal("accepted changed source value")}
++ v.events[boundID]=gtttrace.StateEvent{Kind:gtttrace.StateEventNumericEval,Value:&bonus}
++ v.health[operation]=gtttrace.HealthOperation{}
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err==nil{t.Fatal("accepted absent source bonus")}
++}
+diff --git a/pkg/optimization/gtt_hit_identity.go b/pkg/optimization/gtt_hit_identity.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_hit_identity.go
+@@ -0,0 +1,20 @@
++package optimization
++
++import (
++	"fmt"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++)
++
++// Identity is allocated before reactions/callbacks run. A nested hit can
++// complete before its parent, so completion order is not identity order.
++// Preserve the observed order and every event reference; never renumber/sort.
++func validateGTTTraceHitIdentities(hits []info.GTTTraceHit) error {
++	seen := make(map[uint64]bool, len(hits))
++	for index, hit := range hits {
++		if hit.HitID == 0 || hit.AttackID == 0 || seen[hit.HitID] {
++			return fmt.Errorf("gtt trace equation: invalid hit identity at observation %d: hit=%d attack=%d duplicate=%t", index, hit.HitID, hit.AttackID, seen[hit.HitID])
++		}
++		seen[hit.HitID] = true
++	}
++	return nil
++}
+diff --git a/pkg/optimization/gtt_hit_identity_test.go b/pkg/optimization/gtt_hit_identity_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_hit_identity_test.go
+@@ -0,0 +1,23 @@
++package optimization
++
++import (
++	"reflect"
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++)
++
++func TestNeutralHitIdentityValidation(t *testing.T) {
++	for _, ids := range [][]uint64{{1, 2, 3}, {2, 1, 3}, {2, 5, 1}} {
++		hits := make([]info.GTTTraceHit, len(ids))
++		for i, id := range ids { hits[i] = info.GTTTraceHit{HitID:id, AttackID:7} }
++		before := append([]info.GTTTraceHit(nil), hits...)
++		if err := validateGTTTraceHitIdentities(hits); err != nil { t.Fatal(ids, err) }
++		if !reflect.DeepEqual(hits, before) { t.Fatal("validator changed observations/identities") }
++	}
++	for _, hits := range [][]info.GTTTraceHit{
++		{{HitID:0, AttackID:7}}, {{HitID:1, AttackID:0}},
++		{{HitID:2, AttackID:7}, {HitID:2, AttackID:8}},
++	} {
++		if validateGTTTraceHitIdentities(hits) == nil { t.Fatal("accepted invalid identity", hits) }
++	}
++}
+diff --git a/pkg/optimization/gtt_trace_equation.go b/pkg/optimization/gtt_trace_equation.go
+--- a/pkg/optimization/gtt_trace_equation.go
++++ b/pkg/optimization/gtt_trace_equation.go
+@@ -154,6 +154,9 @@
+ 		return err
+ 	}
+ 	optstats.PrepareOptimizerTraceEquation(core)
++	neutral := true
++	for _, char := range simcfg.Characters { if len(char.Sets) != 0 { neutral = false; break } }
++	core.GTTTrace.SetNeutralObservationEnabled(neutral)
+ 	evaluator, err := eval.NewEvaluator(file, gcsl, core)
+ 	if err != nil {
+ 		return err
+@@ -293,10 +296,10 @@
+ 	if len(buffer.Hits) == 0 {
+ 		return errors.New("gtt trace equation: no enemy damage hits captured")
+ 	}
++	if err := validateGTTTraceHitIdentities(buffer.Hits); err != nil {
++		return err
++	}
+ 	for index, hit := range buffer.Hits {
+-		if hit.HitID != uint64(index+1) || hit.AttackID == 0 {
+-			return errors.New("gtt trace equation: unstable hit identity")
+-		}
+ 		switch hit.FormulaKind {
+ 		case info.GTTTraceFormulaStandard, info.GTTTraceFormulaDirectReaction, info.GTTTraceFormulaDirectLunar, info.GTTTraceFormulaOpaqueCustom:
+ 		default:
+diff --git a/pkg/optimization/gtt_trace_equation_state.go b/pkg/optimization/gtt_trace_equation_state.go
+--- a/pkg/optimization/gtt_trace_equation_state.go
++++ b/pkg/optimization/gtt_trace_equation_state.go
+@@ -261,6 +261,11 @@
+ 
+ func healthFieldValue(row gtttrace.HealthOperation, key string) (float64, error) {
+ 	switch key {
++	case "source_bonus":
++		if row.SourceBonus == nil {
++			return 0, errors.New("health source bonus is absent")
++		}
++		return *row.SourceBonus, nil
+ 	case "input_value":
+ 		return row.InputValue, nil
+ 	case "adjusted_input_value":
+diff --git a/pkg/optimization/optstats/gtt_neutral_context.go b/pkg/optimization/optstats/gtt_neutral_context.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/optstats/gtt_neutral_context.go
+@@ -0,0 +1,19 @@
++package optstats
++
++import "github.com/genshinsim/gcsim/pkg/gtttrace"
++
++// Engine-owned, already computed context: no additional stat getter evaluation.
++type GTTNeutralCharacter struct {
++	Facts map[string]gtttrace.EventValue `json:"facts"`
++	Index int `json:"index"`
++	Key string `json:"key"`
++	Base gtttrace.EventValue `json:"base"`
++	Stats gtttrace.EventValue `json:"stats"`
++}
++type GTTNeutralContext struct {
++	DurationFrames int `json:"duration_frames"`
++	NoSets bool `json:"no_sets"`
++	Moonsign int `json:"moonsign"`
++	Active int `json:"active"`
++	Characters []GTTNeutralCharacter `json:"characters"`
++}
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -11,6 +11,7 @@
+ 	"github.com/genshinsim/gcsim/pkg/core"
+ 	"github.com/genshinsim/gcsim/pkg/core/attributes"
+ 	"github.com/genshinsim/gcsim/pkg/core/event"
++	"github.com/genshinsim/gcsim/pkg/core/hacks"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
+ 	"github.com/genshinsim/gcsim/pkg/core/player/character"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+@@ -41,6 +42,8 @@
+ }
+ 
+ type GTTTraceEquationBuffer struct {
++	NeutralHitlag gtttrace.NeutralHitlagLedger `json:"-"`
++	NeutralWorld gtttrace.NeutralWorldLedger `json:"-"`
+ 	DurationFrames      int                           `json:"-"`
+ 	Seed                int64                         `json:"-"`
+ 	Hits                []info.GTTTraceHit            `json:"hits"`
+@@ -53,8 +56,11 @@
+ 	StateSlots          []gtttrace.StateSlot          `json:"state_slots"`
+ 	StateEvents         []gtttrace.StateEvent         `json:"state_events"`
+ 	EnergyLedger        gtttrace.EnergyLedger         `json:"energy_ledger"`
++	NeutralStatObservations []gtttrace.NeutralStatObservation `json:"-"`
++	NeutralStatObservationsComplete bool `json:"-"`
++	NeutralContext GTTNeutralContext `json:"-"`
++	CombatEvents gtttrace.CombatEventLedger `json:"-"`
+ 	nextAttackID        uint64
+-	nextHitID           uint64
+ 	nextEventID         uint64
+ }
+ 
+@@ -79,7 +85,17 @@
+ 			UncertaintyCodes: []string{"energy_source_schedule_observed_not_symbolic"},
+ 		},
+ 	}
++	out.NeutralContext = GTTNeutralContext{NoSets: true, Moonsign: core.Player.GetMoonsignLevel(), Active: core.Player.Active()}
+ 	for _, char := range core.Player.Chars() {
++		if len(char.Equip.Sets) != 0 { out.NeutralContext.NoSets = false }
++		out.NeutralContext.Characters = append(out.NeutralContext.Characters, GTTNeutralCharacter{Facts: map[string]gtttrace.EventValue{
++            "IsHexerei": {Kind:"bool", Boolean:char.IsHexerei},
++            "NOCharIsSpecial": {Kind:"bool", Boolean:hacks.NOCharIsSpecial(char.Base.Key)},
++            "Weapon": {Kind:"object", Fields:map[string]gtttrace.EventValue{
++                "Class": info.GTTCombatEventValues([]any{char.Weapon.Class})[0],
++                "Refine": info.GTTCombatEventValues([]any{char.Weapon.Refine})[0],
++            }},
++        }, Index: char.Index(), Key: char.Base.Key.String(), Base: info.GTTCombatEventValues([]any{char.Base})[0], Stats: info.GTTCombatEventValues([]any{char.BaseStats})[0]})
+ 		out.EnergyLedger.InitialStates = append(out.EnergyLedger.InitialStates, gtttrace.EnergyCharacterState{
+ 			CharacterIndex: char.Index(), CharacterKey: char.Base.Key.String(),
+ 			Energy: char.Energy, EnergyMax: char.EnergyMax,
+@@ -144,8 +160,11 @@
+ 		if trace == nil {
+ 			trace = opaqueTraceHit(core, target, attack, actualDamage)
+ 		}
+-		out.nextHitID++
+-		trace.HitID = out.nextHitID
++		// Normal enemy hits were numbered before OnEnemyHit observation. Preserve
++		// that identity; opaque terminal-only producers use the same allocator.
++		if trace.HitID == 0 {
++			trace.HitID = core.GTTTrace.NextHitID()
++		}
+ 		terminalEventID := "hit:" + strconv.FormatUint(trace.HitID, 10)
+ 		bindSourceTraceTerminal(core, attack, trace, terminalEventID)
+ 		if trace.ReportedDamage != actualDamage {
+@@ -271,6 +290,7 @@
+ 
+ func (b GTTTraceEquationBuffer) Flush(core *core.Core) GTTTraceEquationBuffer {
+ 	b.DurationFrames = core.F
++	b.NeutralContext.DurationFrames = core.F
+ 	b.Seed = core.Seed
+ 	b.ProviderTransitions = core.GTTTrace.ModifierTransitions()
+ 	b.SourceOccurrences = core.GTTTrace.SourceOccurrences()
+@@ -278,6 +298,10 @@
+ 	b.HealthOperations = core.GTTTrace.HealthOperations()
+ 	b.StateSlots = core.GTTTrace.StateSlots()
+ 	b.StateEvents = core.GTTTrace.StateEvents()
++	b.CombatEvents = core.GTTTrace.CombatEvents()
++	b.NeutralStatObservations,b.NeutralStatObservationsComplete = core.GTTTrace.NeutralStatObservations()
++	b.NeutralWorld = core.GTTTrace.NeutralWorld()
++	b.NeutralHitlag = core.GTTTrace.NeutralHitlag()
+ 	seen := map[string]bool{
+ 		"gadget_wave_state_lineage_not_instrumented": true,
+ 		"provider_transition_timeline_incomplete":    true,

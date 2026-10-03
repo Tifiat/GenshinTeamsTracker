@@ -47,6 +47,9 @@ func (index *Index) ArtifactLinearPriorities(actor int, weights []float64) (map[
 }
 
 func (p Package) Key() string {
+	if len(p.Sets) == 0 {
+		return "none"
+	}
 	var parts []string
 	for _, s := range p.Sets {
 		parts = append(parts, fmt.Sprintf("%s:%d", s.SetUID, s.Count))
@@ -55,11 +58,11 @@ func (p Package) Key() string {
 }
 
 func (p Package) Validate() error {
-	if len(p.Sets) != 1 && len(p.Sets) != 2 {
-		return fmt.Errorf("package must be 4p or distinct 2+2")
+	if len(p.Sets) > 2 {
+		return fmt.Errorf("package must be none, 2p, 4p or distinct 2+2")
 	}
 	for i, s := range p.Sets {
-		if s.SetUID == "" || s.Count != 4/len(p.Sets) || (i > 0 && p.Sets[i-1].SetUID >= s.SetUID) {
+		if s.SetUID == "" || (s.Count != 2 && s.Count != 4) || (len(p.Sets) == 2 && s.Count != 2) || (i > 0 && p.Sets[i-1].SetUID >= s.SetUID) {
 			return fmt.Errorf("noncanonical package")
 		}
 	}
@@ -104,6 +107,17 @@ func (index *Index) FeasiblePackages(catalog []SetCapability, excluded map[int64
 	}
 	sort.Strings(pairs)
 	result := four
+	// Unlike 4p/2+2, these packages must also prove that no OTHER bonus is
+	// accidentally formed. A five-slot matching DP is exact, without items^5.
+	if _, _, e := index.packageLinearSeed(Package{}, nil, excluded); e == nil {
+		result = append(result, Package{})
+	}
+	for _, uid := range pairs {
+		p := Package{Sets: []contracts.SetRequirement{{SetUID: uid, Count: 2}}}
+		if _, _, e := index.packageLinearSeed(p, nil, excluded); e == nil {
+			result = append(result, p)
+		}
+	}
 	for i, a := range pairs {
 		for _, b := range pairs[i+1:] {
 			if bits.OnesCount8(masks[a]|masks[b]) >= 4 {
@@ -124,6 +138,7 @@ func (index *Index) ForPackages(packages [wearerCount]Package, seed Assignment, 
 		return nil, fmt.Errorf("artifact index required")
 	}
 	view := *index
+	view.exactPackages = true
 	view.Coordinates = append([]string(nil), coordinates...)
 	view.coordinateIndex = make(map[string]int, len(coordinates))
 	for i, key := range coordinates {
@@ -191,6 +206,12 @@ func (index *Index) PackagePriority(p Package, priority map[int64]float64, occup
 	return score, e
 }
 
+// PackageLinearAssignment is the same exact single-wearer linear seed with an
+// explicit reservation. Multi-wearer callers must validate the final team.
+func (index *Index) PackageLinearAssignment(p Package, priority map[int64]float64, occupied map[int64]bool) ([5]int64, float64, error) {
+	return index.packageLinearSeed(p, priority, occupied)
+}
+
 func (index *Index) packageLinearSeed(p Package, priority map[int64]float64, used map[int64]bool) ([5]int64, float64, error) {
 	if index == nil {
 		return [5]int64{}, 0, fmt.Errorf("missing package index")
@@ -202,6 +223,9 @@ func (index *Index) packageLinearSeed(p Package, priority map[int64]float64, use
 		if math.IsNaN(score) || math.IsInf(score, 0) {
 			return [5]int64{}, 0, fmt.Errorf("nonfinite package priority")
 		}
+	}
+	if len(p.Sets) == 0 || len(p.Sets) == 1 && p.Sets[0].Count == 2 {
+		return index.sparsePackageSeed(p, priority, used)
 	}
 	var best [slotCount][3]int64
 	for slot, ids := range index.CandidateIDsBySlot {
@@ -223,6 +247,10 @@ func (index *Index) packageLinearSeed(p Package, priority map[int64]float64, use
 			}
 		}
 	}
+	return choosePackageLinear(p, best, priority)
+}
+
+func choosePackageLinear(p Package, best [slotCount][3]int64, priority map[int64]float64) ([5]int64, float64, error) {
 	var chosen [slotCount]int64
 	bestScore := 0.0
 	found := false

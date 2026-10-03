@@ -4671,9 +4671,13 @@ class AppShellTest(unittest.TestCase):
                 workspace = shell.left_host.character_weapon_workspace
                 workspace.reload_weapons()
 
-                shell._on_weapon_clicked(
-                    _weapon_asset("13407", "Favonius Lance", weapon_type=13)
-                )
+                with patch(
+                    "ui.app_shell.load_account_weapon_stack_asset_items",
+                    side_effect=AssertionError("weapon catalog should stay cached"),
+                ):
+                    shell._on_weapon_clicked(
+                        _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+                    )
 
                 assets_by_key = {
                     asset["metadata"]["weapon"]["source_key"]: asset

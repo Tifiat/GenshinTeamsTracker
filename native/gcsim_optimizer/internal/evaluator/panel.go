@@ -36,12 +36,14 @@ type ResponseLedgerEntry struct {
 }
 
 type Panel struct {
-	members       []*formula.CompiledMember
-	coordinates   []string
-	actorKeys     []string
-	ledger        []ResponseLedgerEntry
-	opaqueReasons []string
-	baseline      Score
+	members        []*formula.CompiledMember
+	coordinates    []string
+	actorKeys      []string
+	ledger         []ResponseLedgerEntry
+	opaqueReasons  []string
+	baseline       Score
+	prepared       *formula.ParametricProgram
+	parametricView bool
 }
 
 func Compile(request contracts.OptimizerRequest, compact contracts.CompactIR) (*Panel, error) {
@@ -178,6 +180,9 @@ func (panel *Panel) Evaluate(deltas []float64) (Score, error) {
 	if len(deltas) != len(panel.coordinates) {
 		return Score{}, fmt.Errorf("dense delta length mismatch")
 	}
+	if panel.parametricView {
+		return Score{}, fmt.Errorf("parametric view supplies aggregate DPS only; actor/channel detail requires a separate bound projection")
+	}
 	damages := make([]float64, len(panel.members))
 	dps := make([]float64, len(panel.members))
 	actorDamageValues := make([][]float64, len(panel.actorKeys))
@@ -223,6 +228,9 @@ func (panel *Panel) EvaluateDPS(deltas []float64) (float64, error) {
 	if len(deltas) != len(panel.coordinates) {
 		return 0, fmt.Errorf("dense delta length mismatch")
 	}
+	if panel.parametricView {
+		return panel.prepared.Evaluate(deltas, nil)
+	}
 	values := make([]float64, len(panel.members))
 	for index, member := range panel.members {
 		damage, err := member.EvaluateDamageDense(deltas)
@@ -246,6 +254,9 @@ func (panel *Panel) EvaluateDPSForActor(deltas []float64, actor int) (float64, e
 	if actor < 0 || actor >= len(panel.actorKeys) {
 		return 0, fmt.Errorf("actor index is outside compiled panel")
 	}
+	if panel.parametricView {
+		return panel.prepared.Evaluate(deltas, nil)
+	}
 	values := make([]float64, len(panel.members))
 	for index, member := range panel.members {
 		damage, err := member.EvaluateDamageDenseForActor(deltas, actor)
@@ -258,8 +269,34 @@ func (panel *Panel) EvaluateDPSForActor(deltas []float64, actor int) (float64, e
 }
 
 func (panel *Panel) Coordinates() []string { return append([]string(nil), panel.coordinates...) }
-func (panel *Panel) ActorKeys() []string   { return append([]string(nil), panel.actorKeys...) }
-func (panel *Panel) Baseline() Score       { return panel.baseline }
+
+// ArtifactProgram keeps the exact captured team context and freezes only the
+// other wearers' artifact coordinates. Used by the All Sets inventory solver.
+func (panel *Panel) ArtifactProgram(anchor []float64, actor int) (*formula.ArtifactProgram, error) {
+	return panel.ArtifactProgramForActors(anchor, actor)
+}
+
+func (panel *Panel) ArtifactProgramForActors(anchor []float64, actors ...int) (*formula.ArtifactProgram, error) {
+	if panel.prepared == nil {
+		var err error
+		panel.prepared, err = formula.PrepareParametric(panel.members, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return panel.prepared.Specialize(anchor, nil, actors...)
+}
+
+// PrepareEffectInputs retains artifact AND set-effect ports in one aggregate
+// program. Call once for a bound neutral panel, not once for each set package.
+func (panel *Panel) PrepareEffectInputs(ports []formula.EffectPort) (*formula.ParametricProgram, error) {
+	return formula.PrepareParametric(panel.members, ports)
+}
+func (panel *Panel) PrepareEffectInputsWithReads(ports []formula.EffectPort, reads []formula.ReadRoot) (*formula.ParametricProgram, error) {
+	return formula.PrepareParametricWithReads(panel.members, ports, reads)
+}
+func (panel *Panel) ActorKeys() []string { return append([]string(nil), panel.actorKeys...) }
+func (panel *Panel) Baseline() Score     { return panel.baseline }
 func (panel *Panel) ResponseLedger() []ResponseLedgerEntry {
 	output := make([]ResponseLedgerEntry, len(panel.ledger))
 	for index, row := range panel.ledger {

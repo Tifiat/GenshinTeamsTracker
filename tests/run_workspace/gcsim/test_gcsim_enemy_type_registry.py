@@ -3,6 +3,8 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from run_workspace.gcsim.enemy_type_registry import (
     GcsimEnemyNameCandidate,
@@ -11,12 +13,39 @@ from run_workspace.gcsim.enemy_type_registry import (
     MATCH_METHOD_COMPATIBLE_BASE_NAME,
     MATCH_METHOD_EXACT_NORMALIZED_NAME,
     MATCH_METHOD_MANUAL_ALIAS,
+    find_default_gcsim_enemy_shortcut_source,
     load_gcsim_enemy_type_registry_from_go_source,
     normalize_gcsim_enemy_name,
 )
 
 
 class GcsimEnemyTypeRegistryTest(unittest.TestCase):
+    def test_default_source_follows_selected_active_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            selected = root / "selected" / "pkg" / "shortcut" / "monster.dm.go"
+            selected.parent.mkdir(parents=True)
+            selected.write_text('"selected": 1,\n', encoding="utf-8")
+            with patch("run_workspace.gcsim.engine_store.GcsimEngineStore") as store_type:
+                store_type.return_value.get_active_engine.return_value = SimpleNamespace(
+                    path=root / "selected"
+                )
+                self.assertEqual(find_default_gcsim_enemy_shortcut_source(), selected)
+                store_type.return_value.get_active_engine.return_value = None
+                self.assertIsNone(find_default_gcsim_enemy_shortcut_source())
+
+    def test_default_source_accepts_legacy_layout_only_inside_active_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            selected = root / "selected" / "pkg" / "shortcut" / "enemies_gen.go"
+            selected.parent.mkdir(parents=True)
+            selected.write_text('"selected": 1,\n', encoding="utf-8")
+            with patch("run_workspace.gcsim.engine_store.GcsimEngineStore") as store_type:
+                store_type.return_value.get_active_engine.return_value = SimpleNamespace(
+                    path=root / "selected"
+                )
+                self.assertEqual(find_default_gcsim_enemy_shortcut_source(), selected)
+
     def test_loads_target_types_from_go_shortcut_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "enemies_gen.go"

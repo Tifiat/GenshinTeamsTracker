@@ -51,6 +51,17 @@ class HoYoLABImportLifecycleTest(unittest.TestCase):
         process.setArguments.assert_called_once_with(["-m", "hoyolab_export.run_import", "--change-equipment"])
         self.assertFalse(self.page.change_equipment_switch.isEnabled())
 
+    def test_image_refresh_button_runs_only_image_mode(self):
+        self.page.change_equipment_switch.click()
+        process = MagicMock()
+        process.waitForStarted.return_value = True
+        with patch.object(account_data, "QProcess", return_value=process):
+            self.page.btn_images_refresh.click()
+        process.setArguments.assert_called_once_with(
+            ["-m", "hoyolab_export.run_import", "--images-only"]
+        )
+        self.assertFalse(self.page.btn_images_refresh.isEnabled())
+
     def test_failure_and_crash_restore_button_after_cleanup_and_allow_restart(self):
         for exit_code, status in ((1, QProcess.ExitStatus.NormalExit), (-1, QProcess.ExitStatus.CrashExit)):
             with self.subTest(status=status):

@@ -150,13 +150,14 @@ def run_active_gcsim_artifact(
     runner: ArtifactRunner | None = None,
     enable_shipped_fallback: bool = False,
     shipped_fallback_artifact_path: str | Path | None = None,
+    expected_engine_id: str | None = None,
 ) -> GcsimArtifactRunResult:
     store = GcsimEngineStore(store_dir or DEFAULT_GCSIM_ENGINE_STORE_DIR)
     try:
         active = store.get_active_engine()
     except GcsimEngineStoreError as exc:
         fallback = _resolve_fallback(
-            enabled=enable_shipped_fallback,
+            enabled=enable_shipped_fallback and not expected_engine_id,
             candidate_path=shipped_fallback_artifact_path,
         )
         if fallback.ready:
@@ -180,7 +181,7 @@ def run_active_gcsim_artifact(
         )
     if active is None:
         fallback = _resolve_fallback(
-            enabled=enable_shipped_fallback,
+            enabled=enable_shipped_fallback and not expected_engine_id,
             candidate_path=shipped_fallback_artifact_path,
         )
         if fallback.ready:
@@ -203,10 +204,24 @@ def run_active_gcsim_artifact(
             error="No active GCSIM engine is configured.",
         )
 
+    if expected_engine_id and active.engine_id != expected_engine_id:
+        return _run_result(
+            status="active_engine_changed",
+            success=False,
+            engine_id=active.engine_id,
+            engine_path=active.path,
+            artifact_source="active_engine",
+            active_artifact_status="active_engine_changed",
+            error=(
+                f"Selected GCSIM engine changed from {expected_engine_id} "
+                f"to {active.engine_id} before execution."
+            ),
+        )
+
     artifact_path = _active_artifact_path(active.path, active.manifest.metadata)
     if artifact_path is None:
         fallback = _resolve_fallback(
-            enabled=enable_shipped_fallback,
+            enabled=enable_shipped_fallback and not expected_engine_id,
             candidate_path=shipped_fallback_artifact_path,
         )
         if fallback.ready:
@@ -234,7 +249,7 @@ def run_active_gcsim_artifact(
         )
     if not artifact_path.exists():
         fallback = _resolve_fallback(
-            enabled=enable_shipped_fallback,
+            enabled=enable_shipped_fallback and not expected_engine_id,
             candidate_path=shipped_fallback_artifact_path,
         )
         if fallback.ready:

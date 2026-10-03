@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+import math
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from hoyolab_export.paths import PROJECT_ROOT
+from hoyolab_export.asset_paths import element_icon_path
 from localization import tr
 from ui.artifact_browser.card_delegate import cached_scaled_pixmap
 from ui.artifact_browser.models import ArtifactItem
@@ -53,14 +55,22 @@ OPTIMIZER_SLOT_POSITIONS = {
     "circlet": 5,
 }
 ELEMENT_MAIN_STAT_ICONS = {
-    PYRO_DAMAGE: PROJECT_ROOT / "assets" / "filters" / "element_pyro.png",
-    HYDRO_DAMAGE: PROJECT_ROOT / "assets" / "filters" / "element_hydro.png",
-    ELECTRO_DAMAGE: PROJECT_ROOT / "assets" / "filters" / "element_electro.png",
-    CRYO_DAMAGE: PROJECT_ROOT / "assets" / "filters" / "element_cryo.png",
-    ANEMO_DAMAGE: PROJECT_ROOT / "assets" / "filters" / "element_anemo.png",
-    GEO_DAMAGE: PROJECT_ROOT / "assets" / "filters" / "element_geo.png",
-    DENDRO_DAMAGE: PROJECT_ROOT / "assets" / "filters" / "element_dendro.png",
+    PYRO_DAMAGE: "pyro",
+    HYDRO_DAMAGE: "hydro",
+    ELECTRO_DAMAGE: "electro",
+    CRYO_DAMAGE: "cryo",
+    ANEMO_DAMAGE: "anemo",
+    GEO_DAMAGE: "geo",
+    DENDRO_DAMAGE: "dendro",
 }
+
+
+@dataclass(frozen=True, slots=True)
+class OptimizerItemReplacement:
+    artifact: ArtifactItem
+    original_id: int
+    dps_delta: float
+    ranking_basis: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +82,7 @@ class OptimizerResultBuildRow:
     artifacts: tuple[ArtifactItem, ...]
     slots: tuple[tuple[int, int], ...]
     missing_artifact_ids: tuple[int, ...] = ()
+    replacements: tuple[OptimizerItemReplacement, ...] = ()
 
     @property
     def can_save(self) -> bool:
@@ -100,6 +111,11 @@ class OptimizerResultPage:
     rank: int
     measured_dps: str
     rows: tuple[OptimizerResultBuildRow, ...]
+    ranking_basis: str = "gcsim"
+    formula_dps: str = ""
+    set_group_key: str = ""
+    set_group_rank: int | None = None
+    alternative_rank: int | None = None
 
 
 def build_optimizer_result_pages(
@@ -117,12 +133,20 @@ def build_optimizer_result_pages(
         and not isinstance(raw_candidates, (str, bytes))
         else []
     )
+    # Match the backend's explicit 50 * (leader + 100 swaps) technical bound.
+    candidates = candidates[:5050]
     if not candidates:
         candidates = [
             {
                 "rank": 1,
                 "artifacts": result.get("winner") or [],
                 "measured": result.get("measured") or {},
+                "ranking_basis": result.get("ranking_basis")
+                or payload.get("ranking_basis"),
+                "formula_dps": result.get("formula_dps") or "",
+                "set_group_key": result.get("set_group_key") or "",
+                "set_group_rank": result.get("set_group_rank"),
+                "alternative_rank": result.get("alternative_rank"),
             }
         ]
 
@@ -130,7 +154,21 @@ def build_optimizer_result_pages(
     for fallback_rank, raw_candidate in enumerate(candidates, start=1):
         candidate = _mapping(raw_candidate)
         rank = _optional_int(candidate.get("rank")) or fallback_rank
-        measured = _mapping(candidate.get("measured"))
+        ranking_basis = _ranking_basis(
+            candidate.get("ranking_basis")
+            or result.get("ranking_basis")
+            or payload.get("ranking_basis")
+            or "gcsim"
+        )
+        measured = (
+            _mapping(candidate.get("measured"))
+            if ranking_basis == "gcsim"
+            else {}
+        )
+        set_group_rank = _optional_positive_int(candidate.get("set_group_rank"))
+        alternative_rank = _optional_positive_int(
+            candidate.get("alternative_rank")
+        )
         candidate_payload = {
             "status": "success",
             "result": {"winner": candidate.get("artifacts") or []},
@@ -147,9 +185,56 @@ def build_optimizer_result_pages(
                 rank=rank,
                 measured_dps=str(measured.get("dps") or "").strip(),
                 rows=rows,
+                ranking_basis=ranking_basis,
+                formula_dps=str(candidate.get("formula_dps") or "").strip(),
+                set_group_key=str(candidate.get("set_group_key") or "").strip(),
+                set_group_rank=set_group_rank,
+                alternative_rank=alternative_rank,
             )
         )
-    return tuple(sorted(pages, key=lambda page: page.rank))
+    return _group_replacement_pages(sorted(pages, key=lambda page: page.rank))
+
+
+def _group_replacement_pages(pages: Sequence[OptimizerResultPage]) -> tuple[OptimizerResultPage, ...]:
+    groups: dict[str, list[OptimizerResultPage]] = {}
+    for page in pages:
+        # Legacy responses without group identity remain separate, never guessed.
+        key = page.set_group_key or (
+            f"group:{page.set_group_rank}" if page.set_group_rank else f"legacy:{page.rank}"
+        )
+        groups.setdefault(key, []).append(page)
+    output = []
+    for group in groups.values():
+        base = group[0]
+        base_ids = {(row.wearer_key, slot): item for row in base.rows for slot, item in row.slots}
+        replacements: dict[str, list[OptimizerItemReplacement]] = {}
+        seen: set[tuple[str, int, int]] = set()
+        for alternate in group[1:]:
+            other_ids = {(row.wearer_key, slot): item for row in alternate.rows for slot, item in row.slots}
+            if base_ids.keys() != other_ids.keys() or base.ranking_basis != alternate.ranking_basis:
+                continue
+            changed = [key for key in base_ids if base_ids[key] != other_ids[key]]
+            if len(changed) != 1:
+                continue  # Never attribute a multi-item DPS difference to one item.
+            wearer, slot = changed[0]
+            identity = (wearer, slot, other_ids[(wearer, slot)])
+            if identity in seen:
+                continue
+            item = next((item for row in alternate.rows if row.wearer_key == wearer
+                         for item in row.artifacts if item.id == identity[2]), None)
+            try:
+                old = float(base.formula_dps if base.ranking_basis == "formula" else base.measured_dps)
+                new = float(alternate.formula_dps if base.ranking_basis == "formula" else alternate.measured_dps)
+            except (ValueError, TypeError):
+                continue
+            if item is None or not math.isfinite(old) or not math.isfinite(new):
+                continue
+            seen.add(identity)
+            replacements.setdefault(wearer, []).append(OptimizerItemReplacement(
+                item, base_ids[(wearer, slot)], new - old, base.ranking_basis))
+        rows = tuple(replace(row, replacements=tuple(replacements.get(row.wearer_key, ()))) for row in base.rows)
+        output.append(replace(base, rows=rows, alternative_rank=None))
+    return tuple(output)
 
 
 def build_optimizer_result_rows(
@@ -268,10 +353,17 @@ class OptimizerResultBuildsWidget(QFrame):
         self._status_labels: dict[str, QLabel] = {}
         self._pages: tuple[OptimizerResultPage, ...] = ()
         self._page_index = 0
+        self._replacement_buttons: dict[str, QPushButton] = {}
+        self._replacement_containers: dict[str, QWidget] = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(6)
+        self.basis_label = QLabel()
+        self.basis_label.setObjectName("OptimizerResultBasis")
+        self.basis_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.basis_label.setWordWrap(True)
+        root.addWidget(self.basis_label)
         navigation = QHBoxLayout()
         navigation.setContentsMargins(0, 0, 0, 0)
         navigation.setSpacing(6)
@@ -288,6 +380,13 @@ class OptimizerResultBuildsWidget(QFrame):
         self.next_button.clicked.connect(lambda: self._change_page(1))
         navigation.addWidget(self.next_button)
         root.addLayout(navigation)
+        self.context_label = QLabel()
+        self.context_label.setObjectName("OptimizerResultContext")
+        self.context_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.context_label.setStyleSheet(
+            f"color: {UI_TEXT_SECONDARY}; font-size: 10px;"
+        )
+        root.addWidget(self.context_label)
 
         self.table = QWidget()
         self.grid = QGridLayout(self.table)
@@ -352,7 +451,8 @@ class OptimizerResultBuildsWidget(QFrame):
             label.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 9px;")
             self.grid.addWidget(label, 0, column)
 
-        for row_index, row in enumerate(rows, start=1):
+        for actor_index, row in enumerate(rows):
+            row_index = 1 + actor_index * 2
             self.grid.addWidget(_CharacterBadge(row), row_index, 0)
             artifacts_by_pos = {int(item.pos): item for item in row.artifacts}
             for column, position in enumerate(range(1, 6), start=1):
@@ -404,6 +504,35 @@ class OptimizerResultBuildsWidget(QFrame):
                     )
                 )
             action_layout.addWidget(button)
+            if row.replacements:
+                toggle = QPushButton(tr("gcsim.optimizer.replacements_toggle").format(count=len(row.replacements)))
+                toggle.setCheckable(True)
+                action_layout.addWidget(toggle)
+                container = QWidget()
+                box = QVBoxLayout(container)
+                box.setContentsMargins(0, 0, 0, 4)
+                note = QLabel(tr("gcsim.optimizer.replacements_independent"))
+                note.setWordWrap(True)
+                note.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 10px;")
+                box.addWidget(note)
+                swap_grid = QGridLayout()
+                swap_grid.setContentsMargins(0, 0, 0, 0)
+                swap_grid.setHorizontalSpacing(5)
+                counts: dict[int, int] = {}
+                for replacement in row.replacements:
+                    column = int(replacement.artifact.pos) - 1
+                    offset = counts.get(column, 0)
+                    counts[column] = offset + 1
+                    card = CompactOptimizerArtifactCard(replacement.artifact, replacement=replacement)
+                    swap_grid.addWidget(card, offset, column)
+                for column in range(5):
+                    swap_grid.setColumnStretch(column, 1)
+                box.addLayout(swap_grid)
+                container.hide()
+                toggle.toggled.connect(container.setVisible)
+                self.grid.addWidget(container, row_index + 1, 1, 1, 5)
+                self._replacement_buttons[row.wearer_key] = toggle
+                self._replacement_containers[row.wearer_key] = container
             action_layout.addWidget(status)
             action_layout.addStretch(1)
             self.grid.addWidget(action, row_index, 6)
@@ -451,6 +580,8 @@ class OptimizerResultBuildsWidget(QFrame):
         self._save_buttons = {}
         self._save_tooltips = {}
         self._status_labels = {}
+        self._replacement_buttons = {}
+        self._replacement_containers = {}
 
     def _change_page(self, delta: int) -> None:
         if not self._pages:
@@ -468,18 +599,92 @@ class OptimizerResultBuildsWidget(QFrame):
             has_pages and self._page_index + 1 < len(self._pages)
         )
         if not has_pages:
+            self.basis_label.clear()
+            self.basis_label.hide()
+            self.context_label.clear()
+            self.context_label.hide()
             self.title_label.setText(
                 _translated("gcsim.optimizer.result_builds", "Found builds")
             )
             return
         page = self._pages[self._page_index]
-        title = _translated(
-            "gcsim.optimizer.rank_title",
-            "Top-{rank} {dps} DPS",
-        )
-        self.title_label.setText(
-            title.format(rank=page.rank, dps=_format_title_dps(page.measured_dps))
-        )
+        if page.ranking_basis == "formula":
+            self.basis_label.setText(
+                _translated(
+                    "gcsim.optimizer.formula_unverified",
+                    "Formula estimate — not verified by GCSIM",
+                )
+            )
+            self.basis_label.setStyleSheet(
+                "QLabel { color: #ffffff; background-color: #772d2d; "
+                "border: 1px solid #e06b6b; border-radius: 5px; "
+                "padding: 6px 8px; font-weight: 800; }"
+            )
+            title = _translated(
+                "gcsim.optimizer.formula_rank_title",
+                "Formula estimate: {dps} DPS",
+            )
+            self.title_label.setText(
+                title.format(dps=_format_title_dps(page.formula_dps))
+            )
+        else:
+            self.basis_label.setText(
+                _translated(
+                    "gcsim.optimizer.gcsim_measured",
+                    "Measured in GCSIM",
+                )
+            )
+            self.basis_label.setStyleSheet(
+                f"color: {UI_TEXT_MUTED}; font-size: 10px; font-weight: 700;"
+            )
+            if (
+                page.set_group_key
+                or page.set_group_rank is not None
+                or page.alternative_rank is not None
+            ):
+                title = _translated(
+                    "gcsim.optimizer.grouped_result_title",
+                    "{dps} DPS",
+                )
+                self.title_label.setText(
+                    title.format(dps=_format_title_dps(page.measured_dps))
+                )
+            else:
+                title = _translated(
+                    "gcsim.optimizer.rank_title",
+                    "Top-{rank} {dps} DPS",
+                )
+                self.title_label.setText(
+                    title.format(
+                        rank=page.rank,
+                        dps=_format_title_dps(page.measured_dps),
+                    )
+                )
+        self.basis_label.show()
+        context: list[str] = []
+        if page.set_group_rank is not None:
+            context.append(
+                _translated(
+                    "gcsim.optimizer.set_group_label",
+                    "Set combination {rank}",
+                ).format(rank=page.set_group_rank)
+            )
+        elif page.set_group_key:
+            context.append(
+                _translated(
+                    "gcsim.optimizer.set_group_key_label",
+                    "Set combination {key}",
+                ).format(key=page.set_group_key)
+            )
+        if page.alternative_rank is not None:
+            context.append(
+                _translated(
+                    "gcsim.optimizer.alternative_label",
+                    "Build {rank}",
+                ).format(rank=page.alternative_rank)
+            )
+        self.context_label.setText(" · ".join(context))
+        self.context_label.setVisible(bool(context))
 
     def _emit_save(self, wearer_key: str) -> None:
         row = self._rows.get(wearer_key)
@@ -502,11 +707,11 @@ class OptimizerResultBuildsWidget(QFrame):
 
 
 class CompactOptimizerArtifactCard(QFrame):
-    def __init__(self, artifact: ArtifactItem, parent: QWidget | None = None) -> None:
+    def __init__(self, artifact: ArtifactItem, parent: QWidget | None = None, *, replacement: OptimizerItemReplacement | None = None) -> None:
         super().__init__(parent)
         self.artifact = artifact
         self.setObjectName("OptimizerCompactArtifactCard")
-        self.setFixedSize(104, 88)
+        self.setFixedSize(104, 104 if replacement is not None else 88)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setStyleSheet(
             "QFrame#OptimizerCompactArtifactCard {"
@@ -554,6 +759,22 @@ class CompactOptimizerArtifactCard(QFrame):
         top.addLayout(stats, 1)
         root.addLayout(top)
         root.addWidget(_MainStatWidget(artifact))
+        if replacement is not None:
+            delta = replacement.dps_delta
+            text = f"{delta:+,.0f} DPS".replace(",", " ")
+            if replacement.ranking_basis == "formula":
+                text = "≈ " + text
+            label = QLabel(text)
+            label.setObjectName("OptimizerReplacementDelta")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setStyleSheet(
+                f"color: {UI_STATE_DANGER if delta < 0 else UI_STATE_SUCCESS}; "
+                "font-size: 8px;"
+            )
+            root.addWidget(label)
+            install_custom_tooltip(
+                label, tr("gcsim.optimizer.replacement_delta_help")
+            )
 
 
 class _MainStatWidget(QWidget):
@@ -563,7 +784,8 @@ class _MainStatWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
-        element_icon = ELEMENT_MAIN_STAT_ICONS.get(artifact.main_property_type)
+        element = ELEMENT_MAIN_STAT_ICONS.get(artifact.main_property_type)
+        element_icon = (element_icon_path(element) or PROJECT_ROOT / "assets" / "filters" / f"element_{element}.png") if element else None
         if element_icon is not None and element_icon.exists():
             icon = QLabel()
             icon.setFixedSize(17, 17)
@@ -649,6 +871,15 @@ def _optional_int(value: Any) -> int | None:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _optional_positive_int(value: Any) -> int | None:
+    normalized = _optional_int(value)
+    return normalized if normalized is not None and normalized > 0 else None
+
+
+def _ranking_basis(value: Any) -> str:
+    return "formula" if str(value or "").strip().casefold() == "formula" else "gcsim"
 
 
 def _format_title_dps(value: Any) -> str:

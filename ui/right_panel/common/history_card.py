@@ -23,8 +23,8 @@ from ui.utils.ui_palette import (
     UI_HISTORY_ALT_TOP, UI_HISTORY_ALT_BOTTOM,
 )
 
-# Only the export chooses a reference width. On-screen geometry uses actual
-# logical widget pixels; it never shrinks typography to fit a design canvas.
+# Expanded cards use the available logical width. Compact cards reflow at the
+# narrow width instead of adding a full results row per team.
 CARD_WIDTH = 1200
 
 
@@ -34,6 +34,11 @@ def number(value) -> str:
 
 def seconds(value) -> str:
     return "—" if value is None else tr("history.card.seconds").format(value=f"{value:g}")
+
+
+def compact_seconds(value) -> str:
+    """Timer label for the space-critical overall compact column."""
+    return "—" if value is None else tr("history.card.seconds_compact").format(value=f"{value:g}")
 
 
 def team_slots(team):
@@ -112,7 +117,7 @@ class CardLayout:
 
     @property
     def header(self):
-        return 48
+        return 38
 
     @property
     def team_header(self):
@@ -136,7 +141,10 @@ class CardLayout:
 
     @property
     def columns(self):
-        return 4 if self.width >= 680 else 2
+        # Four compact cells still have enough room at the narrow AppShell
+        # split-pane width. Drop to two columns only when keeping four would
+        # make the build/name area genuinely unusable.
+        return 4 if self.width >= 560 else 2
 
     @property
     def column_width(self):
@@ -211,60 +219,86 @@ class CardLayout:
 
     @property
     def compact_header(self):
-        return 2
-
-    def compact_wraps_build(self, team):
-        return self.compact_column_width < 182 or (self.compact_column_width < 232 and any(len(s.set_icon_paths) > 1 for s in team.slots))
+        return 1
 
     @property
     def compact_total_width(self):
-        return 104
+        return 86
 
     @property
     def compact_body_width(self):
         return self.width-self.compact_total_width
 
     @property
-    def compact_column_width(self):
-        return (self.compact_body_width-24)/self.columns
-
-    def compact_member_height(self, team):
-        return 64 if self.compact_wraps_build(team) else 44
+    def compact_team_index_width(self):
+        # Team markers are lower priority than the dedicated resonance column.
+        return 14 if self.width >= 980 else 0
 
     @property
-    def compact_portrait_size(self):
-        return min(42., max(34., (self.compact_column_width-90)/3))
+    def compact_inner_margin(self):
+        return 2
+
+    def compact_resonance_width(self, run):
+        if run.run_type != "abyss" or self.compact_inline(run):
+            return 0
+        return 28 if self.width >= 720 else 0
+
+    def compact_column_width_for(self, run):
+        if run.run_type == "abyss" and self.compact_inline(run):
+            return (
+                self.compact_body_width
+                - 2*self.compact_inner_margin
+                - self.compact_team_index_width
+                - self.compact_inline_results_width
+            ) / 4
+        return (
+            self.compact_body_width
+            - 2*self.compact_inner_margin
+            - self.compact_team_index_width
+            - self.compact_resonance_width(run)
+        ) / self.columns
+
+    def compact_member_height(self, team, column_width=None):
+        # Compact Abyss rows never grow just because one build uses two sets;
+        # icon sizes absorb the width change while the row remains stable.
+        return 36
 
     @property
     def compact_team_width(self):
         return min(248., max(224., self.compact_body_width*.33))
 
-    @property
-    def compact_room_width(self):
-        return (self.compact_body_width-24-self.compact_team_width)/3
-
     def compact_results_height(self, run):
-        return 42
+        return 36
 
     def compact_inline(self, run):
         # Keep the character groups readable before allocating a right-hand
-        # result table. Two-set builds need one extra equipment tile per slot.
-        has_two_sets = any(len(s.set_icon_paths) > 1 for t in visible_teams(run) for s in t.slots)
-        return self.width >= (1320 if has_two_sets else 1160)
+        # result table. High-DPI desktop scaling reduces the available logical
+        # width even when the physical card is still wide enough for this dense
+        # column. The inline character renderer scales its equipment tiles down
+        # slightly when a second set icon is present, so 2+2 does not silently
+        # drop all timer detail at the same desktop scale.
+        return self.width >= 960
 
     @property
     def compact_inline_results_width(self):
-        return 256
+        return 224
 
     def compact_team_height(self, run, team):
+        column_width = self.compact_column_width_for(run)
         if run.run_type == "abyss" and self.compact_inline(run):
-            return 58
-        return ceil(4/self.columns)*self.compact_member_height(team)+self.compact_results_height(run)+2
+            return 41
+        if run.run_type == "abyss":
+            # The maximally compressed view keeps one character strip per
+            # team at the RDP target width. Truly smaller layouts may use two
+            # character columns, but still add no secondary results strip.
+            return ceil(4/self.columns)*self.compact_member_height(team, column_width)+5
+        return (ceil(4/self.columns)*self.compact_member_height(team, column_width)
+                + self.compact_results_height(run)+2)
 
     def height(self, run, expanded):
         if not expanded:
             return ceil(self.compact_header+sum(self.compact_team_height(run, team)
-                        for team in visible_teams(run))+2)
+                        for team in visible_teams(run))+1)
         return ceil(self.header+sum(self.team_height(run, team, expanded)+10
                                    for team in visible_teams(run))+2)
 
@@ -284,7 +318,7 @@ def prepare_images(run, dpr, artwork_paths=None):
     for team in visible_teams(run):
         bonus_paths.update(b.icon_path for b in team.bonuses if b.icon_path)
         for slot in team.slots:
-            paths.update((slot.portrait_path, slot.side_icon_path, slot.weapon_icon_path, *slot.set_icon_paths))
+            paths.update((slot.portrait_path, slot.expanded_portrait_path, slot.side_icon_path, slot.weapon_icon_path, *slot.set_icon_paths))
             portraits.add(slot.portrait_path)
             paths.update(b.icon_path for b in slot.bonuses)
     paths.update(enemy.icon_path for side in run.sides for enemy in side.enemies)
@@ -369,9 +403,9 @@ class CardPainter:
         gradient.setColorAt(1, tint(UI_HISTORY_BG_BOTTOM, 250))
         self.rounded(rect, gradient, tint(accent, 118 if strong else 62), 7*self.u)
 
-    def portrait(self, slot, x, y, size, *, soft_crop=False):
-        path = slot.side_icon_path if self.character_view == "profile" else slot.portrait_path
-        if self.character_view == "profile" and slot.side_icon_path:
+    def portrait(self, slot, x, y, size, *, soft_crop=False, expanded_variant=False):
+        path = slot.expanded_portrait_path if expanded_variant and slot.expanded_portrait_path else (slot.side_icon_path if self.character_view == "profile" else slot.portrait_path)
+        if not expanded_variant and self.character_view == "profile" and slot.side_icon_path:
             # ArtifactCardDelegate uses the original calibrated side-icon canvas,
             # not per-character alpha bounds. Its shared badge ratio defines the
             # face scale; hats may extend above the text instead of shrinking it.
@@ -412,35 +446,54 @@ class CardPainter:
         title = (tr("history.card.abyss").format(floor=run.floor or "—")
                  if run.run_type == "abyss" else tr("history.card.dummy"))
         duration = seconds(total_seconds(run))
-        time_width = self.measure(duration, 30, True)+8
-        self.text(16, 3, time_width, duration, 30, UI_HISTORY_TEAM_2, True)
-        # Symmetric gutters center the title on the whole card, not on whatever
-        # blank space happens to remain beside a differently sized timer.
-        gutter = max(160., time_width+32)
-        self.text(gutter, 1, w-2*gutter, title, 20, bold=True, align=Qt.AlignmentFlag.AlignCenter)
-        self.text(gutter, 25, w-2*gutter, display_period(run), 14, UI_HISTORY_MUTED,
+        # One line: the three anchors remain stable as the expanded card gets
+        # narrower, without spending a second row on the period.
+        self.text(16, 2, w*.27-16, duration, 28, UI_HISTORY_TEAM_2, True)
+        self.text(w*.32, 4, w*.36, title, 20, bold=True,
                   align=Qt.AlignmentFlag.AlignCenter)
+        self.text(w*.69, 7, w*.29-14, display_period(run), 14, UI_HISTORY_MUTED,
+                  align=Qt.AlignmentFlag.AlignRight)
+        self.separator(12, self.layout.header-2, w-24, alpha=62)
 
-    def bonuses(self, team, x, y, right, *, size=25, prominent=False):
-        step = size+5
-        capacity = max(0, int((right-x)/step))
-        shown = team.bonuses[:max(0, capacity-1)] if len(team.bonuses) > capacity else team.bonuses
-        for bonus in shown:
+    def bonuses(
+        self,
+        team,
+        x,
+        y,
+        right,
+        *,
+        size=25,
+        prominent=False,
+        show_overflow=True,
+        rows=1,
+    ):
+        """Draw a borderless bonus grid which never leaves its allotted area."""
+        step = size+4
+        row_step = size+2
+        columns = max(0, int((right-x)/step))
+        capacity = columns*max(1, rows)
+        reserve = 1 if show_overflow and len(team.bonuses) > capacity and capacity else 0
+        shown = team.bonuses[:max(0, capacity-reserve)]
+        for index, bonus in enumerate(shown):
+            col, row = index % columns, index // columns
+            bx, by = x+col*step, y+row*row_step
             self.p.setOpacity(1. if bonus.applied else .4)
-            if prominent:
-                self.rounded(QRectF(x-1, y-1, size+2, size+2), tint(UI_HISTORY_TEXT, 13),
-                             tint(UI_HISTORY_GRID, 75), 4)
             path = ("bonus", bonus.icon_path) if prominent else bonus.icon_path
-            self.icon(path, x, y, size, bonus.label[:2])
+            self.icon(path, bx, by, size, bonus.label[:2])
             self.p.setOpacity(1.)
-            self.hits.append((QRectF(x, y, step, size+3), bonus.tooltip))
-            x += step
+            self.hits.append((QRectF(bx, by, min(step, right-bx), size+2), bonus.tooltip))
         rest = team.bonuses[len(shown):]
-        if rest and capacity:
-            self.text(x, y+(2 if size >= 25 else -3), step, f"+{len(rest)}", 12, UI_HISTORY_MUTED, True)
-            self.hits.append((QRectF(x, y, step, size+3), "\n\n".join(b.tooltip for b in rest)))
+        if show_overflow and rest and columns:
+            index = len(shown)
+            col, row = index % columns, index // columns
+            bx, by = x+col*step, y+row*row_step
+            self.text(bx, by+(2 if size >= 25 else -2), min(step, right-bx),
+                      f"+{len(rest)}", 12, UI_HISTORY_MUTED, True,
+                      Qt.AlignmentFlag.AlignCenter)
+            self.hits.append((QRectF(bx, by, min(step, right-bx), size+2),
+                              "\n\n".join(b.tooltip for b in rest)))
 
-    def compact_character(self, slot, rect, accent, team, *, inline=False):
+    def compact_character(self, slot, rect, accent):
         """Character, weapon and active sets share one full-height icon strip."""
         x, y, w = rect.x(), rect.y(), rect.width()
         element = UI_ELEMENT_ACCENTS.get(slot.element.casefold(), accent)
@@ -450,11 +503,19 @@ class CardPainter:
         self.rounded(rect.adjusted(1, 1, -1, -1), glow, radius=3)
         if self.hovered is slot:
             self.rounded(rect.adjusted(1, 1, -1, -1), tint(element, 20), radius=3)
-        wrap = not inline and self.layout.compact_wraps_build(team)
         paths = (slot.weapon_icon_path, *slot.set_icon_paths[:2])
-        face = min(42., (w-8)/(1+len(paths))) if wrap else self.layout.compact_portrait_size
-        equipment = face-(6 if inline else 4)
-        iy = y+(44-face)/2
+        # Reserve readable text before sizing the icon strip. This prevents
+        # names collapsing into single letters when the history pane gets
+        # narrower, while preserving weapon and both 2+2 set icons.
+        text_reserve = min(72., max(44., w*.34))
+        icon_budget = max(56., w-text_reserve-7)
+        face = min(35., rect.height()-1, max(26., icon_budget*.34))
+        equipment = min(27., max(18., (icon_budget-face)/max(1, len(paths))-1))
+        strip_width = face+len(paths)*(equipment+1)
+        if strip_width > icon_budget:
+            face = max(24., face-(strip_width-icon_budget)*.45)
+            equipment = max(17., (icon_budget-face)/max(1, len(paths))-1)
+        iy = y+(rect.height()-face)/2
         self.portrait(slot, x+2, iy, face)
         labels = ("" if slot.weapon_refinement is None else f"R{slot.weapon_refinement}",
                   *(str(n) for n in slot.set_counts[:2]))
@@ -471,17 +532,12 @@ class CardPainter:
         available = x+w-4-tx
         level = tr("history.card.level").format(value=slot.character_level or "—")
         name = slot.character_name or tr("app_shell.history.slot.empty")
-        if wrap:
-            # At a narrow width keep all equipment full-sized and put the two
-            # text fields below the icon strip, rather than shrink the icons.
-            bx = x+w-5-self.measure(slot.stat_badge or "—", 11)
-            self.character_name(x+3, y+43, max(1, bx-x-7), name, constellation, element, size=12)
-            self.text(bx, y+43, x+w-4-bx, slot.stat_badge or "—", 11)
-            self.text(x+w-46, y-2, 43, level, 10, UI_HISTORY_MUTED, align=Qt.AlignmentFlag.AlignRight)
+        self.character_name(tx, y-4, available, name, constellation, element, size=12)
+        if available >= 42:
+            self.text(tx, y+8, available, level, 9, UI_HISTORY_MUTED)
+            self.text(tx, y+18, available, slot.stat_badge or "—", 9)
         else:
-            self.character_name(tx, y-4, available, name, constellation, element, size=13)
-            self.text(tx, y+11, available, level, 10, UI_HISTORY_MUTED)
-            self.text(tx, y+25, available, slot.stat_badge or "—", 11)
+            self.text(tx, y+14, available, slot.stat_badge or "—", 9)
         self.hits.append((rect, slot))
 
     def character_name(self, x, y, width, name, constellation, element, *, size=14):
@@ -512,17 +568,18 @@ class CardPainter:
         self.compact_chambers(run, team, QRectF(start, y+10, body_width-12-start, 24), accent)
 
     def compact_team_heading(self, run, team, rect, accent):
-        """Reading order: team identity, large resonances/bonuses, team time."""
+        """Reading order: bonuses first, then the team timer."""
         x, y, w = rect.x(), rect.y(), rect.width()
-        label = tr("history.card.team").format(value=team.team_index+1)
-        label_width = self.measure(label, 12, True)+6
-        self.text(x+7, y+6, label_width, label, 12, bold=True)
         duration = seconds(team_seconds(run, team))
-        time_width = self.measure(duration, 21, True)+7
-        time_x = x+w-time_width-6
-        self.bonuses(team, x+7+label_width+4, y+1, time_x-6, size=30, prominent=True)
-        self.text(time_x, y+1, time_width, duration, 21, accent, True,
-                  Qt.AlignmentFlag.AlignRight)
+        dense = rect.height() <= 22
+        time_size = 15 if dense else 18
+        icon_size = 18 if dense else 22
+        time_width = self.measure(duration, time_size, True)+7
+        time_x = x+w-time_width-5
+        self.bonuses(team, x+5, y+1, time_x-4, size=icon_size, prominent=True)
+        time_y = y+(rect.height()-(time_size+7))/2
+        self.text(time_x, time_y, time_width, duration, time_size, accent, True,
+                  Qt.AlignmentFlag.AlignCenter)
 
     def compact_chambers(self, run, team, rect, accent):
         cw = rect.width()/3
@@ -530,15 +587,15 @@ class CardPainter:
             x, y = rect.x()+i*cw, rect.y()
             duration, _, _ = chamber_values(run, team, chamber)
             if i:
-                self.line(x, y+3, x, y+20, UI_HISTORY_GRID, 105)
-            self.text(x+5, y+3, 29, f"{run.floor or '—'}-{chamber}", 11, UI_HISTORY_MUTED)
-            self.text(x+35, y, cw-40, seconds(duration), 15, UI_HISTORY_TEXT, True)
+                self.line(x, y+2, x, y+rect.height()-2, UI_HISTORY_GRID, 105)
+            self.text(x+4, y+1, 27, f"{run.floor or '—'}-{chamber}", 9, UI_HISTORY_MUTED)
+            self.text(x+31, y-1, cw-35, seconds(duration), 13, UI_HISTORY_TEXT, True)
 
     def compact_inline_results(self, run, team, rect, accent):
         x, y, w = rect.x(), rect.y(), rect.width()
-        self.compact_team_heading(run, team, QRectF(x, y, w, 34), accent)
-        self.line(x+7, y+33, x+w-5, y+33, accent, 105)
-        self.compact_chambers(run, team, QRectF(x+2, y+32, w-4, 24), accent)
+        self.compact_team_heading(run, team, QRectF(x, y, w, 20), accent)
+        self.line(x+5, y+20, x+w-4, y+20, accent, 95)
+        self.compact_chambers(run, team, QRectF(x+1, y+20, w-2, 20), accent)
 
     def compact_total(self, run):
         x, w = self.layout.compact_body_width, self.layout.compact_total_width
@@ -547,44 +604,109 @@ class CardPainter:
         gradient = QLinearGradient(x, 0, x+w, h)
         gradient.setColorAt(0, tint(accent, 35))
         gradient.setColorAt(1, tint(accent, 12))
-        self.rounded(QRectF(x+2, 5, w-8, h-10), gradient, tint(accent, 135), 6)
-        self.text(x+6, h/2-27, w-16, tr("history.card.total_label"), 13,
-                  UI_HISTORY_TEXT, False, Qt.AlignmentFlag.AlignCenter)
-        value = seconds(total_seconds(run))
-        size = 30 if self.measure(value, 30, True) <= w-14 else 24
-        self.text(x+5, h/2-9, w-14, value, size, accent, True, Qt.AlignmentFlag.AlignCenter)
+        self.rounded(QRectF(x+1, 1, w-3, h-2), gradient, tint(accent, 135), 0)
+        value = compact_seconds(total_seconds(run))
+        size = 30 if self.measure(value, 30, True) <= w-8 else 24
+        self.text(x+3, h/2-(size+7)/2, w-8, value, size, accent, True,
+                  Qt.AlignmentFlag.AlignCenter)
+
+    def compact_resonances(self, team, rect, accent):
+        """Two borderless icons integrated into the compact team background."""
+        shown = team.bonuses[:2]
+        size = min(20., rect.width()-6)
+        gap = 2.
+        total = len(shown)*size+max(0, len(shown)-1)*gap
+        by = rect.center().y()-total/2
+        bx = rect.center().x()-size/2
+        for bonus in shown:
+            self.p.setOpacity(1. if bonus.applied else .4)
+            self.icon(("bonus", bonus.icon_path), bx, by, size, bonus.label[:2])
+            self.p.setOpacity(1.)
+            self.hits.append((QRectF(bx, by, size, size), bonus.tooltip))
+            by += size+gap
+
+    def compact_team_index(self, team, y, height, accent):
+        """Low-priority Roman marker inside the card's own rounded edge."""
+        width = self.layout.compact_team_index_width
+        if not width:
+            return
+        marker = "I" if team.team_index == 0 else "II"
+        x = self.layout.compact_inner_margin
+        rect = QRectF(x, y, width, max(1, height))
+        size = 11
+        text_y = rect.y()+(rect.height()-(size+7))/2
+        self.text(rect.x(), text_y, rect.width(), marker, size, accent, True,
+                  Qt.AlignmentFlag.AlignCenter)
 
     def compact_teams(self, run):
         y = self.layout.compact_header
         inline = run.run_type == "abyss" and self.layout.compact_inline(run)
+        minimal = run.run_type == "abyss" and not inline
         body_width = self.layout.compact_body_width
-        cw = (body_width-24-self.layout.compact_inline_results_width)/4 if inline else self.layout.compact_column_width
+        index_width = self.layout.compact_team_index_width
+        resonance_width = self.layout.compact_resonance_width(run)
+        cw = self.layout.compact_column_width_for(run)
+        margin = self.layout.compact_inner_margin
+        teams = visible_teams(run)
+        teams_bottom = y+sum(self.layout.compact_team_height(run, team) for team in teams)
+        clip = QPainterPath()
+        clip.addRoundedRect(QRectF(1, 1, body_width, max(1, teams_bottom-1)), 8, 8)
         for index, team in enumerate(visible_teams(run)):
             accent = UI_HISTORY_TEAM_1 if index == 0 else UI_HISTORY_TEAM_2
             if index:
-                self.line(10, y-1, body_width-7, y-1, UI_HISTORY_GRID, 95)
-            if inline:
-                band = QRectF(7, y, body_width-14, 57)
+                self.line(2, y, body_width-1, y, UI_HISTORY_GRID, 105)
+            if inline or minimal:
+                team_height = self.layout.compact_team_height(run, team)
+                band = QRectF(1, y, body_width, team_height)
                 gradient = QLinearGradient(band.topLeft(), band.bottomRight())
-                gradient.setColorAt(0, tint(accent, 12))
+                gradient.setColorAt(0, tint(accent, 17 if minimal else 12))
                 gradient.setColorAt(1, tint(accent, 3))
-                self.rounded(band, gradient, radius=3)
-            row_height = self.layout.compact_member_height(team)
+                self.p.save()
+                self.p.setClipPath(clip)
+                self.p.fillRect(band, gradient)
+                self.p.restore()
+            self.compact_team_index(
+                team,
+                y,
+                self.layout.compact_team_height(run, team)-1,
+                accent,
+            )
+            row_height = 36 if inline else self.layout.compact_member_height(team, cw)
             for i, slot in enumerate(team_slots(team)):
                 col, row = i%self.layout.columns, i//self.layout.columns
-                x = 12+col*cw
-                cy = y+7 if inline else y+row*row_height
-                self.compact_character(slot, QRectF(x, cy, cw, row_height), accent, team, inline=inline)
+                x = margin+index_width+col*cw
+                cy = y+(2 if inline or minimal else 1)+row*row_height
+                self.compact_character(
+                    slot,
+                    QRectF(x, cy, cw, row_height),
+                    accent,
+                )
                 if col:
                     self.line(x, cy+3, x, cy+row_height-3, UI_HISTORY_GRID, 105)
             if inline:
-                rx = 12+4*cw
-                self.line(rx, y+3, rx, y+55, accent, 170)
+                rx = margin+index_width+4*cw
+                self.line(rx, y+2, rx, y+39, accent, 150)
                 self.compact_inline_results(run, team,
-                    QRectF(rx, y, self.layout.compact_inline_results_width, 58), accent)
-            else:
+                    QRectF(rx, y, self.layout.compact_inline_results_width, 41), accent)
+            elif minimal and resonance_width:
+                rx = body_width-margin-resonance_width
+                self.compact_resonances(
+                    team,
+                    QRectF(
+                        rx,
+                        y+1,
+                        resonance_width,
+                        self.layout.compact_team_height(run, team)-3,
+                    ),
+                    accent,
+                )
+            elif not minimal:
                 self.compact_results(run, team, y+ceil(4/self.layout.columns)*row_height, accent)
             y += self.layout.compact_team_height(run, team)
+        if index_width:
+            divider_x = margin+index_width
+            self.line(divider_x, self.layout.compact_header+1,
+                      divider_x, teams_bottom-1, UI_HISTORY_GRID, 115)
         self.compact_total(run)
 
     def team_identity(self, run, team, y, room_y, accent):
@@ -617,11 +739,24 @@ class CardPainter:
         edge.setColorAt(1, tint(UI_HISTORY_BG_BOTTOM, 155))
         self.p.fillRect(rect, edge)
         self.p.restore()
-        self.pill(x+8, y+13, 28, f"{team.team_index+1:02d}", accent, size=12)
-        self.bonuses(team, x+8, rect.bottom()-40, x+w-5, size=32, prominent=True)
+        bonus_size = 28
+        bonus_left, bonus_right = x+8, x+w-5
+        bonus_columns = max(1, int((bonus_right-bonus_left)/(bonus_size+4)))
+        bonus_rows = min(2, ceil(len(team.bonuses)/bonus_columns)) if team.bonuses else 0
+        bonus_height = bonus_rows*(bonus_size+2)
+        if bonus_rows:
+            self.bonuses(
+                team,
+                bonus_left,
+                rect.bottom()-bonus_height-3,
+                bonus_right,
+                size=bonus_size,
+                prominent=True,
+                rows=bonus_rows,
+            )
         if self.interactive:
             action = ArtworkAction(team.team_index)
-            art_hit = rect.adjusted(0, 0, 0, -44)
+            art_hit = rect.adjusted(0, 0, 0, -(bonus_height+7 if bonus_height else 4))
             active = isinstance(self.hovered, ArtworkAction) and self.hovered.team_index == team.team_index
             if active:
                 self.rounded(art_hit.adjusted(4, 4, -4, -4), tint(UI_HISTORY_BG_BOTTOM, 155), radius=5)
@@ -634,10 +769,14 @@ class CardPainter:
                     self.hits.append((reset, ArtworkAction(team.team_index, reset=True)))
             self.hits.append((art_hit, action))
         timer_h = self.layout.room_height(run, team, True)-6
-        self.surface(QRectF(x, room_y+3, w, timer_h), accent, strong=True)
-        self.text(x+10, room_y+10, w-20, tr("history.card.team").format(value=team.team_index+1),
-                  12, UI_HISTORY_MUTED)
-        self.text(x+10, room_y+29, w-20, seconds(team_seconds(run, team)), 28, accent, True)
+        timer_rect = QRectF(x, room_y+3, w, timer_h)
+        self.surface(timer_rect, accent, strong=True)
+        group_y = timer_rect.center().y()-27
+        self.text(x+10, group_y, w-20,
+                  tr("history.card.team").format(value=team.team_index+1),
+                  12, UI_HISTORY_MUTED, align=Qt.AlignmentFlag.AlignCenter)
+        self.text(x+10, group_y+18, w-20, seconds(team_seconds(run, team)),
+                  28, accent, True, Qt.AlignmentFlag.AlignCenter)
 
     def character(self, slot, rect, expanded, accent, team):
         x, y, w = rect.x(), rect.y(), rect.width()
@@ -652,7 +791,7 @@ class CardPainter:
         self.rounded(QRectF(x+3, y+3, w-6, self.layout.character_header(team)-4), glow, radius=5)
         if self.hovered is slot:
             self.rounded(rect.adjusted(3, 2, -3, -2), tint(element, 17), radius=5)
-        self.portrait(slot, x+6, y+4, face, soft_crop=True)
+        self.portrait(slot, x+6, y+4, face, soft_crop=True, expanded_variant=expanded)
         name = slot.character_name or tr("app_shell.history.slot.empty")
         level = tr("history.card.level").format(value=slot.character_level or "—")
         constellation = "" if slot.constellation is None else f"C{slot.constellation}"
@@ -889,11 +1028,12 @@ class HistoryCardWidget(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setAccessibleName(tr("history.card.record").format(date=run.created_at[:16].replace("T", " ")))
-        self._character_popup = CharacterTooltip(self)
-        self._text_popup = CustomTooltipPopup(self)
-        self._hover_timer = QTimer(self)
-        self._hover_timer.setSingleShot(True)
-        self._hover_timer.timeout.connect(self._show_hover)
+        # Most cards are only painted or scrolled past. Native tooltip windows
+        # and their timer are created on first use so large refresh/test runs do
+        # not churn short-lived Qt window handles during deferred deletion.
+        self._character_popup = None
+        self._text_popup = None
+        self._hover_timer = None
         self._sync_size()
 
     def sizeHint(self):
@@ -902,7 +1042,8 @@ class HistoryCardWidget(QWidget):
     @property
     def content_scale(self):
         # Compensate startup downscale locally: 14px values must not become 10px.
-        # AppShell's global scaling and the right-panel footprint are unchanged.
+        # The narrow compact layout removes secondary timers instead of making
+        # the complete wide composition microscopic.
         return max(1., 1./self.devicePixelRatioF())
 
     def design_height(self):
@@ -942,7 +1083,7 @@ class HistoryCardWidget(QWidget):
     def event(self, event):
         if event.type() == QEvent.Type.DevicePixelRatioChange and hasattr(self, "run"):
             self._sync_size()
-        if event.type() == QEvent.Type.WindowDeactivate and hasattr(self, "_hover_timer"):
+        if event.type() == QEvent.Type.WindowDeactivate and getattr(self, "_hover_timer", None) is not None:
             self._hide_hover()
         return super().event(event)
 
@@ -966,6 +1107,7 @@ class HistoryCardWidget(QWidget):
             self._hover = payload
             self._anchor = event.position().toPoint()
             if payload:
+                self._ensure_hover_resources()
                 self._hover_timer.start(CUSTOM_TOOLTIP_DELAY_MS)
             self.update()
         super().mouseMoveEvent(event)
@@ -973,16 +1115,29 @@ class HistoryCardWidget(QWidget):
     def _show_hover(self):
         if not self.isVisible():
             return
+        self._ensure_hover_resources()
         if isinstance(self._hover, HistorySlotVisual) and self._hover.character_name:
             self._character_popup.show_slot(self._hover, self._images, self.character_view, self, self._anchor)
         elif isinstance(self._hover, str):
             self._text_popup.show_for(self, self._hover, anchor=self._anchor)
 
     def _hide_hover(self):
-        self._hover_timer.stop()
-        self._character_popup.hide()
-        self._text_popup.hide()
+        if self._hover_timer is not None:
+            self._hover_timer.stop()
+        if self._character_popup is not None:
+            self._character_popup.hide()
+        if self._text_popup is not None:
+            self._text_popup.hide()
         self._hover = None
+
+    def _ensure_hover_resources(self):
+        if self._hover_timer is not None:
+            return
+        self._character_popup = CharacterTooltip(self)
+        self._text_popup = CustomTooltipPopup(self)
+        self._hover_timer = QTimer(self)
+        self._hover_timer.setSingleShot(True)
+        self._hover_timer.timeout.connect(self._show_hover)
 
     def dismiss_tooltip(self):
         self._hide_hover()

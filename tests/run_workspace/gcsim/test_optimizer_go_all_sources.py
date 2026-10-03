@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from run_workspace.gcsim import optimizer_go_all_sources as sources
-from run_workspace.gcsim import optimizer_go_selected as selected
+from run_workspace.gcsim import optimizer_go_inputs as selected
 from run_workspace.gcsim.optimizer_go_all import GcsimOptimizerGoAllSetsRequest, GcsimOptimizerGoAllSetsSession
 from run_workspace.gcsim.source_manifest_build import canonical_json, compute_patched_source_tree_sha256
 
@@ -16,7 +16,8 @@ def check_effect_sources(case, tmp_path):
     binary = tmp_path / "build/gtt-gcsim.exe"
     binary.parent.mkdir()
     binary.write_bytes(b"test binary, never executed")
-    files = ("pkg/core/attributes/stats.go", "pkg/core/attributes/element.go", "pkg/core/attacks/attack.go", "pkg/enemy/damage.go", "internal/artifacts/test/test.go")
+    files = ("pkg/core/attributes/stats.go", "pkg/core/attributes/element.go", "pkg/core/attacks/attack.go", "pkg/enemy/damage.go",
+             *sources.NEUTRAL_RULE_LIBRARIES, "internal/artifacts/test/test.go")
     for name in files:
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -34,6 +35,10 @@ def check_effect_sources(case, tmp_path):
         result = sources.prepare_all_set_effect_sources(tmp_path, binding)
     assert result["items"][0]["key"] == "test"
     assert result["stat_source"]["text"].endswith("\r\n")
+    assert "rule_libraries" not in result  # Old installed consumer is strict.
+    with patch.object(sources, "load_gcsim_artifact_set_catalog", return_value=catalog):
+        neutral = sources.prepare_all_set_effect_sources(tmp_path, binding, include_neutral_rules=True)
+    assert set(neutral["rule_libraries"]) == set(sources.NEUTRAL_RULE_LIBRARIES)
     # Only exact store metadata is excluded: an added source-side file must fail.
     extra = tmp_path / "pkg/source-input.json"
     extra.write_text('{}')
@@ -65,6 +70,8 @@ class AllSetSourceBindingTests(unittest.TestCase):
             source_files = (
                 "pkg/core/attributes/stats.go", "pkg/core/attributes/element.go",
                 "pkg/core/attacks/attack.go", "pkg/enemy/damage.go",
+                "pkg/core/event/event.go", "pkg/modifier/modifier.go", "internal/template/nightsoul/nightsoul.go",
+                "pkg/shortcut/artifact.dm.go",
                 "internal/artifacts/test/test.go",
             )
             for name in source_files:
@@ -86,7 +93,10 @@ class AllSetSourceBindingTests(unittest.TestCase):
             )
             config = "\n".join(f"{key} char lvl=90;" for key in ("alpha", "beta", "gamma", "delta"))
             config += "\ntarget lvl=100 resist=0.1;\n"
-            report = SimpleNamespace(ready=True, issues=[], team=SimpleNamespace(payload={}),
+            actor_keys = ("alpha", "beta", "gamma", "delta")
+            report = SimpleNamespace(ready=True, issues=[], team=SimpleNamespace(
+                payload={"characters": [{"mapping": {"gcsim_key": key}} for key in actor_keys]},
+                characters=tuple(SimpleNamespace(slot_index=i) for i in range(4))),
                                      full_config=SimpleNamespace(assembly=SimpleNamespace(config_text=config)))
             database = SimpleNamespace(artifact_database_input_sha256="a" * 64)
             snapshot = SimpleNamespace(equipment_rows_sha256="b" * 64, snapshot_sha256="c" * 64)
@@ -95,6 +105,7 @@ class AllSetSourceBindingTests(unittest.TestCase):
                 "build_selected_team_full_config_report": Mock(return_value=report),
                 "load_gcsim_optimizer_artifact_database_input": Mock(return_value=SimpleNamespace(ready=True, database_input=database)),
                 "load_selected_equipped_team_snapshot": Mock(return_value=snapshot),
+                "selected_team_with_equipped_snapshot_artifacts": Mock(return_value={}),
                 "bind_selected_report_config_and_snapshot": Mock(return_value=(SimpleNamespace(actor_key="alpha"),)),
                 "load_engine_manifest": Mock(return_value=SimpleNamespace(patch_metadata={"patch_stack_sha256": "d" * 64})),
                 "_request_wearers": Mock(return_value=[]),
@@ -104,15 +115,20 @@ class AllSetSourceBindingTests(unittest.TestCase):
             session = GcsimOptimizerGoAllSetsSession(request)
             serializations = (canonical, canonical + b"\n", canonical + b"\r\n",
                               json.dumps(manifest, indent=2).encode("utf-8"))
+            expected_request_bytes = None
             with patch.multiple(selected, **scaffolding), patch.object(sources, "load_gcsim_artifact_set_catalog", return_value=catalog):
                 for i, raw in enumerate(serializations):
                     with self.subTest(serialization=i):
                         manifest_path.write_bytes(raw)
                         run = Path(folder) / f"run-{i}"
                         run.mkdir()
-                        prepared = selected._prepare_inputs(request, run)
+                        prepared = selected.prepare_optimizer_inputs(request, run, mode="selected")
+                        request_bytes = (run / "request.json").read_bytes()
+                        if expected_request_bytes is None:
+                            expected_request_bytes = request_bytes
+                        self.assertEqual(request_bytes, expected_request_bytes)
                         budgets = prepared["request"]["budgets"]
-                        self.assertEqual(budgets["product_timeout_ms"], 600_000)
+                        self.assertEqual(budgets["product_timeout_ms"], request.product_timeout_ms)
                         self.assertGreaterEqual(budgets["development_timeout_ms"], budgets["product_timeout_ms"])
                         binding = prepared["request"]["engine"]
                         self.assertEqual(binding["source_manifest_sha256"], expected_sha)
@@ -122,9 +138,9 @@ class AllSetSourceBindingTests(unittest.TestCase):
                         self.assertEqual(envelope["items"][0]["key"], "test")
                 # Actual content changes after request preparation must still fail.
                 manifest_path.write_text(json.dumps({**manifest, "changed": True}), encoding="utf-8")
-                with self.assertRaisesRegex(selected.GcsimOptimizerGoSelectedError, "bound source manifest changed"):
+                with self.assertRaisesRegex(selected.GcsimOptimizerGoError, "bound source manifest changed"):
                     session._prepare_formula_inputs(prepared=prepared, run_dir=run, started=0)
                 manifest_path.write_bytes(b"{")
-                with self.assertRaises(selected.GcsimOptimizerGoSelectedError) as invalid:
-                    selected._prepare_inputs(request, run)
+                with self.assertRaises(selected.GcsimOptimizerGoError) as invalid:
+                    selected.prepare_optimizer_inputs(request, run, mode="selected")
                 self.assertEqual(invalid.exception.code, "source_manifest_invalid")

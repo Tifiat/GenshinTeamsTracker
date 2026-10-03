@@ -38,7 +38,6 @@ from run_workspace.gcsim.config_talents import (
     prepare_gcsim_talent_levels,
 )
 from run_workspace.gcsim.entity_key_readiness_report import (
-    DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE,
     load_gcsim_shortcut_keys,
     normalize_gcsim_key_candidate,
 )
@@ -997,17 +996,15 @@ def _artifact_set_key_resolver(
         if source_path
         else _active_artifact_set_shortcut_source()
     )
-    if not path.is_file():
+    if path is None or not path.is_file():
         return _ArtifactSetKeyResolver(())
     return _ArtifactSetKeyResolver(load_gcsim_shortcut_keys(path))
 
 
-def _active_artifact_set_shortcut_source() -> Path:
+def _active_artifact_set_shortcut_source() -> Path | None:
     """Resolve set aliases from the engine that will execute the config.
 
-    The historical v2.42 source remains a last-resort compatibility fallback,
-    but normal AppShell preparation must not reject sets added by a newer active
-    engine merely because that old expanded source tree is stale.
+    No old expanded source tree may substitute for the active engine.
     """
 
     try:
@@ -1027,7 +1024,7 @@ def _active_artifact_set_shortcut_source() -> Path:
             candidate = installed.path / relative
             if candidate.is_file():
                 return candidate
-    return DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE
+    return None
 
 
 def _weapon_payload(weapon: Mapping[str, Any]) -> dict[str, Any]:
@@ -1378,9 +1375,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--artifact-set-registry-source",
         default=None,
         help=(
-            "Optional local GCSIM pkg/shortcut/artifacts.go source for exact "
+            "Optional local GCSIM pkg/shortcut/artifact.dm.go source for exact "
             "set_uid -> GCSIM set key readiness checks. Defaults to the "
-            "prepared local v2.42.2 source path when present."
+            "prepared local active GCSIM source path when present."
         ),
     )
     parser.add_argument("--config-out", default=None)

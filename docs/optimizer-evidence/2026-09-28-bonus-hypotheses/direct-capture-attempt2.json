@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "scope": "saved Chasca one-seed source-copy cost probe; no product acceptance",
+  "saved_run": "all_sets-20260927-212145-2c1cb70d",
+  "seed": 742031889,
+  "active_engine_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "source_manifest_sha256": "9a2475aa2eb8b8676d4778de1c1be92d965b8c9cf97c4d0b8b2b648caad21ebe",
+  "saved_neutral_semantically_equal": true,
+  "compiler_source_copy_sha256": "51696b12eac3c726d200d07ed8869913c02bf6521889b7a30fd9bf7cd64d9ce0",
+  "compiler_build_and_test_ms": 21333.338699987507,
+  "saved_neutral_compile": {
+    "channels": 383,
+    "compile_ms": 248.8821,
+    "decode_ms": 2251.6153,
+    "effect_bytes": 16098348,
+    "load_ms": 22.7885,
+    "member_bytes": 9243886,
+    "name": "saved_neutral",
+    "nodes": 89294
+  },
+  "source_only_simple_2p": [
+    {
+      "set_uid": "emblemofseveredfate",
+      "coordinate": "er",
+      "amount": "0.20",
+      "source_path": "internal/artifacts/emblem/emblem.go",
+      "source_sha256": "4e34fc825109b6289cc95dca9c505c9cc38e7c3be15e5ba31942c02e98575d24",
+      "scope": "source-only simple stat tier; no capture"
+    },
+    {
+      "set_uid": "tenacityofthemillelith",
+      "coordinate": "hp%",
+      "amount": "0.20",
+      "source_path": "internal/artifacts/tenacity/tenacity.go",
+      "source_sha256": "444c04182f94dcd879709df7a9044f8c20ea68bc58b2d51b85d9fd15c6df13dd",
+      "scope": "source-only simple stat tier; no capture"
+    }
+  ],
+  "captures": [
+    {
+      "name": "neutral",
+      "process_ms": 4264.3487000023015,
+      "python_decode_ms": 824.2809000075795,
+      "member_sha256": "4a6f0b60fb44ec5a8cede12fab4be5a2f991e90eb5147b3c755c6d8db79fe1a3",
+      "effect_sha256": "cf1dd7f976dadba475731f6e9b4f739468150f7d72ceb9b61506f48afd284b1e",
+      "member_bytes": 9243886,
+      "effect_bytes": 16098348,
+      "actor": "",
+      "set_uid": "",
+      "category": "control",
+      "inventory_witness_ids": [],
+      "compile": {
+        "channels": 383,
+        "compile_ms": 265.3605,
+        "decode_ms": 2023.6769,
+        "effect_bytes": 16098348,
+        "load_ms": 17.7225,
+        "member_bytes": 9243886,
+        "name": "neutral",
+        "nodes": 89294
+      }
+    },
+    {
+      "name": "golden_troupe",
+      "process_ms": 1989.080900006229,
+      "python_decode_ms": 76.35950000258163,
+      "member_sha256": "fe6f6ed5dedbfa8dd4f1f50762e08a19d7427408be82ed0accce91525f6f6fb3",
+      "effect_sha256": "c48f6a48f3e2e690bf98bab653eb720b9769145830970a71f3bf3ffda055e489",
+      "member_bytes": 3824687,
+      "effect_bytes": 52478,
+      "actor": "furina",
+      "set_uid": "goldentroupe",
+      "category": "tag_or_field_guard",
+      "inventory_witness_ids": [
+        6,
+        7,
+        196,
+        9
+      ],
+      "alignment": {
+        "duration_equal": true,
+        "ordered_channels_equal": true,
+        "effect_port_identity_equal": false,
+        "resistance_port_identity_equal": true,
+        "topology_sha_equal": true,
+        "schedule_scope": "channels/port identities only; changed-set event tape is not certified"
+      },
+      "compile": {
+        "channels": 383,
+        "compile_ms": 180.3497,
+        "decode_ms": 801.7153,
+        "effect_bytes": 52478,
+        "load_ms": 2.4838,
+        "member_bytes": 3824687,
+        "name": "golden_troupe",
+        "nodes": 34523
+      }
+    },
+    {
+      "name": "emblem",
+      "process_ms": 1846.056900001713,
+      "python_decode_ms": 80.3847999923164,
+      "member_sha256": "ee9775083c6dee3956f55b24be4787370fd8b4c7fc1be9dd95166c446666b70c",
+      "effect_sha256": "4339c6ed8c703b3fcf91e7746ed5ee65c5feac1b17c7a4746e78cbfbf509b372",
+      "member_bytes": 3787042,
+      "effect_bytes": 52478,
+      "actor": "furina",
+      "set_uid": "emblemofseveredfate",
+      "category": "stat_dependent",
+      "inventory_witness_ids": [
+        11,
+        12,
+        23,
+        14
+      ],
+      "alignment": {
+        "duration_equal": true,
+        "ordered_channels_equal": true,
+        "effect_port_identity_equal": false,
+        "resistance_port_identity_equal": true,
+        "topology_sha_equal": true,
+        "schedule_scope": "channels/port identities only; changed-set event tape is not certified"
+      },
+      "compile": {
+        "channels": 383,
+        "compile_ms": 121.0973,
+        "decode_ms": 645.6932,
+        "effect_bytes": 52478,
+        "load_ms": 2.9819,
+        "member_bytes": 3787042,
+        "name": "emblem",
+        "nodes": 34197
+      }
+    },
+    {
+      "name": "marechaussee",
+      "process_ms": 1872.9739999980666,
+      "python_decode_ms": 356.2902999983635,
+      "member_sha256": "ee22ef183006d31d3f0971cd2067272c05c9e18f091069656936faff5121faa0",
+      "effect_sha256": "cc7a5837b014d065d10367c4e6dcf41950265fd8994f120d4222c137ce0887d7",
+      "member_bytes": 3757631,
+      "effect_bytes": 52479,
+      "actor": "furina",
+      "set_uid": "marechausseehunter",
+      "category": "event_dependent",
+      "inventory_witness_ids": [
+        1315,
+        62,
+        13,
+        1326
+      ],
+      "alignment": {
+        "duration_equal": true,
+        "ordered_channels_equal": true,
+        "effect_port_identity_equal": false,
+        "resistance_port_identity_equal": true,
+        "topology_sha_equal": true,
+        "schedule_scope": "channels/port identities only; changed-set event tape is not certified"
+      },
+      "compile": {
+        "channels": 383,
+        "compile_ms": 111.5758,
+        "decode_ms": 625.8952,
+        "effect_bytes": 52479,
+        "load_ms": 2.8995,
+        "member_bytes": 3757631,
+        "name": "marechaussee",
+        "nodes": 33886
+      }
+    }
+  ],
+  "note": "Raw artifact stats remain the saved neutral frame; four real inventory IDs witness each 4p, but this isolates effects rather than rendering a physical build. N=1 is not product response acceptance. Conditional/resource 2p tiers require source reasoning, not a static-stat shortcut."
+}

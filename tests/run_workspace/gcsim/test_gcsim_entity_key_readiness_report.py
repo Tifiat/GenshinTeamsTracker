@@ -4,6 +4,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from run_workspace.gcsim.entity_key_readiness_report import (
     METHOD_CONTIGUOUS_NAME_SPAN,
@@ -19,6 +21,7 @@ from run_workspace.gcsim.entity_key_readiness_report import (
     GcsimEntityRegistry,
     ProjectEntity,
     build_entity_key_coverage_report,
+    load_gcsim_entity_registry,
     load_project_entities_from_json,
     parse_gcsim_shortcut_keys_from_go_source,
 )
@@ -50,6 +53,34 @@ def report_for(entities, registry=None, seed_records=()):
 
 
 class GcsimEntityKeyReadinessReportTest(unittest.TestCase):
+    def test_partial_registry_override_cannot_mix_engine_sources(self) -> None:
+        with self.assertRaisesRegex(ValueError, "all three"):
+            load_gcsim_entity_registry(character_source_path="characters.go")
+
+    def test_default_registry_uses_legacy_layout_within_selected_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            shortcut = Path(tmp) / "pkg" / "shortcut"
+            shortcut.mkdir(parents=True)
+            for name, key in (
+                ("characters.go", "selectedhero"),
+                ("weapons.go", "selectedweapon"),
+                ("artifacts.go", "selectedset"),
+            ):
+                (shortcut / name).write_text(
+                    f'var m = map[string]int{{\n"{key}": 1,\n}}\n',
+                    encoding="utf-8",
+                )
+            with patch(
+                "run_workspace.gcsim.entity_key_readiness_report.GcsimEngineStore"
+            ) as store_type:
+                store_type.return_value.get_active_engine.return_value = SimpleNamespace(
+                    path=Path(tmp)
+                )
+                registry = load_gcsim_entity_registry()
+            self.assertEqual(registry.character_keys, ("selectedhero",))
+            self.assertEqual(registry.weapon_keys, ("selectedweapon",))
+            self.assertEqual(registry.artifact_set_keys, ("selectedset",))
+
     def test_registry_parser_extracts_go_map_keys(self) -> None:
         source = """
 var CharNameToKey = map[string]keys.Char{

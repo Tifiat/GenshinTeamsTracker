@@ -76,6 +76,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Import HoYoLAB account data")
     parser.add_argument("--change-equipment", action="store_true",
                         help="Apply currently observed equipment to local characters")
+    parser.add_argument("--images-only", action="store_true",
+                        help="Download all account images again without importing data")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
@@ -84,7 +86,7 @@ def main() -> int:
 
     try:
         with import_run_lock():
-            result = run_async(run_hoyolab_import(change_equipment=args.change_equipment))
+            result = run_async(run_hoyolab_import(change_equipment=args.change_equipment and not args.images_only, images_only=args.images_only))
     except HoYoLABImportError as exc:
         print(f"[HoYoLAB Import] {safe_exception_summary(exc)}", file=sys.stderr)
         return 2
@@ -115,8 +117,8 @@ def main() -> int:
     elif account_storage_error:
         print("account SQLite sync warning:", account_storage_error)
     print("manifest:", result.get("manifestPath"))
-    print("character details:", result.get("characterDetailsPath"))
-    print("overlay:", result.get("overlayPath"))
+    if not args.images_only:
+        print("character details:", result.get("characterDetailsPath"))
 
     return 0
 

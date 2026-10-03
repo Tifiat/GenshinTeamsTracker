@@ -424,10 +424,51 @@ def _fetch_all_rows_readonly(
         uri=True,
         timeout=5.0,
     )
-    connection.row_factory = sqlite3.Row
     try:
         connection.execute("PRAGMA query_only = ON")
         connection.execute("BEGIN")
+        return _fetch_all_rows_from_connection(connection)
+    finally:
+        try:
+            if connection.in_transaction:
+                connection.rollback()
+        finally:
+            connection.close()
+
+
+def gcsim_optimizer_artifact_database_input_sha256_from_connection(
+    connection: sqlite3.Connection,
+) -> str:
+    """Hash optimizer artifact rows from the caller's current SQLite view.
+
+    Callers that need this digest to correspond to other reads must keep those
+    reads and this function inside the same read transaction.
+    """
+
+    artifact_columns, substat_columns, artifact_rows, substat_rows = (
+        _fetch_all_rows_from_connection(connection)
+    )
+    return _raw_database_input_sha256(
+        artifact_columns=artifact_columns,
+        substat_columns=substat_columns,
+        artifact_rows=artifact_rows,
+        substat_rows=substat_rows,
+    )
+
+
+def _fetch_all_rows_from_connection(
+    connection: sqlite3.Connection,
+) -> tuple[
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[tuple[tuple[str, SqliteScalar], ...], ...],
+    tuple[tuple[tuple[str, SqliteScalar], ...], ...],
+]:
+    """Freeze artifact and substat rows using the caller's current DB view."""
+
+    previous_row_factory = connection.row_factory
+    connection.row_factory = sqlite3.Row
+    try:
         artifact_columns = _table_columns(connection, "artifacts")
         substat_columns = _table_columns(connection, "artifact_substats")
         missing_artifact = sorted(
@@ -458,9 +499,8 @@ def _fetch_all_rows_readonly(
                 """
             ).fetchall()
         )
-        connection.rollback()
     finally:
-        connection.close()
+        connection.row_factory = previous_row_factory
     return artifact_columns, substat_columns, artifact_rows, substat_rows
 
 
@@ -842,5 +882,6 @@ __all__ = [
     "OPTIMIZER_ARTIFACT_SET_MAPPING_READY",
     "OPTIMIZER_ARTIFACT_SET_MAPPING_UNMAPPED",
     "evaluate_gcsim_optimizer_artifact_eligibility",
+    "gcsim_optimizer_artifact_database_input_sha256_from_connection",
     "load_gcsim_optimizer_artifact_database_input",
 ]

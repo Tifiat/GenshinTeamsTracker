@@ -66,6 +66,7 @@ class TheoryAdapterTests(unittest.TestCase):
         self.assertTrue(command[2].endswith("request.json"))
         self.assertTrue(command[3].endswith("set-sources.json"))
         self.assertTrue(command[4].endswith("theory"))
+        self.assertNotIn("--finish-file", command)
 
     def test_theory_wearers_are_neutral_and_inventory_independent(self) -> None:
         characters = []
@@ -110,7 +111,7 @@ class TheoryAdapterTests(unittest.TestCase):
             session = GcsimOptimizerGoTheorySession(request)
             with (
                 patch(
-                    "run_workspace.gcsim.optimizer_go_selected._prepare_inputs",
+                    "run_workspace.gcsim.optimizer_go_session.prepare_optimizer_inputs",
                     return_value={"request_sha256": "request-sha", "request": {}},
                 ) as prepare,
                 patch.object(session, "_validate_optimizer_request"),
@@ -121,7 +122,7 @@ class TheoryAdapterTests(unittest.TestCase):
                     return_value={"status": "success", "request_sha256": "request-sha"},
                 ),
                 patch(
-                    "run_workspace.gcsim.optimizer_go_selected."
+                    "run_workspace.gcsim.optimizer_go_session."
                     "prune_go_optimizer_runs_best_effort",
                     return_value={"status": "ok"},
                 ),
@@ -130,8 +131,8 @@ class TheoryAdapterTests(unittest.TestCase):
 
         self.assertTrue(payload["success"])
         self.assertEqual(
-            prepare.call_args.kwargs["virtual_artifact_policy"],
-            VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE,
+            prepare.call_args.kwargs["mode"],
+            "theory",
         )
 
     def test_finite_energy_theory_fails_before_formula_search(self) -> None:

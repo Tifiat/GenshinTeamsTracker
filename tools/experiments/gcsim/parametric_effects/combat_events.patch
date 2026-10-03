@@ -1,0 +1,301 @@
+diff --git a/pkg/gtttrace/combat_events.go b/pkg/gtttrace/combat_events.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/combat_events.go
+@@ -0,0 +1,86 @@
++package gtttrace
++
++// Subscription-independent, observation-only event tape. Values are copied at
++// emission, before callbacks; no Amount/getter/task is executed to reconstruct
++// missing gameplay. Unknown payloads and truncation are explicit boundaries.
++type EventValue struct {
++	Kind string `json:"kind"`
++	Type string `json:"type,omitempty"`
++	Number float64 `json:"number,omitempty"`
++	Text string `json:"text,omitempty"`
++	Boolean bool `json:"boolean,omitempty"`
++	Fields map[string]EventValue `json:"fields,omitempty"`
++	Items []EventValue `json:"items,omitempty"`
++}
++type CombatEvent struct {
++	Order uint64 `json:"order"`
++	EndOrder uint64 `json:"end_order"`
++	ParentOrder uint64 `json:"parent_order"`
++	Frame int `json:"frame"`
++	Event int `json:"event"`
++	Active int `json:"active"`
++	StateSequence int `json:"state_sequence"`
++	Provider Provider `json:"provider"`
++	Arguments []EventValue `json:"arguments"`
++}
++type CombatEventLedger struct {
++	Events []CombatEvent `json:"events"`
++	Truncated bool `json:"truncated"`
++}
++const maxCombatEventRows = 100000
++
++func (r *Runtime) BindActiveIndex(active func() int) {
++	if r != nil { r.combatActive = active }
++}
++func (r *Runtime) NextObservationOrder() uint64 {
++	if !r.Enabled() { return 0 }
++	r.observationOrder++
++	return r.observationOrder
++}
++func (r *Runtime) BeginCombatEvent(event int, args []EventValue) uint64 {
++	if !r.Enabled() { return 0 }
++	order := r.NextObservationOrder()
++	if len(r.combatEvents) >= maxCombatEventRows {
++		r.combatEventsTruncated = true
++		return 0
++	}
++	active, parent := -1, uint64(0)
++	if r.combatActive != nil { active = r.combatActive() }
++	if n := len(r.combatEventStack); n > 0 { parent = r.combatEvents[r.combatEventStack[n-1]].Order }
++	row := CombatEvent{Order: order, ParentOrder: parent, Frame: r.Frame(),
++		Event: event, Active: active, StateSequence: len(r.stateEvents),
++		Provider: r.Current(), Arguments: cloneEventValues(args)}
++	r.combatEventStack = append(r.combatEventStack, len(r.combatEvents))
++	r.combatEvents = append(r.combatEvents, row)
++	return order
++}
++func (r *Runtime) EndCombatEvent(order uint64) {
++	if !r.Enabled() || order == 0 { return }
++	n := len(r.combatEventStack)
++	if n == 0 || r.combatEvents[r.combatEventStack[n-1]].Order != order {
++		r.combatEventsTruncated = true
++		return
++	}
++	r.combatEvents[r.combatEventStack[n-1]].EndOrder = r.NextObservationOrder()
++	r.combatEventStack = r.combatEventStack[:n-1]
++}
++func (r *Runtime) CombatEvents() CombatEventLedger {
++	out := CombatEventLedger{Events: []CombatEvent{}}
++	if r == nil { return out }
++	out.Truncated = r.combatEventsTruncated || len(r.combatEventStack) != 0
++	out.Events = append(out.Events, r.combatEvents...)
++	for i := range out.Events { out.Events[i].Arguments = cloneEventValues(out.Events[i].Arguments) }
++	return out
++}
++func cloneEventValues(values []EventValue) []EventValue {
++	out := make([]EventValue, len(values))
++	for i, v := range values {
++		out[i] = v
++		if v.Items != nil { out[i].Items = cloneEventValues(v.Items) }
++		if v.Fields != nil {
++			out[i].Fields = make(map[string]EventValue, len(v.Fields))
++			for k, f := range v.Fields { out[i].Fields[k] = cloneEventValues([]EventValue{f})[0] }
++		}
++	}
++	return out
++}
+diff --git a/pkg/core/info/gtt_combat_event.go b/pkg/core/info/gtt_combat_event.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_combat_event.go
+@@ -0,0 +1,102 @@
++package info
++
++import (
++	"math"
++	"reflect"
++
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++// Copy event arguments without walking the mutable core graph or calling game
++// stat getters. Engine-owned payload field names/types survive into the tape;
++// unsupported payloads are unknown, never silently empty/zero.
++func GTTCombatEventValues(args []any) []gtttrace.EventValue {
++	if len(args) > 64 { return []gtttrace.EventValue{{Kind: "unknown", Text: "argument_limit"}} }
++	out := make([]gtttrace.EventValue, len(args))
++	for i, value := range args { out[i] = gttCombatValue(value) }
++	return out
++}
++func gttCombatValue(value any) gtttrace.EventValue {
++	switch v := value.(type) {
++	case *AttackEvent:
++		if v == nil { return gtttrace.EventValue{Kind: "nil"} }
++		return gtttrace.EventValue{Kind: "object", Type: eventType(reflect.TypeOf(v)),
++			Fields: map[string]gtttrace.EventValue{
++				"Info": eventData(reflect.ValueOf(v.Info), 0),
++				"SourceFrame": {Kind: "number", Number: float64(v.SourceFrame)},
++				"Reacted": {Kind: "bool", Boolean: v.Reacted},
++				"Snapshot": {Kind: "object", Fields: map[string]gtttrace.EventValue{
++					"SourceFrame": {Kind: "number", Number: float64(v.Snapshot.SourceFrame)},
++					"Stats": eventData(reflect.ValueOf(v.Snapshot.Stats), 0),
++				}},
++			}}
++	case Target:
++		return gtttrace.EventValue{Kind: "target", Type: eventType(reflect.TypeOf(v)),
++			Fields: map[string]gtttrace.EventValue{
++				"Key": {Kind: "number", Number: float64(v.Key())},
++				"Type": {Kind: "number", Number: float64(v.Type())},
++			}}
++	case interface{ Index() int }:
++		return gtttrace.EventValue{Kind: "character", Type: eventType(reflect.TypeOf(v)),
++			Fields: map[string]gtttrace.EventValue{"Index": {Kind: "number", Number: float64(v.Index())}}}
++	default:
++		return eventData(reflect.ValueOf(value), 0)
++	}
++}
++func eventType(t reflect.Type) string {
++	if t == nil { return "" }
++	if t.Kind() == reflect.Pointer { return "*" + eventType(t.Elem()) }
++	if t.PkgPath() == "" { return t.String() }
++	return t.PkgPath() + "." + t.Name()
++}
++func eventData(v reflect.Value, depth int) gtttrace.EventValue {
++	if !v.IsValid() { return gtttrace.EventValue{Kind: "nil"} }
++	unknown := gtttrace.EventValue{Kind: "unknown", Type: eventType(v.Type())}
++	if depth > 4 { unknown.Text = "payload_depth"; return unknown }
++	if v.Kind() == reflect.Interface {
++		if v.IsNil() { return gtttrace.EventValue{Kind: "nil"} }
++		return eventData(v.Elem(), depth+1)
++	}
++	out := gtttrace.EventValue{Type: eventType(v.Type())}
++	switch v.Kind() {
++	case reflect.Bool:
++		out.Kind, out.Boolean = "bool", v.Bool()
++	case reflect.String:
++		if v.Len() > 4096 { unknown.Text = "text_limit"; return unknown }
++		out.Kind, out.Text = "string", v.String()
++	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
++		if v.Int() > 1<<53 || v.Int() < -(1<<53) { unknown.Text = "integer_precision"; return unknown }
++		out.Kind, out.Number = "number", float64(v.Int())
++	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
++		if v.Uint() > 1<<53 { unknown.Text = "integer_precision"; return unknown }
++		out.Kind, out.Number = "number", float64(v.Uint())
++	case reflect.Float32, reflect.Float64:
++		if math.IsNaN(v.Float()) || math.IsInf(v.Float(), 0) { unknown.Text = "non_finite"; return unknown }
++		out.Kind, out.Number = "number", v.Float()
++	case reflect.Pointer:
++		// Only the explicitly value-like engine DrainInfo pointer is admitted.
++		if v.IsNil() { return gtttrace.EventValue{Kind: "nil"} }
++		if v.Type() != reflect.TypeOf((*DrainInfo)(nil)) { return unknown }
++		out = eventData(v.Elem(), depth+1)
++		out.Type = eventType(v.Type())
++	case reflect.Struct:
++		out.Kind, out.Fields = "object", map[string]gtttrace.EventValue{}
++		for i := 0; i < v.NumField(); i++ {
++			field := v.Type().Field(i)
++			if field.PkgPath != "" || field.Tag.Get("json") == "-" { continue }
++			out.Fields[field.Name] = eventData(v.Field(i), depth+1)
++		}
++	case reflect.Slice, reflect.Array:
++		if v.Len() > 128 { unknown.Text = "array_limit"; return unknown }
++		out.Kind, out.Items = "array", make([]gtttrace.EventValue, v.Len())
++		for i := 0; i < v.Len(); i++ { out.Items[i] = eventData(v.Index(i), depth+1) }
++	case reflect.Map:
++		if v.Type().Key().Kind() != reflect.String || v.Len() > 64 { return unknown }
++		out.Kind, out.Fields = "map", map[string]gtttrace.EventValue{}
++		iter := v.MapRange()
++		for iter.Next() { out.Fields[iter.Key().String()] = eventData(iter.Value(), depth+1) }
++	default:
++		return unknown
++	}
++	return out
++}
+diff --git a/pkg/core/event/gtt_combat_event_test.go b/pkg/core/event/gtt_combat_event_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/event/gtt_combat_event_test.go
+@@ -0,0 +1,59 @@
++package event
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func TestNeutralEventWithoutSubscriptionAndNestedOrder(t *testing.T) {
++	rt := gtttrace.NewRuntime()
++	rt.Enable()
++	frame, active := 10, 2
++	rt.BindFrame(&frame)
++	rt.BindActiveIndex(func() int { return active })
++	h := New(rt)
++	h.Emit(OnSwirlElectro, 7, &info.AttackEvent{Info: info.AttackInfo{ActorIndex: 2}})
++	first := rt.CombatEvents()
++	if len(first.Events) != 1 || first.Events[0].Event != int(OnSwirlElectro) || first.Events[0].Active != 2 {
++		t.Fatal("unsubscribed reaction was lost", first)
++	}
++	calls := 0
++	h.Subscribe(OnNightsoulConsume, func(args ...any) {
++		calls++
++		h.Emit(OnCharacterSwap, 2, 1)
++	}, "test-only")
++	h.Emit(OnNightsoulConsume, 2, 1.0)
++	rows := rt.CombatEvents().Events
++	if calls != 1 || len(rows) != 3 || rows[2].ParentOrder != rows[1].Order ||
++		rows[2].EndOrder >= rows[1].EndOrder || rows[0].EndOrder >= rows[1].Order {
++		t.Fatal("event observation repeated or reordered gameplay", calls, rows)
++	}
++}
++
++func TestNeutralEventPayloadCapturedBeforeMutation(t *testing.T) {
++	rt := gtttrace.NewRuntime()
++	rt.Enable()
++	h := New(rt)
++	atk := &info.AttackEvent{Info: info.AttackInfo{ActorIndex: 1, FlatDmg: 3}}
++	h.Subscribe(OnApplyAttack, func(args ...any) { args[0].(*info.AttackEvent).Info.FlatDmg = 9 }, "mutate")
++	h.Emit(OnApplyAttack, atk)
++	row := rt.CombatEvents().Events[0]
++	if row.Arguments[0].Fields["Info"].Fields["FlatDmg"].Number != 3 || atk.Info.FlatDmg != 9 {
++		t.Fatal("stored payload aliases gameplay")
++	}
++	row.Arguments[0].Fields["Info"].Fields["FlatDmg"] = gtttrace.EventValue{Kind: "number", Number: 77}
++	if rt.CombatEvents().Events[0].Arguments[0].Fields["Info"].Fields["FlatDmg"].Number != 3 {
++		t.Fatal("export mutated retained tape")
++	}
++}
++
++func TestNeutralEventDisabledAndUnknownPayload(t *testing.T) {
++	rt := gtttrace.NewRuntime()
++	h := New(rt)
++	h.Emit(OnTick)
++	if len(rt.CombatEvents().Events) != 0 { t.Fatal("ordinary simulation allocated event evidence") }
++	rt.Enable()
++	h.Emit(OnTick, func(){})
++	if rt.CombatEvents().Events[0].Arguments[0].Kind != "unknown" { t.Fatal("unknown payload silently erased") }
++}
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -147,6 +147,12 @@
+ 	taskNumericContexts               [][]NumericPayload
+ 	nextTaskQueueID                   uint64
+ 	nextTaskID                        uint64
++	observationOrder                  uint64
++	combatActive                      func() int
++	combatEvents                      []CombatEvent
++	combatEventStack                   []int
++	combatEventsTruncated              bool
++
+ }
+ 
+ func (r *Runtime) BindFrame(frame *int) {
+diff --git a/pkg/core/event/event.go b/pkg/core/event/event.go
+--- a/pkg/core/event/event.go
++++ b/pkg/core/event/event.go
+@@ -211,6 +211,8 @@
+ 		}
+ 		return
+ 	}
++	order := h.trace.BeginCombatEvent(int(e), info.GTTCombatEventValues(args))
++	defer h.trace.EndCombatEvent(order)
+ 	for _, v := range h.events[e] {
+ 		if v.f != nil {
+ 			v.provider = gtttrace.NormalizeProvider(v.provider)
+diff --git a/pkg/core/core.go b/pkg/core/core.go
+--- a/pkg/core/core.go
++++ b/pkg/core/core.go
+@@ -113,6 +113,7 @@
+ 			GTTTrace:     c.GTTTrace,
+ 		},
+ 	)
++	c.GTTTrace.BindActiveIndex(c.Player.Active)
+ 	c.Combat = combat.New(combat.Opt{
+ 		Events:       c.Events,
+ 		Team:         c.Player,

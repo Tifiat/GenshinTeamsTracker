@@ -33,6 +33,7 @@ class HistorySlotVisual:
     slot_index: int
     character_name: str = ""
     portrait_path: str = ""
+    expanded_portrait_path: str = ""
     character_level: int | None = None
     constellation: int | None = None
     weapon_name: str = ""
@@ -260,6 +261,10 @@ def _team_visual(team: Any, bundle_dir: Path) -> HistoryTeamVisual:
                 portrait_path=_bundle_asset_path(
                     bundle_dir,
                     "" if character is None else character.portrait_ref,
+                ),
+                expanded_portrait_path=_bundle_asset_path(
+                    bundle_dir,
+                    "" if character is None else character.expanded_portrait_ref,
                 ),
                 character_level=None if character is None else character.level,
                 constellation=None if character is None else character.constellation,

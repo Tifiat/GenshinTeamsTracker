@@ -1,19 +1,50 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+from contextlib import closing
+from pathlib import Path
 from unittest.mock import patch
 
 from hoyolab_export.import_pipeline import (
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
     sync_account_storage_for_import,
     sync_static_reference_catalogs_for_import,
+    _sync_image_paths_only,
 )
+from hoyolab_export.account_storage import init_account_storage
+from hoyolab_export.artifact_db import connect_db, init_db
 from run_workspace.abyss.source_data_runtime import (
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH as RUNTIME_HOYOLAB_ABYSS_PERIOD_PATH,
 )
 
 
 class ImportPipelineAccountStorageTest(unittest.TestCase):
+    def test_image_only_sync_keeps_account_data_and_equipment_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "account.db"
+            with closing(connect_db(db)) as conn, conn:
+                init_db(conn)
+                init_account_storage(conn)
+                conn.execute(
+                    "INSERT INTO account_characters (character_id, name, level, portrait_path) VALUES (1, 'Hero', 90, 'old.png')"
+                )
+                conn.execute(
+                    "INSERT INTO account_weapon_observed_stacks (weapon_fingerprint, weapon_id, name, level, icon_path) "
+                    "VALUES ('weapon-1', 2, 'Blade', 80, 'old-weapon.png')"
+                )
+            manifest = {
+                "characterAssets": [{"character": {"id": 1}, "crop": "new-character.png"}],
+                "weaponAssets": [{"weapon": {"id": 2}, "crop": "new-weapon.png"}],
+            }
+            with patch("hoyolab_export.import_pipeline.ARTIFACT_DB_PATH", db):
+                _sync_image_paths_only(manifest)
+            with closing(connect_db(db)) as conn:
+                character = conn.execute("SELECT name, level, portrait_path FROM account_characters").fetchone()
+                weapon = conn.execute("SELECT name, level, icon_path FROM account_weapon_observed_stacks").fetchone()
+            self.assertEqual(tuple(character), ("Hero", 90, "new-character.png"))
+            self.assertEqual(tuple(weapon), ("Blade", 80, "new-weapon.png"))
+
     def test_import_pipeline_uses_runtime_abyss_period_path(self) -> None:
         self.assertEqual(
             DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
@@ -73,7 +104,7 @@ class ImportPipelineStaticCatalogTest(unittest.TestCase):
             "hoyolab_export.import_pipeline.ensure_artifact_set_catalog",
             return_value={"source": "network", "sets_seen": 1},
         ) as set_mock, patch(
-            "hoyolab_export.import_pipeline.refresh_character_trait_catalog",
+            "hoyolab_export.import_pipeline.load_or_refresh_character_trait_catalog",
             return_value=FakeTraitCatalog(),
         ) as trait_mock:
             summary, error = sync_static_reference_catalogs_for_import()
@@ -91,7 +122,7 @@ class ImportPipelineStaticCatalogTest(unittest.TestCase):
             "hoyolab_export.import_pipeline.ensure_artifact_set_catalog",
             side_effect=RuntimeError("catalog offline"),
         ), patch(
-            "hoyolab_export.import_pipeline.refresh_character_trait_catalog",
+            "hoyolab_export.import_pipeline.load_or_refresh_character_trait_catalog",
             side_effect=RuntimeError("traits offline"),
         ):
             summary, error = sync_static_reference_catalogs_for_import()

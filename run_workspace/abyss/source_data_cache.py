@@ -153,6 +153,17 @@ def cache_abyss_floor_monster_icons(
 ) -> IconCacheResult:
     """Cache local monster icons for source-data rows without fetching pages."""
 
+    # A later successful retry must replace warnings from an earlier HTTP
+    # failure, rather than leaving obsolete failures in the saved source data.
+    data = replace(
+        data,
+        enemy_rows=tuple(replace(row, warnings=tuple(
+            warning for warning in row.warnings if not _is_icon_cache_warning(warning)
+        )) for row in data.enemy_rows),
+        global_warnings=tuple(
+            warning for warning in data.global_warnings if not _is_icon_cache_warning(warning)
+        ),
+    )
     asset_dir = cached_abyss_floor_monster_icon_dir(
         data.period.start_date,
         data.floor,
@@ -228,6 +239,10 @@ def cache_abyss_floor_monster_icons(
         entries=tuple(entries),
         warnings=tuple(global_warnings),
     )
+
+
+def _is_icon_cache_warning(warning: str) -> bool:
+    return str(warning).startswith(("monster_icon_", "nanoka_icon_", "fandom_icon_"))
 
 
 def load_cached_abyss_floor_source_data(
@@ -809,12 +824,17 @@ def _source_url_extension(source_url: str) -> str:
 
 
 def _fetch_url_bytes(url: str) -> bytes:
+    headers = {
+        "Accept": "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
+        "User-Agent": ICON_CACHE_USER_AGENT,
+    }
+    if urlparse(url).hostname == "static.wikia.nocookie.net":
+        # Wikia serves public images with HTTP 403 when the source site's
+        # referrer is missing. This is the same referrer used by its pages.
+        headers["Referer"] = "https://genshin-impact.fandom.com/"
     request = Request(
         url,
-        headers={
-            "Accept": "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
-            "User-Agent": ICON_CACHE_USER_AGENT,
-        },
+        headers=headers,
     )
     try:
         with urlopen(request, timeout=30) as response:

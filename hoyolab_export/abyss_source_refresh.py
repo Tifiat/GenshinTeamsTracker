@@ -16,9 +16,11 @@ from playwright.async_api import BrowserContext
 
 from run_workspace.abyss.source_data import AbyssFloorSourceData
 from run_workspace.abyss.source_data_cache import (
+    cache_abyss_floor_monster_icons,
     cached_abyss_floor_monster_icon_dir,
     cached_abyss_floor_source_data_path,
     load_cached_abyss_floor_source_data,
+    save_abyss_floor_source_data,
 )
 from run_workspace.abyss.fandom_enemy_hp_fallback import (
     DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
@@ -200,23 +202,26 @@ async def fetch_hoyolab_spiral_abyss_period(
     *,
     language: str | None = None,
     schedule_type: int = 1,
+    role_id: str | None = None,
+    server: str | None = None,
 ) -> HoYoLABAbyssPeriod:
     """Fetch the official Spiral Abyss period through the logged-in HoYoLAB page."""
 
-    roles_result = await context_request_fetch_json(page, ROLES_URL, language=language)
-    roles_payload = roles_result.get("json") or {}
-    _raise_for_hoyolab_api_error(
-        roles_payload,
-        response=roles_result,
-        label="HoYoLAB roles",
-    )
-    try:
-        role_id, server = pick_genshin_role(roles_payload)
-    except RuntimeError as exc:
-        raise HoYoLABAbyssPeriodError(
-            "Could not detect Genshin role_id/server from HoYoLAB roles response. "
-            "HoYoLAB auth may be missing or expired."
-        ) from exc
+    if not (role_id and server):
+        roles_result = await context_request_fetch_json(page, ROLES_URL, language=language)
+        roles_payload = roles_result.get("json") or {}
+        _raise_for_hoyolab_api_error(
+            roles_payload,
+            response=roles_result,
+            label="HoYoLAB roles",
+        )
+        try:
+            role_id, server = pick_genshin_role(roles_payload)
+        except RuntimeError as exc:
+            raise HoYoLABAbyssPeriodError(
+                "Could not detect Genshin role_id/server from HoYoLAB roles response. "
+                "HoYoLAB auth may be missing or expired."
+            ) from exc
     query = urlencode(
         {
             "server": server,
@@ -245,6 +250,7 @@ async def context_request_fetch_json(
     method: str = "GET",
     body: dict[str, Any] | None = None,
     language: str | None = None,
+    timeout_ms: int | None = None,
 ) -> dict[str, Any]:
     """Fetch HoYoLAB JSON through BrowserContext.request, not page.evaluate."""
 
@@ -264,10 +270,11 @@ async def context_request_fetch_json(
         "referer": HOYOLAB_URL,
     }
     normalized_method = str(method or "GET").upper()
+    timeout_options = {"timeout": timeout_ms} if timeout_ms is not None else {}
     if normalized_method == "GET":
-        response = await request.get(url, headers=headers)
+        response = await request.get(url, headers=headers, **timeout_options)
     elif normalized_method == "POST":
-        response = await request.post(url, headers=headers, data=json.dumps(body or {}))
+        response = await request.post(url, headers=headers, data=json.dumps(body or {}), **timeout_options)
     else:
         raise HoYoLABAbyssPeriodError(f"Unsupported HoYoLAB request method: {method!r}")
     text = await response.text()
@@ -320,6 +327,8 @@ async def resolve_abyss_period_with_fallbacks(
     page: Any | None,
     *,
     language: str | None = None,
+    role_id: str | None = None,
+    server: str | None = None,
     period_source: str = PERIOD_SOURCE_AUTO,
     hoyolab_fetcher: Callable[..., Any] = fetch_hoyolab_spiral_abyss_period,
     nanoka_live_resolver: Callable[[], ResolvedAbyssPeriodSource] = resolve_nanoka_live_period,
@@ -337,7 +346,8 @@ async def resolve_abyss_period_with_fallbacks(
             failures.append(f"hoyolab_spiral_abyss_overview_failed:{message}")
         else:
             try:
-                period = await hoyolab_fetcher(page, language=language)
+                account_kwargs = {"role_id": role_id, "server": server} if role_id and server else {}
+                period = await hoyolab_fetcher(page, language=language, **account_kwargs)
                 return _period_with_resolution_metadata(
                     period,
                     source=period.source,
@@ -477,10 +487,54 @@ def update_cached_abyss_source_data_for_hoyolab_period(
             parsed,
             floor=floor,
             cache_dir=cache_dir,
-            require_assets=cache_assets,
+            require_assets=False,
         )
         timings["cache_ready_lookup"] = _elapsed_ms(lookup_start)
         if cached is not None:
+            stale_icon_failures = any(
+                str(warning).startswith("monster_icon_cache_failed")
+                for warning in cached.global_warnings
+            )
+            if cache_assets and (
+                not _cached_assets_ready(cached, cache_dir=cache_dir) or stale_icon_failures
+            ):
+                # Icons are optional display assets. Missing icons must never
+                # trigger another composition/HP fetch for the same period.
+                asset_start = perf_counter()
+                icon_result = cache_abyss_floor_monster_icons(
+                    cached, cache_dir=cache_dir, max_workers=resolved_workers,
+                )
+                timings["icon_asset_cache"] = _elapsed_ms(asset_start)
+                save_start = perf_counter()
+                saved_path = save_abyss_floor_source_data(icon_result.data, cache_dir=cache_dir)
+                timings["json_cache_save"] = _elapsed_ms(save_start)
+                timings["total"] = _elapsed_ms(total_start)
+                return AbyssSourceDataRefreshResult(
+                    period=parsed,
+                    floor=int(floor),
+                    cache_saved=True,
+                    cache_path=str(saved_path),
+                    matched=icon_result.data.matched_count,
+                    unmatched=icon_result.data.unmatched_count,
+                    ambiguous=icon_result.data.ambiguous_count,
+                    enemy_rows=len(icon_result.data.enemy_rows),
+                    assets={
+                        "enabled": True,
+                        "cache_dir": str(icon_result.cache_dir),
+                        "attempted": icon_result.attempted,
+                        "saved": icon_result.saved,
+                        "failed": icon_result.failed,
+                        "downloaded": icon_result.downloaded,
+                        "cache_hits": icon_result.cache_hits,
+                        "workers": icon_result.workers,
+                        "warnings": list(icon_result.warnings),
+                    },
+                    skipped=True,
+                    skip_reason="same_period_source_cache_icons_only",
+                    warnings=tuple(icon_result.data.global_warnings),
+                    timings_ms=timings,
+                    network_workers=resolved_workers,
+                )
             timings["total"] = _elapsed_ms(total_start)
             return _cached_refresh_result(
                 parsed,

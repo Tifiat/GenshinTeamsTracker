@@ -47,6 +47,122 @@ Mirror the primary project owner under `tests/`:
   shared inventory views and bounded one-wearer FGBS for two fixture packages;
   eight new compact calls are an explicit research budget, not a routine suite.
   Its receipt separates formula response from product/search-quality acceptance.
+  `inventory_bound_poc/run.py` is a managed, isolated Go overlay: three finite
+  real-item domains compare an affine upper-bound search with exhaustive shared
+  production-formula scoring. `--synthetic-only` runs seven cheap arithmetic
+  controls without engine calls. `tests/tools/test_inventory_bound_poc.py` pins
+  its compact receipt, full vectors and restricted physical legality; this is
+  not installed search, schedule-response or UI acceptance.
+  The integrated All Sets path adds `artifact_bound_test.go` (joint crit/caps,
+  flat ATK, nonlinear branches, singularity, randomized finite enclosures),
+  `inventory_test.go` (small exhaustive optimum, foreign-anchor parity,
+  budget/cancellation), sparse-package legality and cross-wearer reservation
+  regressions. These are scoped numerical/physical controls, not global proofs.
+  The approved overhaul adds `parametric_program_test.go` for retained variable
+  ports, identity/cross-owner/branch/duration parity and reverse gradients;
+  inventory tests cover global region order, opaque no-prune behavior, genuine
+  occupied-item transfer, shared pair budgets and within-wearer deadline recovery.
+  `TestAllSetsEntrypointHasOneCommonFidelityMeasurement` pins the single n500
+  orchestration call without simulations; Selected's old screen is separate.
+  `internal/evaluator/parametric_live_test.go` is opt-in ONLY: set
+  `GTT_PARAMETRIC_LIVE=1` and run `go -C native/gcsim_optimizer test
+  ./internal/evaluator -run ^TestParametricActiveEngineWitness$ -count=1 -v`
+  through `tools/managed_optimizer_experiment.py --timeout 180 -- ...`.
+  It checks the active engine against the retained first small Flins input,
+  makes exactly two production-provider captures and compares24 joint input
+  changes/16 specializations against unreduced arithmetic. It skips normally,
+  refuses unmanaged/live-path drift and is NOT set-lifecycle or product acceptance.
+  The historical2026-09-20 source-only query gate is
+  `tools/experiments/gcsim/parametric_effects/check_stat_queries.py`, run under
+  the same managed wrapper with240s. It tests fourteen reviewed observer/generator
+  patches over the then-selected source (21 central controls and five selected-stat
+  generator cases, no installation).
+  Explicit `--capture-fixture` uses360s and makes two captures of ONE retained
+  Flins seed: neutral and unchanged original sets. Strict native decoding,
+  aggregate input binding and per-channel response checks follow. The saved
+  four-package response now matches to roundoff; this is not arbitrary-set or
+  product acceptance. The Go design records scope and earlier failed diagnostics.
+  `parametric_effects/check_rules.py` uses180s and the production
+  engine-bound source envelope: lexical state, source timers, subscription
+  replacement, constructor visibility, scratch-vector purity, typed target
+  interfaces and thirteen original synthetic-tape source controls, plus Scroll
+  partial/full/zero, independent map registration, enum-key identity, returned
+  field scratch,2/3-versus4/5 piece tiers and tail/speed schedule boundaries.
+  Scalar addresses retain queued-callback identity and a live read-only frame;
+  actual LongNight stack refresh/expiry and Amount helper-local ownership pass.
+  Resource controls cover outgoing/received healing separation, expiry, crystal
+  versus foreign shields, nearby/far lunar constructs, low/high energy and
+  healing-to-flat-hit accumulation. Unknown resource evidence remains unknown;
+  event-healing and candidate-ER activation have explicit approximation codes.
+  `allsets/neutral_coordinator_test.go` adds a source-bound5^5 inventory oracle,
+  no-bonus winner, one-capture ownership and shared-budget coverage controls.
+  Its neutral finalists also traverse the production `FinalistRenderer`, pinning
+  non-artifact frame, n500 options, energy policy, set rows and rendered identity.
+  The opt-in `neutral_profile_test.go` consumes the same saved capture and
+  verified reference for restricted then full60s source searches starting from
+  the saved WEAK physical build, not the supplied strong incumbent. Restricted
+  model recall gates expansion; all generated inputs are managed and removed.
+  User-authorized `--finish-passes` removes only the60s search deadline (900s
+  managed watchdog,600s native safety ceiling). Both configured passes completed
+  on587 items in115.352s, zero unknown packages, unchanged best20 IDs. This is
+  not all-combination enumeration, convergence or production/button timing.
+  Optional `--compare-preparation` runs reuse-off/on consumer variants against
+  the SAME captures and inventory, with no additional engine calls. Full587
+  paired96.406->89.388s/preparation48.317->41.982s preserved all seven finalists,
+  work hashes and coverage. Cache controls pin exact fixed-input/source/mask/
+  proof identity, private scratch and bounded eviction; linear-plan controls
+  compare repeated scans with negative/tied weights, reservations and exclusions.
+  Complete domain/formula/search suites run before the paired profiles.
+  Optional `--compare-effects` isolates constant binding/reachable-key reuse;
+  paired full58789.865->81.233s (binding16.289->8.008s) preserved work and all
+  seven finalists. Final order hardening additionally matches the general
+  binder's compiled-node order and cancellation-sensitive reverse gradients.
+  Dynamic latent reads, malformed/nonfinite inputs and proof state remain covered.
+  `--two-seeds` completion profiles use both saved seeds: decode each member,
+  compare neutral response with the independent SAME-panel control, then gate
+  full inventory by restricted recall. This is source-only, not button timing.
+  `candidates_test.go` pins tiny exhaustive parity, budgets/cancel and explicit
+  top-five/spread heuristic conditions. New search scores complete real builds;
+  local weights do not certify permanent item or set elimination.
+  Union potentials pin legal pattern support and joint crit/cap enclosures;
+  constant caching validates the full vector before exact damage-reachable key
+  projection; dynamic expressions bypass it. Controls pin finite FIFO size,
+  private scratch and proof state. Resumable frontier controls compare1/7/64-unit slices with the atomic
+  small-domain solver, without repeated work or unknown-dependent pruning, and
+  retain pending regions/real improvements across cancellation.
+  Hybrid affine/interval controls additionally pin finite clamped roots at
+  zero, long products and randomized signed/fractional branches. They pass
+  arithmetic tests but historically regressed the fixed60s profile. The approved
+  real-candidate coordinator no longer invokes those bounds. Its dated weak-start
+  results and n500 ordinary checks are in the Go design; not UI acceptance.
+  Those source profiles are not installed full-inventory searches. Other gates cover prepared-port,
+  timed/weapon and actual-source Emblem controls. Formula tests pin read roots,
+  post-reduction expression binding, caps, cycles and cross-owner specialization.
+  The managed capture now validates latent stat exports/binding. Optional
+  `--audit-rules` measures package coverage on that ONE tape without per-set
+  simulations; coverage is not response acceptance. Default native
+  suites skip the active-source control unless that managed gate supplies its
+  envelope. `tests/tools/test_parametric_effect_gate.py` pins unmanaged
+  refusal, patch paths and same-installation overlay relocation; the existing
+  managed suite owns cleanup/preservation. The Go design records its scope.
+  The2026-09-26 managed `install_neutral.py --activate` gate consolidates those
+  observers plus additive `gtt_neutral_inputs_v1` into production patch0009.
+  It checks exact active-source replay, full native suite, normal clean updater
+  build, application compatibility and four ACTUAL built-binary captures before
+  activation. Their two-seed response matches the independent same-panel control.
+  `test_neutral_install` covers generated-diff preservation, overlay path escape,
+  actual generator evidence and rollback after a failed active-pointer change.
+  The source-only overlay command must not be reapplied to the new engine.
+  Adapter/CLI controls route only new-capable infinite All Sets to neutral search;
+  finite energy/older engines and Theory retain their existing paths. Missing
+  neutral rules on an advertised new route fail explicitly. Detailed deployed
+  product performance and any real button acceptance remain GP-3 evidence.
+  `tools/experiments/gcsim/all_sets_inventory_regression/run.py` runs only the
+  14 post-change All Sets rows through production request/session classes and
+  the active engine; it never regenerates the supplied baseline. Managed jobs
+  remove captures/build caches after each row. Its retention tests guard
+  immutable before.json, failed-attempt preservation and size/attempt limits;
+  report.py compares measured DPS, twenty IDs, mains, physical sets and limits.
   Native domain tests exhaust small slot masks and preserve raw-stat reference;
   provider/search tests guard seed, energy, ownership, legality and cancellation.
   `measure_decode.py` checks the canonical-read optimization on saved bytes
@@ -184,9 +300,18 @@ Mirror the primary project owner under `tests/`:
   and wide viewport widths, including sub-1 DPR startup downscale; hover
   coordinates must match widget pixels. Two-set builds and wrapped enemy rows
   must reserve enough height and keep their hit regions inside the card.
-  Compact density has a <=180px height guard for an ordinary two-team run at
-  864px rendered width and <=140px at 1220px for the wide results layout;
-  settle hidden-widget resize and convert through content scale, not DPR=1.
+  Compact density has a <=110px height guard for an ordinary two-team run at
+  864px rendered width and <=140px at 1220px for the wide results layout. The
+  narrow assertion also requires eight character hits without a secondary
+  results strip; a separate check covers extra two-set build height. The compact
+  hierarchy check pins the clean 86px total, separate 28px two-high resonance
+  column, Roman-before-resonance hiding priority, suffix without whitespace and
+  silent clipping of bonus overflow. Period UI checks keep the
+  heading to one row, omit zero-run menu actions, retain a large popup target,
+  and verify horizontal chamber labels, 50px boss icons and styled HP values
+  only after the boss preview is toggled open.
+  Sub-1 DPR cases still settle hidden-widget resize and convert hit geometry
+  through content scale, not a forced DPR=1 assumption.
 - `tests/ui/right_panel/pvp/` - PvP right-panel host/pages/stage panels,
   including Decks, Play, Draft pick/ban zones, future scoped build-flow routing,
   Timers/results, and Completed result/export panels. Tests must not bless a
@@ -287,6 +412,10 @@ Mirror the primary project owner under `tests/`:
   `tests/run_workspace/history/` and card tests under
   `tests/ui/right_panel/history/`. A separate `tests/ui/history_browser/`
   package has not been created; do not use that path as a runnable suite.
+  Geometry tests that assert a named logical width must patch
+  `HistoryCardWidget.content_scale` to the intended reference scale; otherwise
+  an earlier process-wide Qt scale test can change layout breakpoints. Tooltip
+  windows/timers are lazy and should be created only by hover tests.
 - `tests/ui/utils/` - shared UI utility tests. HiDPI coverage includes opt-in
   alpha trimming, preservation of alpha=1 silhouette edges and source bytes,
   and distinct cached results for trimmed versus full-canvas images.

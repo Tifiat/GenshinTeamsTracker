@@ -45,6 +45,7 @@ type CompiledMember struct {
 	coordinates []string
 	baseline    []float64
 	scratch     []float64
+	hasOpaque   bool
 }
 
 type DenseMemberScore struct {
@@ -66,6 +67,7 @@ func CompileSeedMember(member contracts.IRSeedMember, actorKeys, coordinates []s
 	}
 	compiled := &CompiledMember{
 		seed: member.Seed, durationMS: member.DurationMS,
+		hasOpaque:   len(member.OpaqueBoundaries) != 0,
 		nodes:       make([]compiledNode, len(member.Nodes)+1),
 		channels:    make([]compiledChannel, 0, len(member.Channels)),
 		actorKeys:   append([]string(nil), actorKeys...),
@@ -76,6 +78,7 @@ func CompileSeedMember(member contracts.IRSeedMember, actorKeys, coordinates []s
 		row := compiledNode{coordinate: -1}
 		switch node.Operation {
 		case "constant", "opaque_frozen":
+			compiled.hasOpaque = compiled.hasOpaque || node.Operation == "opaque_frozen"
 			row.op = opConstant
 			parsed, err := strconv.ParseFloat(node.Value, 64)
 			if err != nil {
@@ -291,7 +294,7 @@ func (compiled *CompiledMember) buildEvaluationPlan() error {
 			}
 			continue
 		}
-		value, err := evaluateConstantNode(node, compiled.baseline)
+		value, err := evaluateConstantNode(&node, compiled.baseline)
 		if err != nil {
 			return fmt.Errorf("constant node %d: %w", nodeID, err)
 		}
@@ -300,7 +303,7 @@ func (compiled *CompiledMember) buildEvaluationPlan() error {
 	return nil
 }
 
-func evaluateConstantNode(node compiledNode, values []float64) (float64, error) {
+func evaluateConstantNode(node *compiledNode, values []float64) (float64, error) {
 	var value float64
 	switch node.op {
 	case opConstant:

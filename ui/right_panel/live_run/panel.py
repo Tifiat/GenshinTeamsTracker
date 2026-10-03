@@ -459,14 +459,18 @@ class RunRightPanelWidget(QWidget):
         self.setUpdatesEnabled(True)
         self.update()
 
+    def refresh_asset_pixmaps(self) -> None:
+        """Reload paths whose bytes changed during an image-only import."""
+        for slot_widget in self._slot_widgets:
+            slot_widget.refresh_hidpi_pixmaps()
+        self._details_frame.refresh_hidpi_pixmaps()
+
     def event(self, event) -> bool:
         if event.type() in (
             QEvent.Type.DevicePixelRatioChange,
             QEvent.Type.ScreenChangeInternal,
         ):
-            for slot_widget in self._slot_widgets:
-                slot_widget.refresh_hidpi_pixmaps()
-            self._details_frame.refresh_hidpi_pixmaps()
+            self.refresh_asset_pixmaps()
         return super().event(event)
 
 

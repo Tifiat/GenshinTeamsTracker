@@ -331,6 +331,15 @@ def _build_character_snapshot(
             provenance={"team_slot_source": SOURCE_RIGHT_PANEL_VIEW_MODEL},
         )
         slot_asset_refs.append(ref)
+    expanded_portrait_ref = _text(_first_present(data, "portrait_history_path"))
+    if expanded_portrait_ref and expanded_portrait_ref != portrait_ref:
+        ref = asset_collector.add(
+            expanded_portrait_ref,
+            role="character_expanded_portrait",
+            label=name,
+            provenance={"team_slot_source": SOURCE_RUN_SESSION_STATE},
+        )
+        slot_asset_refs.append(ref)
     if side_icon_ref:
         ref = asset_collector.add(
             side_icon_ref,
@@ -364,6 +373,7 @@ def _build_character_snapshot(
             getattr(selected_details, "constellation", None),
         ),
         portrait_ref=portrait_ref,
+        expanded_portrait_ref=expanded_portrait_ref,
         side_icon_ref=side_icon_ref,
         provenance=provenance,
     )

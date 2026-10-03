@@ -111,8 +111,13 @@ func TestPackageViewKeepsOriginalArtifactReference(t *testing.T) {
 	}
 	excluded := map[int64]bool{newIDs[0]: true}
 	feasible, err := index.FeasiblePackages([]SetCapability{{"new_set", true, false}}, excluded)
-	if err != nil || len(feasible) != 0 {
-		t.Fatal("occupied item incorrectly available")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range feasible {
+		if len(p.Sets) > 0 {
+			t.Fatal("occupied item incorrectly available for a bonus")
+		}
 	}
 	_, err = index.PackageSeed(index.Incumbent, 0, packages[0], nil)
 	if err != nil {

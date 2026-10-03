@@ -8,6 +8,7 @@ investigation. Within one chat, reread only changed sections or diffs.
 
 | Area | Start here | Conditional guardrails |
 | --- | --- | --- |
+| Shared worker tasks | [coordination](COORDINATION.md), then shared queue and own Worker4 status | Technical documents remain checkout-local |
 | Optimizer | [current checkpoint](GCSIM_GOB11_GP3_CHECKPOINT.md), then [trace contract](GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md) section needed | [optimizer rules](OPTIMIZER_WORK_RULES.md) |
 | Normal GCSIM / engine updates | [engine integration](GCSIM_ENGINE_INTEGRATION_PLAN.md) current section | [optimizer rules](OPTIMIZER_WORK_RULES.md) only if optimizer is touched |
 | AppShell / History / live run | [workspace](APP_SHELL_WORKSPACE_PLAN.md), [History](HISTORY_BROWSER.md), or [snapshot contract](RUN_WORKSPACE_SNAPSHOT_CONTRACT.md) as appropriate | [UI rules](UI_WORK_RULES.md) |
@@ -18,8 +19,9 @@ investigation. Within one chat, reread only changed sections or diffs.
 | Testing / performance | [tests](TESTS.md) or [preloader backlog](PRELOADER_BACKLOG.md) | relevant UI/data rules |
 
 The [full catalog](CATALOG.md) is for finding a document not shown here; it is
-not mandatory reading. `../../TODO.md` owns active order; [deferred work](WORK_BACKLOG.md)
-is read only when that area becomes active. A contract owns behavior, a current
+not mandatory reading. `../../TODO.md` routes to the shared active order;
+[deferred work](WORK_BACKLOG.md) routes to its backlog and is read only when
+that area becomes active. A contract owns behavior, a current
 checkpoint owns acceptance/next action, and dated evidence owns one observation.
 Historical instructions never override the current owner.
 

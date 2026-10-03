@@ -11,7 +11,7 @@ only turns require no file edits or checker.
 | Fact | One owner |
 | --- | --- |
 | Cross-project execution rule | `CODEX.md` or the linked scoped work-rule file |
-| Active order | `TODO.md`; deferred scopes in `WORK_BACKLOG.md` |
+| Active order | Shared hub TODO/BACKLOG via local `TODO.md` and `WORK_BACKLOG.md` routers |
 | Stable subsystem behavior | Area contract linked from `README.md` |
 | Current implementation, acceptance, immediate next action | One current checkpoint per scope |
 | A particular run, failure or measurement | Dated receipt/fixture |
@@ -44,6 +44,8 @@ proof that product tests or external research were rerun.
 ## Closeout for an affected fact
 
 1. Read the current owner, relevant task item and live machine fields only.
+   Read the shared queue and own Worker4 status; propose queue changes only in
+   that status file. Worker1 owns the common queue/decisions/registry files.
    Inspect the present worktree/diff; preserve concurrent edits.
 2. Update the owner in place with the actual outcome and its verification
    boundary. Keep backend, controlled response, installed engine and real UI
@@ -60,6 +62,9 @@ proof that product tests or external research were rerun.
    errors. Review the meaning of affected facts and the final diff yourself.
    The checker is read-only and cannot prove gameplay, UI or semantic truth.
    Run `tests/tools/test_check_handoffs.py` when changing the checker.
+   Until this checkout receives coordination-aware tooling, use the main
+   checkout's checker read-only with `--root` naming this checkout, as described
+   in `COORDINATION.md`.
 
 For a routine code fix with no affected durable fact, verify that boundary,
 run the checker and report the focused product checks; skip steps 1-4 and do

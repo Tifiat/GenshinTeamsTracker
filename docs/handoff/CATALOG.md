@@ -27,10 +27,11 @@ in every file.
 | --- | --- |
 | [README.md](README.md) | Short area router and reading policy |
 | [HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md) | Durable-fact closeout, compaction and consistency checks |
+| [COORDINATION.md](COORDINATION.md) | Shared task hub, Worker4 routing/ownership and validation |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |
-| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Deferred open work by area; current priority stays in TODO |
+| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Router to Worker1-owned shared deferred work; active order routes through TODO |
 
 ## Account, Data And Artifacts
 

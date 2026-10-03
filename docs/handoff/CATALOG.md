@@ -3,8 +3,8 @@
 This file lists the available handoff documents for discovery and structural
 coverage. It is not startup reading. Use `README.md` to choose one area and
 read only that area's current status and relevant contract section. Read
-`TODO.md` when selecting the current stage and `WORK_BACKLOG.md` when a deferred
-area is selected.
+`TODO.md` as the shared-queue router when selecting the current stage and
+`WORK_BACKLOG.md` as the shared-backlog router when a deferred area is selected.
 
 ## Authority
 
@@ -27,10 +27,11 @@ in every file.
 | --- | --- |
 | [README.md](README.md) | Short area router and reading policy |
 | [HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md) | Durable-fact closeout, compaction and consistency checks |
+| [COORDINATION.md](COORDINATION.md) | Shared task/status routing, queue ownership and migration boundaries |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |
-| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Deferred open work by area; current priority stays in TODO |
+| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Router to shared deferred scopes; active priority routes through TODO |
 
 ## Account, Data And Artifacts
 

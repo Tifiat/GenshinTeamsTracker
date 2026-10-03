@@ -40,12 +40,25 @@ conversation is usually Russian.
   tokens, request headers, browser profiles or private debug/network output.
   Generated files require an owner, finite retention and connected cleanup:
   see `docs/handoff/DATA_WORK_RULES.md`.
-- Do not commit or push task changes unless the user requests it.
+- Verified local commits of this worker's own completed stages are automatic
+  under the user-approved Git policy linked from
+  [coordination](docs/handoff/COORDINATION.md).
+  Reread it before any Git write; inspect branch, index and the selected diff.
+  Cross-branch transfers, push and other Git mutations require separate explicit
+  user confirmation. Preserve unrelated changes and record full commit hashes,
+  time, checks and limits in your own shared status until journal collection.
 - Parallel workers use separate Git worktrees. Resolve imports, databases,
   settings, engines, caches and outputs inside the calling worker's checkout;
   never edit another worker's files or share its live database. Git objects and
   refs are shared, so coordinate merges/branch moves. Dependency environments
   may be reused read-only; dependency changes require a separate environment.
+- Shared task coordination is linked by `coordination.json` and
+  `docs/handoff/COORDINATION.md`. Read the common queue and your own status at
+  task selection, scope changes and closeout. Worker1 owns shared queue files;
+  this checkout's registered owner is Worker3, which writes only its own shared
+  status. Keep technical docs/evidence with code. No shared docs junction or
+  automatic cross-worker acceptance. Report a missing hub rather than creating
+  another live queue; other workers' checkouts remain protected by policy.
 - A scheduled continuation exists only after the automation tool returns a
   persisted active ID. A suggested card is not an active schedule.
 - `tools/future/` is for explicitly requested or genuinely reusable manual
@@ -56,9 +69,9 @@ conversation is usually Russian.
 
 The short router is `docs/handoff/README.md`. Read only the current status
 and the relevant contract section for the selected area. Deep design and dated
-evidence are consulted for the specific mechanism or failure. `TODO.md` owns
-the active order; read it when choosing or changing stages. Deferred scopes
-are in `docs/handoff/WORK_BACKLOG.md`.
+evidence are consulted for the specific mechanism or failure. `TODO.md` routes
+to the one shared active order; read it when choosing or changing stages.
+`docs/handoff/WORK_BACKLOG.md` routes to the shared deferred scopes.
 
 | Task | Scoped guardrails |
 | --- | --- |
@@ -92,3 +105,5 @@ changed acceptance/evidence or handoff edits. Update document owners only for
 durable changes; a routine local fix needs no documentary diary. Reconcile
 affected facts, run `.venv/Scripts/python.exe tools/check_handoffs.py`, and
 review semantics; the checker alone does not prove product behavior.
+Until the local checker understands the external hub, invoke the main checkout's
+checker read-only with `--root` pointing here, as described in `COORDINATION.md`.

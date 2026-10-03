@@ -11,7 +11,8 @@ only turns require no file edits or checker.
 | Fact | One owner |
 | --- | --- |
 | Cross-project execution rule | `CODEX.md` or the linked scoped work-rule file |
-| Active order | `TODO.md`; deferred scopes in `WORK_BACKLOG.md` |
+| Active order | Shared hub TODO/BACKLOG via local `TODO.md` and `WORK_BACKLOG.md` routers |
+| Worker progress | Own shared status file; acceptance evidence stays in that checkout |
 | Stable subsystem behavior | Area contract linked from `README.md` |
 | Current implementation, acceptance, immediate next action | One current checkpoint per scope |
 | A particular run, failure or measurement | Dated receipt/fixture |
@@ -52,7 +53,10 @@ proof that product tests or external research were rerun.
 3. Search narrow identifiers/old status/owner names in `CODEX.md`,
    `TODO.md` and `docs/handoff/`. Read and reconcile matching live claims;
    historical receipts keep their original results. Remove completed tasks and
-   obsolete pending decisions, preserving unfinished subitems.
+   obsolete pending decisions, preserving unfinished subitems. Update your own
+   shared worker status and propose queue changes there. Only the queue owner
+   edits shared TODO/BACKLOG; do not duplicate tasks in local routers or declare
+   accepted-on-master without recorded integration.
 4. Add new direct handoff documents once to `CATALOG.md`; route a new active
    area from `README.md`. Update machine projections when their owner changes.
    New generated outputs require the lifecycle in `DATA_WORK_RULES.md`.
@@ -60,6 +64,8 @@ proof that product tests or external research were rerun.
    errors. Review the meaning of affected facts and the final diff yourself.
    The checker is read-only and cannot prove gameplay, UI or semantic truth.
    Run `tests/tools/test_check_handoffs.py` when changing the checker.
+   Until the local checker supports external hub links, use the main checkout's
+   checker read-only with this checkout as `--root`, per `COORDINATION.md`.
 
 For a routine code fix with no affected durable fact, verify that boundary,
 run the checker and report the focused product checks; skip steps 1-4 and do

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
+import sqlite3
 from typing import Any
 
 from PySide6.QtCore import QSize, Qt, QTimer
@@ -10,6 +12,10 @@ from PySide6.QtWidgets import QFrame, QSizePolicy, QWidget
 
 from hoyolab_export.account_equipment import EquipmentChangeResult, EquipmentError
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
+from hoyolab_export.account_equipment import ARTIFACT_POS_BY_SLOT_KEY
+from hoyolab_export.team_card_data import build_artifact_equipment_snapshot
+from hoyolab_export.display_stat_effects import list_artifact_set_display_stat_effects_for_active_sets
+from run_workspace.pvp.artifact_equipment import PvpArtifactEquipment
 from run_workspace.pvp.deck_preset import DEFAULT_PVP_DECK_PRESET_DIR
 from run_workspace.pvp.profile_package import (
     LocalPvpProfileProvider,
@@ -30,7 +36,11 @@ from run_workspace.pvp.weapon_identity import (
 )
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS
 from run_workspace.team_builder import TeamBuilderSlotState
-from ui.app_shell import AppShellController, CharacterWeaponWorkspace
+from ui.app_shell import (
+    AppShellController, CharacterWeaponWorkspace, _gcsim_prepare_report_text,
+    _gcsim_browser_energy_mode_label, _selected_gcsim_engine_id,
+)
+from localization import tr
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 
 
@@ -292,6 +302,7 @@ class PvpRuntimeEquipmentState:
     known_count_by_key: dict[str, int]
     weapons_by_character: dict[str, dict[str, Any]] = field(default_factory=dict)
     characters_by_id: dict[str, dict[str, Any]] = field(default_factory=dict)
+    artifact_equipment: PvpArtifactEquipment | None = None
 
     @classmethod
     def from_assets(
@@ -410,8 +421,45 @@ class PvpRuntimeEquipmentState:
         weapon = self.weapons_by_character.get(_text(character_id))
         return dict(weapon) if weapon else None
 
-    def artifact_ids_for_character(self, _character_id: str) -> dict[str, int]:
-        return {}
+    def artifact_ids_for_character(self, character_id: str) -> dict[str, int]:
+        return self.artifact_equipment.artifact_ids_for_character(character_id) if self.artifact_equipment else {}
+
+    def get_equipped_artifact_owner(self, artifact_id: int) -> int | None:
+        return self.artifact_equipment.get_equipped_artifact_owner(artifact_id) if self.artifact_equipment else None
+
+    def toggle_artifact(self, character_id: int, artifact_id: int) -> EquipmentChangeResult:
+        if self.artifact_equipment is None:
+            raise EquipmentError("PvP artifact inventory is unavailable.")
+        return self.artifact_equipment.toggle_artifact(character_id, artifact_id)
+
+    def apply_artifact_preset(self, character_id: int, slots: Mapping[int, int]) -> EquipmentChangeResult:
+        if self.artifact_equipment is None:
+            raise EquipmentError("PvP artifact inventory is unavailable.")
+        return self.artifact_equipment.apply_artifact_preset(character_id, slots)
+
+    def artifact_owners(self, artifact_ids: Iterable[int]) -> dict[int, dict[str, Any]]:
+        result = {}
+        for artifact_id in artifact_ids:
+            owner = self.get_equipped_artifact_owner(artifact_id)
+            if owner is not None:
+                badge = self._owner_badge(str(owner))
+                result[artifact_id] = {"character_id": owner, "character_name": badge["name"],
+                                       "side_icon_path": badge["side_icon_path"]}
+        return result
+
+    def artifact_snapshot_for_character(self, character_id: str):
+        ids = self.artifact_ids_for_character(character_id)
+        if not ids or self.artifact_equipment is None:
+            return None, []
+        with closing(sqlite3.connect(self.artifact_equipment.source_db_path.resolve().as_uri() + "?mode=ro", uri=True)) as conn:
+            conn.row_factory = sqlite3.Row
+            snapshot = build_artifact_equipment_snapshot(
+                conn, {ARTIFACT_POS_BY_SLOT_KEY[key]: value for key, value in ids.items()},
+            )
+            effects = list_artifact_set_display_stat_effects_for_active_sets(
+                conn, snapshot.to_dict().get("active_set_bonuses") or [],
+            )
+        return snapshot, effects
 
     def weapon_assets_with_owner_badges(
         self,
@@ -472,6 +520,10 @@ class PvpSeatBuildContext:
     _weapon_filter_timer: QTimer = field(init=False, repr=False)
     ready: bool = False
     last_error: str = ""
+    artifact_browser: Any | None = field(default=None, init=False)
+    gcsim_browser: Any | None = field(default=None, init=False)
+    gcsim_preparation: Any | None = field(default=None, init=False)
+    equipment_changed_callback: Any | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         self.equipment_state = PvpRuntimeEquipmentState.from_assets(
@@ -480,6 +532,13 @@ class PvpSeatBuildContext:
             allowed_weapon_keys=self.allowed_weapon_keys,
             weapon_assets=self.weapon_assets,
         )
+        self.equipment_state.artifact_equipment = PvpArtifactEquipment(
+            self.db_path, frozenset(self.picked_character_ids),
+        )
+        self.equipment_state.characters_by_id = {
+            _asset_character_id(asset): _asset_metadata_mapping(asset, "character")
+            for asset in self.character_assets
+        }
         self.controller = AppShellController.empty(
             equipment_db_path=self.provider.db_path,
             equipment_state=self.equipment_state,
@@ -505,6 +564,90 @@ class PvpSeatBuildContext:
     def db_path(self) -> Path:
         return Path(self.provider.db_path)
 
+    def ensure_artifact_browser(self, parent: QWidget):
+        if self.artifact_browser is None:
+            from ui.artifact_browser.window import ArtifactBrowserWindow
+
+            self.artifact_browser = ArtifactBrowserWindow(
+                parent=parent, embedded=True, db_path=self.db_path, read_only_source=True,
+                equipment_state=self.equipment_state,
+                character_asset_items=[asset for asset in self.character_assets
+                                       if _asset_character_id(asset) in self.picked_character_ids],
+            )
+            self.artifact_browser.equipment_changed.connect(self._on_artifact_equipment_changed)
+        self.sync_artifact_operation_target()
+        return self.artifact_browser
+
+    def sync_artifact_operation_target(self) -> None:
+        if self.artifact_browser is None:
+            return
+        self.artifact_browser.set_right_panel_operation_target(
+            self.controller.selected_operation_target(),
+        )
+
+    def ensure_gcsim_browser(self, parent: QWidget):
+        if self.gcsim_browser is None:
+            from ui.gcsim_browser.window import GcsimBrowserWorkspace
+
+            self.gcsim_browser = GcsimBrowserWorkspace(parent=parent, mode=MODE_ABYSS, preparation_only=True)
+            self.gcsim_browser.prepare_requested.connect(self._prepare_gcsim_config)
+            self.gcsim_browser.rotation_text_changed.connect(self.invalidate_gcsim_preparation)
+            self.invalidate_gcsim_preparation()
+        self.sync_gcsim_browser_context()
+        return self.gcsim_browser
+
+    def sync_gcsim_browser_context(self) -> None:
+        if self.gcsim_browser is None:
+            return
+        for team_index, slots in enumerate(self.controller.gcsim_browser_team_previews()):
+            self.gcsim_browser.set_team_preview(team_index, list(slots))
+        self.gcsim_browser.set_abyss_targets_preview(
+            target_mode_label=tr("app_shell.pvp.gcsim.preparation_only"),
+            energy_mode_label=_gcsim_browser_energy_mode_label(self.controller.gcsim_run_settings().boosted_energy_enabled),
+        )
+
+    def invalidate_gcsim_preparation(self) -> None:
+        if self.gcsim_browser is not None:
+            self.sync_gcsim_browser_context()
+            self.gcsim_browser.set_prepare_result_text(tr("app_shell.pvp.gcsim.preparation_only"))
+
+    def _prepare_gcsim_config(self, team_index: int, rotation_shell_text: str) -> None:
+        from run_workspace.pvp.gcsim_preparation import PvpGcsimPreparation
+        from ui.gcsim_browser.run_worker import _active_run_binding
+
+        try:
+            if type(team_index) is not int or team_index not in (0, 1):
+                raise ValueError("Invalid PvP team index.")
+            binding = _active_run_binding(_selected_gcsim_engine_id())
+            if self.gcsim_preparation is None:
+                self.gcsim_preparation = PvpGcsimPreparation(db_path=self.db_path)
+            report = self.gcsim_preparation.prepare(
+                team_index=team_index,
+                selected_team=self.controller.gcsim_browser_selected_team(team_index),
+                rotation_shell_text=rotation_shell_text,
+                run_settings=self.controller.gcsim_run_settings(),
+                artifact_set_registry_source=binding.artifact_registry,
+            )
+        except Exception as exc:
+            self.gcsim_browser.set_prepare_result_text(tr("app_shell.pvp.gcsim.prepare_failed").format(error=exc))
+            return
+        self.gcsim_browser.set_prepare_result_text(_gcsim_prepare_report_text(report.to_dict()))
+
+    def close_gcsim_preparation(self) -> None:
+        if self.gcsim_preparation is not None:
+            self.gcsim_preparation.close()
+            self.gcsim_preparation = None
+
+    def _on_artifact_equipment_changed(self, result: EquipmentChangeResult) -> None:
+        if result.changed:
+            self.ready = False
+            self.last_error = ""
+            for character_id in result.affected_character_ids:
+                self.controller.refresh_persistent_equipment_for_character(character_id)
+            self.invalidate_gcsim_preparation()
+        if self.equipment_changed_callback is not None:
+            self.equipment_changed_callback(result)
+
     def add_or_replace_character(self, asset: dict[str, Any]) -> bool:
         character_id = _asset_character_id(asset)
         if character_id not in set(self.picked_character_ids):
@@ -528,6 +671,7 @@ class PvpSeatBuildContext:
                 sync_weapon_filter=False,
             )
             self.schedule_weapon_filter_sync()
+            self.invalidate_gcsim_preparation()
         return result.changed
 
     def swap_slots(
@@ -555,6 +699,7 @@ class PvpSeatBuildContext:
                 sync_weapon_filter=False,
             )
             self.schedule_weapon_filter_sync()
+            self.invalidate_gcsim_preparation()
         return changed
 
     def toggle_slot_selection(self, team_index: int, slot_index: int) -> None:
@@ -573,6 +718,7 @@ class PvpSeatBuildContext:
         self.ready = False
         self.last_error = ""
         self.sync_source_workspace(refresh_weapons=True)
+        self.invalidate_gcsim_preparation()
         return True
 
     def sync_source_workspace(
@@ -687,6 +833,8 @@ class PvpBuildFlowContext:
     seats: dict[str, PvpSeatBuildContext]
     active_seat: str = "player_1"
     collapsed_seats: set[str] = field(default_factory=lambda: {"player_2"})
+    browser_seat: str = ""
+    browser_kind: str = ""
 
     @classmethod
     def from_draft_session(

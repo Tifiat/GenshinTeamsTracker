@@ -42,8 +42,9 @@ remains in `PVP_BACKEND_STATUS.md`.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
   completed result summary v0 are implemented for local hot-seat matches.
   Development-only profile package import/export actions are also available,
-  but the current package is not yet portable, privacy-safe, or a finalized
-  exchange schema. Artifact Browser routing, executable scoped PvP GCSIM,
+  with validated portable v3 slices/assets and pending real-account acceptance.
+  Scoped Artifact Browser and GCSIM preparation routing are implemented; their
+  current acceptance/lifecycle owner is `PVP_BUILD_SERVICES.md`. Executable scoped PvP GCSIM,
   online play, ruleset costs, immune picks, result PNG/export, and PvP History
   are still not implemented. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
@@ -113,7 +114,7 @@ scoped instance of the normal live-run build pipeline:
   never mutates normal account equipment. Imported/future remote players read
   source data from their `.gttpvp` package while still receiving a fresh PvP
   runtime equipment state for the current match.
-- `.gttpvp` v2 contains selected decks, an allowlisted SQLite slice and neutral
+- `.gttpvp` v3 contains selected decks, an allowlisted SQLite slice and neutral
   bitmap assets with a content-hash manifest. Import validates the complete
   boundary before populating a managed provider; old v1 packages require
   re-export. Inventory scope and current fixture/user acceptance belong to
@@ -378,8 +379,8 @@ Current v0 scope:
 - After pick/ban completion, current v0 continues through internal Assignment,
   Weapon assignment, Timers/results, and Completed result stages for local
   hot-seat play.
-- Current v0 skips Artifact equipment and scoped PvP GCSIM, but the target
-  architecture must prepare right-panel slots/stages for them.
+- Current v0 includes artifact equipment and preparation-only GCSIM; executable
+  scoped runs remain later work under the same scoped build architecture.
 - Online mode, ruleset cost rendering, immune picks, session files, PvP History
   writes, and result export are not implemented in current v0. The separate
   portable profile implementation is still awaiting real-account/user-path
@@ -452,9 +453,9 @@ Current v0 scope:
 
 ## Artifact Equipment
 
-Artifact equipment is target product direction for PvP. It is not implemented
-in current v0, and the immediate source-ownership refactor should preserve the
-structure needed for it rather than implementing the full equipment flow.
+Artifact equipment now uses the existing browser with match-local ownership.
+Current implementation, acceptance and source-write limits are owned by
+`PVP_BUILD_SERVICES.md`.
 
 - After Draft pick/ban plus team and weapon assignment, PvP should support an
   Artifact equipment stage inside Draft.
@@ -463,7 +464,8 @@ structure needed for it rather than implementing the full equipment flow.
   the whole local artifact DB.
 - Imported/remote Player 2 reads artifact source data from the imported package
   and uses the same scoped PvP runtime artifact equipment state boundary.
-- Player 2 can import artifacts from JSON into that temporary PvP session.
+- Separate Player 2 JSON import remains a future scoped-session enhancement;
+  current inventory/builds come from the validated profile package.
 - PvP artifact data is scoped to the active PvP match/session.
 - Changes made inside PvP must not affect the main Artifact Browser, main
   account artifact state, normal live-run builds, or current account equipment.
@@ -691,8 +693,8 @@ Right-panel architecture status before more PvP growth:
 > canonical in `ui/right_panel/pvp/_shared.py`. Assignment/Weapon stages now
 > use scoped normal AppShell controller/workspace state and the shared
 > `RunRightPanelWidget`; the previous custom source/target implementation must
-> not return. Artifact Browser and executable scoped GCSIM remain later steps
-> on the same scoped pipeline.
+> not return. Artifact Browser and preparation-only GCSIM now use that pipeline;
+> executable scoped runs remain later work. See `PVP_BUILD_SERVICES.md`.
 
 Current v0 limitations / later work:
 
@@ -703,7 +705,7 @@ Current v0 limitations / later work:
 - PNG/export result card;
 - ruleset cost rendering;
 - Gentor/Abyss importer;
-- scoped PvP artifact equipment implementation;
+- user acceptance of scoped artifact equipment and GCSIM preparation;
 - extended GTT JSON artifact+preset import/export QoL;
 - scoped PvP GCSIM scoring;
 - final styling.

@@ -20,6 +20,12 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from hoyolab_export.display_stat_effects import (
+    STATIC_DISPLAY_STAT_KEYS,
+    VALUE_TYPE_FLAT,
+    VALUE_TYPE_PERCENT_POINTS,
+)
+
 from .deck import FREE_DRAFT_V0_RULESET_ID
 from .deck_preset import (
     PVP_DECK_PRESET_KIND,
@@ -31,7 +37,7 @@ from .validation import validate_draft_deck
 from .weapon_identity import WeaponObservedStackRef, weapon_observed_stack_key
 
 
-PROFILE_SLICE_SCHEMA_VERSION = 2
+PROFILE_SLICE_SCHEMA_VERSION = 3
 
 
 class ProfileSchemaError(ValueError):
@@ -99,6 +105,23 @@ _TABLE_DDL: tuple[str, ...] = (
         gcsim_weapon_key TEXT,
         gcsim_weapon_key_status TEXT,
         gcsim_weapon_key_method TEXT
+    )""",
+    """CREATE TABLE weapon_display_stat_effects (
+        weapon_id INTEGER NOT NULL,
+        refinement INTEGER NOT NULL,
+        stat_key TEXT NOT NULL,
+        value REAL NOT NULL,
+        value_type TEXT NOT NULL,
+        PRIMARY KEY (weapon_id, refinement, stat_key),
+        CHECK (refinement BETWEEN 1 AND 5),
+        CHECK (value_type IN ('flat', 'percent_points'))
+    )""",
+    """CREATE TABLE weapon_passive_tooltips (
+        weapon_id INTEGER NOT NULL,
+        lang TEXT NOT NULL,
+        passive_name TEXT NOT NULL DEFAULT '',
+        passive_text TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (weapon_id, lang)
     )""",
     """CREATE TABLE character_identity (
         character_id INTEGER PRIMARY KEY,
@@ -253,12 +276,16 @@ _OPTIONAL_SOURCE_COLUMNS: dict[str, frozenset[str]] = {
     "artifact_sets": frozenset({"hoyolab_set_id", "artiscan_set_key"}),
     "artifacts": frozenset({"relic_id", "set_id"}),
 }
+_WEAPON_EFFECT_COLUMNS = ("weapon_id", "refinement", "stat_key", "value", "value_type")
+_WEAPON_TOOLTIP_COLUMNS = ("weapon_id", "lang", "passive_name", "passive_text")
 
 _ROW_LIMITS = {
     "account_characters": 512,
     "account_character_talents": 8192,
     "account_character_constellations": 3072,
     "account_weapon_observed_stacks": 20000,
+    "weapon_display_stat_effects": 20000,
+    "weapon_passive_tooltips": 10000,
     "character_identity": 512,
     "artifact_sets": 4096,
     "artifact_set_names": 20000,
@@ -289,6 +316,11 @@ _TEXT_LIMITS: dict[tuple[str, str], int] = {
     ("account_weapon_observed_stacks", "name"): 256,
     ("account_weapon_observed_stacks", "weapon_type_name"): 64,
     ("account_weapon_observed_stacks", "description"): 4096,
+    ("weapon_display_stat_effects", "stat_key"): 64,
+    ("weapon_display_stat_effects", "value_type"): 32,
+    ("weapon_passive_tooltips", "lang"): 32,
+    ("weapon_passive_tooltips", "passive_name"): 256,
+    ("weapon_passive_tooltips", "passive_text"): 4096,
     ("character_identity", "traits_json"): 256,
     ("artifact_sets", "set_uid"): 128,
     ("artifact_sets", "hoyowiki_entry_id"): 128,
@@ -390,7 +422,7 @@ def validate_profile_slice(
     deck_presets: tuple[PvpDeckPreset, ...],
     expected_counts: Mapping[str, int] | None = None,
 ) -> dict[str, int]:
-    """Validate the v2 portable schema, references, deck inputs, and row counts."""
+    """Validate the v3 portable schema, references, deck inputs, and row counts."""
 
     presets = _validate_deck_preset_metadata(deck_presets)
     connection = _connect_readonly(Path(db_path).resolve())
@@ -608,6 +640,28 @@ def _load_source_snapshot(
         source, "account_weapon_observed_stacks", _SOURCE_COLUMNS["account_weapon_observed_stacks"]
     )
     weapon_rows = _select_weapon_stacks_for_presets(all_weapon_rows, deck_presets)
+    weapon_ids = {
+        int(row["weapon_id"])
+        for row in weapon_rows
+        if str(row["weapon_id"]).isdecimal()
+        and 0 < int(row["weapon_id"]) <= 2**63 - 1
+    }
+    weapon_pairs = {
+        (int(row["weapon_id"]), int(row["refinement"]))
+        for row in weapon_rows
+        if str(row["weapon_id"]).isdecimal()
+        and int(row["weapon_id"]) in weapon_ids
+        and row["refinement"] is not None
+    }
+    weapon_effects = [
+        row for row in _select_optional_weapon_rows(
+            source, "weapon_display_stat_effects", _WEAPON_EFFECT_COLUMNS, weapon_ids,
+        )
+        if (row["weapon_id"], row["refinement"]) in weapon_pairs
+    ]
+    weapon_tooltips = _select_optional_weapon_rows(
+        source, "weapon_passive_tooltips", _WEAPON_TOOLTIP_COLUMNS, weapon_ids,
+    )
 
     source_artifacts = _select_all_rows(source, "artifacts", _SOURCE_COLUMNS["artifacts"])
     source_substats = _select_all_rows(source, "artifact_substats", _SOURCE_COLUMNS["artifact_substats"])
@@ -796,6 +850,12 @@ def _load_source_snapshot(
         "account_character_talents": sorted(talents, key=lambda row: (row["character_id"], row["skill_id"])),
         "account_character_constellations": sorted(constellations, key=lambda row: (row["character_id"], row["pos"])),
         "account_weapon_observed_stacks": weapon_rows,
+        "weapon_display_stat_effects": sorted(
+            weapon_effects, key=lambda row: (row["weapon_id"], row["refinement"], row["stat_key"]),
+        ),
+        "weapon_passive_tooltips": sorted(
+            weapon_tooltips, key=lambda row: (row["weapon_id"], row["lang"]),
+        ),
         "character_identity": sorted(identities, key=lambda row: row["character_id"]),
         "artifact_sets": sorted(artifact_sets, key=lambda row: row["set_uid"]),
         "artifact_set_names": sorted(set_names, key=lambda row: (row["set_uid"], row["lang"])),
@@ -1279,6 +1339,38 @@ def _validate_slice_rows(
         )
         _validate_int_range(row["known_count"], 1, 10000, "weapon known count")
 
+    weapon_ids = {
+        int(row["weapon_id"])
+        for row in snapshot["account_weapon_observed_stacks"]
+        if str(row["weapon_id"]).isdecimal()
+        and 0 < int(row["weapon_id"]) <= 2**63 - 1
+    }
+    weapon_pairs = {
+        (int(row["weapon_id"]), int(row["refinement"]))
+        for row in snapshot["account_weapon_observed_stacks"]
+        if str(row["weapon_id"]).isdecimal()
+        and int(row["weapon_id"]) in weapon_ids
+        and row["refinement"] is not None
+    }
+    for row in snapshot["weapon_display_stat_effects"]:
+        _validate_int_range(row["weapon_id"], 1, 2**63 - 1, "weapon effect id")
+        _validate_int_range(row["refinement"], 1, 5, "weapon effect refinement")
+        if (row["weapon_id"], row["refinement"]) not in weapon_pairs:
+            raise ProfileSchemaError("Weapon effect does not match an exported weapon stack.")
+        if row["stat_key"] not in STATIC_DISPLAY_STAT_KEYS:
+            raise ProfileSchemaError("Weapon effect has an unsupported stat key.")
+        if row["value_type"] not in {VALUE_TYPE_FLAT, VALUE_TYPE_PERCENT_POINTS}:
+            raise ProfileSchemaError("Weapon effect has an unsupported value type.")
+        _validate_float_range(row["value"], -1_000_000.0, 1_000_000.0, "weapon effect value")
+    for row in snapshot["weapon_passive_tooltips"]:
+        _validate_int_range(row["weapon_id"], 1, 2**63 - 1, "weapon tooltip id")
+        if row["weapon_id"] not in weapon_ids:
+            raise ProfileSchemaError("Weapon tooltip does not match an exported weapon stack.")
+        if not re.fullmatch(r"[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,3}", row["lang"]):
+            raise ProfileSchemaError("Weapon tooltip language is invalid.")
+        if not row["passive_name"].strip() and not row["passive_text"].strip():
+            raise ProfileSchemaError("Weapon tooltip has no passive text.")
+
     artifacts_by_id = {int(row["id"]): row for row in snapshot["artifacts"]}
     if any(int(row["artifact_id"]) not in artifacts_by_id for row in snapshot["artifact_substats"]):
         raise ProfileSchemaError("Artifact substats reference an unknown artifact.")
@@ -1343,6 +1435,8 @@ def _snapshot_counts(snapshot: dict[str, list[dict[str, Any]]], deck_count: int)
         "talent_count": len(snapshot["account_character_talents"]),
         "constellation_count": len(snapshot["account_character_constellations"]),
         "weapon_stack_count": len(snapshot["account_weapon_observed_stacks"]),
+        "weapon_effect_count": len(snapshot["weapon_display_stat_effects"]),
+        "weapon_tooltip_count": len(snapshot["weapon_passive_tooltips"]),
         "identity_count": len(snapshot["character_identity"]),
         "artifact_set_count": len(snapshot["artifact_sets"]),
         "artifact_set_name_count": len(snapshot["artifact_set_names"]),
@@ -1428,6 +1522,13 @@ def _hydrate_runtime_db(
         "source_metadata_json": "{}",
         "warnings_json": "[]",
     } for row in snapshot["account_weapon_observed_stacks"]])
+    insert("weapon_display_stat_effects", [{
+        **row, "weapon_catalog_entry_page_id": None, "updated_at": None,
+    } for row in snapshot["weapon_display_stat_effects"]])
+    insert("weapon_passive_tooltips", [{
+        **row, "weapon_catalog_entry_page_id": None, "updated_at": None,
+        "source": "",
+    } for row in snapshot["weapon_passive_tooltips"]])
 
     insert("artifact_sets", [{
         **row, "source": "hoyowiki", "updated_at": "",
@@ -1436,6 +1537,11 @@ def _hydrate_runtime_db(
     insert("artifact_set_bonus_descriptions", [{
         **row, "updated_at": "",
     } for row in snapshot["artifact_set_bonus_descriptions"]])
+    # Artifact set effects are reconstructed from included descriptions. Weapon
+    # effects and tooltips above are the selected, validated source-derived rows.
+    from hoyolab_export.display_stat_effects import rebuild_artifact_set_display_stat_effects
+
+    rebuild_artifact_set_display_stat_effects(connection)
 
     insert("artifacts", [{
         "id": row["id"],
@@ -1499,6 +1605,39 @@ def _require_source_columns(connection: sqlite3.Connection) -> None:
             raise ProfileSchemaError(
                 f"Source database is missing {table} columns: " + ", ".join(sorted(missing))
             )
+
+
+def _select_optional_weapon_rows(
+    connection: sqlite3.Connection,
+    table: str,
+    columns: tuple[str, ...],
+    weapon_ids: set[int],
+) -> list[dict[str, Any]]:
+    if not weapon_ids:
+        return []
+    table_row = connection.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+    ).fetchone()
+    if table_row is None:
+        return []
+    available = {str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")}
+    missing = set(columns) - available
+    if missing:
+        raise ProfileSchemaError(
+            f"Source database is missing {table} columns: " + ", ".join(sorted(missing))
+        )
+    rows: list[dict[str, Any]] = []
+    sorted_ids = sorted(weapon_ids)
+    for offset in range(0, len(sorted_ids), 400):
+        chunk = sorted_ids[offset:offset + 400]
+        placeholders = ", ".join("?" for _ in chunk)
+        rows.extend(dict(row) for row in connection.execute(
+            f"SELECT {', '.join(columns)} FROM {table} WHERE weapon_id IN ({placeholders})",
+            tuple(chunk),
+        ))
+        if len(rows) > _ROW_LIMITS[table]:
+            raise ProfileSchemaError(f"Source table {table} exceeds the allowed row limit.")
+    return rows
 
 
 def _select_rows_for_ids(

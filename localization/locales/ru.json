@@ -1,4 +1,6 @@
 {
+  "app_shell.pvp.gcsim.preparation_only": "Подготовка команды PvP. Для запуска нужна проверка периода Бездны.",
+  "app_shell.pvp.gcsim.prepare_failed": "Не удалось подготовить команду: {error}",
   "gcsim.optimizer.finish_requested": "Завершаем поиск и покажем найденное. Если полной сборки ещё нет, сообщим об этом.",
   "gcsim.optimizer.preparing_sources": "Подготовка правил сетов",
   "gcsim.optimizer.capturing_schedule": "Получение расписания ротации",

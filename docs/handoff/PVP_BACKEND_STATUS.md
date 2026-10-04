@@ -67,7 +67,7 @@ Draft board v0:
   available. The UI converts remaining clock to elapsed seconds before result
   finalization through `set_match_timers(...)`; backend `ChamberTimer` identity
   and lower-elapsed-total winner semantics remain unchanged.
-- Decks/Play expose v2 `.gttpvp` exchange with an allowlisted data slice,
+- Decks/Play expose v3 `.gttpvp` exchange with an allowlisted data slice,
   portable neutral assets and validation before provider adoption. Each seat
   retains independent stats/inventory and fresh match equipment, while portraits
   are shared by game id. The current acceptance, privacy scope, cleanup and
@@ -249,8 +249,9 @@ Still out of scope / not implemented:
 
 - real-account/user-path acceptance of the two-seat portable profile boundary
   and isolated second-account exchange; see `PVP_PROFILE_PACKAGE.md`;
-- scoped PvP artifact equipment context and executable scoped PvP GCSIM routing
-  against the local/imported provider boundary;
+- executable scoped PvP GCSIM and authoritative-period admission; artifact
+  equipment and preparation routing are implemented with acceptance/lifecycle
+  limits in `PVP_BUILD_SERVICES.md`;
 - online/P2P/relay transport;
 - PvP History persistence;
 - result PNG/export UI;

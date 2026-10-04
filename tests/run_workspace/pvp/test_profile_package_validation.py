@@ -16,7 +16,7 @@ from PIL import Image, PngImagePlugin
 
 from run_workspace.pvp.profile_package import (
     PVP_PROFILE_ASSETS_NAME, PVP_PROFILE_DB_NAME, PVP_PROFILE_DECKS_NAME,
-    PVP_PROFILE_MANIFEST_NAME, ImportedPvpProfileProvider,
+    PVP_PROFILE_MANIFEST_NAME, PVP_PROFILE_VERSION, ImportedPvpProfileProvider,
     PvpProfilePackageError, export_pvp_profile_package, import_pvp_profile_package,
 )
 from tests.run_workspace.pvp.test_profile_package import _create_account_db, _write_deck_presets
@@ -68,6 +68,86 @@ class PortableProfileValidationTest(unittest.TestCase):
 
     def test_import_rejects_content_hash_mismatch_and_cleans_temp(self) -> None:
         self._reject({PVP_PROFILE_DB_NAME: b"corrupt"}, update_hashes=False)
+
+    def test_package_preserves_selected_weapon_derived_rows_without_source(self) -> None:
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.executemany(
+                """INSERT INTO weapon_display_stat_effects
+                   (weapon_id,refinement,stat_key,value,value_type) VALUES (?,?,?,?,?)""",
+                [
+                    (11501, 1, "ATK_PERCENT", 12.0, "percent_points"),
+                    (11501, 2, "ATK_PERCENT", 15.0, "percent_points"),
+                    (13501, 1, "CRIT_RATE", 5.0, "percent_points"),
+                ],
+            )
+            conn.executemany(
+                """INSERT INTO weapon_passive_tooltips
+                   (weapon_id,lang,passive_name,passive_text) VALUES (?,?,?,?)""",
+                [
+                    (11501, "en-us", "Passive", "ATK is increased by 12%."),
+                    (13501, "en-us", "Unrelated", "Exclude this."),
+                ],
+            )
+            conn.commit()
+        source_bytes = self.db.read_bytes()
+        report = export_pvp_profile_package(
+            self.package, db_path=self.db, deck_dir=self.decks,
+            character_asset_paths={str(i): self.image for i in range(1001, 1025)},
+        )
+        self.assertEqual(self.db.read_bytes(), source_bytes)
+        self.assertEqual(report.counts["weapon_effect_count"], 1)
+        self.assertEqual(report.counts["weapon_tooltip_count"], 1)
+        self.db.unlink()
+        self.image.unlink()
+        with import_pvp_profile_package(self.package, temp_root=self.managed) as profile:
+            with closing(sqlite3.connect(profile.db_path)) as conn:
+                self.assertEqual(conn.execute(
+                    "SELECT weapon_id,refinement,stat_key,value FROM weapon_display_stat_effects"
+                ).fetchall(), [(11501, 1, "ATK_PERCENT", 12.0)])
+                self.assertEqual(conn.execute(
+                    "SELECT weapon_id,lang,passive_name,passive_text FROM weapon_passive_tooltips"
+                ).fetchall(), [(11501, "en-us", "Passive", "ATK is increased by 12%.")])
+
+    def test_package_rejects_tampered_weapon_rows_after_hash_update(self) -> None:
+        statements = (
+            ("INSERT INTO weapon_display_stat_effects VALUES (13501,1,'ATK_PERCENT',12,'percent_points')", ()),
+            ("INSERT INTO weapon_display_stat_effects VALUES (11501,1,'UNKNOWN_STAT',12,'percent_points')", ()),
+            ("INSERT INTO weapon_display_stat_effects VALUES (11501,1,'ATK_PERCENT',?,'percent_points')", (float("inf"),)),
+            ("INSERT INTO weapon_passive_tooltips VALUES (13501,'en-us','Passive','Unrelated')", ()),
+            ("INSERT INTO weapon_passive_tooltips VALUES (11501,'en-us','Passive',?)", (r"C:\private\secret",)),
+        )
+        for statement, values in statements:
+            with self.subTest(statement=statement):
+                database = self.root / "tampered-weapon.sqlite"
+                database.write_bytes(self.members[PVP_PROFILE_DB_NAME])
+                with closing(sqlite3.connect(database)) as conn:
+                    conn.execute(statement, values)
+                    conn.commit()
+                self._reject({PVP_PROFILE_DB_NAME: database.read_bytes()})
+
+    def test_invalid_source_weapon_effect_preserves_published_package(self) -> None:
+        original_package = self.package.read_bytes()
+        with closing(sqlite3.connect(self.db)) as conn:
+            conn.execute(
+                """INSERT INTO weapon_display_stat_effects
+                   (weapon_id,refinement,stat_key,value,value_type)
+                   VALUES (11501,1,'UNKNOWN_STAT',12,'percent_points')"""
+            )
+            conn.commit()
+        source_bytes = self.db.read_bytes()
+        with self.assertRaises(PvpProfilePackageError):
+            export_pvp_profile_package(
+                self.package, db_path=self.db, deck_dir=self.decks,
+                character_asset_paths={str(i): self.image for i in range(1001, 1025)},
+            )
+        self.assertEqual(self.db.read_bytes(), source_bytes)
+        self.assertEqual(self.package.read_bytes(), original_package)
+
+    def test_prior_development_profile_version_requires_reexport(self) -> None:
+        manifest = json.loads(self.members[PVP_PROFILE_MANIFEST_NAME])
+        manifest["version"] = PVP_PROFILE_VERSION - 1
+        manifest["schema_version"] = PVP_PROFILE_VERSION - 1
+        self._reject({PVP_PROFILE_MANIFEST_NAME: _bytes(manifest)}, update_hashes=False)
 
     def test_default_export_uses_transparent_source_portrait(self) -> None:
         portrait = self.root / "source-portrait.png"

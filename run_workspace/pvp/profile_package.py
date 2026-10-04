@@ -20,7 +20,7 @@ from .profile_assets import ASSET_MANIFEST_NAME, ASSET_MEMBER_PATTERN, ProfileAs
 from .profile_schema import ProfileSchemaError, create_profile_slice, materialize_runtime_db, validate_profile_slice
 
 PVP_PROFILE_FORMAT = "genshin-teams-tracker-pvp-profile"
-PVP_PROFILE_VERSION = 2
+PVP_PROFILE_VERSION = 3
 PVP_PROFILE_EXTENSION = ".gttpvp"
 PVP_PROFILE_MANIFEST_NAME = "manifest.json"
 PVP_PROFILE_DECKS_NAME = "decks.json"

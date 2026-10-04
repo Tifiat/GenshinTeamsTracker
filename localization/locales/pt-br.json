@@ -1,4 +1,6 @@
 {
+  "app_shell.pvp.gcsim.preparation_only": "Preparação da equipe PvP. A simulação requer um período do Abismo validado.",
+  "app_shell.pvp.gcsim.prepare_failed": "Não foi possível preparar a equipe: {error}",
   "gcsim.optimizer.finish_requested": "Encerrando a busca e mostrando os resultados encontrados. Se ainda não houver uma build completa, isso será informado.",
   "gcsim.optimizer.preparing_sources": "Preparando regras dos conjuntos",
   "gcsim.optimizer.capturing_schedule": "Obtendo a sequência da rotação",

@@ -18,6 +18,10 @@ from hoyolab_export.artifact_db import (
     init_db,
     list_build_presets,
 )
+from hoyolab_export.display_stat_effects import (
+    get_weapon_passive_tooltip,
+    list_weapon_display_stat_effects,
+)
 from run_workspace.pvp.deck_preset import PvpDeckPreset
 from run_workspace.pvp import profile_schema as profile_schema_module
 from run_workspace.pvp.profile_schema import (
@@ -42,6 +46,8 @@ class PvpProfileSchemaTest(unittest.TestCase):
 
             self.assertEqual(counts["character_count"], 12)
             self.assertEqual(counts["weapon_stack_count"], 1)
+            self.assertEqual(counts["weapon_effect_count"], 1)
+            self.assertEqual(counts["weapon_tooltip_count"], 2)
             self.assertEqual(counts["artifact_count"], 2)
             self.assertEqual(counts["build_count"], 2)
             self.assertNotIn("artifact_set_piece_icon_count", counts)
@@ -60,6 +66,7 @@ class PvpProfileSchemaTest(unittest.TestCase):
                     {
                         "account_characters", "account_character_talents",
                         "account_character_constellations", "account_weapon_observed_stacks",
+                        "weapon_display_stat_effects", "weapon_passive_tooltips",
                         "character_identity", "artifact_sets", "artifact_set_names",
                         "artifact_set_bonus_descriptions", "artifacts", "artifact_substats",
                         "artifact_builds", "artifact_build_slots", "artifact_build_targets",
@@ -87,6 +94,15 @@ class PvpProfileSchemaTest(unittest.TestCase):
                 self.assertEqual(
                     conn.execute("SELECT id,weapon_fingerprint FROM account_weapon_observed_stacks").fetchall(),
                     [(1, "fp-a")],
+                )
+                self.assertEqual(
+                    conn.execute("SELECT weapon_id,refinement,stat_key,value FROM weapon_display_stat_effects").fetchall(),
+                    [(11501, 1, "ATK_PERCENT", 12.0)],
+                )
+                self.assertEqual(
+                    conn.execute("SELECT weapon_id,lang,passive_text FROM weapon_passive_tooltips ORDER BY lang").fetchall(),
+                    [(11501, "en-us", "ATK is increased by 12%."),
+                     (11501, "ru-ru", "Сила атаки повышается на 12%.")],
                 )
                 self.assertEqual(
                     conn.execute("SELECT id,name FROM artifact_builds ORDER BY id").fetchall(),
@@ -150,6 +166,14 @@ class PvpProfileSchemaTest(unittest.TestCase):
                 self.assertEqual(weapon_record.weapon_id, "11501")
                 self.assertEqual(weapon_record.icon_url, "")
                 self.assertEqual(weapon_record.icon_path, str(weapon_asset.resolve()))
+                self.assertEqual(
+                    list_weapon_display_stat_effects(conn, weapon_id=11501, refinement=1)[0]["value"],
+                    12.0,
+                )
+                self.assertEqual(
+                    get_weapon_passive_tooltip(conn, weapon_id=11501, language="ru-ru")["passive_name"],
+                    "Пассивный эффект",
+                )
                 self.assertEqual(len(runtime_builds), 2)
                 self.assertEqual(get_artifact_build_slots(conn, direct_build_id)[0]["artifact_id"], 1)
                 self.assertEqual(get_artifact_build_targets(conn, direct_build_id)[0]["character_id"], 3000)
@@ -279,6 +303,45 @@ class PvpProfileSchemaTest(unittest.TestCase):
             with self.assertRaises(ProfileSchemaError):
                 validate_profile_slice(portable, (preset,))
 
+    def test_weapon_derived_rows_reject_foreign_nonfinite_unknown_and_private_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "source.db"
+            portable = root / "profile.db"
+            _create_source(source)
+            preset = _preset()
+            statements = (
+                ("UPDATE weapon_display_stat_effects SET weapon_id=13501", ()),
+                ("UPDATE weapon_display_stat_effects SET refinement=2", ()),
+                ("UPDATE weapon_display_stat_effects SET value=?", (float("inf"),)),
+                ("UPDATE weapon_display_stat_effects SET stat_key='UNKNOWN_STAT'", ()),
+                ("UPDATE weapon_passive_tooltips SET weapon_id=13501", ()),
+                ("UPDATE weapon_passive_tooltips SET passive_text='C:\\private\\secret' WHERE lang='en-us'", ()),
+                ("UPDATE weapon_passive_tooltips SET lang='invalid language' WHERE lang='ru-ru'", ()),
+            )
+            for statement, values in statements:
+                with self.subTest(statement=statement):
+                    create_profile_slice(source, portable, (preset,))
+                    with closing(sqlite3.connect(portable)) as conn:
+                        conn.execute(statement, values)
+                        conn.commit()
+                    with self.assertRaises(ProfileSchemaError):
+                        validate_profile_slice(portable, (preset,))
+
+    def test_missing_source_weapon_derived_tables_export_as_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "source.db"
+            portable = root / "profile.db"
+            _create_source(source)
+            with closing(sqlite3.connect(source)) as conn:
+                conn.execute("DROP TABLE weapon_display_stat_effects")
+                conn.execute("DROP TABLE weapon_passive_tooltips")
+                conn.commit()
+            counts = create_profile_slice(source, portable, (_preset(),))
+            self.assertEqual(counts["weapon_effect_count"], 0)
+            self.assertEqual(counts["weapon_tooltip_count"], 0)
+
 
 def _preset() -> PvpDeckPreset:
     return PvpDeckPreset(
@@ -338,6 +401,26 @@ def _create_source(db_path: Path) -> None:
                 rarity,level,refinement,known_count
             ) VALUES ('bad-unselected',13501,'',1,'Polearm',5,90,1,0)
             """
+        )
+        conn.executemany(
+            """INSERT INTO weapon_display_stat_effects (
+                weapon_id, refinement, stat_key, value, value_type
+            ) VALUES (?,?,?,?,?)""",
+            [
+                (11501, 1, "ATK_PERCENT", 12.0, "percent_points"),
+                (11501, 2, "ATK_PERCENT", 15.0, "percent_points"),
+                (13501, 1, "CRIT_RATE", 5.0, "percent_points"),
+            ],
+        )
+        conn.executemany(
+            """INSERT INTO weapon_passive_tooltips (
+                weapon_id, lang, passive_name, passive_text
+            ) VALUES (?,?,?,?)""",
+            [
+                (11501, "en-us", "Passive", "ATK is increased by 12%."),
+                (11501, "ru-ru", "Пассивный эффект", "Сила атаки повышается на 12%."),
+                (13501, "en-us", "Unrelated", "Unrelated passive"),
+            ],
         )
         conn.execute(
             """

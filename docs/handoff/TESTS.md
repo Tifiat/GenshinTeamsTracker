@@ -225,9 +225,11 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage
-  (`test_weapon_identity.py`), portable PvP v2 schema/privacy/inventory/reference
+  (`test_weapon_identity.py`), portable PvP v3 schema/privacy/inventory/reference
   coverage (`test_profile_schema.py`) and ZIP/hash/bitmap/cleanup gates
-  (`test_profile_package.py`, `test_profile_package_validation.py`), Free Draft
+  (`test_profile_package.py`, `test_profile_package_validation.py`), scoped
+  artifact/GCSIM preparation (acceptance/lifecycle in `PVP_BUILD_SERVICES.md`),
+  Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account

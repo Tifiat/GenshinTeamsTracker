@@ -566,7 +566,7 @@ PvP profile/provider model:
 - imported or future remote players use a scoped provider backed by a managed
   temporary SQLite database for source data plus a fresh scoped runtime
   equipment state for the match;
-- `.gttpvp` v2 constructs an explicit allowlisted data slice and package-relative
+- `.gttpvp` v3 constructs an explicit allowlisted data slice and package-relative
   neutral asset manifest. Inventory scope and real-account acceptance status are
   owned by `PVP_PROFILE_PACKAGE.md`; internal v1 archives require re-export;
 - package import must validate the archive, hashes, SQLite schema/integrity,
@@ -761,15 +761,16 @@ Stage G: local hot-seat UI.
 - Team/weapon assignment.
 - Timer/result summary.
 - Status: implemented as a playable local hot-seat loop through read-only
-  result summary. Artifact equipment, scoped GCSIM, History, and result export
-  remain later stages.
+  result summary. Scoped artifact equipment and GCSIM preparation are available;
+  acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`. Executable scoped
+  GCSIM, History and result export remain later stages.
 
 Stage H: deck builder/exporter UI.
 
 - Build a deck from the existing imported account characters/weapons.
 - Validate under Free Draft and later rulesets.
 - Export deck/profile data.
-- Status: Decks preset UI and v2 portable profile/provider implementation exist.
+- Status: Decks preset UI and v3 portable profile/provider implementation exist.
   Fixture evidence and pending real-account/user acceptance are recorded in
   `PVP_PROFILE_PACKAGE.md`.
 

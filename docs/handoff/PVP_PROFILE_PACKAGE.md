@@ -26,7 +26,7 @@ known schema and portability defects into user data.
 ## Current Reality
 
 <!-- handoff-current: pvp-profile-package -->
-2026-10-04: the v2 implementation constructs a new portable SQLite slice from
+2026-10-04: the v3 implementation constructs a new portable SQLite slice from
 explicit tables/columns, reads the source without writes, embeds deduplicated
 neutral PNGs, and validates its staged export through the importer before an
 atomic output replacement. Imported data is checked before a separate managed
@@ -37,7 +37,9 @@ The agreed inventory scope is `all_artifacts_deck_character_builds`: all
 artifacts, deck-selected characters/weapon stacks, and saved builds explicitly
 targeting those characters or their engine keys. Universal/unrelated builds,
 normal equipment ownership, source metadata, paths, history, tags, auth and
-debug data are excluded. Optional nickname/locale/period metadata is descriptive;
+debug data are excluded. Selected weapon static display effects and passive
+reference text are transported without full catalogs or source metadata.
+Optional nickname/locale/period metadata is descriptive;
 authoritative Abyss-period admission remains unimplemented.
 
 One transparent portrait per game id is reused across seats, scopes, Pick/Ban
@@ -46,14 +48,15 @@ The local `portrait` source layer is preferred; the archive fills missing ids
 or missing local files, including shared characters. All-shared decks keep
 local portraits without switching images between seats.
 
-Final focused verification passed: 44 backend tests and 25 headless widget/asset
-tests, using temporary synthetic fixtures; details below. Real Decks/Play
+The v2 foundation's focused verification is retained below as dated evidence.
+Current v3/build-service followup verification is in `PVP_BUILD_SERVICES.md`.
+Real Decks/Play
 acceptance and the second-account 3-4-deck archive remain pending. The user owns
 all smoke tests and has forbidden Computer Use; no application smoke was run.
 
 Next: the user's manual sequence below, then an isolated real second-account
-source (path requested, not yet provided). Old v1
-development archives are rejected and require re-export; v2 remains under
+source (path requested, not yet provided). Old v1/v2
+development archives are rejected and require re-export; v3 remains under
 development until real-account acceptance.
 <!-- /handoff-current -->
 
@@ -118,7 +121,7 @@ change ownership or legality.
 
 ## Target Portable Package
 
-The v2 package is a versioned ZIP built from an explicit allowlist. Its logical
+The v3 package is a versioned ZIP built from an explicit allowlist. Its logical
 contents are:
 
 - manifest: format/schema version, creator/app version, optional public profile
@@ -132,7 +135,7 @@ contents are:
 
 The core members are `manifest.json`, `decks.json`, `account_slice.sqlite` and
 `assets.json`; bitmaps use content hashes under `assets/`. The package and SQLite
-schema versions are 2; inner deck presets and the asset manifest keep their own
+schema versions are 3; inner deck presets and the asset manifest keep their own
 version 1 schemas. Exact SQLite DDL/column allowlists live in
 `run_workspace/pvp/profile_schema.py`, not in the application's full schema.
 
@@ -143,6 +146,10 @@ descriptions/names, and saved builds targeting characters in the selected decks
 omit universal/unrelated builds. Remap local artifact/build/stack row ids inside
 the slice; preserve stable game/catalog ids and observed stack fingerprints.
 Normal equipment is not carried into a new PvP match.
+Weapon display effects are restricted to exported weapon ID/refinement pairs;
+passive references are restricted to exported weapon IDs. Imported runtime
+artifact-set effects are rebuilt from the packaged descriptions, without
+modifying the immutable portable slice or source account.
 
 The current Decks export action includes the whole saved preset collection;
 API callers can pass `deck_ids` to select a subset. Every included deck must be
@@ -204,7 +211,7 @@ row/type/value bounds and exact schema checks run before runtime hydration.
 
 ## User-Owned Manual Acceptance
 
-1. In Worker4, save valid decks and use Decks → Export to produce a new v2
+1. In Worker4, save valid decks and use Decks → Export to produce a new v3
    `.gttpvp` outside project/account paths.
 2. In Play, import it for Player 2. Check the imported deck choices and that the
    local Decks list stays unchanged. If available, use a real profile containing

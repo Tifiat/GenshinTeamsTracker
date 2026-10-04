@@ -1,4 +1,6 @@
 {
+  "app_shell.pvp.gcsim.preparation_only": "PvP team preparation. Simulation requires a validated Abyss period.",
+  "app_shell.pvp.gcsim.prepare_failed": "Could not prepare the team: {error}",
   "gcsim.optimizer.finish_requested": "Stopping search and showing results found so far. If no complete build exists yet, this will be reported.",
   "gcsim.optimizer.preparing_sources": "Preparing set rules",
   "gcsim.optimizer.capturing_schedule": "Capturing the rotation schedule",

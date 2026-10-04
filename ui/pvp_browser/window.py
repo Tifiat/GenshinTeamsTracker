@@ -1235,6 +1235,7 @@ class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
     timer_text_changed = Signal(str, int, str)
     finalize_result_requested = Signal()
+    build_browser_back_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1310,6 +1311,21 @@ class PvpDraftWorkspace(QWidget):
         self.scroll_area.setWidget(self.scroll_content)
         root.addWidget(self.scroll_area, 1)
 
+        self.build_browser_frame = QFrame(self)
+        browser_layout = QVBoxLayout(self.build_browser_frame)
+        browser_layout.setContentsMargins(0, 0, 0, 0)
+        browser_header = QHBoxLayout()
+        self.build_browser_back_button = QPushButton(self.build_browser_frame)
+        self.build_browser_back_button.clicked.connect(self.build_browser_back_requested)
+        browser_header.addWidget(self.build_browser_back_button)
+        self.build_browser_seat_label = QLabel(self.build_browser_frame)
+        browser_header.addWidget(self.build_browser_seat_label, 1)
+        browser_layout.addLayout(browser_header)
+        self.build_browser_stack = QStackedWidget(self.build_browser_frame)
+        browser_layout.addWidget(self.build_browser_stack, 1)
+        root.addWidget(self.build_browser_frame, 1)
+        self.build_browser_frame.hide()
+
         self.status_label = QLabel()
         self.status_label.setObjectName("small_muted")
         self.status_label.setWordWrap(True)
@@ -1352,6 +1368,7 @@ class PvpDraftWorkspace(QWidget):
         self._draft_actions_by_character_id.clear()
 
         if session is None:
+            self.build_browser_frame.hide()
             self.source_zone_frames_by_seat.clear()
             self.source_body_widgets_by_seat.clear()
             self.source_header_labels_by_seat.clear()
@@ -1450,8 +1467,26 @@ class PvpDraftWorkspace(QWidget):
                 self.scroll_layout.addWidget(pool_frame)
                 self.scroll_layout.addStretch(1)
 
+        self._refresh_build_browser_workspace(stage)
+
+    def _refresh_build_browser_workspace(self, stage: str) -> None:
+        context = self._build_flow_context
+        seat = getattr(context, "browser_seat", "")
+        seat_context = context.seat(seat) if seat else None
+        kind = getattr(context, "browser_kind", "")
+        browser = getattr(seat_context, f"{kind}_browser", None) if kind in {"artifact", "gcsim"} else None
+        visible = browser is not None and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
+        self.build_browser_frame.setVisible(visible)
+        self.scroll_area.setVisible(not visible)
+        if visible:
+            if self.build_browser_stack.indexOf(browser) < 0:
+                self.build_browser_stack.addWidget(browser)
+            self.build_browser_stack.setCurrentWidget(browser)
+            _configure_postdraft_seat_label(self.build_browser_seat_label, seat=seat)
+
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
+        self.build_browser_back_button.setText(tr("app_shell.workspace.characters_weapons"))
         self.empty_title_label.setText(tr("app_shell.pvp.draft.no_active_title"))
         self.empty_body_label.setText(tr("app_shell.pvp.draft.no_active_body"))
         self._refresh_pool_scope_texts()
@@ -1892,6 +1927,7 @@ class PvpWorkspace(QWidget):
         self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
         self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
+        self.draft_workspace.build_browser_back_requested.connect(self.close_build_browser)
         self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
         self.draft_workspace.finalize_result_requested.connect(
             self.finalize_match_result,
@@ -2361,6 +2397,7 @@ class PvpWorkspace(QWidget):
             parent=self.draft_workspace,
         )
         for seat, seat_context in context.seats.items():
+            seat_context.equipment_changed_callback = lambda _result, s=seat: self._on_build_source_changed(s)
             seat_context.source_workspace.character_clicked.connect(
                 lambda _asset, s=seat: self._on_build_source_changed(s)
             )
@@ -2381,6 +2418,36 @@ class PvpWorkspace(QWidget):
         context = self.build_flow_context
         seat_context = context.seat(seat) if context is not None else None
         return None if seat_context is None else seat_context.source_workspace
+
+    def open_build_artifacts(self, seat: str) -> bool:
+        return self._open_build_browser(seat, "artifact")
+
+    def open_build_gcsim(self, seat: str) -> bool:
+        return self._open_build_browser(seat, "gcsim")
+
+    def _open_build_browser(self, seat: str, kind: str) -> bool:
+        context = self.build_flow_context
+        seat_context = context.seat(seat) if context is not None else None
+        if seat_context is None or self.draft_stage not in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}:
+            return False
+        context.set_active_seat(seat)
+        if kind == "artifact":
+            seat_context.ensure_artifact_browser(self.draft_workspace.build_browser_stack)
+        elif kind == "gcsim":
+            seat_context.ensure_gcsim_browser(self.draft_workspace.build_browser_stack)
+        else:
+            return False
+        context.browser_seat, context.browser_kind = seat, kind
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+        return True
+
+    def close_build_browser(self) -> None:
+        if self.build_flow_context is not None:
+            self.build_flow_context.browser_seat = ""
+            self.build_flow_context.browser_kind = ""
+        self._sync_draft_workspace()
+        self.state_changed.emit()
 
     def handle_build_character_clicked(self, seat: str, asset: Mapping[str, Any]) -> bool:
         context = self.build_flow_context
@@ -2418,6 +2485,9 @@ class PvpWorkspace(QWidget):
             return
         context.set_active_seat(seat)
         seat_context.toggle_slot_selection(team_index, slot_index)
+        seat_context.sync_artifact_operation_target()
+        if context.browser_seat and self._open_build_browser(seat, context.browser_kind):
+            return
         self._sync_draft_workspace()
         self.state_changed.emit()
 
@@ -2592,6 +2662,14 @@ class PvpWorkspace(QWidget):
         if context is None:
             return
         for seat_context in getattr(context, "seats", {}).values():
+            for kind in ("artifact", "gcsim"):
+                browser = getattr(seat_context, f"{kind}_browser", None)
+                if browser is not None:
+                    browser.hide()
+                    self.draft_workspace.build_browser_stack.removeWidget(browser)
+                    browser.setParent(self)
+                    browser.deleteLater()
+            seat_context.close_gcsim_preparation()
             source = getattr(seat_context, "source_workspace", None)
             if source is not None:
                 source.hide()

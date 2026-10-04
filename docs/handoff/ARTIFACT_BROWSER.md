@@ -36,6 +36,17 @@ Current artifact identity model:
 - canonical set catalog comes from HoYoWiki `en-us`;
 - localized set names live in `artifact_set_names`;
 - localized artifact set 2p/4p bonus descriptions live in `artifact_set_bonus_descriptions`;
+- the right character panel's mini-set tooltip reads those descriptions without
+  schema initialization, through a read-only SQLite connection. Its bounded
+  in-memory cache includes the active profile DB path and DB/WAL/content-language
+  file stamps. A late catalog import refreshes tooltip text even when equipment
+  and pixmaps stay unchanged; transient read failures are not memoized. Profile
+  switches still restart the UI process through the saved-account supervisor;
+- both description readers ignore empty translated HTML (including `&nbsp;`)
+  so it cannot replace a populated English fallback. Reusing a tooltip widget
+  updates one controller, and an empty new payload clears the previous text.
+  Independent source/storage/render checks and the optional owned-set witness
+  are specified in [tooltip contracts](TOOLTIP_CONTRACTS.md);
 - localized weapon passive/effect tooltip text lives in `weapon_passive_tooltips`
   by `(weapon_id, lang)`; HoYoLAB account weapon `desc` is only flavor/lore
   text and is not a combat passive;
@@ -50,6 +61,10 @@ Current artifact identity model:
 - `artifacts.fingerprint` is kept for legacy/current HoYoLAB identity behavior.
 - `artifacts.content_fingerprint` is source-independent and is based on normalized artifact content:
   set_uid, position, rarity, level, main stat type/value, and sorted substat type/value pairs.
+- `artifacts.source_content_fingerprint` uses the HoYoLAB set ID with the same
+  normalized content while canonical identity is unavailable. A valid artifact
+  is retained with nullable `set_uid`; later mapping preserves its local ID and
+  preset references. Source HoYoLAB IDs are never substituted for HoYoWiki IDs.
 - JSON imports mark only newly inserted artifacts with `json_imported=1`, `import_source`,
   `import_format`, and `import_batch_id`; pre-existing duplicate artifacts are not relabeled.
 
@@ -209,4 +224,9 @@ Current Artiscan state:
   identical artifacts on distinct characters proves additional copies. Reuse
   existing copy ids first; create only the missing simultaneously seen copies.
   Reimports/reordered rows must not multiply them or alter saved preset refs.
+- A cold source import can precede canonical mapping and collide with an
+  existing scanner row only after enrichment. Keep both IDs/presets; without
+  simultaneous source proof, exclude this ambiguous group from optimizer
+  allocation and reject two aliases used in one team. See
+  [HoYoLAB reliability](HOYOLAB_IMPORT_RELIABILITY.md) for publication/readiness.
 - First-day/future improvement: automatic proc counting for imported artifacts.

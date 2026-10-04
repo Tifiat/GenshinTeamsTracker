@@ -59,6 +59,12 @@ guardrails, not another product roadmap.
 - New user-visible text goes through `localization/locales/{ru,en,pt-br}.json`
   and `tr`/`tr_for_language`. New tooltips use the in-app custom surface, not
   native Qt tooltips; preserve typed content when richer payloads are planned.
+- Every user-reported tooltip defect must add or update its semantic regression
+  in the same fix. Check the actual attached/rendered content against independent
+  expected facts, including stale/empty transitions; a nonempty string is not
+  acceptance. Register new tooltip families/bindings and run the focused suite
+  described in [tooltip contracts](TOOLTIP_CONTRACTS.md). Missing optional
+  inventory witnesses warn; present witnesses with incorrect text fail.
 - Before the approved loader/prewarm stage, improve lag by reducing total work,
   not merely delaying it to a click or timer. Measure expensive repeatable work.
   Persistent caches are introduced only with an approved cache/loader task;

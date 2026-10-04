@@ -4,10 +4,11 @@ import re
 from pathlib import Path
 
 from run_workspace.app_settings import SETTINGS_FILE, get_app_setting, set_app_setting
+from run_workspace.settings_defaults import settings_default
 
 
-PVP_PLAYER_1_COLOR_DEFAULT = "#42d9f5"
-PVP_PLAYER_2_COLOR_DEFAULT = "#d9f25c"
+PVP_PLAYER_1_COLOR_DEFAULT = str(settings_default("pvp_player_1_color"))
+PVP_PLAYER_2_COLOR_DEFAULT = str(settings_default("pvp_player_2_color"))
 PVP_PLAYER_COLOR_DEFAULTS = {
     "player_1": PVP_PLAYER_1_COLOR_DEFAULT,
     "player_2": PVP_PLAYER_2_COLOR_DEFAULT,

@@ -1,18 +1,25 @@
 import json
 import time
 import tempfile
+import shutil
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import closing
 from pathlib import Path
 from typing import Any
 import asyncio
+from urllib.parse import urlsplit
 
-from playwright.async_api import BrowserContext, Error as PlaywrightError, Page
+from playwright.async_api import BrowserContext, Page
 
 from .auth import AuthStatus, get_auth_status
+from .account_summary import fetch_account_summary
 from .artifact_db import ARTIFACT_DB_PATH, connect_db
-from .artifact_importer import import_character_details_payload, unwrap_hoyolab_payload
-from .account_storage import sync_account_storage_from_local_files, weapon_equipment_from_detail_rows
-from .account_equipment import apply_hoyolab_equipment_snapshot
+from .artifact_importer import unwrap_hoyolab_payload
+from .account_storage import (
+    sync_account_storage_from_local_files,
+    cache_account_side_icon, _download_url_to_file,
+)
 from .abyss_source_refresh import (
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
     HoYoLABAbyssPeriod,
@@ -37,9 +44,8 @@ from .collect_account_inventory import (
     wait_for_character_list_response,
 )
 from .crop_manifest import character_asset_key, icon_key
-from .asset_layers import capture_card_layer_sources, cleanup_unused_v2_assets, prepare_layered_assets
+from .asset_layers import cleanup_unused_v2_assets, prepare_layered_assets, _image_is_usable, _run_asset_thread
 from .display_stat_effects import (
-    read_weapon_wiki_from_account_detail_cache,
     rebuild_artifact_set_display_stat_effects,
     rebuild_weapon_passive_tooltips,
     rebuild_weapon_display_stat_effects,
@@ -47,6 +53,14 @@ from .display_stat_effects import (
 )
 from .hoyowiki_catalog_refresh import refresh_weapon_stats_catalog_entries
 from .import_static_cache import ImportArtifactSetLists
+from .import_progress import ImportProgress, JOB_PHASES
+from .import_store import (
+    prepare_import_store, stage_import_attempt, commit_import_snapshot,
+    get_import_attempt, get_import_result, latest_committed_import,
+    update_import_enrichment, refresh_import_references,
+    adopt_legacy_account_binding, ImportStoreError, read_equipment_revision,
+    get_active_account_binding, AccountBindingMismatch,
+)
 from .hoyolab_exporter import HOYOLAB_URL, HoyolabExporter, close_export_context
 from .paths import (
     HOYOLAB_ASSETS_DIR,
@@ -54,9 +68,9 @@ from .paths import (
     HOYOLAB_DEBUG_DIR,
     HOYOLAB_PROFILE_DIR,
     PROJECT_ROOT,
-    clear_folder_contents,
     ensure_hoyolab_dirs,
 )
+from run_workspace.profile_context import ACCOUNT_ROOT, PROFILE_ID, account_asset_path
 
 
 class HoYoLABImportError(RuntimeError):
@@ -140,11 +154,20 @@ def read_json_or_none(path: Path) -> Any | None:
         return None
 
 
-def _publish_staged_images(staging_root: Path) -> None:
+def _publish_staged_images(staging_root: Path) -> list[dict[str, str]]:
+    errors = []
     for staged_path in staging_root.rglob("*.png"):
-        final_path = PROJECT_ROOT / staged_path.relative_to(staging_root)
-        final_path.parent.mkdir(parents=True, exist_ok=True)
-        staged_path.replace(final_path)
+        try:
+            final_path = (ACCOUNT_ROOT / staged_path.relative_to(staging_root)).resolve()
+            if not final_path.is_relative_to(ACCOUNT_ROOT.resolve()):
+                raise ValueError("asset path escaped account root")
+            final_path.parent.mkdir(parents=True, exist_ok=True)
+            staged_path.replace(final_path)
+        except OSError as exc:
+            errors.append({"kind": "publication", "key": staged_path.name, "reason": type(exc).__name__})
+        except (RuntimeError, ValueError) as exc:
+            errors.append({"kind": "publication", "key": staged_path.name, "reason": type(exc).__name__})
+    return errors
 
 
 def _sync_image_paths_only(manifest: dict[str, Any]) -> None:
@@ -155,12 +178,17 @@ def _sync_image_paths_only(manifest: dict[str, Any]) -> None:
         if not required <= tables:
             raise HoYoLABImportError("Import account data once before refreshing only images.")
         for asset in manifest.get("characterAssets") or []:
+            path = asset.get("crop") or asset.get("portrait")
+            if not path:
+                continue
             conn.execute(
                 "UPDATE account_characters SET portrait_path = ? WHERE character_id = ?",
-                (asset["crop"], int(asset["character"]["id"])),
+                (path, int(asset["character"]["id"])),
             )
-        by_icon = {icon_key(asset["weapon"].get("icon")): asset["crop"] for asset in manifest.get("weaponAssets") or []}
-        by_id = {int(asset["weapon"]["id"]): asset["crop"] for asset in manifest.get("weaponAssets") or []}
+        by_icon = {icon_key(asset["weapon"].get("icon")): asset.get("crop") or asset.get("icon")
+                   for asset in manifest.get("weaponAssets") or []}
+        by_id = {int(asset["weapon"]["id"]): asset.get("crop") or asset.get("icon")
+                 for asset in manifest.get("weaponAssets") or []}
         for row in conn.execute("SELECT id, weapon_id, icon_url FROM account_weapon_observed_stacks"):
             path = by_icon.get(icon_key(row["icon_url"])) or by_id.get(row["weapon_id"])
             if path:
@@ -238,11 +266,10 @@ def sync_account_storage_for_import(
     *,
     download_side_icons: bool = True,
 ) -> tuple[dict[str, Any] | None, str | None]:
-    """Best-effort post-import account SQLite sync.
+    """Legacy local-file adapter retained for explicit maintenance callers.
 
-    The HoYoLAB import owns refreshing the raw source/cache files first; account
-    SQLite storage is then updated from those local files. Side icons are an
-    account asset cache path, so normal import opts into caching missing icons.
+    Normal import uses commit_import_snapshot and never calls this adapter;
+    its source/receipt transaction must not depend on JSON projections.
     """
 
     try:
@@ -260,72 +287,84 @@ def sync_static_reference_catalogs_for_import(
     *,
     weapon_wiki: dict[str, Any] | None = None,
     artifact_set_list_fetcher=None,
+    progress_callback=None,
 ) -> tuple[dict[str, Any], str | None]:
     """Best-effort HoYoWiki static catalog refresh used by normal import."""
 
     summary: dict[str, Any] = {}
     errors: list[str] = []
 
-    try:
-        summary["artifactSetCatalog"] = ensure_artifact_set_catalog(
-            db_path=ARTIFACT_DB_PATH,
-            allow_network=True,
-            missing_only=True,
-            list_fetcher=artifact_set_list_fetcher,
-        )
-    except Exception as exc:
-        errors.append(f"artifact set catalog: {compact_exception_summary(exc)}")
-
-    try:
-        trait_catalog = load_or_refresh_character_trait_catalog()
-        with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
-            trait_reference_rows = rebuild_character_trait_reference_from_catalog(
-                conn,
-                trait_catalog,
+    def refresh_sets():
+        try:
+            summary["artifactSetCatalog"] = ensure_artifact_set_catalog(
+                db_path=ARTIFACT_DB_PATH,
+                allow_network=True,
+                missing_only=True,
+                list_fetcher=artifact_set_list_fetcher,
             )
-            conn.commit()
-        summary["characterTraitCatalog"] = {
-            "source": trait_catalog.source,
-            "entries": len(trait_catalog.entries),
-            "sqlite_reference_rows": trait_reference_rows,
-            "fetched_at": trait_catalog.fetched_at,
-        }
-    except Exception as exc:
-        errors.append(f"character trait catalog: {compact_exception_summary(exc)}")
+        except Exception as exc:
+            errors.append(f"artifact set catalog: {compact_exception_summary(exc)}")
 
-    try:
-        if content_language:
-            region_entries = load_character_region_catalog(content_language, allow_network=True)
-            summary["characterRegionCatalog"] = {
-                "language": content_language,
-                "entries": len(region_entries),
-            }
-    except Exception as exc:
-        errors.append(f"character region catalog: {compact_exception_summary(exc)}")
-
-    try:
-        entry_ids = tuple(weapon_entry_page_id_to_weapon_id_map(weapon_wiki or {}).keys())
-        if content_language and entry_ids:
-            result = refresh_weapon_stats_catalog_entries(
-                entry_ids,
-                language=content_language,
-            )
-            summary["localizedWeaponStatsCatalog"] = result.to_dict()
+    def refresh_traits():
+        try:
+            trait_catalog = load_or_refresh_character_trait_catalog()
             with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
-                summary["weaponPassiveTooltips"] = {
-                    "language": content_language,
-                    "rows": rebuild_weapon_passive_tooltips(
-                        conn,
-                        weapon_wiki=weapon_wiki or {},
-                        language=content_language,
-                    ),
-                }
+                trait_reference_rows = rebuild_character_trait_reference_from_catalog(
+                    conn,
+                    trait_catalog,
+                )
                 conn.commit()
-    except Exception as exc:
-        errors.append(
-            f"localized weapon stats/passive tooltips: {compact_exception_summary(exc)}"
-        )
+            summary["characterTraitCatalog"] = {
+                "source": trait_catalog.source,
+                "entries": len(trait_catalog.entries),
+                "sqlite_reference_rows": trait_reference_rows,
+                "fetched_at": trait_catalog.fetched_at,
+            }
+        except Exception as exc:
+            errors.append(f"character trait catalog: {compact_exception_summary(exc)}")
 
+    def refresh_regions():
+        try:
+            if content_language:
+                region_entries = load_character_region_catalog(content_language, allow_network=True)
+                summary["characterRegionCatalog"] = {
+                    "language": content_language,
+                    "entries": len(region_entries),
+                }
+        except Exception as exc:
+            errors.append(f"character region catalog: {compact_exception_summary(exc)}")
+
+    def refresh_weapons():
+        try:
+            entry_ids = tuple(weapon_entry_page_id_to_weapon_id_map(weapon_wiki or {}).keys())
+            if content_language and entry_ids:
+                result = refresh_weapon_stats_catalog_entries(
+                    entry_ids,
+                    language=content_language,
+                )
+                summary["localizedWeaponStatsCatalog"] = result.to_dict()
+                with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
+                    summary["weaponPassiveTooltips"] = {
+                        "language": content_language,
+                        "rows": rebuild_weapon_passive_tooltips(
+                            conn,
+                            weapon_wiki=weapon_wiki or {},
+                            language=content_language,
+                        ),
+                    }
+                    conn.commit()
+        except Exception as exc:
+            errors.append(
+                f"localized weapon stats/passive tooltips: {compact_exception_summary(exc)}"
+            )
+
+    with ThreadPoolExecutor(max_workers=4, thread_name_prefix="import-catalog") as pool:
+        futures = [pool.submit(operation) for operation in
+                   (refresh_sets, refresh_traits, refresh_regions, refresh_weapons)]
+        for completed, future in enumerate(as_completed(futures), 1):
+            future.result()
+            if progress_callback:
+                progress_callback("catalogs", completed, len(futures))
     return summary, "; ".join(errors) if errors else None
 
 
@@ -335,6 +374,7 @@ def refresh_abyss_source_data_for_import(
     floor: int = 12,
     status_callback=print_status,
     refresher=refresh_cached_abyss_source_data_for_hoyolab_period,
+    progress_callback=None,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Best-effort Abyss source refresh used by the normal HoYoLAB import."""
 
@@ -342,7 +382,8 @@ def refresh_abyss_source_data_for_import(
         return None, "official_abyss_period_unavailable"
     if status_callback is not None:
         status_callback("updating_abyss_source_data")
-    summary, error = refresher(period, floor=floor)
+    progress_args = {"progress_callback": progress_callback} if progress_callback else {}
+    summary, error = refresher(period, floor=floor, **progress_args)
     if status_callback is not None and isinstance(summary, dict):
         if summary.get("skipped"):
             status_callback("skipping_abyss_source_data_refresh")
@@ -355,36 +396,43 @@ def refresh_abyss_source_data_for_import(
 
 async def prepare_artifact_mapping_for_import(
     character_details, export_page, real_ids, artifact_set_lists, static_catalog_summary,
-    content_language,
+    content_language, *, english_details=None,
 ):
     """Keep reference-data failures separate from the account payload import."""
     try:
         summary = await ensure_hoyolab_set_mapping(
             character_details, export_page, real_ids, db_path=ARTIFACT_DB_PATH,
-            allow_unmapped=True,
+            allow_unmapped=True, english_details=english_details,
         )
         if summary.get("unmapped") and "fresh_cache" in artifact_set_lists.sources.values():
             fresh_lists = ImportArtifactSetLists(force_network=True)
-            ensure_artifact_set_catalog(
+            refreshed = {}
+            refreshed["catalog"] = await asyncio.to_thread(ensure_artifact_set_catalog,
                 db_path=ARTIFACT_DB_PATH, allow_network=True, missing_only=True,
                 list_fetcher=fresh_lists,
             )
-            ensure_artifact_set_names(
+            refreshed["names"] = await asyncio.to_thread(ensure_artifact_set_names,
                 content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=fresh_lists,
             )
-            ensure_artifact_set_bonus_descriptions(
+            refreshed["bonuses"] = await asyncio.to_thread(ensure_artifact_set_bonus_descriptions,
                 content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=fresh_lists,
             )
+            # Successful identity mapping does not imply every reference field
+            # was loaded. Keep incomplete forced refreshes eligible for repair.
+            refreshed["errors"] = [
+                name for name, value in refreshed.items()
+                if isinstance(value, dict) and (value.get("error") or value.get("errors") or value.get("failed"))
+            ]
+            static_catalog_summary["mappingRefresh"] = refreshed
             static_catalog_summary["artifactSetListSources"].update(fresh_lists.sources)
             static_catalog_summary["artifactSetListRefreshedForUnknownMapping"] = True
             summary = await ensure_hoyolab_set_mapping(
                 character_details, export_page, real_ids, db_path=ARTIFACT_DB_PATH,
-                allow_unmapped=True,
+                allow_unmapped=True, english_details=english_details,
             )
         return summary
     except Exception as exc:
-        # The artifact importer independently resolves each set against SQLite;
-        # only unresolved artifacts are skipped, without guessing their identity.
+        # Source artifacts already exist; this only postpones canonical enrichment.
         return {"error": type(exc).__name__}
 
 
@@ -456,522 +504,936 @@ def build_import_log(
     }
 
 
-async def run_hoyolab_import(*, change_equipment: bool = False, images_only: bool = False) -> dict[str, Any]:
-    """Run full HoYoLAB import into the current MVP folders.
+def cleanup_import_staging(*, now: float | None = None) -> list[str]:
+    """Retire only abandoned, importer-owned staging after one day."""
+    root = HOYOLAB_DEBUG_DIR.resolve()
+    if (root != HOYOLAB_DEBUG_DIR.absolute()
+            or not root.is_relative_to(PROJECT_ROOT.resolve())):
+        return ["unsafe_staging_root"]
+    failures = []
+    for path in root.glob("import-assets-*"):
+        try:
+            target = path.resolve()
+            if path.is_symlink() or target != path.absolute() or target.parent != root or not target.is_dir():
+                continue
+            if (now if now is not None else time.time()) - path.stat().st_mtime < 86400:
+                continue
+            shutil.rmtree(target)
+        except OSError:
+            failures.append(path.name)
+    return failures
 
-    Outputs:
-    - data/hoyolab/account_characters.json
-    - data/hoyolab/account_weapons.json
-    - data/hoyolab/account_character_details.json
-    - data/hoyolab/crop_manifest.json
-    - assets/hoyolab/characters/*.png
-    - assets/hoyolab/weapons/*.png
-    - assets/hoyolab/shared/*.png
-    - data/artifacts.db
-    - debug/hoyolab/import_log.json
-    """
-    started_at = time.time()
+
+def _safe_detail_source(details: dict[str, Any]) -> dict[str, Any]:
+    """Persist source data and useful metadata, never HTTP/session diagnostics."""
+    payload = unwrap_hoyolab_payload(details)
+    return {
+        "json": payload,
+        **{key: details[key] for key in (
+            "detectedLanguage", "charactersRequested", "charactersReturned", "capturedAt",
+        ) if key in details},
+    }
+
+
+def _current_attempt(attempt_id: str) -> dict[str, Any]:
+    current = latest_committed_import(ARTIFACT_DB_PATH)
+    if current is None or current["attempt_id"] != attempt_id:
+        raise ImportStoreError("Only the current account snapshot can publish derived data")
+    return current
+
+
+def publish_import_projections(attempt_id: str) -> dict[str, Any]:
+    """Legacy JSON is a rebuildable projection of the committed SQLite source."""
+    current = _current_attempt(attempt_id)
+    source = current["source"]
+    for filename, key in (
+        ("account_characters.json", "account_characters"),
+        ("account_weapons.json", "account_weapons"),
+        ("account_character_details.json", "account_character_details"),
+    ):
+        write_json(HOYOLAB_DATA_DIR / filename, source[key])
+    write_json(HOYOLAB_DATA_DIR / "account_language.json", {
+        "contentLanguage": source["content_language"],
+        "accountUid": current["account_uid"], "server": current["server"],
+        "attemptId": attempt_id, "observedAt": current["observed_at"],
+        "source": "committed_hoyolab_snapshot",
+    })
+    return {"files": 4}
+
+
+def _asset_local_path(value: Any) -> Path | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        path = account_asset_path(value).resolve()
+        if not path.is_relative_to(ACCOUNT_ROOT.resolve()):
+            return None
+        return path
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+
+def _usable_asset_path(value: Any) -> bool:
+    path = _asset_local_path(value)
+    return path is not None and _image_is_usable(path)
+
+
+def _merge_asset_manifests(previous: dict[str, Any], fresh: dict[str, Any]) -> dict[str, Any]:
+    """Keep valid prior images when a single refresh/publication failed."""
+    result = dict(fresh)
+    checked = {}
+    def usable(value):
+        if not isinstance(value, str):
+            return False
+        if value not in checked:
+            checked[value] = _usable_asset_path(value)
+        return checked[value]
+    for group, identity in (("characterAssets", "character"), ("weaponAssets", "weapon")):
+        def key(asset):
+            entity = asset.get(identity) or {}
+            return (entity.get("id"), icon_key(entity.get("icon")) if identity == "weapon" else "")
+        old = {key(asset): asset for asset in previous.get(group) or []}
+        merged = []
+        for asset in fresh.get(group) or []:
+            fallback = old.pop(key(asset), {})
+            merged.append({
+                **asset,
+                **{field: (asset.get(field) if usable(asset.get(field))
+                           else fallback.get(field) if usable(fallback.get(field)) else "")
+                   for field in ("crop", "pvp", "history", "portrait", "icon")
+                   if field in asset or field in fallback},
+            })
+        # HoYoLAB observations are not a complete inventory.
+        merged.extend(old.values())
+        result[group] = merged
+    shared = {}
+    old_shared = previous.get("sharedAssets") or {}
+    for group in set(old_shared) | set(fresh.get("sharedAssets") or {}):
+        values = dict(old_shared.get(group) or {})
+        values.update({k: v for k, v in (fresh.get("sharedAssets", {}).get(group) or {}).items()
+                       if usable(v)})
+        shared[group] = {k: v for k, v in values.items() if usable(v)}
+    result["sharedAssets"] = shared
+    return result
+
+
+async def refresh_import_assets(
+    characters, weapons, *, cards=(), refresh_images=False, attempt_id=None,
+    progress_callback=None,
+) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="import-assets-", dir=HOYOLAB_DEBUG_DIR) as staging:
+        manifest = await prepare_layered_assets(
+            characters=characters, weapons=weapons, cards=list(cards),
+            staging_root=Path(staging), refresh_images=refresh_images,
+            **({"progress_callback": progress_callback} if progress_callback else {}),
+        )
+        if not manifest.get("cardsCount"):
+            raise HoYoLABImportError("Image preparation produced no characters")
+        # Validation/publication includes PNG decoding and filesystem work.
+        # Drain the worker before deleting staging even on cancellation.
+        if progress_callback:
+            progress_callback("saving", 0, 1)
+        result = await _run_asset_thread(_publish_import_assets, manifest, Path(staging), attempt_id)
+        if progress_callback:
+            progress_callback("saving", 1, 1)
+        return result
+
+
+def _publish_import_assets(manifest, staging, attempt_id):
+    started = time.perf_counter()
+    errors = _publish_staged_images(staging)
+    manifest.setdefault("assetErrors", []).extend(errors)
+    manifest["assetsPending"] = int(manifest.get("assetsPending") or 0) + len(errors)
+    path = HOYOLAB_DATA_DIR / "crop_manifest.json"
+    previous = read_json_or_none(path) or {}
+    if attempt_id:
+        current = _current_attempt(attempt_id)
+        saved = (current["enrichment"].get("assets") or {}).get("result") or {}
+        previous = saved.get("manifest") or previous
+    manifest = _merge_asset_manifests(previous, manifest)
+    manifest.setdefault("assetTimings", {})["validationAndReplaceSeconds"] = round(time.perf_counter() - started, 3)
+    # Persist before the replaceable projection, so a crash can be repaired
+    # without downloading images again.
+    if attempt_id:
+        update_import_enrichment(
+            ARTIFACT_DB_PATH, attempt_id=attempt_id, kind="assets", status="pending",
+            result={"manifest": manifest},
+        )
+    _sync_image_paths_only(manifest)
+    write_json(path, manifest)
+    cleanup_failures = cleanup_unused_v2_assets(manifest)
+    if cleanup_failures:
+        manifest["cleanupPending"] = len(cleanup_failures)
+    return {"manifest": manifest, "pending": bool(manifest.get("assetsPending") or cleanup_failures)}
+
+
+def _profile_registry_entry() -> dict[str, Any] | None:
+    if not PROFILE_ID:
+        return None
+    from run_workspace.account_profiles import list_profiles
+
+    return next((item for item in list_profiles() if item.get("id") == PROFILE_ID), None)
+
+
+def _profile_identity_metadata(account_context: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "uid": str(account_context["role_id"]),
+        "server": str(account_context["server"]),
+    }
+
+
+def _profile_summary_metadata(
+    account_context: dict[str, Any], summary: dict[str, Any] | None,
+) -> dict[str, Any]:
+    metadata = _profile_identity_metadata(account_context)
+    if not isinstance(summary, dict):
+        return metadata
+    if (str(summary.get("uid") or "") != metadata["uid"]
+            or str(summary.get("server") or "") != metadata["server"]):
+        return metadata
+    for key in ("nickname", "world_level", "adventure_rank", "avatar_url"):
+        value = summary.get(key)
+        if value is not None:
+            metadata[key] = value
+    return metadata
+
+
+def _reserve_profile_identity(account_context: dict[str, Any]) -> None:
+    """Bind a managed profile before any account source is staged."""
+    if not PROFILE_ID:
+        return
+    from run_workspace.account_profiles import (
+        DuplicateAccountProfile, list_profiles, update_profile_metadata,
+    )
+
+    entry = next((item for item in list_profiles() if item.get("id") == PROFILE_ID), None)
+    if entry is None:
+        raise HoYoLABImportError("The selected local account profile is unavailable.")
+    current = entry.get("metadata") or {}
+    requested = _profile_identity_metadata(account_context)
+    current_uid = str(current.get("uid") or "")
+    current_server = str(current.get("server") or "")
+    if ((current_uid and current_uid != requested["uid"])
+            or (current_server and current_server.casefold() != requested["server"].casefold())):
+        raise HoYoLABImportError("The selected HoYoLAB role differs from this profile's reserved identity.")
+    options = {} if entry.get("imported") else {"imported": False}
+    try:
+        update_profile_metadata(PROFILE_ID, requested, **options)
+    except DuplicateAccountProfile as exc:
+        print("[PROFILE_DUPLICATE] " + json.dumps(
+            {"existing_profile_id": exc.existing_profile_id}, ensure_ascii=False,
+        ), flush=True)
+        raise
+
+
+def _update_profile_imported_metadata(
+    account_context: dict[str, Any], summary: dict[str, Any] | None = None,
+    *, avatar_path: str | None = None,
+) -> dict[str, Any] | None:
+    if not PROFILE_ID:
+        return None
+    from run_workspace.account_profiles import update_profile_metadata
+
+    metadata = _profile_summary_metadata(account_context, summary)
+    if avatar_path:
+        metadata["avatar_path"] = avatar_path
+    return update_profile_metadata(PROFILE_ID, metadata, imported=True)
+
+
+def _profile_avatar_url_is_safe(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        parts = urlsplit(value)
+        host = (parts.hostname or "").lower()
+    except ValueError:
+        return False
+    return bool(
+        parts.scheme == "https" and host
+        and not parts.username and not parts.password
+        and any(host == domain or host.endswith(f".{domain}")
+                for domain in ("hoyolab.com", "hoyoverse.com", "mihoyo.com"))
+    )
+
+
+def _cache_profile_avatar_sync(avatar_url: str, *, force: bool = False) -> str:
+    """Download to a private candidate, decode/validate, then atomically publish."""
+    if not _profile_avatar_url_is_safe(avatar_url):
+        raise ValueError("profile avatar URL is not an allowed HoYoLAB image")
+    destination = ACCOUNT_ROOT / "assets" / "hoyolab" / "account" / "avatar.png"
+    account_root = ACCOUNT_ROOT.resolve()
+    try:
+        if not destination.parent.resolve().is_relative_to(account_root):
+            raise ValueError("profile avatar path escaped account root")
+        if (destination.exists() or destination.is_symlink()) \
+                and not destination.resolve().is_relative_to(account_root):
+            raise ValueError("profile avatar path escaped account root")
+    except RuntimeError as exc:
+        raise ValueError("profile avatar path could not be resolved") from exc
+    if not force and _image_is_usable(destination):
+        return "assets/hoyolab/account/avatar.png"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if not destination.parent.resolve().is_relative_to(account_root):
+        raise ValueError("profile avatar path escaped account root")
+    candidate = destination.with_name(f".avatar-{uuid.uuid4().hex}.png")
+    temporary = candidate.with_suffix(candidate.suffix + ".tmp")
+    try:
+        _download_url_to_file(avatar_url, candidate)
+        if not _image_is_usable(candidate):
+            raise ValueError("profile avatar image failed validation")
+        candidate.replace(destination)
+        return "assets/hoyolab/account/avatar.png"
+    finally:
+        candidate.unlink(missing_ok=True)
+        temporary.unlink(missing_ok=True)
+
+
+async def _refresh_profile_metadata(
+    account_context: dict[str, Any], summary_task: asyncio.Task | None,
+    *, previous_avatar_url: str | None = None,
+    previous_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if not PROFILE_ID:
+        return {"pending": False}
+    summary = None
+    summary_error = None
+    if summary_task is not None:
+        try:
+            summary = await summary_task
+        except Exception as exc:
+            summary_error = type(exc).__name__
+    previous = _profile_registry_entry() or {}
+    previous_metadata = previous.get("metadata") or {}
+    if previous_avatar_url is None:
+        previous_avatar_url = previous_metadata.get("avatar_url")
+    if not summary:
+        summary = None
+    requested_avatar_url = (
+        summary.get("avatar_url") if isinstance(summary, dict) else None
+    )
+    avatar_url = requested_avatar_url or previous_metadata.get("avatar_url")
+    try:
+        _update_profile_imported_metadata(account_context, summary)
+    except Exception as exc:
+        return {"pending": True, "error": type(exc).__name__,
+                "summaryError": summary_error}
+
+    avatar_path = None
+    avatar_cached = False
+    avatar_error = None
+    if avatar_url:
+        try:
+            avatar_path = await _run_asset_thread(
+                _cache_profile_avatar_sync, avatar_url,
+                force=bool(requested_avatar_url and requested_avatar_url != previous_avatar_url),
+            )
+            avatar_cached = bool(avatar_path)
+            _update_profile_imported_metadata(account_context, summary, avatar_path=avatar_path)
+        except Exception as exc:
+            avatar_error = type(exc).__name__
+
+    # Keep a small, portable projection for offline profile export. Paths are
+    # account-relative and are included only while the decoded file is usable.
+    entry = _profile_registry_entry() or {}
+    metadata = dict(entry.get("metadata") or {})
+    avatar_file = ACCOUNT_ROOT / "assets" / "hoyolab" / "account" / "avatar.png"
+    if _image_is_usable(avatar_file):
+        metadata["avatar_path"] = "assets/hoyolab/account/avatar.png"
+    else:
+        metadata.pop("avatar_path", None)
+    projection = {
+        key: metadata.get(key)
+        for key in ("uid", "server", "nickname", "world_level", "adventure_rank", "avatar_url")
+    }
+    if metadata.get("avatar_path"):
+        projection["avatar_path"] = metadata["avatar_path"]
+    try:
+        write_json(HOYOLAB_DATA_DIR / "account_summary.json", projection)
+    except Exception as exc:
+        return {"pending": True, "error": type(exc).__name__,
+                "summaryError": summary_error, "avatarError": avatar_error}
+    summary_available = bool(summary)
+    pending_reason = None
+    if summary_task is not None and summary_error:
+        pending_reason = "network_profile_summary_unavailable"
+    elif summary_task is None:
+        prior_summary = previous_result or {}
+        summary_available = bool(
+            prior_summary.get("summaryAvailable")
+            or any(previous_metadata.get(key) is not None
+                   for key in ("nickname", "adventure_rank", "avatar_url"))
+        )
+        if prior_summary.get("pendingReason") == "network_profile_summary_unavailable":
+            pending_reason = "network_profile_summary_unavailable"
+        elif not summary_available:
+            pending_reason = "profile_summary_unavailable"
+    return {
+        "pending": bool(avatar_error or pending_reason),
+        "summaryAvailable": summary_available,
+        "avatarCached": avatar_cached,
+        **({"pendingReason": pending_reason} if pending_reason else {}),
+        **({"summaryError": summary_error} if summary_error else {}),
+        **({"avatarError": avatar_error} if avatar_error else {}),
+    }
+
+
+async def _close_context_after_sources(
+    context: Any, *source_tasks: asyncio.Task | None,
+) -> str | None:
+    """Drain source requests before closing their shared browser context."""
+    tasks = [task for task in source_tasks if task is not None]
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    if context is None:
+        return None
+    try:
+        await close_export_context(context)
+    except Exception as exc:
+        return type(exc).__name__
+    return None
+
+
+async def refresh_import_side_icons(
+    *, progress_callback=None, extra_work=None,
+) -> dict[str, Any]:
+    with closing(connect_db(ARTIFACT_DB_PATH)) as conn:
+        rows = [dict(row) for row in conn.execute(
+            "SELECT character_id, side_icon_url FROM account_characters WHERE side_icon_url != ''"
+        )]
+    semaphore = asyncio.Semaphore(6)
+    completed = 0
+    total = len(rows) + (1 if extra_work is not None else 0)
+    if progress_callback:
+        progress_callback("download", completed, total)
+
+    async def download(row):
+        nonlocal completed
+        async with semaphore:
+            result = await asyncio.to_thread(
+                cache_account_side_icon,
+                character_id=row["character_id"], side_icon_url=row["side_icon_url"],
+                cache_dir=HOYOLAB_ASSETS_DIR / "characters" / "side_icons",
+                downloader=_download_url_to_file,
+            )
+            completed += 1
+            if progress_callback:
+                progress_callback("download", completed, total)
+            return row, result
+
+    async def run_extra_work():
+        nonlocal completed
+        try:
+            result = await extra_work()
+        except Exception as exc:
+            result = {"pending": True, "error": type(exc).__name__}
+        completed += 1
+        if progress_callback:
+            progress_callback("download", completed, total)
+        return result
+
+    tasks = [download(row) for row in rows]
+    if extra_work is not None:
+        tasks.append(run_extra_work())
+    results = await asyncio.gather(*tasks)
+    side_icon_results = results[:len(rows)]
+    profile_result = results[-1] if extra_work is not None else None
+    with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
+        for row, result in side_icon_results:
+            if result.path:
+                conn.execute(
+                    "UPDATE account_characters SET side_icon_path = ? "
+                    "WHERE character_id = ? AND side_icon_url = ?",
+                    (result.path, row["character_id"], row["side_icon_url"]),
+                )
+    return {
+        "downloaded": sum(item.downloaded for _, item in side_icon_results),
+        "pending": bool(sum(bool(item.warnings) for _, item in side_icon_results)
+                         or (profile_result or {}).get("pending")),
+        **({"profileMetadata": profile_result} if profile_result is not None else {}),
+    }
+
+
+async def refresh_import_catalogs(attempt_id, character_details, english_source_task, *, progress_callback=None):
+    language = normalize_language(character_details.get("detectedLanguage"))
+    lists = ImportArtifactSetLists()
+    summary, error = await asyncio.to_thread(
+        sync_static_reference_catalogs_for_import, language,
+        weapon_wiki=_weapon_wiki_from_character_details(character_details),
+        artifact_set_list_fetcher=lists,
+        progress_callback=progress_callback,
+    )
+    summary["artifactSetListSources"] = dict(lists.sources)
+    errors = [error] if error else []
+    for name, updater in (("names", ensure_artifact_set_names),
+                          ("bonuses", ensure_artifact_set_bonus_descriptions)):
+        if progress_callback:
+            progress_callback(name, 0, 1)
+        try:
+            summary[name] = await asyncio.to_thread(
+                updater, language, db_path=ARTIFACT_DB_PATH, list_fetcher=lists,
+            )
+        except Exception as exc:
+            errors.append(type(exc).__name__)
+        if progress_callback:
+            progress_callback(name, 1, 1)
+    if progress_callback:
+        progress_callback("mapping", 0, 1)
+    english = await english_source_task
+    mapping = await prepare_artifact_mapping_for_import(
+        character_details, None, [], lists, summary, language, english_details=english,
+    )
+    if progress_callback:
+        progress_callback("mapping", 1, 1)
+    summary["mapping"] = mapping
+    if mapping.get("error"):
+        errors.append(mapping["error"])
+    for name, value in summary.items():
+        if isinstance(value, dict) and (value.get("error") or value.get("errors") or value.get("failed")):
+            errors.append(name + "_incomplete")
+    # Mapping updates the existing artifact IDs in place. No source reimport:
+    # it must never restore old equipment or increment observed stack counts.
+    if progress_callback:
+        progress_callback("saving", 0, 1)
+    summary["accountReferences"] = await asyncio.to_thread(
+        refresh_import_references, ARTIFACT_DB_PATH, attempt_id=attempt_id,
+    )
+    with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
+        from .artifact_db import backfill_artifact_content_fingerprints
+        backfill_artifact_content_fingerprints(conn)
+        summary["staticDisplayEffects"] = {
+            "artifact_set_rows": rebuild_artifact_set_display_stat_effects(conn),
+            "weapon_rows": rebuild_weapon_display_stat_effects(
+                conn, weapon_wiki=_weapon_wiki_from_character_details(character_details),
+            ),
+        }
+    summary["pending"] = bool(errors or mapping.get("unmapped"))
+    summary["errors"] = errors
+    return summary
+
+
+def _needs_english_mapping(details: dict[str, Any]) -> bool:
+    payload = unwrap_hoyolab_payload(details)
+    source_ids = {
+        int(relic["set"]["id"])
+        for row in (payload.get("data") or {}).get("list") or []
+        for relic in row.get("relics") or []
+        if isinstance(relic.get("set"), dict) and relic["set"].get("id")
+    }
+    if not source_ids:
+        return False
+    with closing(connect_db(ARTIFACT_DB_PATH)) as conn:
+        known = {int(row[0]) for row in conn.execute(
+            "SELECT hoyolab_set_id FROM artifact_sets WHERE hoyolab_set_id IS NOT NULL"
+        )}
+    return bool(source_ids - known)
+
+
+async def run_hoyolab_import(
+    *, change_equipment: bool = False, images_only: bool = False,
+    attempt_id: str | None = None, resume_attempt: str | None = None,
+    adopt_legacy: bool = False,
+) -> dict[str, Any]:
+    """Acquire -> durable source -> one core transaction -> independent jobs."""
+    started = time.monotonic()
     current_stage = "preparing"
-    browser_events = []
-    stage_events = []
+    stage_events, browser_events = [], []
+    context = export_page = character_list_future = profile_summary_task = None
+    receipt = None
+    result = None
+    attempt_id = resume_attempt or attempt_id or str(uuid.uuid4())
+    progress = ImportProgress(None if images_only else attempt_id, images_only=images_only)
+    cards = []
+    jobs = []
+    record_errors = []
+    profile_metadata_needs_retry = False
+    profile_previous_avatar_url = None
+    equipment_revision = read_equipment_revision(ARTIFACT_DB_PATH) if change_equipment else None
 
     def report_status(status):
         nonlocal current_stage
         current_stage = status
-        stage_events.append({"stage": status, "elapsedSeconds": round(time.time() - started_at, 2)})
+        stage_events.append({"stage": status, "elapsedSeconds": round(time.monotonic() - started, 3)})
         print_status(status)
 
-    def record_browser_event(event):
+    def browser_event(event):
         browser_events.append({"event": event, "stage": current_stage,
-                               "elapsedSeconds": round(time.time() - started_at, 2)})
+                               "elapsedSeconds": round(time.monotonic() - started, 3)})
 
-    if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
-        raise HoYoLABImportError(
-            "HoYoLAB profile is not logged in. Authorize in the app first."
+    def record(kind, status, data):
+        # Disk/SQLite errors after COMMIT must not change the core outcome.
+        try:
+            update_import_enrichment(
+                ARTIFACT_DB_PATH, attempt_id=attempt_id, kind=kind, status=status, result=data,
+            )
+        except Exception as exc:
+            record_errors.append({"kind": kind, "error": type(exc).__name__})
+
+    async def run_job(kind, operation):
+        record(kind, "pending", (saved_jobs.get(kind) or {}).get("result") or {})
+        progress.update(kind, JOB_PHASES[kind][0])
+        job_started = time.monotonic()
+        try:
+            data = await operation()
+            data["durationSeconds"] = round(time.monotonic() - job_started, 3)
+            record(kind, "pending" if data.get("pending") else "complete", data)
+            progress.finish(kind, pending=bool(data.get("pending")))
+            return data
+        except Exception as exc:
+            data = {"error": type(exc).__name__, "pending": True,
+                    "durationSeconds": round(time.monotonic() - job_started, 3)}
+            record(kind, "failed", data)
+            progress.finish(kind, pending=True)
+            return data
+
+    async def open_browser():
+        nonlocal context, export_page
+        exporter = HoyolabExporter(
+            profile_dir=HOYOLAB_PROFILE_DIR, download_dir=HOYOLAB_DEBUG_DIR, scale=1,
         )
+        context = await exporter._create_context()
+        export_page = await get_export_page(context)
+        export_page.on("close", lambda *_: browser_event("page_closed"))
+        export_page.on("crash", lambda *_: browser_event("page_crashed"))
+        if context.browser is not None:
+            context.browser.on("disconnected", lambda *_: browser_event("browser_disconnected"))
+        return exporter
 
     report_status("preparing")
     ensure_hoyolab_dirs()
-    clear_folder_contents(HOYOLAB_DEBUG_DIR)
-
-    exporter = HoyolabExporter(
-        profile_dir=HOYOLAB_PROFILE_DIR,
-        download_dir=HOYOLAB_DEBUG_DIR,
-        scale=1,
-    )
-
-    context: BrowserContext | None = None
-    export_page = None
-    character_list_future = None
-    character_list_request: dict[str, str] = {}
-    staged_assets = None
-
-    manifest_path = HOYOLAB_DATA_DIR / "crop_manifest.json"
-    characters_path = HOYOLAB_DATA_DIR / "account_characters.json"
-    weapons_path = HOYOLAB_DATA_DIR / "account_weapons.json"
-    character_details_path = HOYOLAB_DATA_DIR / "account_character_details.json"
-    account_language_path = HOYOLAB_DATA_DIR / "account_language.json"
-    abyss_period_path = DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH
-    import_log_path = HOYOLAB_DEBUG_DIR / "import_log.json"
-    result: dict[str, Any] | None = None
-    manifest: dict[str, Any] | None = None
-    artifact_summary: dict[str, Any] | None = None
-    account_storage_summary: dict[str, Any] | None = None
-    account_storage_error: str | None = None
-    static_catalog_summary: dict[str, Any] | None = None
-    static_catalog_error: str | None = None
-    abyss_period: HoYoLABAbyssPeriod | None = None
-    abyss_period_error: str | None = None
-    abyss_source_data_summary: dict[str, Any] | None = None
-    abyss_source_data_error: str | None = None
-    import_warnings: list[dict[str, Any]] = []
-
+    cleanup_import_staging()
     try:
-        context = await exporter._create_context()
-        export_page = await get_export_page(context)
-        export_page.on("close", lambda *_: record_browser_event("page_closed"))
-        export_page.on("crash", lambda *_: record_browser_event("page_crashed"))
-        if context.browser is not None:
-            context.browser.on("disconnected", lambda *_: record_browser_event("browser_disconnected"))
-        report_status("opening_hoyolab")
-        print("[HoYoLAB Import] Opening export page...")
-
-        # Start listening before HoYoLAB loads. The endpoint may respond quickly.
-        character_list_future = await wait_for_character_list_response(
-            export_page, request_context=character_list_request,
-        )
-        character_list: list[dict[str, Any]] | None = None
-
-        async def after_character_list_open() -> None:
-            nonlocal character_list
-            report_status("collecting_inventory")
-            print("[HoYoLAB Import] Waiting for account inventory...")
-            character_list = await asyncio.wait_for(character_list_future, timeout=60)
-            print(f"[HoYoLAB Import] Account inventory captured: {len(character_list)} characters")
-
-        try:
-            await export_page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
-        except PlaywrightError as exc:
-            message = str(exc)
-            if "Target page, context or browser has been closed" in message:
-                raise HoYoLABImportError(
-                    "HoYoLAB automation browser closed before the page loaded. "
-                    "Close any HoYoLAB authorization/automation browser windows and try again."
-                ) from exc
-            raise
-
-        report_status("opening_character_list")
-        direct_list = await fetch_character_list_direct(export_page)
-        if direct_list is not None:
-            character_list, account_context_from_api = direct_list
-            character_list_request.update(account_context_from_api)
-            character_list_future.cancel()
-            cards = []
-            report_status("collecting_inventory")
-            print(f"[HoYoLAB Import] Account inventory captured directly: {len(character_list)} characters")
-        else:
-            await exporter._wait_until_ready_or_login(export_page)
-            await exporter._click_with_popup_retry(export_page, ".block-title-right")
-            await export_page.locator(".me-share__btn").first.wait_for(state="visible", timeout=30_000)
-            await after_character_list_open()
-            report_status("collecting_asset_urls")
-            cards = await capture_card_layer_sources(export_page)
-
-        report_status("writing_inventory")
-        print("[HoYoLAB Import] Building account inventory...")
-        if character_list is None:
-            raise HoYoLABImportError("HoYoLAB character/list was not captured during export flow.")
-
-        characters, weapons = build_inventory(character_list)
-
-        # Stage every cache miss before mutating the account files.
-        staged_assets = tempfile.TemporaryDirectory(prefix="import-assets-", dir=HOYOLAB_DEBUG_DIR)
-        staging_root = Path(staged_assets.name)
-        report_status("downloading_assets")
-        print("[HoYoLAB Import] Caching unique image layers and rendering display variants...")
-        manifest = await prepare_layered_assets(
-            characters=characters, weapons=weapons, cards=cards,
-            staging_root=staging_root, refresh_images=images_only,
-        )
-        if not manifest.get("cardsCount"):
-            raise HoYoLABImportError("HoYoLAB inventory produced no characters; existing account data was preserved.")
-
         if images_only:
-            report_status("closing_browser")
-            await close_export_context(context)
-            context = None
-            report_status("updating_hoyolab_data")
-            _publish_staged_images(staging_root)
-            _sync_image_paths_only(manifest)
-            write_json(manifest_path, manifest)
-            cleanup_failures = cleanup_unused_v2_assets(manifest)
-            if cleanup_failures:
-                print(f"[HoYoLAB Import] Could not retire {len(cleanup_failures)} old images; retry on next import.")
-            result = {"manifest": manifest, "manifestPath": manifest_path, "imagesOnly": True}
+            # Reuse this database's own source; a different logged-in role must
+            # never overwrite its image paths.
+            try:
+                saved = latest_committed_import(ARTIFACT_DB_PATH)
+            except Exception:
+                saved = None
+            source = saved["source"] if saved else {
+                "account_characters": read_json_or_none(HOYOLAB_DATA_DIR / "account_characters.json"),
+                "account_weapons": read_json_or_none(HOYOLAB_DATA_DIR / "account_weapons.json"),
+            }
+            if not source["account_characters"]:
+                raise HoYoLABImportError("Import account data once before refreshing only images.")
+            report_status("downloading_assets")
+            data = await refresh_import_assets(
+                source["account_characters"], source["account_weapons"] or [], refresh_images=True,
+                attempt_id=saved["attempt_id"] if saved else None,
+                progress_callback=progress.callback("assets"),
+            )
+            if saved:
+                update_import_enrichment(
+                    ARTIFACT_DB_PATH, attempt_id=saved["attempt_id"], kind="assets",
+                    status="pending" if data.get("pending") else "complete", result=data,
+                )
+            result = {"imagesOnly": True, **data,
+                      "warnings": [{"code": "images_pending"}] if data.get("pending") else []}
+            progress.finish("assets", pending=bool(data.get("pending")))
             return result
 
-        real_ids = real_character_ids(characters)
-        report_status("fetching_character_details")
-        print(
-            "[HoYoLAB Import] Fetching character/detail batch:",
-            f"{len(real_ids)} characters",
-        )
-        account_context = (
-            {"role_id": character_list_request["role_id"], "server": character_list_request["server"]}
-            if character_list_request.get("role_id") and character_list_request.get("server")
-            else {}
-        )
-        if direct_list is not None:
+        if resume_attempt:
+            saved = get_import_attempt(ARTIFACT_DB_PATH, resume_attempt)
+            if saved is None:
+                raise HoYoLABImportError("Saved import attempt was not found.")
+            source = saved["source"]
+            characters, weapons = source["account_characters"], source["account_weapons"]
+            character_details = source["account_character_details"]
+            account_context = {"role_id": saved["account_uid"], "server": saved["server"]}
+            _reserve_profile_identity(account_context)
+            if adopt_legacy:
+                adopt_legacy_account_binding(
+                    ARTIFACT_DB_PATH, account_uid=saved["account_uid"], server=saved["server"], verified=True,
+                )
+            if saved["status"] == "committed":
+                _current_attempt(attempt_id)
+        else:
+            if adopt_legacy:
+                raise HoYoLABImportError("Legacy account confirmation requires a saved attempt.")
+            if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
+                raise HoYoLABImportError("HoYoLAB profile is not logged in. Authorize in the app first.")
+            exporter = await open_browser()
+            character_list_request = {}
+            character_list_future = await wait_for_character_list_response(
+                export_page, request_context=character_list_request,
+            )
+            report_status("opening_hoyolab")
+            await export_page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
+            report_status("opening_character_list")
+            direct = await fetch_character_list_direct(export_page)
+            if direct is not None:
+                character_list, account_context = direct
+                character_list_future.cancel()
+            else:
+                await exporter._wait_until_ready_or_login(export_page)
+                await exporter._click_with_popup_retry(export_page, ".block-title-right")
+                await export_page.locator(".me-share__btn").first.wait_for(state="visible", timeout=30_000)
+                character_list = await asyncio.wait_for(character_list_future, timeout=60)
+                account_context = dict(character_list_request)
+                # DOM image metadata is optional and never blocks source capture.
+            if not account_context.get("role_id") or not account_context.get("server"):
+                raise HoYoLABImportError("Could not verify the selected account/server. Select it in HoYoLAB and retry.")
+            account_context = {key: str(account_context[key]) for key in ("role_id", "server")}
+            binding = get_active_account_binding(ARTIFACT_DB_PATH)
+            if binding and (binding["account_uid"], binding["server"]) != (
+                    account_context["role_id"], account_context["server"]):
+                raise AccountBindingMismatch("The selected HoYoLAB role differs from this local account.")
+            report_status("collecting_inventory")
+            characters, weapons = build_inventory(character_list)
+            if not characters:
+                raise HoYoLABImportError("HoYoLAB inventory produced no characters.")
+            _reserve_profile_identity(account_context)
+            if PROFILE_ID:
+                profile_summary_task = asyncio.create_task(fetch_account_summary(
+                    export_page, dict(account_context), fast_context_request_fetch_json,
+                ))
+            report_status("fetching_character_details")
+            ids = real_character_ids(characters)
             try:
                 character_details = await fetch_character_details_batch(
-                    export_page, real_ids, json_fetcher=fast_context_request_fetch_json, **account_context,
+                    export_page, ids, json_fetcher=fast_context_request_fetch_json, **account_context,
                 )
             except Exception:
-                # The page request remains the established fallback for
-                # transient BrowserContext.request or API differences.
-                print("[HoYoLAB Import] Direct detail request failed; retrying through the page.")
-                character_details = await fetch_character_details_batch(
-                    export_page, real_ids, **account_context,
-                )
-        else:
-            character_details = await fetch_character_details_batch(export_page, real_ids, **account_context)
+                character_details = await fetch_character_details_batch(export_page, ids, **account_context)
+            character_details = _safe_detail_source(character_details)
+            # All optional catalogs/network are deliberately outside this transaction.
+            prepare_import_store(ARTIFACT_DB_PATH)
+            stage_import_attempt(
+                ARTIFACT_DB_PATH, account_uid=account_context["role_id"], server=account_context["server"],
+                account_characters=characters, account_weapons=weapons,
+                account_character_details=character_details,
+                content_language=normalize_language(character_details.get("detectedLanguage")),
+                change_equipment=change_equipment, attempt_id=attempt_id,
+                expected_equipment_revision=equipment_revision,
+            )
 
-        content_language = normalize_language(character_details.get("detectedLanguage"))
-        print(f"[HoYoLAB Import] HoYoLAB content language: {content_language}")
-        try:
-            report_status("fetching_abyss_period")
-            print("[HoYoLAB Import] Resolving Spiral Abyss period...")
-            abyss_period = await resolve_abyss_period_with_fallbacks(
-                export_page,
-                language=content_language,
-                **account_context,
-            )
-            print(
-                "[HoYoLAB Import] Spiral Abyss period:",
-                abyss_period.raw_period,
-                f"({abyss_period.start_date} -> {abyss_period.end_date})",
-                f"source={abyss_period.source}",
-            )
-        except Exception as exc:
-            abyss_period_error = compact_exception_summary(exc)
-            print(
-                "[HoYoLAB Import] Spiral Abyss period warning:",
-                abyss_period_error,
-            )
-        report_status("updating_artifact_catalog")
-        artifact_set_lists = ImportArtifactSetLists()
-        static_catalog_summary, static_catalog_error = sync_static_reference_catalogs_for_import(
-            content_language,
-            weapon_wiki=_weapon_wiki_from_character_details(character_details),
-            artifact_set_list_fetcher=artifact_set_lists,
+        report_status("saving_account")
+        receipt = await asyncio.to_thread(
+            commit_import_snapshot, ARTIFACT_DB_PATH, attempt_id=attempt_id,
+            side_icon_cache_dir=HOYOLAB_ASSETS_DIR / "characters" / "side_icons",
         )
-        if static_catalog_error:
-            print(
-                "[HoYoLAB Import] Static HoYoWiki catalog refresh warning:",
-                static_catalog_error,
-            )
-        try:
-            set_names_summary = ensure_artifact_set_names(
-                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=artifact_set_lists,
-            )
-        except Exception as exc:
-            set_names_summary = {"error": type(exc).__name__}
-        try:
-            set_bonus_summary = ensure_artifact_set_bonus_descriptions(
-                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=artifact_set_lists,
-            )
-        except Exception as exc:
-            set_bonus_summary = {"error": type(exc).__name__}
-        static_catalog_summary["artifactSetListSources"] = dict(artifact_set_lists.sources)
-        if artifact_set_lists.cleanup_failures:
-            static_catalog_summary["artifactSetListCleanupWarnings"] = list(artifact_set_lists.cleanup_failures)
+        if PROFILE_ID:
+            try:
+                profile_entry = _profile_registry_entry() or {}
+                profile_previous_avatar_url = (profile_entry.get("metadata") or {}).get("avatar_url")
+            except Exception:
+                profile_previous_avatar_url = None
+        finished_summary = None
+        if profile_summary_task is not None and profile_summary_task.done():
+            try:
+                finished_summary = profile_summary_task.result()
+            except Exception:
+                pass
+        if PROFILE_ID:
+            try:
+                _update_profile_imported_metadata(account_context, finished_summary)
+            except Exception as exc:
+                # The SQLite receipt is authoritative; the side-icon job retries
+                # registry/profile projection work after the receipt is visible.
+                profile_metadata_needs_retry = True
+        print("[IMPORT_COMMITTED] " + json.dumps({"attempt_id": attempt_id}, ensure_ascii=False), flush=True)
+        report_status("enriching_account")
+        saved = get_import_attempt(ARTIFACT_DB_PATH, attempt_id)
+        saved_jobs = saved["enrichment"]
 
-        report_status("mapping_artifact_sets")
-        print("[HoYoLAB Import] Preparing artifact set id mapping...")
-        set_mapping_summary = await prepare_artifact_mapping_for_import(
-            character_details, export_page, real_ids, artifact_set_lists,
-            static_catalog_summary, content_language,
-        )
-        if (static_catalog_error or set_names_summary.get("error")
-                or set_bonus_summary.get("error") or set_mapping_summary.get("error")):
-            import_warnings.append({"code": "reference_catalog_incomplete"})
+        async def recovery_browser():
+            if (not resume_attempt or (saved_jobs.get("references") or {}).get("status") == "complete"
+                    or normalize_language(character_details.get("detectedLanguage")) == "en-us"
+                    or (saved_jobs.get("mapping_source") or {}).get("result", {}).get("details")
+                    or not _needs_english_mapping(character_details)):
+                return
+            if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
+                return
+            try:
+                await open_browser()
+                await export_page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
+            except Exception as exc:
+                record("mapping_source", "failed", {"error": type(exc).__name__})
 
-        report_status("closing_browser")
-        print("[HoYoLAB Import] Closing HoYoLAB browser...")
-        await close_export_context(context)
-        context = None
+        recovery_browser_task = asyncio.create_task(recovery_browser())
 
-        report_status("importing_artifacts")
-        print("[HoYoLAB Import] Importing artifacts into SQLite...")
-        try:
-            artifact_summary = import_character_details_payload(
-                character_details, db_path=ARTIFACT_DB_PATH, skip_unmapped_sets=True,
-            )
-        except Exception as exc:
-            artifact_summary = {"error": type(exc).__name__, "equipment_updated": False}
-            import_warnings.append({"code": "artifacts_not_imported"})
-        if artifact_summary.get("relics_skipped_unmapped"):
-            import_warnings.append({
-                "code": "artifact_sets_unmapped",
-                "count": artifact_summary["relics_skipped_unmapped"],
-                "sets": artifact_summary["unmapped_sets"],
-            })
-        artifact_summary["static_catalogs"] = static_catalog_summary
-        artifact_summary["static_catalog_error"] = static_catalog_error
-        artifact_summary["set_names"] = set_names_summary
-        artifact_summary["set_mapping"] = set_mapping_summary
-
-        report_status("updating_hoyolab_data")
-        print("[HoYoLAB Import] Updating local HoYoLAB data/assets...")
-        previous_characters = read_json_or_none(characters_path)
-        previous_weapons = read_json_or_none(weapons_path)
-        merged_characters = merge_inventory_records(
-            previous_characters,
-            characters,
-            character_inventory_key,
-        )
-        merged_weapons = merge_inventory_records(
-            previous_weapons,
-            weapons,
-            weapon_inventory_key,
-        )
-        ensure_hoyolab_dirs()
-        write_json(characters_path, merged_characters)
-        write_json(weapons_path, merged_weapons)
-        write_json(character_details_path, character_details)
-        write_json(
-            account_language_path,
-            {
-                "contentLanguage": content_language,
-                "source": "character/detail.x-rpc-language",
-                "capturedAt": int(time.time() * 1000),
-                "artifactSetNames": set_names_summary,
-                "artifactSetBonusDescriptions": set_bonus_summary,
-            },
-        )
-        if abyss_period is not None:
-            write_hoyolab_abyss_period(abyss_period, period_path=abyss_period_path)
-        try:
-            with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
-                static_catalog_summary["staticDisplayEffects"] = {
-                    "artifact_set_rows": rebuild_artifact_set_display_stat_effects(conn),
-                    "weapon_rows": rebuild_weapon_display_stat_effects(
-                        conn,
-                        weapon_wiki=read_weapon_wiki_from_account_detail_cache(
-                            character_details_path
-                        ),
-                    ),
-                }
-        except Exception as exc:
-            static_catalog_summary["staticDisplayEffectsError"] = compact_exception_summary(exc)
-
-        _publish_staged_images(staging_root)
-        write_json(manifest_path, manifest)
-        cleanup_failures = cleanup_unused_v2_assets(manifest)
-        if cleanup_failures:
-            print(f"[HoYoLAB Import] Could not retire {len(cleanup_failures)} old images; retry on next import.")
-
-        report_status("syncing_account_storage")
-        print("[HoYoLAB Import] Syncing account SQLite storage...")
-        account_storage_summary, account_storage_error = sync_account_storage_for_import(
-            download_side_icons=True,
-        )
-        if account_storage_error:
-            import_warnings.append({"code": "account_storage_sync_failed"})
-            report_status("account_storage_sync_warning")
-            print(
-                "[HoYoLAB Import] Account SQLite sync failed after raw import:",
-                account_storage_error,
-            )
-        elif account_storage_summary:
-            warnings = account_storage_summary.get("warnings") or []
-            print(
-                "[HoYoLAB Import] Account SQLite:",
-                f"characters={account_storage_summary.get('characters_seen')}",
-                f"talents={account_storage_summary.get('talents_seen')}",
-                f"weapon_stacks={account_storage_summary.get('weapon_stacks_seen')}",
-                f"warnings={len(warnings)}",
-            )
-
-        if abyss_period is not None:
-            print(
-                "[HoYoLAB Import] Updating Abyss Floor 12 source-data cache:",
-                abyss_period.raw_period,
-            )
-            abyss_source_data_summary, abyss_source_data_error = (
-                refresh_abyss_source_data_for_import(
-                    abyss_period,
-                    floor=12,
-                )
-            )
-            if abyss_source_data_error:
-                print(
-                    "[HoYoLAB Import] Abyss source-data cache warning:",
-                    abyss_source_data_error,
-                )
-            elif abyss_source_data_summary:
-                print(
-                    "[HoYoLAB Import] Abyss source-data cache:",
-                    f"rows={abyss_source_data_summary.get('enemyRows')}",
-                    f"matched={abyss_source_data_summary.get('matched')}",
-                    f"path={abyss_source_data_summary.get('cachePath')}",
-                    f"skipped={abyss_source_data_summary.get('skipped')}",
-                )
-        elif abyss_period_error:
-            abyss_source_data_error = (
-                "official_abyss_period_unavailable: " + abyss_period_error
-            )
-
-        equipment_summary = None
-        if change_equipment:
-            if account_storage_error or not artifact_summary.get("equipment_updated", True):
-                equipment_summary = {"applied": False, "reason": "incomplete_import"}
-            else:
-                report_status("applying_equipment")
+        async def english_source():
+            known = (saved_jobs.get("mapping_source") or {}).get("result", {}).get("details")
+            if known:
+                return known
+            language = character_details.get("detectedLanguage")
+            if language and normalize_language(language) == "en-us":
+                return character_details
+            if not _needs_english_mapping(character_details):
+                return None
+            await recovery_browser_task
+            if export_page is None:
+                return None
+            try:
                 try:
-                    detail_rows = unwrap_hoyolab_payload(character_details)["data"]["list"]
-                    weapons_to_apply = weapon_equipment_from_detail_rows(detail_rows)
-                    with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
-                        artifacts_to_apply = [
-                            (int(row["character_id"]), int(row["artifact_id"]))
-                            for row in conn.execute("SELECT character_id, artifact_id FROM artifact_equipment")
-                        ]
-                        equipment_summary = apply_hoyolab_equipment_snapshot(
-                            conn, artifacts=artifacts_to_apply, weapons=weapons_to_apply,
-                        )
-                    equipment_summary["applied"] = True
-                except Exception as exc:
-                    equipment_summary = {"applied": False, "error": type(exc).__name__}
-            if not equipment_summary["applied"]:
-                import_warnings.append({"code": "equipment_not_applied"})
-        report_status("writing_import_log")
-        log = build_import_log(
-            image_path=None,
-            layout_path=None,
-            manifest_path=manifest_path,
-            character_details_path=character_details_path,
-            manifest=manifest,
-            characters=characters,
-            weapons=weapons,
-            character_details=character_details,
-            artifact_summary=artifact_summary,
-            account_storage_summary=account_storage_summary,
-            account_storage_error=account_storage_error,
-            static_catalog_summary=static_catalog_summary,
-            static_catalog_error=static_catalog_error,
-            abyss_period_path=abyss_period_path if abyss_period is not None else None,
-            abyss_period=abyss_period.to_dict() if abyss_period is not None else None,
-            abyss_period_error=abyss_period_error,
-            abyss_source_data_summary=abyss_source_data_summary,
-            abyss_source_data_error=abyss_source_data_error,
-            started_at=started_at,
-        )
-        log["browserLifecycle"] = browser_events
-        log["stageEvents"] = stage_events
-        log["equipmentApplied"] = equipment_summary
-        log["warnings"] = import_warnings
-        write_json(import_log_path, log)
+                    response = await fetch_character_details_batch(
+                        export_page, real_character_ids(characters), language="en-us",
+                        json_fetcher=fast_context_request_fetch_json, **account_context,
+                    )
+                except Exception:
+                    response = await fetch_character_details_batch(
+                        export_page, real_character_ids(characters), language="en-us", **account_context,
+                    )
+                english = _safe_detail_source(response)
+                record("mapping_source", "complete", {"details": english})
+                return english
+            except Exception as exc:
+                record("mapping_source", "failed", {"error": type(exc).__name__})
+                return None
 
+        async def abyss_period_source():
+            data = (saved_jobs.get("abyss_period") or {}).get("result", {}).get("period")
+            if data:
+                return HoYoLABAbyssPeriod(
+                    raw_period=data["rawPeriod"], start_date=data["startDate"], end_date=data["endDate"],
+                    source_path=data.get("sourcePath", ""), source=data.get("source", ""),
+                )
+            try:
+                await recovery_browser_task
+                period = await resolve_abyss_period_with_fallbacks(
+                    export_page, language=normalize_language(character_details.get("detectedLanguage")),
+                    **account_context,
+                )
+                record("abyss_period", "complete", {"period": period.to_dict()})
+                return period
+            except Exception as exc:
+                record("abyss_period", "failed", {"error": type(exc).__name__})
+                return None
+
+        english_task = asyncio.create_task(english_source())
+        period_task = asyncio.create_task(abyss_period_source())
+
+        async def close_browser_when_sources_ready():
+            nonlocal context
+            cleanup_error = await _close_context_after_sources(
+                context, english_task, period_task, profile_summary_task,
+            )
+            context = None
+            if cleanup_error:
+                record_errors.append({"kind": "browser_cleanup", "error": cleanup_error})
+
+        async def projections():
+            return await asyncio.to_thread(publish_import_projections, attempt_id)
+
+        async def assets():
+            return await refresh_import_assets(
+                characters, weapons, cards=cards, attempt_id=attempt_id,
+                progress_callback=progress.callback("assets"),
+            )
+
+        async def references():
+            return await refresh_import_catalogs(
+                attempt_id, character_details, english_task,
+                progress_callback=progress.callback("references"),
+            )
+
+        async def side_icons():
+            extra_work = None
+            if PROFILE_ID:
+                prior_side_icons = saved_jobs.get("side_icons") or {}
+                previous_profile_result = (
+                    (prior_side_icons.get("result") or {}).get("profileMetadata")
+                )
+                async def extra_work():
+                    return await _refresh_profile_metadata(
+                        account_context, profile_summary_task,
+                        previous_avatar_url=profile_previous_avatar_url,
+                        previous_result=previous_profile_result,
+                    )
+            return await refresh_import_side_icons(
+                progress_callback=progress.callback("side_icons"), extra_work=extra_work,
+            )
+
+        async def abyss():
+            period = await period_task
+            if period is None:
+                return {"pending": True, "reason": "period_unavailable"}
+            progress.update("abyss", "period", 1, 1)
+            write_hoyolab_abyss_period(period, period_path=DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH)
+            data, error = await asyncio.to_thread(
+                refresh_abyss_source_data_for_import, period, floor=12, status_callback=None,
+                progress_callback=progress.callback("abyss"),
+            )
+            return {"summary": data, "pending": bool(error), "error": error}
+
+        operations = {"projections": projections, "assets": assets, "references": references,
+                      "side_icons": side_icons, "abyss": abyss}
+        # Resuming a receipt only repairs unfinished jobs. It never reapplies gear.
+        for kind, operation in operations.items():
+            previous = saved_jobs.get(kind) or {}
+            if resume_attempt and previous.get("status") == "complete":
+                profile_metadata_saved = bool(
+                    (previous.get("result") or {}).get("profileMetadata")
+                )
+                if (kind != "side_icons" or not PROFILE_ID
+                        or (profile_metadata_saved and not profile_metadata_needs_retry)):
+                    progress.finish(kind)
+                    continue
+            jobs.append(asyncio.create_task(run_job(kind, operation)))
+        jobs.append(asyncio.create_task(close_browser_when_sources_ready()))
+        await asyncio.gather(*jobs)
+        current = get_import_attempt(ARTIFACT_DB_PATH, attempt_id)
+        enrichment = current["enrichment"]
+        pending = [key for key in operations if (enrichment.get(key) or {}).get("status") != "complete"]
+        manifest = (enrichment.get("assets") or {}).get("result", {}).get("manifest") or {}
         result = {
-            "imagePath": None,
-            "layoutPath": None,
-            "manifestPath": manifest_path,
-            "characterDetailsPath": character_details_path,
-            "accountLanguagePath": account_language_path,
-            "overlayPath": None,
-            "importLogPath": import_log_path,
-            "manifest": manifest,
-            "artifactSummary": artifact_summary,
-            "accountStorageSummary": account_storage_summary,
-            "accountStorageError": account_storage_error,
-            "abyssPeriodPath": abyss_period_path if abyss_period is not None else None,
-            "abyssPeriod": abyss_period.to_dict() if abyss_period is not None else None,
-            "abyssPeriodError": abyss_period_error,
-            "abyssSourceDataSummary": abyss_source_data_summary,
-            "abyssSourceDataError": abyss_source_data_error,
-            "equipmentApplied": equipment_summary,
-            "warnings": import_warnings,
+            "attemptId": attempt_id, "status": "committed", "receipt": receipt,
+            "artifactSummary": receipt["artifacts"], "accountStorageSummary": receipt["account_storage"],
+            "equipmentApplied": receipt["equipment"], "enrichment": enrichment, "pendingJobs": pending,
+            "manifest": manifest, "manifestPath": HOYOLAB_DATA_DIR / "crop_manifest.json",
+            "characterDetailsPath": HOYOLAB_DATA_DIR / "account_character_details.json",
+            # An unknown reference is a normal readiness state, never a skipped
+            # artifact warning or an account-import failure.
+            "warnings": [{"code": "enrichment_pending"}] if record_errors else [],
         }
-        return result
-
-    except Exception as exc:
-        # Capture BEFORE cleanup so a closed target is distinguishable from our
-        # own shutdown. No URLs, headers, cookies, payloads or exception text.
+        if receipt["equipment"].get("reason") in {"stale_equipment_revision", "revision_unavailable"}:
+            result["warnings"].append({"code": "equipment_not_applied"})
         try:
-            process = getattr(context, "_browser_process", None) if context is not None else None
-            exit_code = process.poll() if process is not None else None
-            failure = {
-                "stage": current_stage,
-                "errorType": type(exc).__name__,
+            write_json(HOYOLAB_DEBUG_DIR / "import_log.json", {
+                "attemptId": attempt_id, "status": "committed",
+                "durationSeconds": round(time.monotonic() - started, 3),
+                "stageEvents": stage_events, "browserLifecycle": browser_events,
+                "pendingJobs": pending, "recordErrors": record_errors,
+            })
+        except OSError:
+            pass
+        report_status("done")
+        return result
+    except Exception as exc:
+        # The durable receipt is authoritative even if a process/log/cache fails
+        # immediately after COMMIT. A UI also checks this receipt on process exit.
+        try:
+            receipt = receipt or get_import_result(ARTIFACT_DB_PATH, attempt_id)
+        except Exception:
+            pass
+        if receipt:
+            return {"attemptId": attempt_id, "status": "committed", "receipt": receipt,
+                    "artifactSummary": receipt["artifacts"], "accountStorageSummary": receipt["account_storage"],
+                    "equipmentApplied": receipt["equipment"],
+                    "warnings": [{"code": "enrichment_pending"}]}
+        try:
+            write_json(HOYOLAB_DEBUG_DIR / "import_failure.json", {
+                "attemptId": attempt_id, "stage": current_stage, "errorType": type(exc).__name__,
                 "pageClosed": bool(export_page.is_closed()) if export_page is not None else None,
-                "browserExitCode": exit_code if isinstance(exit_code, int) else None,
                 "browserEvents": browser_events,
-            }
-            write_json(HOYOLAB_DEBUG_DIR / "import_failure.json", failure)
-            print(f"[HoYoLAB Import] Failure stage: {current_stage}; page_closed={failure['pageClosed']}; browser_exit={failure['browserExitCode']}")
+            })
         except Exception:
             pass
         raise
     finally:
+        # Never remove staging while a background thread is still publishing it.
+        if jobs:
+            await asyncio.gather(*jobs, return_exceptions=True)
+        if profile_summary_task is not None:
+            if not profile_summary_task.done():
+                profile_summary_task.cancel()
+            await asyncio.gather(profile_summary_task, return_exceptions=True)
         if character_list_future is not None:
             if not character_list_future.done():
                 character_list_future.cancel()
             elif not character_list_future.cancelled():
-                # An early export failure can leave a captured API error unconsumed.
                 character_list_future.exception()
         if context is not None:
-            await close_export_context(context)
-        if staged_assets is not None:
             try:
-                staged_assets.cleanup()
-            except OSError as exc:
-                print(f"[HoYoLAB Import] Staging cleanup warning: {type(exc).__name__}")
-
-        if result is not None and manifest is not None and (artifact_summary is not None or images_only):
-            report_status("done")
-            print("[HoYoLAB Import] Done.")
-            print(f"[HoYoLAB Import] Unique images downloaded: {manifest.get('assetsDownloaded')}; variants rendered: {manifest.get('assetsRendered')}")
-            print(f"[HoYoLAB Import] Assets: {HOYOLAB_ASSETS_DIR}")
-            print(f"[HoYoLAB Import] Manifest: {manifest_path}")
-            if not images_only:
-                print(f"[HoYoLAB Import] Character details: {character_details_path}")
-            print(f"[HoYoLAB Import] Cards: {manifest.get('cardsCount')}")
-            if artifact_summary is not None:
-                print(
-                    "[HoYoLAB Import] Artifacts:",
-                    f"seen={artifact_summary.get('relics_seen')}",
-                    f"inserted={artifact_summary.get('artifacts_inserted')}",
-                    f"existing={artifact_summary.get('artifacts_existing')}",
-                )
-            print(
-                "[HoYoLAB Import] Matches:",
-                f"ok={manifest.get('okMatches')}",
-                f"warnings={manifest.get('warningMatches')}",
-            )
-            if account_storage_summary:
-                warnings = account_storage_summary.get("warnings") or []
-                print(
-                    "[HoYoLAB Import] Account SQLite:",
-                    f"characters={account_storage_summary.get('characters_seen')}",
-                    f"talents={account_storage_summary.get('talents_seen')}",
-                    f"weapon_stacks={account_storage_summary.get('weapon_stacks_seen')}",
-                    f"warnings={len(warnings)}",
-                )
-            elif account_storage_error:
-                print(
-                    "[HoYoLAB Import] Account SQLite warning:",
-                    account_storage_error,
-                )
-            if abyss_source_data_summary:
-                print(
-                    "[HoYoLAB Import] Abyss source-data cache:",
-                    f"period={abyss_source_data_summary.get('period', {}).get('rawPeriod')}",
-                    f"rows={abyss_source_data_summary.get('enemyRows')}",
-                    f"matched={abyss_source_data_summary.get('matched')}",
-                    f"skipped={abyss_source_data_summary.get('skipped')}",
-                )
-            elif abyss_source_data_error:
-                print(
-                    "[HoYoLAB Import] Abyss source-data warning:",
-                    abyss_source_data_error,
-                )
+                await close_export_context(context)
+            except Exception as exc:
+                print(f"[HoYoLAB Import] Browser cleanup pending: {type(exc).__name__}", flush=True)

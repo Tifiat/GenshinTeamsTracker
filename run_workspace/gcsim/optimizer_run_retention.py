@@ -16,9 +16,10 @@ import sys
 
 from .cleanup import DEFAULT_RUN_DIR_KEEP_COUNT, DEFAULT_RUN_DIR_MAX_BYTES
 from .engine_store import PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
-DEFAULT_GO_RUN_ROOT = PROJECT_ROOT / "data" / "gcsim" / "optimizer-go-runs"
+DEFAULT_GO_RUN_ROOT = ACCOUNT_ROOT / "data" / "gcsim" / "optimizer-go-runs"
 RUN_LEASE = ".gtt-active.lock"
 RUN_PIN = ".gtt-retain"
 

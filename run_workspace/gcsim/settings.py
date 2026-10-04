@@ -10,6 +10,7 @@ from run_workspace.app_settings import (
     set_app_bool_setting,
     set_app_setting,
 )
+from run_workspace.settings_defaults import settings_default
 
 
 GCSIM_BOOSTED_ENERGY_ENABLED_SETTING = "gcsim_boosted_energy_enabled"
@@ -33,7 +34,11 @@ def optimizer_output_limits(fast_mode: bool, expanded_limits: bool = False) -> t
 
 def optimizer_output_defaults(fast_mode: bool) -> tuple[int, int]:
     """Defaults for fresh/reset settings; total rows include the group leader."""
-    return (5, 21) if fast_mode else (3, 3)
+    context = {GCSIM_OPTIMIZER_FAST_MODE_SETTING: bool(fast_mode)}
+    return (
+        int(settings_default(GCSIM_OPTIMIZER_SET_GROUP_LIMIT_SETTING, context=context)),
+        int(settings_default(GCSIM_OPTIMIZER_BUILDS_PER_GROUP_SETTING, context=context)),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,8 +55,8 @@ class GcsimRunSettings:
 
 @dataclass(frozen=True, slots=True)
 class GcsimOptimizerSettings:
-    set_group_limit: int = 3
-    builds_per_group: int = 3
+    set_group_limit: int = int(settings_default(GCSIM_OPTIMIZER_SET_GROUP_LIMIT_SETTING))
+    builds_per_group: int = int(settings_default(GCSIM_OPTIMIZER_BUILDS_PER_GROUP_SETTING))
     fast_mode: bool = False
     expanded_limits: bool = False
 

@@ -39,3 +39,8 @@ assets/hd/weapons/
 /native/gcsim_optimizer/gtt-optimizer.exe
 /gtt-wave-scenario.json
 /app-shell-*.png
+/data/profiles/
+/data/account_profiles.lock
+/data/profile-operations.lock
+/data/profile-supervisor.lock
+/data/.profile-actions/

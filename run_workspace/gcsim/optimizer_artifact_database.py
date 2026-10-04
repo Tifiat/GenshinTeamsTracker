@@ -2,8 +2,9 @@
 
 The loader opens the existing unified SQLite database in URI ``mode=ro``,
 performs one short read transaction, fetches every artifact and substat row,
-then closes SQLite before validation.  Import provenance, equipment, presets,
-locks, and locations never participate in membership or eligibility.
+then closes SQLite before validation. A mixed-source canonical fingerprint
+collision is quarantined unless distinct pieces were observed together by
+HoYoLAB; no artifact row or saved assignment is changed.
 """
 
 from __future__ import annotations
@@ -298,7 +299,7 @@ def load_gcsim_optimizer_artifact_database_input(
         )
 
     try:
-        artifact_columns, substat_columns, artifact_rows, substat_rows = (
+        artifact_columns, substat_columns, artifact_rows, substat_rows, observation_rows = (
             _fetch_all_rows_readonly(path)
         )
     except (OSError, sqlite3.Error, ValueError) as exc:
@@ -312,11 +313,13 @@ def load_gcsim_optimizer_artifact_database_input(
         substat_columns=substat_columns,
         artifact_rows=artifact_rows,
         substat_rows=substat_rows,
+        observation_rows=observation_rows,
     )
     try:
         artifacts, row_issues = _validate_artifact_rows(
             artifact_rows,
             substat_rows,
+            observation_rows,
             engine_context=engine_context,
         )
     except ValueError as exc:
@@ -417,6 +420,7 @@ def _fetch_all_rows_readonly(
     tuple[str, ...],
     tuple[tuple[tuple[str, SqliteScalar], ...], ...],
     tuple[tuple[tuple[str, SqliteScalar], ...], ...],
+    tuple[tuple[int, int, str], ...],
 ]:
     uri_path = quote(path.as_posix(), safe="/:")
     connection = sqlite3.connect(
@@ -445,7 +449,7 @@ def gcsim_optimizer_artifact_database_input_sha256_from_connection(
     reads and this function inside the same read transaction.
     """
 
-    artifact_columns, substat_columns, artifact_rows, substat_rows = (
+    artifact_columns, substat_columns, artifact_rows, substat_rows, observation_rows = (
         _fetch_all_rows_from_connection(connection)
     )
     return _raw_database_input_sha256(
@@ -453,6 +457,7 @@ def gcsim_optimizer_artifact_database_input_sha256_from_connection(
         substat_columns=substat_columns,
         artifact_rows=artifact_rows,
         substat_rows=substat_rows,
+        observation_rows=observation_rows,
     )
 
 
@@ -463,6 +468,7 @@ def _fetch_all_rows_from_connection(
     tuple[str, ...],
     tuple[tuple[tuple[str, SqliteScalar], ...], ...],
     tuple[tuple[tuple[str, SqliteScalar], ...], ...],
+    tuple[tuple[int, int, str], ...],
 ]:
     """Freeze artifact and substat rows using the caller's current DB view."""
 
@@ -499,9 +505,87 @@ def _fetch_all_rows_from_connection(
                 """
             ).fetchall()
         )
+        observation_rows = _hoyolab_observation_rows(connection)
     finally:
         connection.row_factory = previous_row_factory
-    return artifact_columns, substat_columns, artifact_rows, substat_rows
+    return artifact_columns, substat_columns, artifact_rows, substat_rows, observation_rows
+
+
+def _hoyolab_observation_rows(connection: sqlite3.Connection) -> tuple[tuple[int, int, str], ...]:
+    # Older fixture databases and scanner-only stores may lack this table or
+    # its timestamp. Such rows cannot prove two copies were seen together.
+    if not {"artifact_id", "character_id", "imported_at"}.issubset(
+        _table_columns(connection, "artifact_equipment")
+    ):
+        return ()
+    return tuple(
+        (int(row[0]), int(row[1]), str(row[2]))
+        for row in connection.execute(
+            "SELECT artifact_id, character_id, imported_at FROM artifact_equipment "
+            "ORDER BY artifact_id, character_id"
+        )
+        if row[0] is not None and row[1] is not None and row[2]
+    )
+
+
+def _ambiguous_mixed_source_collision_groups(
+    artifact_rows: Iterable[Mapping[str, SqliteScalar]],
+    observation_rows: Iterable[tuple[int, int, str]],
+) -> tuple[tuple[int, ...], ...]:
+    by_fingerprint: dict[str, list[Mapping[str, SqliteScalar]]] = {}
+    for row in artifact_rows:
+        fingerprint = _trimmed_text(row.get("content_fingerprint"))
+        if fingerprint:
+            by_fingerprint.setdefault(fingerprint, []).append(row)
+    observed_by_id: dict[int, set[tuple[int, str]]] = {}
+    for artifact_id, character_id, observed_at in observation_rows:
+        observed_by_id.setdefault(artifact_id, set()).add((character_id, observed_at))
+    ambiguous: list[tuple[int, ...]] = []
+    for rows in by_fingerprint.values():
+        if len(rows) < 2 or not any(row.get("set_id") is None for row in rows):
+            continue
+        if not any(
+            row.get("set_id") is not None
+            and _trimmed_text(row.get("import_source")).casefold() == "hoyolab"
+            for row in rows
+        ):
+            continue
+        ids = tuple(sorted(int(row["id"]) for row in rows))
+        # A single HoYoLAB detail snapshot replaces artifact_equipment and
+        # stamps every observation together. Distinct wearers then prove that
+        # every matching row represents a separate physical copy.
+        observations = [observed_by_id.get(artifact_id, set()) for artifact_id in ids]
+        timestamps = (
+            set.intersection(*(set(stamp for _, stamp in group) for group in observations))
+            if all(observations) else set()
+        )
+        proven = False
+        for timestamp in timestamps:
+            wearers_by_id = [
+                {character_id for character_id, stamp in group if stamp == timestamp}
+                for group in observations
+            ]
+            if all(len(wearers) == 1 for wearers in wearers_by_id) and len(
+                set.union(*wearers_by_id)
+            ) == len(ids):
+                proven = True
+                break
+        if not proven:
+            ambiguous.append(ids)
+    return tuple(ambiguous)
+
+
+def find_ambiguous_mixed_source_artifact_groups(
+    connection: sqlite3.Connection,
+) -> tuple[tuple[int, ...], ...]:
+    """Read collision groups without changing artifact IDs or assignments."""
+    columns = set(_table_columns(connection, "artifacts"))
+    if not {"id", "content_fingerprint", "set_id", "import_source"}.issubset(columns):
+        return ()
+    rows = [dict(zip(("id", "content_fingerprint", "set_id", "import_source"), row)) for row in connection.execute(
+        "SELECT id, content_fingerprint, set_id, import_source FROM artifacts ORDER BY id"
+    )]
+    return _ambiguous_mixed_source_collision_groups(rows, _hoyolab_observation_rows(connection))
 
 
 def _table_columns(
@@ -509,7 +593,7 @@ def _table_columns(
     table_name: str,
 ) -> tuple[str, ...]:
     rows = connection.execute(f'PRAGMA table_info("{table_name}")').fetchall()
-    return tuple(str(row["name"]) for row in rows)
+    return tuple(str(row[1]) for row in rows)
 
 
 def _freeze_sqlite_row(
@@ -539,6 +623,7 @@ def _raw_database_input_sha256(
     substat_columns: tuple[str, ...],
     artifact_rows: tuple[tuple[tuple[str, SqliteScalar], ...], ...],
     substat_rows: tuple[tuple[tuple[str, SqliteScalar], ...], ...],
+    observation_rows: tuple[tuple[int, int, str], ...],
 ) -> str:
     payload = {
         "schema_version": GCSIM_OPTIMIZER_ARTIFACT_DATABASE_SCHEMA_VERSION,
@@ -558,6 +643,7 @@ def _raw_database_input_sha256(
             ]
             for row in substat_rows
         ],
+        "hoyolab_observations": [list(row) for row in observation_rows],
     }
     encoded = json.dumps(
         payload,
@@ -571,6 +657,7 @@ def _raw_database_input_sha256(
 def _validate_artifact_rows(
     artifact_rows: tuple[tuple[tuple[str, SqliteScalar], ...], ...],
     substat_rows: tuple[tuple[tuple[str, SqliteScalar], ...], ...],
+    observation_rows: tuple[tuple[int, int, str], ...],
     *,
     engine_context: GcsimOptimizerEngineContext,
 ) -> tuple[
@@ -590,6 +677,14 @@ def _validate_artifact_rows(
             raise ValueError(f"duplicate artifact allocation ID {artifact_id}")
         artifacts_by_id[artifact_id] = row
         frozen_by_id[artifact_id] = frozen
+
+    ambiguous_ids = {
+        artifact_id
+        for group in _ambiguous_mixed_source_collision_groups(
+            artifacts_by_id.values(), observation_rows
+        )
+        for artifact_id in group
+    }
 
     substats_by_artifact: dict[
         int,
@@ -615,6 +710,12 @@ def _validate_artifact_rows(
     for artifact_id in sorted(artifacts_by_id):
         row = artifacts_by_id[artifact_id]
         issues: list[GcsimOptimizerIssue] = []
+        if artifact_id in ambiguous_ids:
+            issues.append(_artifact_issue(
+                artifact_id,
+                "artifact_mixed_source_copy_ambiguous",
+                "A scanner and HoYoLAB row share canonical content without proof of separate copies.",
+            ))
         set_uid = _trimmed_text(row.get("set_uid"))
         if not set_uid:
             issues.append(

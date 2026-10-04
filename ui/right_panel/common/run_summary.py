@@ -13,6 +13,7 @@ from run_workspace.history_browser_catalog import (
     HistoryTeamVisual,
 )
 from ui.right_panel.common.metrics import _fit_pixmap
+from ui.utils.tooltips import install_custom_tooltip
 
 
 SLOT_WIDTH = 53
@@ -83,7 +84,7 @@ class CompactSlotSummaryWidget(QFrame):
         sets.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sets.setFixedHeight(8)
         root.addWidget(sets)
-        self.setToolTip(_slot_tooltip(slot))
+        install_custom_tooltip(self, _slot_tooltip(slot))
 
 
 class CompactTeamStripWidget(QWidget):

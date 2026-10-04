@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import codecs
 import json
 import sys
+import uuid
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, QTimer, Qt, Signal
@@ -24,16 +26,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from hoyolab_export.auth import AuthStatus, get_auth_status, open_login_browser, reset_profile
+from hoyolab_export.auth import AuthStatus, get_auth_status, open_login_browser
 from hoyolab_export.offline_profile import (
-    clear_current_offline_profile,
     export_offline_profile,
     has_local_hoyolab_profile,
-    import_offline_profile,
-    is_current_profile_exported,
 )
 from hoyolab_export.paths import (
-    HOYOLAB_EXPORT_DIR,
     HOYOLAB_PROFILE_DIR,
     PROJECT_ROOT,
     ensure_hoyolab_dirs,
@@ -57,6 +55,12 @@ from ui.utils.toggle_switch import ToggleSwitch
 from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import UI_BORDER_DEFAULT, UI_TEXT_MUTED
 from hoyolab_export.import_settings import change_equipment_on_import, set_change_equipment_on_import
+from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
+from hoyolab_export.import_store import (
+    get_import_result,
+    latest_committed_import,
+    list_pending_import_attempts,
+)
 from ui.utils.pvp_colors import (
     pvp_player_color,
     reset_pvp_player_colors,
@@ -64,24 +68,28 @@ from ui.utils.pvp_colors import (
 )
 from ui.widgets.loader import HoYoLABLoadingDialog
 from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
+from run_workspace.app_settings import get_app_bool_setting, set_app_bool_setting
+from .account_profiles import AccountProfilesWidget
+from run_workspace.profile_context import PROFILE_ID
+from run_workspace.account_profiles import active_profile
 
 
-HOYOLAB_IMPORT_COOLDOWN_MS = 5000
 HOYOLAB_IMPORT_WARNING_KEYS = {
-    "reference_catalog_incomplete": "hoyolab.import_warning.references",
-    "artifact_sets_unmapped": "hoyolab.import_warning.unknown_sets",
     "artifacts_not_imported": "hoyolab.import_warning.artifacts",
     "account_storage_sync_failed": "hoyolab.import_warning.account",
     "equipment_not_applied": "hoyolab.import_warning.equipment",
 }
+HOYOLAB_RECOVERY_ENRICHMENT_KINDS = (
+    "assets", "references", "projections", "abyss", "side_icons",
+)
 HOYOLAB_IMPORT_STATUSES = {
     "preparing": ("loader.preparing", 0.03),
-    "opening_hoyolab": ("loader.opening_hoyolab", 0.10),
+    "opening_hoyolab": ("loader.opening_hoyolab", 0.04),
     "exporting_image": ("loader.exporting_image", 0.15),
-    "opening_character_list": ("loader.opening_character_list", 0.18),
-    "collecting_inventory": ("loader.collecting_inventory", 0.24),
+    "opening_character_list": ("loader.opening_character_list", 0.07),
+    "collecting_inventory": ("loader.collecting_inventory", 0.10),
     "collecting_asset_urls": ("loader.collecting_asset_urls", 0.29),
-    "downloading_assets": ("loader.downloading_assets", 0.55),
+    "downloading_assets": ("loader.downloading_assets", 0.03),
     "waiting_export_images": ("loader.waiting_export_images", 0.30),
     "opening_share_menu": ("loader.opening_share_menu", 0.34),
     "starting_image_download": ("loader.starting_image_download", 0.38),
@@ -94,13 +102,15 @@ HOYOLAB_IMPORT_STATUSES = {
     "image_downloaded": ("loader.image_downloaded", 0.52),
     "building_layout": ("loader.building_layout", 0.58),
     "writing_inventory": ("loader.writing_inventory", 0.35),
-    "fetching_character_details": ("loader.fetching_character_details", 0.70),
+    "fetching_character_details": ("loader.fetching_character_details", 0.12),
     "fetching_abyss_period": ("loader.fetching_abyss_period", 0.735),
     "updating_artifact_catalog": ("loader.updating_artifact_catalog", 0.76),
     "mapping_artifact_sets": ("loader.mapping_artifact_sets", 0.80),
     "closing_browser": ("loader.closing_browser", 0.84),
     "importing_artifacts": ("loader.importing_artifacts", 0.87),
     "updating_hoyolab_data": ("loader.updating_hoyolab_data", 0.91),
+    "saving_account": ("loader.saving_account", 0.18),
+    "enriching_account": ("loader.enriching_account", 0.20),
     "cropping_assets": ("loader.cropping_assets", 0.72),
     "syncing_account_storage": ("loader.syncing_account_storage", 0.965),
     "account_storage_sync_warning": ("loader.account_storage_sync_warning", 0.97),
@@ -117,6 +127,7 @@ class AccountDataPage(QWidget):
     """Compact AppShell account page reusing the current HoYoLAB/profile flow."""
 
     account_data_changed = Signal(bool)
+    profile_operation_requested = Signal(str, str)
     language_changed = Signal()
     fact_dps_multi_target_changed = Signal(bool)
     gcsim_boosted_energy_changed = Signal(bool)
@@ -141,7 +152,13 @@ class AccountDataPage(QWidget):
         self._hoyolab_import_output_buffer = ""
         self._hoyolab_import_lines: list[str] = []
         self._hoyolab_import_warnings: list[dict] = []
-        self._hoyolab_import_cooldown_active = False
+        self._hoyolab_import_decoder = None
+        self._hoyolab_attempt_id: str | None = None
+        self._hoyolab_committed_attempt_id: str | None = None
+        self._hoyolab_binding_required: dict | None = None
+        self._duplicate_profile_id: str | None = None
+        self._hoyolab_images_only = False
+        self._hoyolab_last_progress = 0.03
         self._updating_language_combo = False
         self._suppress_optimizer_fast_mode_warning = False
 
@@ -189,11 +206,20 @@ class AccountDataPage(QWidget):
         self.hoyolab_label.setObjectName("SectionTitle")
         account_layout.addWidget(self.hoyolab_label)
 
+        self.account_profiles = AccountProfilesWidget(self)
+        self.account_profiles.operation_requested.connect(self._request_profile_operation)
+        account_layout.addWidget(self.account_profiles)
+
         action_row = QHBoxLayout()
         action_row.setContentsMargins(0, 0, 0, 0)
         action_row.setSpacing(6)
+        self.btn_hoyolab_login = QPushButton(tr("accounts.login"))
+        self.btn_hoyolab_login.setObjectName("accountLoginButton")
+        self.btn_hoyolab_login.clicked.connect(self.login_requested)
+        action_row.addWidget(self.btn_hoyolab_login)
         self.btn_hoyolab_export = QPushButton(tr("hoyolab.import_button"))
         self.btn_hoyolab_export.setObjectName("ActionButton")
+        self._hoyolab_export_tooltip = install_custom_tooltip(self.btn_hoyolab_export)
         self.btn_hoyolab_export.clicked.connect(self.run_hoyolab_export)
         action_row.addWidget(self.btn_hoyolab_export, 1)
 
@@ -216,6 +242,18 @@ class AccountDataPage(QWidget):
         self.btn_profile_menu.setMenu(self.profile_menu)
         action_row.addWidget(self.btn_profile_menu)
         account_layout.addLayout(action_row)
+        self.btn_clear_all = QPushButton(tr("accounts.clear_all"))
+        self.btn_clear_all.setObjectName("clearAllAccountsButton")
+        self.btn_clear_all.setStyleSheet("color: #f16b71;")
+        self.btn_clear_all.clicked.connect(lambda: self._request_profile_operation("reset", ""))
+        account_layout.addWidget(self.btn_clear_all)
+        self.hoyolab_recovery_status = QLabel("")
+        self.hoyolab_recovery_status.setWordWrap(True)
+        self.hoyolab_recovery_status.setStyleSheet(
+            f"QLabel {{ color: {UI_TEXT_MUTED}; }}"
+        )
+        self.hoyolab_recovery_status.hide()
+        account_layout.addWidget(self.hoyolab_recovery_status)
         self.btn_images_refresh = QPushButton(tr("hoyolab.refresh_images_button"))
         self.btn_images_refresh.setObjectName("GhostButton")
         self.btn_images_refresh.clicked.connect(lambda _checked=False: self.run_hoyolab_export(images_only=True))
@@ -315,9 +353,14 @@ class AccountDataPage(QWidget):
         gcsim_toggle_row.addLayout(gcsim_text_col, 1)
         gcsim_toggle_row.addWidget(self.gcsim_boosted_energy_switch)
         gcsim_layout.addLayout(gcsim_toggle_row)
-        tooltip = tr("settings.gcsim.boosted_energy.description")
-        self.gcsim_boosted_energy_label.setToolTip(tooltip)
-        self.gcsim_boosted_energy_switch.setToolTip(tooltip)
+        self._boosted_energy_label_tooltip = install_custom_tooltip(
+            self.gcsim_boosted_energy_label,
+            lambda: tr("settings.gcsim.boosted_energy.description"),
+        )
+        self._boosted_energy_switch_tooltip = install_custom_tooltip(
+            self.gcsim_boosted_energy_switch,
+            lambda: tr("settings.gcsim.boosted_energy.description"),
+        )
 
         optimizer_settings = effective_gcsim_optimizer_settings(
             settings_file=self._settings_file
@@ -470,67 +513,73 @@ class AccountDataPage(QWidget):
     def _dialog_parent(self) -> QWidget:
         return self.window() or self
 
-    def _finish_hoyolab_import_cooldown(self) -> None:
-        self._hoyolab_import_cooldown_active = False
-        self.refresh_hoyolab_auth_status()
-
     def refresh_hoyolab_auth_status(self) -> None:
+        self._update_hoyolab_recovery_status()
+        self.account_profiles.refresh()
         status = get_auth_status(HOYOLAB_PROFILE_DIR)
-        local_profile_exists = has_local_hoyolab_profile()
-        import_running = self._hoyolab_export_process is not None
-        login_running = self._hoyolab_login_process is not None
-        import_cooldown = self._hoyolab_import_cooldown_active
-
-        self.btn_profile_menu.setEnabled(not import_running and not import_cooldown)
-        self.btn_images_refresh.setEnabled(
-            not import_running and not import_cooldown and not login_running
-            and status == AuthStatus.LOGGED_IN and local_profile_exists
+        current = active_profile() if PROFILE_ID else None
+        imported = bool(current and current["imported"]) if PROFILE_ID else has_local_hoyolab_profile()
+        busy = self._hoyolab_export_process is not None or self._hoyolab_login_process is not None
+        self.account_profiles.setEnabled(not busy)
+        self.btn_clear_all.setEnabled(not busy)
+        self.btn_profile_menu.setEnabled(not busy)
+        self.btn_hoyolab_login.setEnabled(not busy and status != AuthStatus.PROFILE_LOCKED)
+        self.btn_hoyolab_login.setText(tr("accounts.login"))
+        self.btn_hoyolab_export.setText(
+            tr("accounts.update_data") if imported else tr("accounts.import_data")
         )
-        self.change_equipment_switch.setEnabled(not import_running and not import_cooldown)
-
-        if import_running:
-            self.btn_hoyolab_export.setEnabled(False)
-            self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
-            return
-        if import_cooldown:
-            self.btn_hoyolab_export.setEnabled(False)
-            self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_cleanup_tooltip"))
-            return
-        if login_running:
-            self.btn_hoyolab_export.setText(tr("hoyolab.login_waiting_button"))
-            self.btn_hoyolab_export.setEnabled(False)
-            self.btn_hoyolab_export.setToolTip("")
-            return
-        if status == AuthStatus.LOGGED_IN:
-            self.btn_hoyolab_export.setText(
-                tr("hoyolab.update_button")
-                if local_profile_exists
-                else tr("hoyolab.import_button")
-            )
-            self.btn_hoyolab_export.setEnabled(True)
-            self.btn_hoyolab_export.setToolTip("")
-            return
-
-        self.btn_hoyolab_export.setText(tr("hoyolab.authorize_or_select_profile"))
-        self.btn_hoyolab_export.setToolTip("")
-        if status == AuthStatus.PROFILE_LOCKED:
-            self.btn_hoyolab_export.setEnabled(False)
+        self.btn_hoyolab_export.setEnabled(not busy and status != AuthStatus.PROFILE_LOCKED)
+        self._hoyolab_export_tooltip.set_text(
+            tr("hoyolab.import_running_tooltip") if busy else ""
+        )
+        self.btn_images_refresh.setEnabled(not busy and imported)
+        self.change_equipment_switch.setEnabled(not busy)
+        if status == AuthStatus.PROFILE_LOCKED and not busy:
             QTimer.singleShot(2000, self.refresh_hoyolab_auth_status)
+
+    def _update_hoyolab_recovery_status(self) -> None:
+        label = getattr(self, "hoyolab_recovery_status", None)
+        if label is None:
             return
-        self.btn_hoyolab_export.setEnabled(True)
+        if self._hoyolab_export_process is not None:
+            label.clear()
+            label.hide()
+            return
+        recovery = self._find_hoyolab_recovery()
+        if recovery is None:
+            label.clear()
+            label.hide()
+            return
+        _attempt, committed = recovery
+        key = (
+            "hoyolab.recovery.status_committed"
+            if committed else "hoyolab.recovery.status_saved"
+        )
+        label.setText(tr(key))
+        label.show()
 
     def ask_open_hoyolab_login(self) -> bool:
+        options = {"settings_file": self._settings_file} if self._settings_file is not None else {}
+        if get_app_bool_setting("hoyolab_login_hint_dismissed", **options):
+            return True
         box = QMessageBox(self._dialog_parent())
         box.setIcon(QMessageBox.Icon.Information)
-        box.setWindowTitle(tr("common.hoyolab"))
-        box.setText(tr("hoyolab.authorize_instruction"))
-        open_button = box.addButton(
-            tr("hoyolab.open_login_browser"),
-            QMessageBox.ButtonRole.AcceptRole,
-        )
+        box.setWindowTitle(tr("accounts.login"))
+        box.setText(tr("accounts.login_hint"))
+        checkbox = QCheckBox(tr("accounts.dont_show_again"), box)
+        box.setCheckBox(checkbox)
+        understood = box.addButton(tr("accounts.understood"), QMessageBox.ButtonRole.AcceptRole)
         box.addButton(tr("common.cancel"), QMessageBox.ButtonRole.RejectRole)
         box.exec()
-        return box.clickedButton() == open_button
+        accepted = box.clickedButton() == understood
+        if accepted and checkbox.isChecked():
+            set_app_bool_setting("hoyolab_login_hint_dismissed", True, **options)
+        return accepted
+
+    def login_requested(self) -> None:
+        if (self._hoyolab_export_process is None and self._hoyolab_login_process is None
+                and self.ask_open_hoyolab_login()):
+            self.open_hoyolab_login()
 
     def open_hoyolab_login(self) -> None:
         if self._hoyolab_login_process is not None:
@@ -556,8 +605,7 @@ class AccountDataPage(QWidget):
             )
             return
 
-        self.btn_hoyolab_export.setText(tr("hoyolab.login_waiting_button"))
-        self.btn_hoyolab_export.setEnabled(False)
+        self.refresh_hoyolab_auth_status()
         self._show_hoyolab_login_hint()
         self._hoyolab_auth_timer.start()
 
@@ -600,102 +648,148 @@ class AccountDataPage(QWidget):
         self.refresh_hoyolab_auth_status()
 
     def change_hoyolab_account(self) -> None:
-        if self._hoyolab_export_process is not None:
-            QMessageBox.information(
-                self._dialog_parent(),
-                tr("common.hoyolab"),
-                tr("profile.close_import_before_switch"),
-            )
-            return
-        if self._hoyolab_login_process is not None:
-            QMessageBox.information(
-                self._dialog_parent(),
-                tr("common.hoyolab"),
-                tr("hoyolab.close_browser_before_switch"),
-            )
-            return
+        self._request_profile_operation("new", "")
 
-        if has_local_hoyolab_profile() and not is_current_profile_exported():
-            choice = QMessageBox(self._dialog_parent())
-            choice.setIcon(QMessageBox.Icon.Warning)
-            choice.setWindowTitle(tr("profile.switch_title"))
-            choice.setText(tr("profile.switch_export_warning"))
-            export_button = choice.addButton(
-                tr("profile.export_before_switch"),
-                QMessageBox.ButtonRole.AcceptRole,
-            )
-            choice.addButton(
-                tr("profile.skip_export"),
-                QMessageBox.ButtonRole.DestructiveRole,
-            )
-            cancel_button = choice.addButton(
-                tr("common.cancel"),
-                QMessageBox.ButtonRole.RejectRole,
-            )
-            cancel_button.hide()
-            choice.setEscapeButton(cancel_button)
-            choice.exec()
-            clicked_button = choice.clickedButton()
-            if clicked_button is None or clicked_button == cancel_button:
-                return
-            if clicked_button == export_button and not self.export_profile(
-                show_success=False
+    def _confirm_profile_action(self, title: str, message: str) -> bool:
+        box = QMessageBox(self._dialog_parent())
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle(title)
+        box.setText(message)
+        yes = box.addButton(tr("common.yes"), QMessageBox.ButtonRole.YesRole)
+        no = box.addButton(tr("common.no"), QMessageBox.ButtonRole.NoRole)
+        box.setDefaultButton(no)
+        box.setEscapeButton(no)
+        box.exec()
+        return box.clickedButton() == yes
+
+    def _request_profile_operation(self, operation: str, profile_id: str) -> None:
+        if self._hoyolab_export_process is not None or self._hoyolab_login_process is not None:
+            QMessageBox.information(self._dialog_parent(), tr("common.hoyolab"),
+                                    tr("accounts.busy"))
+            return
+        if get_auth_status(HOYOLAB_PROFILE_DIR) == AuthStatus.PROFILE_LOCKED:
+            QMessageBox.information(self._dialog_parent(), tr("common.hoyolab"),
+                                    tr("hoyolab.close_browser_before_switch"))
+            return
+        if operation in {"delete", "reset"}:
+            message = tr("accounts.reset_confirm") if operation == "reset" else tr("accounts.delete_confirm")
+            if not self._confirm_profile_action(
+                tr("accounts.clear_all") if operation == "reset" else tr("accounts.delete"), message,
             ):
                 return
+        self.profile_operation_requested.emit(operation, profile_id)
 
-        history_choice = QMessageBox(self._dialog_parent())
-        history_choice.setIcon(QMessageBox.Icon.Question)
-        history_choice.setWindowTitle(tr("profile.switch_title"))
-        history_choice.setText(tr("profile.keep_history_question"))
-        keep_history_button = history_choice.addButton(
-            tr("common.yes"),
-            QMessageBox.ButtonRole.YesRole,
-        )
-        history_choice.addButton(tr("common.no"), QMessageBox.ButtonRole.NoRole)
-        cancel_button = history_choice.addButton(
-            tr("common.cancel"),
-            QMessageBox.ButtonRole.RejectRole,
-        )
-        cancel_button.hide()
-        history_choice.setEscapeButton(cancel_button)
-        history_choice.exec()
-        clicked_button = history_choice.clickedButton()
-        if clicked_button is None or clicked_button == cancel_button:
-            return
-
+    def _find_hoyolab_recovery(self) -> tuple[dict, bool] | None:
+        """Return the newest safe-to-replay source or committed unfinished receipt."""
         try:
-            reset_profile(HOYOLAB_PROFILE_DIR, HOYOLAB_EXPORT_DIR)
-            clear_current_offline_profile(
-                clear_history=clicked_button != keep_history_button
-            )
-        except Exception as exc:
-            QMessageBox.warning(
-                self._dialog_parent(),
-                tr("common.hoyolab"),
-                tr("hoyolab.reset_failed", error=exc),
-            )
-            return
+            pending = list_pending_import_attempts(ARTIFACT_DB_PATH)
+        except Exception:
+            pending = []
+        if pending:
+            return pending[0], False
+        try:
+            latest = latest_committed_import(ARTIFACT_DB_PATH)
+        except Exception:
+            latest = None
+        if not isinstance(latest, dict) or latest.get("status") != "committed":
+            return None
+        enrichment = latest.get("enrichment")
+        enrichment = enrichment if isinstance(enrichment, dict) else {}
+        if any(
+            not isinstance(enrichment.get(kind), dict)
+            or enrichment[kind].get("status") != "complete"
+            for kind in HOYOLAB_RECOVERY_ENRICHMENT_KINDS
+        ):
+            return latest, True
+        return None
 
-        self.account_data_changed.emit(True)
-        self.refresh_hoyolab_auth_status()
+    def _ask_hoyolab_recovery(self, attempt: dict, *, committed: bool) -> str | None:
+        box = QMessageBox(self._dialog_parent())
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle(tr("hoyolab.recovery.title"))
+        uid = str(attempt.get("account_uid") or "")
+        server = str(attempt.get("server") or "")
+        text_key = (
+            "hoyolab.recovery.committed_prompt"
+            if committed else "hoyolab.recovery.saved_prompt"
+        )
+        box.setText(tr(text_key, uid=uid, server=server))
+        resume_button = box.addButton(
+            tr("hoyolab.recovery.resume"), QMessageBox.ButtonRole.AcceptRole
+        )
+        new_button = box.addButton(
+            tr("hoyolab.recovery.new_import"), QMessageBox.ButtonRole.DestructiveRole
+        )
+        cancel_button = box.addButton(
+            tr("common.cancel"), QMessageBox.ButtonRole.RejectRole
+        )
+        box.setEscapeButton(cancel_button)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked == resume_button:
+            return "resume"
+        if clicked == new_button:
+            return "new"
+        return None
 
     def run_hoyolab_export(self, images_only: bool = False) -> None:
-        if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
-            return
-        if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
-            if self.ask_open_hoyolab_login():
-                self.open_hoyolab_login()
-            self.refresh_hoyolab_auth_status()
+        if self._hoyolab_export_process is not None or self._hoyolab_login_process is not None:
             return
 
-        self._show_hoyolab_loader()
+        resume_attempt = None
+        if not images_only:
+            recovery = self._find_hoyolab_recovery()
+            if recovery is not None:
+                attempt, committed = recovery
+                choice = self._ask_hoyolab_recovery(attempt, committed=committed)
+                if choice == "resume":
+                    resume_attempt = str(attempt.get("attempt_id") or "") or None
+                    if resume_attempt is None:
+                        return
+                elif choice != "new":
+                    return
+
+        # A staged snapshot and images-only refresh both use saved source data;
+        # neither needs the HoYoLAB browser profile.
+        if not images_only and resume_attempt is None:
+            if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
+                QMessageBox.information(self._dialog_parent(), tr("accounts.login"),
+                                        tr("accounts.login_first"))
+                self.refresh_hoyolab_auth_status()
+                return
+
+        self._start_hoyolab_import_process(
+            images_only=images_only,
+            attempt_id=str(uuid.uuid4()) if not images_only and resume_attempt is None else None,
+            resume_attempt=resume_attempt,
+            change_equipment=(
+                not images_only and resume_attempt is None
+                and self.change_equipment_switch.isChecked()
+            ),
+        )
+
+    def _start_hoyolab_import_process(
+        self, *, images_only: bool = False, attempt_id: str | None = None,
+        resume_attempt: str | None = None, adopt_legacy: bool = False,
+        change_equipment: bool = False,
+    ) -> None:
+        if self._hoyolab_export_process is not None or self._hoyolab_login_process is not None:
+            return
+        self._show_hoyolab_loader(images_only=images_only)
         process = QProcess(self)
         process.setProgram(sys.executable)
         arguments = ["-m", "hoyolab_export.run_import"]
         if images_only:
             arguments.append("--images-only")
-        elif self.change_equipment_switch.isChecked():
-            arguments.append("--change-equipment")
+        elif resume_attempt:
+            arguments.extend(["--resume-attempt", resume_attempt])
+            if adopt_legacy:
+                arguments.append("--adopt-legacy")
+        else:
+            attempt_id = attempt_id or str(uuid.uuid4())
+            arguments.extend(["--attempt-id", attempt_id])
+            if change_equipment:
+                arguments.append("--change-equipment")
         process.setArguments(arguments)
         process.setWorkingDirectory(str(PROJECT_ROOT))
         process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
@@ -704,20 +798,32 @@ class AccountDataPage(QWidget):
             lambda code, status: self._on_hoyolab_process_finished(process, code, status)
         )
         self._hoyolab_export_process = process
+        self._hoyolab_attempt_id = resume_attempt or attempt_id
+        self._hoyolab_committed_attempt_id = None
+        self._hoyolab_binding_required = None
+        self._duplicate_profile_id = None
+        self._hoyolab_images_only = images_only
         self._hoyolab_import_output_buffer = ""
+        self._hoyolab_import_decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         self._hoyolab_import_lines = []
         self._hoyolab_import_warnings = []
+        self._hoyolab_last_progress = 0.03
+        self.hoyolab_recovery_status.hide()
         self.btn_hoyolab_export.setEnabled(False)
         self.btn_images_refresh.setEnabled(False)
         self.btn_profile_menu.setEnabled(False)
+        self.account_profiles.setEnabled(False)
+        self.btn_hoyolab_login.setEnabled(False)
+        self.btn_clear_all.setEnabled(False)
         self.change_equipment_switch.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
+        self._hoyolab_export_tooltip.set_text(tr("hoyolab.import_running_tooltip"))
         process.start()
         if not process.waitForStarted(3000):
             if self._hoyolab_export_process is not process:
                 return
             self._hoyolab_export_process = None
             process.deleteLater()
+            self._reset_hoyolab_process_state()
             self._close_hoyolab_loader()
             self.refresh_hoyolab_auth_status()
             QMessageBox.warning(
@@ -726,13 +832,39 @@ class AccountDataPage(QWidget):
                 tr("hoyolab.start_import_failed"),
             )
 
-    def _show_hoyolab_loader(self) -> None:
+    def _reset_hoyolab_process_state(self) -> None:
+        self._hoyolab_attempt_id = None
+        self._hoyolab_committed_attempt_id = None
+        self._hoyolab_binding_required = None
+        self._hoyolab_images_only = False
+        self._hoyolab_import_decoder = None
+        self._hoyolab_import_output_buffer = ""
+
+    def _confirm_hoyolab_legacy_binding(self, binding: dict) -> bool:
+        answer = QMessageBox.question(
+            self._dialog_parent(),
+            tr("hoyolab.legacy_binding.title"),
+            tr(
+                "hoyolab.legacy_binding.prompt",
+                uid=binding["account_uid"],
+                server=binding["server"],
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return answer == QMessageBox.StandardButton.Yes
+
+    def _show_hoyolab_loader(self, *, images_only=False) -> None:
         if self._hoyolab_loader is not None:
             self._hoyolab_loader.raise_()
             self._hoyolab_loader.activateWindow()
             return
         self._hoyolab_loader = HoYoLABLoadingDialog(self._dialog_parent())
         self._hoyolab_loader.set_status(tr("loader.preparing"), 0.03)
+        kinds = ("assets",) if images_only else ("projections", "assets", "references", "side_icons", "abyss")
+        self._hoyolab_loader.set_details("\n".join(
+            tr("loader.job." + kind) + ": " + tr("loader.work.waiting") for kind in kinds
+        ))
         self._hoyolab_loader.show()
         self._hoyolab_loader.raise_()
         self._hoyolab_loader.activateWindow()
@@ -752,13 +884,24 @@ class AccountDataPage(QWidget):
             status,
             ("loader.unknown_status", None),
         )
-        self._hoyolab_loader.set_status(tr(text_key, status=status), progress)
+        if progress is not None:
+            self._hoyolab_last_progress = max(self._hoyolab_last_progress, progress)
+        self._hoyolab_loader.set_status(
+            tr(text_key, status=status), self._hoyolab_last_progress
+        )
 
-    def read_hoyolab_import_output(self) -> None:
+    def read_hoyolab_import_output(self, *, final: bool = False) -> None:
         process = self._hoyolab_export_process
         if process is None:
             return
-        chunk = bytes(process.readAllStandardOutput()).decode("utf-8", errors="replace")
+        raw = bytes(process.readAllStandardOutput())
+        decoder = self._hoyolab_import_decoder
+        if decoder is None:
+            chunk = raw.decode("utf-8", errors="replace")
+        else:
+            chunk = decoder.decode(raw, final=final)
+            if final:
+                self._hoyolab_import_decoder = None
         if not chunk:
             return
         self._hoyolab_import_output_buffer += chunk
@@ -768,13 +911,127 @@ class AccountDataPage(QWidget):
             )
             line = line.rstrip("\r")
             if line:
-                print(line)
-                self._hoyolab_import_lines.append(line)
-                self._record_hoyolab_import_warning(line)
-            if line.startswith("[STATUS] "):
-                self._set_hoyolab_loader_status(
-                    line.replace("[STATUS] ", "", 1).strip()
-                )
+                self._consume_hoyolab_import_line(line)
+
+    def _consume_hoyolab_import_line(self, line: str) -> None:
+        if line.startswith("[PROFILE_DUPLICATE] "):
+            try:
+                value = json.loads(line[len("[PROFILE_DUPLICATE] "):]).get("existing_profile_id")
+                if isinstance(value, str) and len(value) == 32 and all(c in "0123456789abcdef" for c in value):
+                    self._duplicate_profile_id = value
+            except (ValueError, TypeError, AttributeError):
+                pass
+            return
+        if line.startswith("[IMPORT_PROGRESS] "):
+            self._record_hoyolab_progress(line)
+            return
+        print(line)
+        self._hoyolab_import_lines.append(line)
+        self._record_hoyolab_import_warning(line)
+        self._record_hoyolab_binding_required(line)
+        self._record_hoyolab_commit(line)
+        if line.startswith("[STATUS] "):
+            self._set_hoyolab_loader_status(line.replace("[STATUS] ", "", 1).strip())
+
+    def _record_hoyolab_progress(self, line: str) -> None:
+        from math import isfinite
+        from hoyolab_export.import_progress import JOB_PHASES
+
+        if self._hoyolab_loader is None:
+            return
+        try:
+            payload = json.loads(line[len("[IMPORT_PROGRESS] "):])
+            if not isinstance(payload, dict) or payload.get("attempt_id") != self._hoyolab_attempt_id:
+                return
+            progress = float(payload["progress"])
+            jobs = payload["jobs"]
+            if not isfinite(progress) or not 0 <= progress <= 0.98 or not isinstance(jobs, dict):
+                return
+            lines = []
+            for kind, phases in JOB_PHASES.items():
+                if kind not in jobs:
+                    continue
+                job = jobs[kind]
+                state, phase = job["state"], job["phase"]
+                if state not in {"waiting", "running", "complete", "pending"} or phase not in phases:
+                    return
+                completed, total = job["completed"], job["total"]
+                if (type(completed) is not int or type(total) is not int
+                        or not 0 <= completed <= total):
+                    return
+                detail = tr("loader.work." + (phase if state == "running" else state))
+                if state == "running" and total:
+                    detail += f" · {completed}/{total}"
+                steps = job.get("steps", {})
+                if not isinstance(steps, dict):
+                    return
+                active = []
+                if state == "running":
+                    for step_name in phases:
+                        step = steps.get(step_name, {})
+                        if not isinstance(step, dict):
+                            return
+                        if step.get("state") != "running":
+                            continue
+                        count, size = step.get("completed"), step.get("total")
+                        if type(count) is not int or type(size) is not int or not 0 <= count <= size:
+                            return
+                        text = tr("loader.work." + step_name)
+                        active.append(text + (f" · {count}/{size}" if size else ""))
+                if active:
+                    detail = "; ".join(active)
+                lines.append(tr("loader.job." + kind) + ": " + detail)
+        except (ValueError, TypeError, KeyError, OverflowError):
+            return
+        if not lines:
+            return
+        self._hoyolab_last_progress = max(self._hoyolab_last_progress, progress)
+        title = "loader.downloading_assets" if self._hoyolab_images_only else "loader.enriching_account"
+        self._hoyolab_loader.set_status(tr(title), self._hoyolab_last_progress)
+        self._hoyolab_loader.set_details("\n".join(lines))
+
+    def _record_hoyolab_binding_required(self, line: str) -> None:
+        prefix = "[IMPORT_BINDING_REQUIRED] "
+        if not line.startswith(prefix):
+            return
+        try:
+            binding = json.loads(line[len(prefix):])
+        except (ValueError, TypeError):
+            return
+        if not isinstance(binding, dict):
+            return
+        attempt_id = binding.get("attempt_id")
+        uid = binding.get("account_uid")
+        server = binding.get("server")
+        if (not isinstance(attempt_id, str) or not attempt_id
+                or attempt_id != self._hoyolab_attempt_id
+                or not str(uid or "").isdigit()
+                or not isinstance(server, str) or not server.strip()):
+            return
+        self._hoyolab_binding_required = {
+            "attempt_id": attempt_id,
+            "account_uid": str(uid),
+            "server": server.strip(),
+        }
+
+    def _record_hoyolab_commit(self, line: str) -> None:
+        prefix = "[IMPORT_COMMITTED] "
+        if not line.startswith(prefix):
+            return
+        try:
+            receipt = json.loads(line[len(prefix):])
+        except (ValueError, TypeError):
+            return
+        attempt_id = receipt.get("attempt_id") if isinstance(receipt, dict) else None
+        if not isinstance(attempt_id, str) or attempt_id != self._hoyolab_attempt_id:
+            return
+        if self._hoyolab_committed_attempt_id == attempt_id:
+            return
+        self._hoyolab_committed_attempt_id = attempt_id
+        self.account_profiles.refresh()
+        # This receipt is written immediately after SQLite commits. Refresh the
+        # account view now, then refresh once more when optional enrichment ends.
+        self.account_data_changed.emit(False)
 
     def _record_hoyolab_import_warning(self, line: str) -> None:
         if not line.startswith("[IMPORT_WARNING] "):
@@ -824,29 +1081,46 @@ class AccountDataPage(QWidget):
         process = self._hoyolab_export_process
         if process is None:
             return
-        self.read_hoyolab_import_output()
+        self.read_hoyolab_import_output(final=True)
         if self._hoyolab_import_output_buffer.strip():
             line = self._hoyolab_import_output_buffer.strip()
-            print(line)
-            self._hoyolab_import_lines.append(line)
-            self._record_hoyolab_import_warning(line)
+            self._consume_hoyolab_import_line(line)
             self._hoyolab_import_output_buffer = ""
+        attempt_id = self._hoyolab_attempt_id
+        binding = self._hoyolab_binding_required
+        duplicate_profile_id = self._duplicate_profile_id
+        committed_marker = self._hoyolab_committed_attempt_id == attempt_id and attempt_id is not None
+        images_only = self._hoyolab_images_only
         process.deleteLater()
         self._hoyolab_export_process = None
-        self._hoyolab_import_cooldown_active = True
-        self.btn_hoyolab_export.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_cleanup_tooltip"))
-        QTimer.singleShot(
-            HOYOLAB_IMPORT_COOLDOWN_MS,
-            self._finish_hoyolab_import_cooldown,
+        if duplicate_profile_id:
+            self._close_hoyolab_loader()
+            self._reset_hoyolab_process_state()
+            self.refresh_hoyolab_auth_status()
+            if self._confirm_profile_action(tr("app_shell.account.title"), tr("accounts.duplicate")):
+                self._request_profile_operation("activate", duplicate_profile_id)
+            return
+        receipt = None
+        if attempt_id:
+            try:
+                receipt = get_import_result(ARTIFACT_DB_PATH, attempt_id)
+            except Exception:
+                receipt = None
+        committed_result = (
+            isinstance(receipt, dict) and receipt.get("status") == "committed"
         )
-
-        if exit_code == 0 and exit_status == QProcess.ExitStatus.NormalExit:
+        if committed_result or committed_marker:
             if self._hoyolab_loader is not None:
                 self._hoyolab_loader.finish()
             self.account_data_changed.emit(False)
             self._close_hoyolab_loader()
+            self._reset_hoyolab_process_state()
             self.refresh_hoyolab_auth_status()
+            if (exit_code != 0 or exit_status != QProcess.ExitStatus.NormalExit):
+                QMessageBox.information(
+                    self._dialog_parent(), tr("common.done"),
+                    tr("hoyolab.import_committed_after_crash"),
+                )
             if self._hoyolab_import_warnings:
                 QMessageBox.warning(
                     self._dialog_parent(), tr("hoyolab.import_warning.title"),
@@ -854,7 +1128,33 @@ class AccountDataPage(QWidget):
                 )
             return
 
+        if binding is not None and exit_code == 3:
+            self._close_hoyolab_loader()
+            self._reset_hoyolab_process_state()
+            self.refresh_hoyolab_auth_status()
+            if self._confirm_hoyolab_legacy_binding(binding):
+                self._start_hoyolab_import_process(
+                    resume_attempt=binding["attempt_id"], adopt_legacy=True,
+                )
+            else:
+                QMessageBox.information(
+                    self._dialog_parent(), tr("hoyolab.legacy_binding.title"),
+                    tr("hoyolab.legacy_binding.deferred"),
+                )
+            return
+
+        if exit_code == 0 and exit_status == QProcess.ExitStatus.NormalExit and images_only:
+            if self._hoyolab_loader is not None:
+                self._hoyolab_loader.finish()
+            self.account_data_changed.emit(False)
+            self._close_hoyolab_loader()
+            self._reset_hoyolab_process_state()
+            self.refresh_hoyolab_auth_status()
+            return
+
         self._close_hoyolab_loader()
+        self._reset_hoyolab_process_state()
+        self.refresh_hoyolab_auth_status()
         QMessageBox.warning(
             self._dialog_parent(),
             tr("common.hoyolab"),
@@ -865,7 +1165,7 @@ class AccountDataPage(QWidget):
         )
 
     def export_profile(self, *, show_success: bool = True) -> bool:
-        if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
+        if self._hoyolab_export_process is not None or self._hoyolab_login_process is not None:
             return False
         path, _selected_filter = QFileDialog.getSaveFileName(
             self._dialog_parent(),
@@ -894,7 +1194,7 @@ class AccountDataPage(QWidget):
         return True
 
     def import_profile(self) -> bool:
-        if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
+        if self._hoyolab_export_process is not None or self._hoyolab_login_process is not None:
             return False
         path, _selected_filter = QFileDialog.getOpenFileName(
             self._dialog_parent(),
@@ -905,7 +1205,8 @@ class AccountDataPage(QWidget):
         if not path:
             return False
         try:
-            result = import_offline_profile(path)
+            from hoyolab_export.profile_restore import restore_saved_profile
+            result = restore_saved_profile(path)
         except Exception as exc:
             QMessageBox.warning(
                 self._dialog_parent(),
@@ -913,13 +1214,7 @@ class AccountDataPage(QWidget):
                 tr("profile.import_failed", error=exc),
             )
             return False
-        self.account_data_changed.emit(True)
-        self.refresh_hoyolab_auth_status()
-        QMessageBox.information(
-            self._dialog_parent(),
-            tr("common.done"),
-            tr("profile.import_done", count=len(result.get("restoredFiles") or [])),
-        )
+        self._request_profile_operation("activate", result["profile"]["id"])
         return True
 
     def _sync_language_combo(self) -> None:
@@ -1083,6 +1378,7 @@ class AccountDataPage(QWidget):
         self.btn_images_refresh.setText(tr("hoyolab.refresh_images_button"))
         self.change_equipment_switch.setAccessibleName(tr("hoyolab.change_equipment"))
         self.btn_profile_menu.setText(tr("profile.menu_button"))
+        self.btn_clear_all.setText(tr("accounts.clear_all"))
         self.action_export_profile.setText(tr("profile.export"))
         self.action_import_profile.setText(tr("profile.import"))
         self.action_switch_profile.setText(tr("profile.switch"))
@@ -1124,9 +1420,6 @@ class AccountDataPage(QWidget):
             tr("settings.pvp.player_color").format(player=2)
         )
         self.pvp_colors_reset_button.setText(tr("settings.pvp.colors_reset"))
-        tooltip = tr("settings.gcsim.boosted_energy.description")
-        self.gcsim_boosted_energy_label.setToolTip(tooltip)
-        self.gcsim_boosted_energy_switch.setToolTip(tooltip)
         self._sync_language_combo()
         if self._hoyolab_loader is not None:
             self._hoyolab_loader.retranslate_ui()

@@ -1,14 +1,25 @@
-import asyncio
 import argparse
-import gc
+import asyncio
 import json
 import re
 import sys
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+if __name__ == "__main__":
+    import atexit
+    from run_workspace.profile_control import profile_operation_lock
+    _profile_operation_gate = profile_operation_lock()
+    _profile_operation_gate.__enter__()
+    atexit.register(lambda: _profile_operation_gate.__exit__(None, None, None))
+    from run_workspace.profile_context import bootstrap_profile
+    bootstrap_profile()
+
 from .paths import HOYOLAB_DEBUG_DIR
 
+from .artifact_db import ARTIFACT_DB_PATH
+from .import_store import LegacyAccountBindingRequired, get_import_attempt
 from .import_pipeline import HoYoLABImportError, run_hoyolab_import
 
 
@@ -49,37 +60,25 @@ def safe_exception_summary(exc: BaseException) -> str:
     return text or type(exc).__name__
 
 
-def run_async(coro):
-    loop = asyncio.new_event_loop()
-
-    try:
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(coro)
-        loop.run_until_complete(asyncio.sleep(0.5))
-        gc.collect()
-        return result
-    finally:
-        pending = [task for task in asyncio.all_tasks(loop) if not task.done()]
-        for task in pending:
-            task.cancel()
-
-        if pending:
-            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.run_until_complete(asyncio.sleep(0))
-        gc.collect()
-        asyncio.set_event_loop(None)
-        loop.close()
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Import HoYoLAB account data")
     parser.add_argument("--change-equipment", action="store_true",
                         help="Apply currently observed equipment to local characters")
-    parser.add_argument("--images-only", action="store_true",
-                        help="Download all account images again without importing data")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--images-only", action="store_true",
+                      help="Download all account images again without importing data")
+    mode.add_argument("--attempt-id", help="Stable ID for this newly captured import")
+    mode.add_argument("--resume-attempt", help="Replay a saved import or finish committed enrichment")
+    parser.add_argument("--adopt-legacy", action="store_true",
+                        help="Bind existing account rows to the explicitly confirmed staged role")
     args = parser.parse_args()
+    if args.adopt_legacy and not args.resume_attempt:
+        parser.error("--adopt-legacy requires --resume-attempt")
+    # A replay uses the equipment choice persisted with its source snapshot.
+    # Suppress a stray CLI toggle instead of changing the staged operation.
+    attempt_id = args.attempt_id
+    if not args.images_only and not args.resume_attempt:
+        attempt_id = attempt_id or str(uuid.uuid4())
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
     if hasattr(sys.stderr, "reconfigure"):
@@ -87,7 +86,31 @@ def main() -> int:
 
     try:
         with import_run_lock():
-            result = run_async(run_hoyolab_import(change_equipment=args.change_equipment and not args.images_only, images_only=args.images_only))
+            result = asyncio.run(run_hoyolab_import(
+                change_equipment=(
+                    args.change_equipment and not args.images_only and not args.resume_attempt
+                ),
+                images_only=args.images_only,
+                attempt_id=attempt_id,
+                resume_attempt=args.resume_attempt,
+                adopt_legacy=args.adopt_legacy,
+            ))
+    except LegacyAccountBindingRequired as exc:
+        attempt_id = args.resume_attempt or attempt_id
+        attempt = None
+        if attempt_id:
+            try:
+                attempt = get_import_attempt(ARTIFACT_DB_PATH, attempt_id)
+            except Exception:
+                attempt = None
+        binding = {
+            "attempt_id": attempt_id,
+            "account_uid": attempt.get("account_uid") if attempt else None,
+            "server": attempt.get("server") if attempt else None,
+        }
+        print("[IMPORT_BINDING_REQUIRED] " + json.dumps(binding, ensure_ascii=False), flush=True)
+        print(f"[HoYoLAB Import] {safe_exception_summary(exc)}", file=sys.stderr)
+        return 3
     except HoYoLABImportError as exc:
         print(f"[HoYoLAB Import] {safe_exception_summary(exc)}", file=sys.stderr)
         return 2

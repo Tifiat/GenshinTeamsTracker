@@ -204,6 +204,7 @@ class ArtifactSetMappingTest(unittest.IsolatedAsyncioTestCase):
                     real_ids=[1001],
                     db_path=db_path,
                     allow_unmapped=True,
+                    english_details=self._english_details(),
                 )
 
             self.assertEqual(summary["mapped"], 1)
@@ -232,6 +233,7 @@ class ArtifactSetMappingTest(unittest.IsolatedAsyncioTestCase):
                         export_page=None,
                         real_ids=[1001],
                         db_path=db_path,
+                        english_details=self._english_details(),
                     )
 
     async def test_unmapped_error_is_specific_but_missing_id_keeps_generic_error(self) -> None:

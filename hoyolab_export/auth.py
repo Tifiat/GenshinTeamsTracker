@@ -1,7 +1,11 @@
 import json
+import os
+import queue
 import shutil
 import sqlite3
 import subprocess
+import sys
+import threading
 from enum import StrEnum
 from pathlib import Path
 
@@ -79,12 +83,14 @@ def mark_profile_clean(profile_dir: str | Path) -> None:
             pass
 
 
-def open_login_browser(
+def _open_login_browser_direct(
     profile_dir: str | Path,
     width: int = 1280,
     height: int = 900,
     x: int | None = None,
     y: int | None = None,
+    *,
+    quiet: bool = False,
 ) -> subprocess.Popen:
     profile_dir = Path(profile_dir)
     profile_dir.mkdir(parents=True, exist_ok=True)
@@ -104,7 +110,53 @@ def open_login_browser(
     if x is not None and y is not None:
         args.insert(-1, f"--window-position={x},{y}")
 
-    return subprocess.Popen(args)
+    return subprocess.Popen(
+        args, **({"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL} if quiet else {}),
+    )
+
+
+def open_login_browser(
+    profile_dir: str | Path,
+    width: int = 1280,
+    height: int = 900,
+    x: int | None = None,
+    y: int | None = None,
+) -> subprocess.Popen:
+    """In a managed profile, keep an independent helper alive with the browser."""
+    if not os.environ.get("GTT_ACCOUNT_PROFILE"):
+        return _open_login_browser_direct(profile_dir, width, height, x, y)
+    if (type(width) is not int or type(height) is not int or width <= 0 or height <= 0
+            or any(value is not None and type(value) is not int for value in (x, y))):
+        raise ValueError("Invalid login browser geometry")
+
+    args = [
+        sys.executable, "-u", "-m", "hoyolab_export.login_session",
+        str(Path(profile_dir).absolute()), str(width), str(height),
+        str(x) if x is not None else "none", str(y) if y is not None else "none",
+    ]
+    process = subprocess.Popen(
+        args, cwd=Path(__file__).resolve().parents[1],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+    )
+    assert process.stdout is not None
+    lines: queue.Queue[str] = queue.Queue(maxsize=1)
+    threading.Thread(target=lambda: lines.put(process.stdout.readline()), daemon=True).start()
+    timed_out = False
+    try:
+        line = lines.get(timeout=20)
+        response = json.loads(line)
+        if not isinstance(response, dict) or response.get("ready") is not True:
+            reason = response.get("error") if isinstance(response, dict) else None
+            raise RuntimeError(str(reason or "Login browser could not start"))
+        return process
+    except queue.Empty as exc:
+        # The helper may already own the lock/browser. Killing it here could
+        # leave Chrome open without that protection, so let it finish safely.
+        timed_out = True
+        raise RuntimeError("Login browser startup timed out; close any opened login browser") from exc
+    finally:
+        if not timed_out:
+            process.stdout.close()
 
 
 def get_auth_status(profile_dir: str | Path) -> AuthStatus:

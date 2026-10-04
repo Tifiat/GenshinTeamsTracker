@@ -22,11 +22,12 @@ from .optimizer_cache import (
     prune_gcsim_optimizer_cache,
 )
 from .runtime_probe import cleanup_go_build_cache
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
-DEFAULT_GCSIM_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "runs"
-DEFAULT_GCSIM_FARMING_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "farming-runs"
-DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "optimizer-runs"
+DEFAULT_GCSIM_RUNS_DIR = ACCOUNT_ROOT / "data" / "gcsim" / "runs"
+DEFAULT_GCSIM_FARMING_RUNS_DIR = ACCOUNT_ROOT / "data" / "gcsim" / "farming-runs"
+DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR = ACCOUNT_ROOT / "data" / "gcsim" / "optimizer-runs"
 DEFAULT_RUN_DIR_KEEP_COUNT = 50
 DEFAULT_RUN_DIR_MAX_BYTES = 256 * 1024 * 1024
 

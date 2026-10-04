@@ -808,7 +808,7 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
                     f"</span><br>"
                 )
             if enemy.cached_icon_path:
-                path = Path(enemy.cached_icon_path).as_posix()
+                path = Path(enemy.cached_icon_path).resolve().as_uri()
                 parts.append(
                     f"<img src='{html.escape(path, quote=True)}' width='32' height='32'> "
                 )

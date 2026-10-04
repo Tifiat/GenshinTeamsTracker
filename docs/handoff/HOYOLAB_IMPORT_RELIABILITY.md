@@ -1,24 +1,57 @@
 # HoYoLAB Import Failure Boundaries
 
 <!-- handoff-current: hoyolab-import -->
-2026-10-04. Independent catalog/partial-import hotfix prepared in Worker5.
-Seeded SQLite catalogs close after transaction exit and still perform requested
-network refresh. Missing canonical set mappings no longer abort the normal
-account import: known artifacts, characters, weapons, raw details and prepared
-images continue; unresolved artifacts are skipped without guessing identity.
-Raw details retain the skipped records for a later import. An incomplete
-artifact observation preserves prior observed and canonical equipment, even
-with Change equipment ON; saved presets remain unchanged. Reference refresh,
-artifact transaction, account sync and equipment failures produce structured
-warnings in the import log/CLI and a localized completed-with-warnings dialog.
-Primary inventory/detail validation and pre-publication image failures retain
-their existing failure/preservation boundary.
+2026-10-04. Worker5 is replacing the earlier partial-import hotfix with
+source-first, account-bound publication. A validated source snapshot is durable
+before one SQLite transaction publishes artifacts, account observations,
+optional equipment and its receipt. Valid unknown sets retain source IDs and
+stats with nullable canonical identity; no relic is skipped because references
+are absent. Later canonical enrichment preserves artifact/preset IDs.
 
-Verification and the user's failed-import measurement are recorded below in
-the 2026-10-04 receipt. Automated fixtures use temporary databases and mocked
-network; the fixed path still needs the user's manual retry. This portable
-fix has no History/timer/policy dependency and is not installed on master.
+Independent assets, catalog/reference, side-icon, Abyss and JSON-projection
+jobs run after core commit with bounded concurrency. Receipts and job states
+allow recovery without repeating observations or overwriting user gear.
+A failed optional job cannot turn a committed account into a failed import.
+New references are an ordinary readiness state. Active unresolved set bonuses
+make affected calculations incomplete instead of silently contributing zero.
+
+The independent patch is checked on an isolated `master` baseline; dated test
+receipts below distinguish controlled fixtures from the user's successful core
+import. A later timing audit found eight optional Abyss icon HTTP-403 failures
+that the old receipt had incorrectly marked complete; partial icon failures now
+remain recoverable. The first-run equipment default is ON with saved choices
+preserved. The loader counts actual parallel work, and HP/icon requests overlap
+within the existing request bound. The [icon-recovery checkpoint](ABYSS_ENEMY_DATA.md)
+records the later Nanoka and ordinary-browser repair of all eight cached icons,
+including its initial partial failure and bounded retry behavior. A native UI check showed the enabled default;
+that window was subsequently closed. Real loader review, a repeated live import
+and main-branch integration remain pending. The later user instruction to finish
+synchronization authorizes the local source commit and orchestrator-owned
+transfer while physical acceptance remains open; push remains unauthorized.
+Existing History/optimizer and policy edits are outside this package; required
+import-identity/defaults/path seams are listed in the
+[transfer inventory](WORKER5_TRANSFER_PACKAGE.md).
+The follow-up [saved-account scope](ACCOUNT_PROFILES.md) adds isolated account
+roots, game metadata and complete reset; its acceptance is tracked separately.
 <!-- /handoff-current -->
+
+### Worker3 UI handoff adaptation (2026-10-04)
+
+The frozen packet in
+`C:/Users/user/Documents/Codex/2026-10-03/worker3-gtt/outputs/worker5-import-ui-handoff/`
+was reviewed against the current saved-account contract. The mini-set tooltip
+freshness/read-only lookup and Fact DPS local-file URI fixes are adapted; their
+owners are [artifact descriptions](ARTIFACT_BROWSER.md) and
+[Abyss images](ABYSS_ENEMY_DATA.md). The earlier combined-button automatic-login
+continuation was not installed. Login remains separate, its overlay now shares
+the explicit import instruction, and action handlers reject overlap with an
+open login. [Profile acceptance](ACCOUNT_PROFILES.md) records the combined check.
+
+Manual smoke after restarting Worker5: close Login and verify no import starts;
+press Import explicitly; hover the right character panel's set icon after its
+catalog is ready; hover Fact DPS and inspect the available cached enemy icons.
+These visible steps remain user-owned. No Computer Use, app restart or real
+import was run for this adaptation; it does not resolve remote Cloudflare checks.
 
 ### Historical optimization checkpoint (2026-09-27; low-rarity followup 2026-10-03)
 
@@ -61,21 +94,79 @@ Scope: Settings `AccountDataPage.run_hoyolab_export` -> QProcess ->
 
 ## Entry Point And Import Contract
 
-Production import entrypoint: `python -m hoyolab_export.run_import`.
-The UI starts it through QProcess and consumes `[STATUS]` progress lines.
-Account runtime reads go through SQLite adapters; JSON/asset manifest are source
-inputs. Normal images are composed from direct source files, not browser renders.
+Production entrypoint: `python -m hoyolab_export.run_import`. The UI supplies a
+stable attempt UUID and consumes progress plus a committed receipt marker.
+`--resume-attempt` repairs a saved attempt; it never reapplies an already
+committed equipment snapshot. `--images-only` refreshes this database's saved
+image sources without acquiring another account.
 
-- HoYoLAB relic set IDs and HoYoWiki entry IDs are distinct. The EN detail
-  service pass is mapping input only; never publish it as localized account data.
-- Account content language and application UI language remain separate.
-- Catalog detail refresh is explicit; normal account update does not fetch every
-  HoYoWiki character/weapon detail. See `DATA_RUNTIME_BOUNDARIES.md`.
-- Current Abyss period resolution uses HoYoLAB overview, then Fandom latest,
-  then Nanoka live metadata. Local date is not source authority. Refresh failure
-  is non-fatal and preserves existing caches.
-- Sign-out/offline restore own destructive profile cleanup; ordinary early
-  import failure must preserve existing account data/assets.
+1. Capture UID/server and requested character IDs once. Ambiguous roles use
+   the browser's selected request; missing identity is rejected. An already
+   bound database rejects another role before source staging.
+2. Validate complete inventory/detail structure, keeping localized account
+   content separate from the EN mapping source. Prepare schemas before any
+   account transaction.
+3. Stage the exact safe source in `hoyolab_import_attempts`. Legacy unbound
+   account data needs explicit one-time identity confirmation; it is not
+   silently assigned to the first returned role.
+4. Publish artifacts, character/talent/weapon observations, optional equipment,
+   binding, immutable receipt and pending jobs in one SQLite transaction.
+   Initialization, network, JSON and image writes do not run inside it.
+5. Refresh independent projections, images, references and Abyss data.
+   Completed source/receipt is authoritative; files are replaceable projections.
+   Reference enrichment updates existing IDs and derived fields, never source
+   observations, inventory counts or user equipment.
+
+HoYoLAB set IDs and HoYoWiki entry IDs remain distinct. Unmapped artifacts
+retain their source set ID, name and properties, with a source-content
+fingerprint independent of canonical names. Identical copies require distinct
+simultaneous source wearers; ordering, translation and later mapping do not
+create new IDs. Unknown active set bonuses make selected calculations partial
+and block affected GCSIM preparation; a single unknown piece still has raw stats.
+Canonical collisions between source-less/scanner records and HoYoLAB records
+retain all IDs and presets. Without distinct simultaneous source observations,
+the optimizer excludes that ambiguous group and team preparation rejects
+allocating two aliases together. Manual equipment is not copy-count evidence.
+
+The first-run equipment switch defaults ON; saved OFF/ON choices are preserved.
+CLI/backend calls still require explicit equipment opt-in. Enabled imports compare the assignment revision
+captured before acquisition; concurrent edits are preserved. Missing
+observations never clear canonical equipment or presets. A core write failure
+rolls back the unit and leaves staged source available for retry. Older pending
+sources cannot overwrite a newer committed snapshot.
+
+Public catalogs reuse valid local caches and fetch missing entries with bounded
+worker pools. Incomplete catalog entries remain queued for targeted retry.
+An EN detail batch is requested only when source mappings need it. Images use
+bounded asynchronous downloads/renders, transient retries, validated cache
+reuse and per-file atomic replacement. Numeric/string 1/2-star weapons are
+filtered before download jobs. Missing shared layers do not hide usable raw
+portraits/icons. Abyss period still comes from authoritative remote sources,
+with the existing fallback chain and same-period cache reuse.
+
+The loader reads structured, attempt-bound progress for each concurrent job:
+actual download/render counts, catalog phases and Abyss source/HP/icon work.
+The bar aggregates completed work, not a prediction of remaining seconds;
+wall-clock time is displayed separately and never advances the work bar.
+Independent Abyss phases retain both counters when they overlap. Pending
+recovery is a distinct terminal job state. Core acquisition uses only the first
+20% of the bar, leaving the remaining range for enrichment and process exit.
+PNG validation and image publication run in cancellation-drained workers,
+so they do not block the asynchronous request loop or outlive staging cleanup.
+Asset receipts include download/render/cache counters and phase durations.
+
+`import_store.py` owns at most ten committed receipts and ten pending attempts;
+pending TTL is 30 days, with the newest retained within the row cap. Staging and
+commit invoke pruning. Sign-out/profile reset deletes the containing DB.
+Import asset staging is cleaned on exit; the next import removes only owned
+abandoned directories older than 24 hours, without following linked roots.
+Logs use two replaceable debug JSON files, exclude credentials/private HTTP
+diagnostics, and cannot determine success. Catalog retry rows are bounded by
+the validated current catalog list.
+
+Offline profile export derives account JSON from the exact SQLite backup it
+archives, so failed projection writes cannot export mismatched account state.
+Runtime account reads continue through SQLite adapters.
 
 ## Navigation And Legacy Manual Export
 
@@ -109,7 +200,7 @@ popover, canvas capture, layout collection or screenshot cropper.
   Canvas fallback must not swallow closure and turn it into a later
   `Page.wait_for_timeout: Target ... has been closed` failure. Event listeners
   and futures are removed on exit. Debug popup inspection is opt-in.
-- Failure diagnostics record stage, page-closed state, browser exit code and
+- Failure diagnostics record stage, page-closed state, error type and
   lifecycle events BEFORE intentional cleanup in `debug/hoyolab/import_failure.json`.
   They omit exception text, URLs, cookies/tokens, headers and response bodies;
   diagnostic failures cannot replace the original error.
@@ -125,7 +216,7 @@ popover, canvas capture, layout collection or screenshot cropper.
 - The entrypoint holds an OS file lock outside the cleared debug directory,
   rejecting concurrent imports before browser/data work. Process exit releases
   the lock; the persistent lock file is not a stale-lock indicator.
-- Busy/cooldown is checked before authorization. The update/profile controls
+- Busy state is checked before authorization. The update/profile controls
   are disabled during import; profile import/export also guard their handlers.
   Completion acts only on its own process; duplicate/stale signals are ignored.
   Failed start, failure and crash close the loader and allow retry after cleanup.
@@ -135,33 +226,114 @@ popover, canvas capture, layout collection or screenshot cropper.
 
 ## Responses And Data
 
-- Inventory capture is installed before navigation, validates HTTP/retcode and
-  a non-empty list, bounds response-body reading and removes its listener when
-  complete/cancelled. Pipeline teardown consumes or cancels an unused future.
-- Browser JSON fetch has a 60-second bound and browser-side abort. Roles/detail
-  failures and missing requested character ids are rejected before account writes.
-- Missing source layers and display variants are built in a temporary mirror
-  before account writes. Existing v2 source files are reused on normal import;
-  a failed download/render leaves the prior account images untouched.
-- Account language/period publication happens after artifact import. Account
-  JSON is replaced per file; staged image files replace their final paths.
-- Artifact import retains content-fingerprint dedupe and SQLite transaction
-  rollback, and explicitly closes its connection on success/failure.
-- Strict artifact/mapping helper calls still reject unresolved sets by default.
-  Normal import opts into partial mapping/conversion. Only a typed missing
-  mapping skips a relic; other conversion errors roll back the artifact phase
-  and warn while preserving the remaining account source import.
-- User-managed equipment and saved presets remain separate from HoYoLAB
-  observed equipment. Default OFF preserves user equipment; the later explicit
-  "Change equipment" switch applies a fresh snapshot only after account sync.
-  Saved presets are never changed. See `ACCOUNT_EQUIPMENT_STATE_DESIGN.md`.
-- Existing account SQLite sync warnings remain non-fatal after raw publication,
-  as documented in `ACCOUNT_SQLITE_STORAGE.md`.
-- CLI `[IMPORT_WARNING]` JSON records persist in the existing import log. UI
-  consumes complete or buffered final lines and shows one localized warning
-  after refreshing account data; malformed/unknown records are ignored.
+Inventory capture is installed before navigation, validates HTTP/retcode and a
+non-empty list, bounds response-body reading and removes its listener on every
+exit. Browser JSON fetch has a 60-second bound and browser-side abort; the direct
+request shortcut has a six-second bound before its page fallback.
 
-## Verification And Backup
+`[IMPORT_COMMITTED]` is emitted only after the atomic receipt is stored. The
+UI refreshes account data then and after optional jobs finish, and also reads
+the receipt on process exit. A subprocess crash after commit therefore cannot
+report that the whole account was lost. Incremental UTF-8 decoding preserves
+split progress/receipt records; stale/duplicate process signals are ignored.
+Optional missing references do not show a skipped-set warning.
+
+The OS-owned import lock covers acquisition, publication and derived jobs.
+No arbitrary cooldown remains after process exit. Background threads finish
+before their staging directories are removed. A saved-source recovery does
+not require authorization unless an optional authenticated mapping request is
+still needed; cached/public enrichment can proceed offline from the session.
+
+## Verification
+
+### Full pipeline repair (2026-10-04, Worker5; acceptance pending)
+
+The final backend/CLI/Qt regression suite ran 264 tests successfully on an
+isolated checkout based on `master` (`bde62f9`), with one fixture-declared skip.
+This independent patch includes the earlier hotfix and pre-download rarity
+gate, excludes History/optimizer UI and policy changes, and remains uncommitted.
+The account-page palette import was adapted to the master baseline. Coverage
+includes cold import without catalogs,
+unmapped source retention, transactional faults, saved-source recovery, account
+binding, concurrent equipment edits, immutable receipt replay, per-file image
+failure, bounded downloads/catalog workers, profile projection consistency,
+mixed scanner/source copy ambiguity and process-crash UI recovery. All test
+accounts, network responses and SQLite databases were isolated fixtures.
+Late audit regressions cover repeated cancellation with active/queued writers,
+incomplete forced catalog refresh, numeric zero properties and recovery options
+after another role was staged before first binding. Handoff structure,
+Python compilation, locale JSON and diff checks pass.
+
+The initial native window activation failed while the game was foreground;
+Account input reported `coordinate input geometry is unavailable`. A later
+user-requested AppShell launch and manual import succeeded, as recorded below.
+No new repair commit, master integration or push exists. No live profile export,
+backup, cookie inspection or automatic import was run.
+
+### First full live import after repair (2026-10-04, Worker5)
+
+The user launched import through the updated visible Worker5 AppShell. Its
+production import process started at 02:47:04 Moscow time. Pipeline elapsed
+time was 53.656s; core publication finished at 10.172s. Post-commit jobs overlap:
+assets 40.172s, references 21.750s, side icons 21.172s, Abyss 42.250s and JSON
+projections 1.063s. These are pipeline/job durations, not click-to-exit timing or
+a controlled cold/hot comparison with older runs.
+
+The receipt has 73 characters, 467 talent rows, 51 observed weapon stacks and
+233 newly inserted artifacts. Change Equipment was OFF. All five enrichment
+jobs were recorded complete, with no pending jobs or record errors. A subsequent
+audit found eight failed Fandom enemy icons (HTTP 403) inside the Abyss result:
+the old completion status did not represent full icon readiness. The updated
+wrapper preserves this as pending recovery and retries icons from same-period
+cached source without repeating composition/HP requests. After enrichment no
+HoYoLAB artifact set remained unmapped. The two core observation warnings only
+record the established limits of weapon source identity/full-inventory coverage.
+
+Read-only verification: SQLite integrity `ok`, zero foreign-key violations,
+374 manifest image files decoded successfully, all 114 raw character/weapon
+sources had transparency, no asset errors and no 1/2-star weapon manifest
+entries. The importer exited, the loading dialog closed, and the actual
+AppShell screenshot showed the user browsing History with imported icons.
+The application remains open for their visual review. A repeated live import
+and explicit final review remain pending; no preset/equipment preservation
+against a private backup is claimed.
+
+### Loader/default/throughput review (2026-10-04, Worker5)
+
+The user requested first-run equipment ON, truthful loader stages and further
+speed investigation. Missing settings now default ON; explicit saved False/True
+and CLI opt-in behavior are unchanged. Structured progress includes each job's
+phase/counters, concurrent HP/icon steps and elapsed time. No timer invents work.
+All loader labels, including the previously missing save/enrichment headings,
+are present in RU/EN/PT-BR. PNG validation and final asset publication execute in
+bounded, cancellation-drained workers; repeated cancellation cannot remove live
+staging. Download receipts now separate byte/request-read totals from
+download/render wall time and cache hits. Request-read totals overlap and must
+not be added to elapsed import time.
+
+Existing-run attribution: Abyss source reports took 16.764s (Nanoka index,
+manifest and detail were dependent requests: 5.934s, 5.547s and 5.255s); HP
+fallback took 16.461s for eight page requests; icon work took 5.882s and failed
+with HTTP 403. HP and icons now share one existing bounded network executor and
+run concurrently after source joining. These changes have no measured live
+speedup yet; 53.656s is a prior observation, not a proven lower bound. A cached
+repeat must be reported separately from a first import.
+
+Worker5 AppShell was launched using the shared read-only interpreter and
+`python -m ui.app_shell_smoke`, then the real Account tab was clicked. Native
+capture confirms the switch is ON and Update is available. No import was
+automatically started. Loader animation during a real repeated import and the
+new end-to-end timing remain pending. No commit or push was made.
+
+The isolated portable candidate on `master` baseline `bde62f9` ran 337 tests:
+336 passed, one declared Windows symlink skip, no failures/errors. The suite
+covers default/saved equipment choices, all locale keys, malformed/foreign
+progress, overlapping phase counters, no time-driven bar advancement,
+cancellation-drained publication, bounded HP/icon overlap and icon-only retry.
+One bounded public-image diagnostic reproduced HTTP 403 with the downloader's
+current headers; no supported alternate URL was present in cached source
+metadata. No URL guessing, account import or account/auth writes were performed
+by that diagnostic. The external icon availability remains unresolved.
 
 ### Hotfix receipt (2026-10-04, Worker5)
 
@@ -183,8 +355,9 @@ reference/refresh failure recovery, structured CLI warnings and buffered Qt
 completion. Network is mocked and SQLite writes use temporary fixture databases.
 The independent patch applies cleanly to local `master`; no transfer to master
 or new fixed live import is claimed. Next evidence is the user's manual Settings
-retry with this version running. Primary API validation and final file-publication
-limits below still apply.
+retry with that version running. This receipt describes the earlier hotfix;
+the current atomic publication/recovery contract supersedes its partial-write
+behavior and unresolved-set warning path.
 
 Tests are isolated from the real login profile/runtime DB. Relevant modules:
 
@@ -201,15 +374,16 @@ Coverage includes document loss, retry limits, visible login precedence,
 cleanup masking, timeout/invalid/partial responses, early failure, partial
 crop failure, artifact transaction failure, restart, repeated import dedupe,
 stable preset/equipment references, JSON serialization failure, Qt start
-failure/crash/success and button recovery after cooldown, stale signals,
+failure/crash/success and button recovery, stale signals,
 profile guards, real OS lock contention/release, download re-click/three-click
 limit and a real asyncio wait interrupted by a simulated page crash.
 
-Before real updates, use SQLite's backup API while excluding DB writers,
-copy account source/assets and affected static/Abyss caches, and verify file
-hashes before/after copying plus snapshot integrity/foreign keys. Never copy
-just an active WAL-mode DB file or include login cookies/tokens in diagnostics.
-Private backups for this audit are under `exports/hoyolab_before_import_*`.
+The historical September audit used SQLite's backup API while excluding DB
+writers, plus copied account assets and static/Abyss caches verified by hashes
+and integrity checks. Its private backups are under
+`exports/hoyolab_before_import_*`. The current user explicitly excluded profile
+export/backup from this repair workflow. Never copy just an active WAL-mode DB
+file or include login cookies/tokens in diagnostics.
 
 Validated on 2026-09-08 through the project `.venv`:
 
@@ -297,18 +471,21 @@ the complete output to 100MiB.
 
 ## Limits
 
-Remaining import-cost audit: the character/detail call is already one batch,
-set mapping fetches an English batch only for unknown set IDs, and Abyss
-source-data refresh has a same-period cache gate. The two HoYoWiki trait pages
-are fetched unconditionally by normal import; this is the first independent
-network/cache optimization candidate after stage timings show its cost. The
-new `stageEvents` field in `debug/hoyolab/import_log.json` records future
-normal-import boundaries without logging private URLs or response bodies.
+New stage timings distinguish durable account publication from optional jobs.
+Each job records duration/status; the replaceable debug log records stage and
+browser lifecycle boundaries without private URLs or response bodies. The
+historical import timings above do not measure this new pipeline. The first
+new live run is recorded above; a controlled cold/hot comparison is still
+required. Character details are one batch; known
+set mappings, fresh trait/list caches and same-period Abyss sources avoid
+unnecessary requests.
 
-- The complete DB + JSON + image publication is not a single transaction.
-  Disk failure/process termination during final publication can still leave
-  partial results; retain the verified backup. No whole-DB automatic rollback
-  is added because it could overwrite concurrent user equipment/preset edits.
+- SQLite account publication is atomic. JSON/image publication remains
+  individually replaceable; disk failure can leave those projections pending.
+  Repair uses the committed source and does not revert user edits or repeat
+  observations. The production CLI holds the import lock through acquisition,
+  all jobs and thread shutdown; direct concurrent pipeline calls bypass that
+  supported serialization contract.
 - Source selectors and minified export call sites can change again. Empty
   exports now fail visibly instead of being reported as successful zero cards.
 - The historical browser-closed screenshot was not independently reproduced

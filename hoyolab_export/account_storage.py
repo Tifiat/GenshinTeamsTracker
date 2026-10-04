@@ -27,21 +27,18 @@ from .character_identity import (
     init_character_identity_storage,
     sync_character_identity_from_account_rows,
 )
-from .character_region_catalog import load_character_region_catalog
 from .character_stats_catalog import (
     CHARACTER_BASE_STATS_CACHE_PATH,
     CharacterBaseStatsCatalog,
     CharacterBaseStatsEntry,
-    read_character_base_stats_cache,
 )
 from .crop_manifest import IGNORED_CHARACTER_IDS, icon_key
-from .paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
+from .paths import HOYOLAB_DATA_DIR, PROJECT_ROOT, ACCOUNT_ROOT
 from .paths import HOYOLAB_CHARACTER_ASSETS_DIR
 from .weapon_stats_catalog import (
     WEAPON_STATS_CACHE_PATH,
     WeaponStatsCatalog,
     WeaponStatsEntry,
-    read_weapon_stats_cache,
 )
 from .character_trait_catalog import (
     load_character_trait_catalog,
@@ -52,7 +49,7 @@ from .character_trait_catalog import (
 DEFAULT_ACCOUNT_CHARACTER_DETAILS_PATH = HOYOLAB_DATA_DIR / "account_character_details.json"
 DEFAULT_CROP_MANIFEST_PATH = HOYOLAB_DATA_DIR / "crop_manifest.json"
 DEFAULT_ACCOUNT_LANGUAGE_PATH = HOYOLAB_DATA_DIR / "account_language.json"
-DEFAULT_ACCOUNT_DB_PATH = PROJECT_ROOT / "data" / "artifacts.db"
+DEFAULT_ACCOUNT_DB_PATH = ACCOUNT_ROOT / "data" / "artifacts.db"
 
 ACCOUNT_STORAGE_SCHEMA_VERSION = 5
 DEFAULT_SIDE_ICON_CACHE_DIR = HOYOLAB_CHARACTER_ASSETS_DIR / "side_icons"
@@ -625,22 +622,21 @@ def sync_account_storage_from_local_files(
     """
 
     from .artifact_db import connect_db, init_db
+    from .import_store import build_account_sync_context
 
     account_details = _load_json_dict(account_character_details_path)
     crop_manifest = _load_json_dict(crop_manifest_path)
     account_language = _load_json_dict(account_language_path)
-    character_catalog = read_character_base_stats_cache(character_stats_catalog_path)
-    weapon_catalog = read_weapon_stats_cache(weapon_stats_catalog_path)
     content_language = _text(account_language.get("contentLanguage")) or "en-us"
-    region_entries = load_character_region_catalog(content_language, allow_network=False)
     trait_catalog = load_character_trait_catalog()
-    gcsim_key_resolver = (
-        build_account_gcsim_key_resolver(
-            character_source_path=gcsim_character_registry_source_path,
-            weapon_source_path=gcsim_weapon_registry_source_path,
-        )
-        if enrich_gcsim_keys
-        else None
+    context = build_account_sync_context(
+        content_language,
+        character_stats_catalog_path=character_stats_catalog_path,
+        weapon_stats_catalog_path=weapon_stats_catalog_path,
+        gcsim_character_registry_source_path=gcsim_character_registry_source_path,
+        gcsim_weapon_registry_source_path=gcsim_weapon_registry_source_path,
+        enrich_gcsim_keys=enrich_gcsim_keys,
+        trait_catalog=trait_catalog,
     )
 
     with connect_db(db_path) as conn:
@@ -652,11 +648,7 @@ def sync_account_storage_from_local_files(
             account_weapons=_load_json_list(account_weapons_path),
             account_character_details=account_details,
             crop_manifest=crop_manifest,
-            character_stats_catalog=character_catalog,
-            weapon_stats_catalog=weapon_catalog,
-            gcsim_key_resolver=gcsim_key_resolver,
-            character_region_entries=region_entries,
-            character_trait_entries=trait_catalog.entries,
+            **context,
             side_icon_cache_dir=side_icon_cache_dir,
             side_icon_downloader=_download_url_to_file if download_side_icons else None,
         )
@@ -678,10 +670,12 @@ def sync_account_storage_from_sources(
     character_trait_entries: tuple[Any, ...] = (),
     side_icon_cache_dir: str | Path = DEFAULT_SIDE_ICON_CACHE_DIR,
     side_icon_downloader: Callable[[str, Path], None] | None = None,
+    initialize: bool = True,
 ) -> AccountStorageSyncSummary:
     """Sync authoritative account characters and reconstructed weapon stacks."""
 
-    init_account_storage(conn)
+    if initialize:
+        init_account_storage(conn)
 
     details_data = _details_data(account_character_details or {})
     detail_rows = _detail_rows(details_data)
@@ -782,6 +776,22 @@ def sync_account_storage_from_sources(
                 source_metadata["ascension_bonus"] = (
                     _account_storage_ascension_bonus_dict(ascension_bonus)
                 )
+            previous = conn.execute(
+                "SELECT level, source_metadata_json FROM account_characters WHERE character_id = ?",
+                (character_id,),
+            ).fetchone()
+            if previous is not None:
+                previous_metadata = _json_dict(previous["source_metadata_json"])
+                if not gcsim_resolution.gcsim_key and previous_metadata.get("gcsim_character_key_resolution"):
+                    source_metadata["gcsim_character_key_resolution"] = previous_metadata[
+                        "gcsim_character_key_resolution"
+                    ]
+                if (
+                    "ascension_bonus" not in source_metadata
+                    and "ascension_bonus" in previous_metadata
+                    and previous["level"] == _optional_int(character.get("level"))
+                ):
+                    source_metadata["ascension_bonus"] = previous_metadata["ascension_bonus"]
 
             _upsert_account_character(
                 conn,
@@ -833,12 +843,16 @@ def sync_account_storage_from_sources(
     else:
         warnings.append(WARNING_CHARACTER_SOURCE_EMPTY_PRESERVED)
 
-    identity_rows = sync_character_identity_from_account_rows(
-        conn,
-        region_entries=character_region_entries,
-        trait_entries=character_trait_entries,
-        now=now,
-    )
+    # The identity helper initializes its schema with executescript(), which
+    # implicitly commits. Its reference enrichment is separate from the
+    # account snapshot when a caller owns a larger transaction.
+    if initialize:
+        sync_character_identity_from_account_rows(
+            conn,
+            region_entries=character_region_entries,
+            trait_entries=character_trait_entries,
+            now=now,
+        )
 
     observations = _weapon_observations(
         account_weapons=account_weapons,
@@ -908,6 +922,17 @@ def sync_account_storage_from_sources(
                 source_metadata["gcsim_weapon_key_resolution"] = (
                     gcsim_resolution.to_dict()
                 )
+            if not gcsim_resolution.gcsim_key:
+                previous = conn.execute(
+                    "SELECT source_metadata_json FROM account_weapon_observed_stacks "
+                    "WHERE weapon_fingerprint = ?", (fingerprint,),
+                ).fetchone()
+                if previous is not None:
+                    previous_resolution = _json_dict(previous["source_metadata_json"]).get(
+                        "gcsim_weapon_key_resolution"
+                    )
+                    if previous_resolution:
+                        source_metadata["gcsim_weapon_key_resolution"] = previous_resolution
             row_warnings = _dedupe(
                 list(chosen.warnings)
                 + [
@@ -944,6 +969,77 @@ def sync_account_storage_from_sources(
         weapon_stacks_upserted=weapon_stacks_upserted,
         warnings=tuple(_dedupe(warnings)),
     )
+
+
+def refresh_account_reference_fields(
+    conn: sqlite3.Connection,
+    *,
+    character_stats_catalog: CharacterBaseStatsCatalog | None = None,
+    weapon_stats_catalog: WeaponStatsCatalog | None = None,
+    gcsim_key_resolver: AccountGcsimKeyResolver | None = None,
+) -> dict[str, int]:
+    """Refresh derived catalog keys only, leaving observations and counts alone.
+
+    The caller prepares schema and owns the transaction. Missing references
+    leave useful previously resolved values in place.
+    """
+    character_entries = _character_entries_by_id(character_stats_catalog)
+    weapon_entries = _weapon_entries_by_id(weapon_stats_catalog)
+    updated_characters = 0
+    updated_weapons = 0
+    for row in conn.execute(
+        "SELECT character_id, source_metadata_json FROM account_characters"
+    ).fetchall():
+        metadata = _json_dict(row["source_metadata_json"])
+        entry = character_entries.get(_text(metadata.get("hoyowiki_character_entry_id")))
+        resolution = _resolve_account_gcsim_key(
+            gcsim_key_resolver,
+            entity_type=GCSIM_ENTITY_CHARACTER,
+            project_id=str(row["character_id"]),
+            catalog_english_name=entry.name if entry else "",
+        )
+        if not resolution.catalog_english_name and not resolution.gcsim_key:
+            continue
+        metadata["gcsim_character_key_resolution"] = resolution.to_dict()
+        conn.execute(
+            """UPDATE account_characters SET
+               catalog_english_name = COALESCE(NULLIF(?, ''), catalog_english_name),
+               gcsim_character_key = COALESCE(NULLIF(?, ''), gcsim_character_key),
+               gcsim_character_key_status = COALESCE(NULLIF(?, ''), gcsim_character_key_status),
+               gcsim_character_key_method = COALESCE(NULLIF(?, ''), gcsim_character_key_method),
+               source_metadata_json = ? WHERE character_id = ?""",
+            (resolution.catalog_english_name, resolution.gcsim_key,
+             resolution.status, resolution.method, _json_dumps(metadata), row["character_id"]),
+        )
+        updated_characters += 1
+    for row in conn.execute(
+        "SELECT weapon_fingerprint, weapon_id, source_metadata_json "
+        "FROM account_weapon_observed_stacks"
+    ).fetchall():
+        metadata = _json_dict(row["source_metadata_json"])
+        entry = weapon_entries.get(_text(metadata.get("hoyowiki_weapon_entry_id")))
+        resolution = _resolve_account_gcsim_key(
+            gcsim_key_resolver,
+            entity_type=GCSIM_ENTITY_WEAPON,
+            project_id=str(row["weapon_id"] or ""),
+            catalog_english_name=entry.name if entry else "",
+        )
+        if not resolution.catalog_english_name and not resolution.gcsim_key:
+            continue
+        metadata["gcsim_weapon_key_resolution"] = resolution.to_dict()
+        conn.execute(
+            """UPDATE account_weapon_observed_stacks SET
+               catalog_english_name = COALESCE(NULLIF(?, ''), catalog_english_name),
+               gcsim_weapon_key = COALESCE(NULLIF(?, ''), gcsim_weapon_key),
+               gcsim_weapon_key_status = COALESCE(NULLIF(?, ''), gcsim_weapon_key_status),
+               gcsim_weapon_key_method = COALESCE(NULLIF(?, ''), gcsim_weapon_key_method),
+               source_metadata_json = ? WHERE weapon_fingerprint = ?""",
+            (resolution.catalog_english_name, resolution.gcsim_key,
+             resolution.status, resolution.method, _json_dumps(metadata),
+             row["weapon_fingerprint"]),
+        )
+        updated_weapons += 1
+    return {"characters": updated_characters, "weapons": updated_weapons}
 
 
 def weapon_observed_stack_fingerprint(
@@ -1220,17 +1316,17 @@ def _upsert_account_character(
             weapon_type_name = excluded.weapon_type_name,
             icon_url = excluded.icon_url,
             side_icon_url = excluded.side_icon_url,
-            portrait_path = excluded.portrait_path,
-            side_icon_path = excluded.side_icon_path,
-            base_hp = excluded.base_hp,
-            base_atk = excluded.base_atk,
-            base_def = excluded.base_def,
-            ascension_bonus_stat_type = excluded.ascension_bonus_stat_type,
-            ascension_bonus_value = excluded.ascension_bonus_value,
-            catalog_english_name = excluded.catalog_english_name,
-            gcsim_character_key = excluded.gcsim_character_key,
-            gcsim_character_key_status = excluded.gcsim_character_key_status,
-            gcsim_character_key_method = excluded.gcsim_character_key_method,
+            portrait_path = COALESCE(NULLIF(excluded.portrait_path, ''), account_characters.portrait_path),
+            side_icon_path = COALESCE(NULLIF(excluded.side_icon_path, ''), account_characters.side_icon_path),
+            base_hp = CASE WHEN excluded.level IS NOT account_characters.level THEN excluded.base_hp ELSE COALESCE(excluded.base_hp, account_characters.base_hp) END,
+            base_atk = CASE WHEN excluded.level IS NOT account_characters.level THEN excluded.base_atk ELSE COALESCE(excluded.base_atk, account_characters.base_atk) END,
+            base_def = CASE WHEN excluded.level IS NOT account_characters.level THEN excluded.base_def ELSE COALESCE(excluded.base_def, account_characters.base_def) END,
+            ascension_bonus_stat_type = CASE WHEN excluded.level IS NOT account_characters.level THEN excluded.ascension_bonus_stat_type ELSE COALESCE(NULLIF(excluded.ascension_bonus_stat_type, ''), account_characters.ascension_bonus_stat_type) END,
+            ascension_bonus_value = CASE WHEN excluded.level IS NOT account_characters.level THEN excluded.ascension_bonus_value ELSE COALESCE(excluded.ascension_bonus_value, account_characters.ascension_bonus_value) END,
+            catalog_english_name = COALESCE(NULLIF(excluded.catalog_english_name, ''), account_characters.catalog_english_name),
+            gcsim_character_key = COALESCE(NULLIF(excluded.gcsim_character_key, ''), account_characters.gcsim_character_key),
+            gcsim_character_key_status = CASE WHEN excluded.gcsim_character_key = '' AND account_characters.gcsim_character_key != '' THEN account_characters.gcsim_character_key_status ELSE COALESCE(NULLIF(excluded.gcsim_character_key_status, ''), account_characters.gcsim_character_key_status) END,
+            gcsim_character_key_method = CASE WHEN excluded.gcsim_character_key = '' AND account_characters.gcsim_character_key != '' THEN account_characters.gcsim_character_key_method ELSE COALESCE(NULLIF(excluded.gcsim_character_key_method, ''), account_characters.gcsim_character_key_method) END,
             source_metadata_json = excluded.source_metadata_json,
             warnings_json = excluded.warnings_json,
             first_seen_at = COALESCE(account_characters.first_seen_at, excluded.first_seen_at),
@@ -1487,7 +1583,7 @@ def _upsert_weapon_observed_stack(
             secondary_stat_value_raw = excluded.secondary_stat_value_raw,
             description = excluded.description,
             icon_url = excluded.icon_url,
-            icon_path = excluded.icon_path,
+            icon_path = COALESCE(NULLIF(excluded.icon_path, ''), account_weapon_observed_stacks.icon_path),
             known_count = CASE
                 WHEN account_weapon_observed_stacks.known_count > excluded.known_count
                 THEN account_weapon_observed_stacks.known_count
@@ -1498,10 +1594,10 @@ def _upsert_weapon_observed_stack(
                 excluded.first_seen_at
             ),
             last_seen_at = excluded.last_seen_at,
-            catalog_english_name = excluded.catalog_english_name,
-            gcsim_weapon_key = excluded.gcsim_weapon_key,
-            gcsim_weapon_key_status = excluded.gcsim_weapon_key_status,
-            gcsim_weapon_key_method = excluded.gcsim_weapon_key_method,
+            catalog_english_name = COALESCE(NULLIF(excluded.catalog_english_name, ''), account_weapon_observed_stacks.catalog_english_name),
+            gcsim_weapon_key = COALESCE(NULLIF(excluded.gcsim_weapon_key, ''), account_weapon_observed_stacks.gcsim_weapon_key),
+            gcsim_weapon_key_status = CASE WHEN excluded.gcsim_weapon_key = '' AND account_weapon_observed_stacks.gcsim_weapon_key != '' THEN account_weapon_observed_stacks.gcsim_weapon_key_status ELSE COALESCE(NULLIF(excluded.gcsim_weapon_key_status, ''), account_weapon_observed_stacks.gcsim_weapon_key_status) END,
+            gcsim_weapon_key_method = CASE WHEN excluded.gcsim_weapon_key = '' AND account_weapon_observed_stacks.gcsim_weapon_key != '' THEN account_weapon_observed_stacks.gcsim_weapon_key_method ELSE COALESCE(NULLIF(excluded.gcsim_weapon_key_method, ''), account_weapon_observed_stacks.gcsim_weapon_key_method) END,
             source_metadata_json = excluded.source_metadata_json,
             warnings_json = excluded.warnings_json
         """,
@@ -2516,7 +2612,7 @@ def _is_valid_cached_file(path: Path) -> bool:
 
 def _storage_path(path: Path) -> str:
     try:
-        return str(path.resolve().relative_to(PROJECT_ROOT.resolve()))
+        return str(path.resolve().relative_to(ACCOUNT_ROOT.resolve()))
     except (OSError, ValueError):
         return str(path)
 

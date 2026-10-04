@@ -1,8 +1,12 @@
 ﻿from __future__ import annotations
 
 from contextlib import closing
+import html
 import json
+import re
+import sqlite3
 from pathlib import Path
+from run_workspace.profile_context import account_asset_path
 from typing import Any
 
 from hoyolab_export.artifact_db import (
@@ -53,6 +57,11 @@ def current_hoyolab_content_language() -> str:
     return normalize_artifact_set_lang(data.get("contentLanguage"))
 
 
+def _has_description_text(description: str) -> bool:
+    # An empty translated HTML paragraph must not erase the English fallback.
+    return bool(html.unescape(re.sub(r"<[^>]*>", "", description)).strip())
+
+
 def list_set_bonus_description_map(
     *,
     preferred_lang: str | None = None,
@@ -69,12 +78,13 @@ def list_set_bonus_description_map(
         languages.append(preferred)
 
     result: dict[tuple[str, int], str] = {}
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    uri = Path(db_path).resolve().as_uri() + "?mode=ro"
+    with closing(sqlite3.connect(uri, uri=True)) as conn:
+        conn.row_factory = sqlite3.Row
         for language in languages:
             for row in db_list_artifact_set_bonus_descriptions(conn, lang=language):
                 description = str(row.get("description") or "").strip()
-                if not description:
+                if not _has_description_text(description):
                     continue
                 result[(str(row["set_uid"]), int(row["piece_count"]))] = description
     return result
@@ -117,7 +127,7 @@ def load_artifact_browser_store_data(
         for language in languages:
             for row in db_list_artifact_set_bonus_descriptions(conn, lang=language):
                 description = str(row.get("description") or "").strip()
-                if not description:
+                if not _has_description_text(description):
                     continue
                 set_bonus_descriptions[
                     (str(row["set_uid"]), int(row["piece_count"]))
@@ -148,7 +158,7 @@ def _resolve_icon_path(local_path: str | None) -> Path | None:
         return None
 
     path = Path(local_path)
-    path = path if path.is_absolute() else PROJECT_ROOT / path
+    path = account_asset_path(path)
     return path if path.exists() and path.is_file() else None
 
 

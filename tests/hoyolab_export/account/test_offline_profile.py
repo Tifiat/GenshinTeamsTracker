@@ -74,6 +74,9 @@ class OfflineProfileTest(unittest.TestCase):
                     mock.patch.object(offline_profile, "PROJECT_ROOT", root)
                 )
                 stack.enter_context(
+                    mock.patch.object(offline_profile, "ACCOUNT_ROOT", root)
+                )
+                stack.enter_context(
                     mock.patch.object(offline_profile, "HOYOLAB_DATA_DIR", data_dir)
                 )
                 stack.enter_context(

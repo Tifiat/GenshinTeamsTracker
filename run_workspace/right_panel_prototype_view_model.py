@@ -8,6 +8,7 @@ import sqlite3
 from typing import Any, Iterable, Mapping
 
 from localization import tr, tr_for_language
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 from .models import AbyssTimerState, calculate_abyss_chamber_result
 from .abyss.factual_dps import (
@@ -111,7 +112,7 @@ ARTIFACT_SANDS_POSITION = 3
 ARTIFACT_GOBLET_POSITION = 4
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TEAM_BONUS_ICON_DIR = PROJECT_ROOT / "assets" / "team_bonus"
-ARTIFACT_DB_PATH = PROJECT_ROOT / "data" / "artifacts.db"
+ARTIFACT_DB_PATH = ACCOUNT_ROOT / "data" / "artifacts.db"
 MOONSIGN_SOURCE_URL = "https://wiki.hoyolab.com/pc/genshin/entry/8782"
 HEXEREI_SOURCE_URL = "https://wiki.hoyolab.com/pc/genshin/entry/9347"
 TRAIT_MOONSIGN = "moonsign"
@@ -2562,7 +2563,7 @@ def _team_bonus_icon(filename: str) -> str:
 
 
 def _account_content_language() -> str:
-    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    path = ACCOUNT_ROOT / "data" / "hoyolab" / "account_language.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):

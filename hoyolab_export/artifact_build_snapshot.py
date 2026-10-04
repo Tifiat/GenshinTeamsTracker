@@ -12,6 +12,7 @@ WARNING_ARTIFACT_SUMMARY_MISSING = "artifact_summary_missing"
 WARNING_ARTIFACT_SLOTS_MISSING = "artifact_slots_missing"
 WARNING_ARTIFACT_BUILD_INCOMPLETE = "artifact_build_incomplete"
 WARNING_ARTIFACT_STAT_TOTALS_PARTIAL = "artifact_stat_totals_partial"
+WARNING_ARTIFACT_SET_CANONICAL_MAPPING_MISSING = "artifact_set_canonical_mapping_missing"
 WARNING_CONDITIONAL_SET_BONUSES_NOT_INCLUDED = (
     "conditional_set_bonuses_not_included"
 )
@@ -71,12 +72,16 @@ class ArtifactSetCountSnapshot:
     set_uid: str = ""
     set_name: str = ""
     count: int = 0
+    source_set_id: int | None = None
+    canonical_set_resolved: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "set_uid": self.set_uid,
             "set_name": self.set_name,
             "count": self.count,
+            "source_set_id": self.source_set_id,
+            "canonical_set_resolved": self.canonical_set_resolved,
         }
 
 
@@ -163,6 +168,8 @@ def build_artifact_build_snapshot(
         warnings.append(WARNING_ARTIFACT_BUILD_INCOMPLETE)
     if not stat_totals and artifact_ids_by_pos:
         warnings.append(WARNING_ARTIFACT_STAT_TOTALS_PARTIAL)
+    if any(item.count >= 2 and not item.canonical_set_resolved for item in set_counts):
+        warnings.append(WARNING_ARTIFACT_SET_CANONICAL_MAPPING_MISSING)
     if active_set_bonuses:
         warnings.append(WARNING_SET_BONUS_FORMULAS_NOT_INCLUDED)
         warnings.append(WARNING_CONDITIONAL_SET_BONUSES_NOT_INCLUDED)
@@ -262,6 +269,8 @@ def _set_counts(summary: Mapping[str, Any]) -> list[ArtifactSetCountSnapshot]:
                 set_uid=_text(item.get("set_uid")),
                 set_name=_text(item.get("set_name")),
                 count=_optional_int(item.get("count")) or 0,
+                source_set_id=_optional_int(item.get("source_set_id")),
+                canonical_set_resolved=bool(_text(item.get("set_uid"))),
             )
         )
     return result
@@ -283,6 +292,8 @@ def _active_set_bonuses(
             owned_count = _optional_int(item.get("owned_count")) or piece_count
             if piece_count <= 0:
                 continue
+            if not _text(item.get("set_uid")):
+                continue
             result.append(
                 ArtifactActiveSetBonusSnapshot(
                     set_uid=_text(item.get("set_uid")),
@@ -295,6 +306,8 @@ def _active_set_bonuses(
             return result
 
     for item in set_counts:
+        if not item.canonical_set_resolved:
+            continue
         if item.count >= 4:
             result.append(
                 ArtifactActiveSetBonusSnapshot(

@@ -41,12 +41,12 @@ from .engine_store import (
     DEFAULT_GCSIM_ENGINE_STORE_DIR,
     GcsimEngineStore,
     GcsimEngineStoreError,
-    PROJECT_ROOT,
 )
 from .runtime_probe import _trim_probe_text
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
-DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "optimizer-runs"
+DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR = ACCOUNT_ROOT / "data" / "gcsim" / "optimizer-runs"
 DEFAULT_GCSIM_OPTIMIZER_TIMEOUT_SECONDS = 30 * 60
 DEFAULT_GCSIM_OPTIMIZER_SIMULATION_TIMEOUT_SECONDS = 5 * 60
 DEFAULT_GCSIM_OPTIMIZER_INPUT_FILENAME = "optimizer-input.txt"

@@ -10,6 +10,10 @@ Use the existing local SQLite DB:
 
 - `data/artifacts.db`
 
+This is account-relative under `ACCOUNT_ROOT`; saved accounts each own a separate
+database. Profile routing, deletion and settings reset are owned by
+[Saved accounts](ACCOUNT_PROFILES.md).
+
 The filename is legacy. Treat this as the unified local runtime SQLite DB for
 account, equipment, artifact, and selected static-effect tables, not as an
 artifact-only database.
@@ -20,23 +24,24 @@ Schema initialization lives in:
 - `hoyolab_export/account_storage.py`
 - `hoyolab_export/account_equipment.py`
 
-Normal HoYoLAB import updates these tables automatically after the raw
-HoYoLAB JSON/cache files and crop manifest have been written:
+Normal HoYoLAB import publishes these tables with source artifacts, binding
+and a durable receipt in one transaction, before optional JSON/image work:
 
 ```powershell
 .\.venv\Scripts\python.exe -m hoyolab_export.run_import
 ```
 
-During normal import, missing side icons are cached from already-known
-HoYoLAB `side_icon` URLs and existing valid local icon files are reused. Account
-SQLite sync failures are reported as import warnings after the raw import, but
-do not delete the refreshed raw JSON/artifact results.
+Missing side icons are cached concurrently after publication from already-known
+HoYoLAB URLs. A core SQLite failure rolls back the entire account unit, retaining
+staged source for retry; optional file/catalog failures keep the receipt committed.
+The owner is [import reliability](HOYOLAB_IMPORT_RELIABILITY.md).
 
-AppShell's HoYoLAB "Change equipment" switch defaults OFF. With its explicit
-`--change-equipment` flag, import applies canonical equipment only after successful
-account storage sync and a complete artifact observation. A failed sync or
-unmapped artifact set preserves equipment and completes the available account
-import with a visible warning; it does not discard the refreshed raw source.
+AppShell's HoYoLAB "Change equipment" switch defaults ON. With its enabled
+`--change-equipment` flag, import applies canonical equipment inside the core
+transaction after validation. Unknown canonical set references do not invalidate
+otherwise complete source observations. An assignment revision captured before
+acquisition prevents overwriting gear edited during the wait. Receipt replay
+never reapplies committed equipment.
 Weapon
 identity is reused through `weapon_equipment_from_detail_rows`; historical
 merged inventory/stack provenance must not be used as current assignments.

@@ -45,6 +45,9 @@ from run_workspace.gcsim.artifact_runner import (
     DEFAULT_GCSIM_RUNS_DIR,
     run_active_gcsim_artifact,
 )
+from run_workspace.gcsim.optimizer_artifact_database import (
+    find_ambiguous_mixed_source_artifact_groups,
+)
 from run_workspace.gcsim.config_assembly import (
     GcsimFullConfigAssembly,
     assemble_gcsim_full_config,
@@ -289,6 +292,7 @@ def build_selected_team_payload(
 
     details: list[SelectedTeamCharacterDetail] = []
     payload_characters: list[dict[str, Any]] = []
+    allocation_issues: list[SelectedTeamConfigIssue] = []
     artifact_set_resolver = _artifact_set_key_resolver(artifact_set_registry_source)
 
     with closing(_connect_readonly_db(db_path)) as conn:
@@ -308,13 +312,30 @@ def build_selected_team_payload(
                 if payload_character:
                     payload_characters.append(payload_character)
 
+        allocated_ids: set[int] = set()
+        for detail in details:
+            artifact_build = _mapping(detail.payload_character.get("artifact_build"))
+            if artifact_build.get("owned_artifact_ids_claimed") is False:
+                continue
+            allocated_ids.update(_artifact_ids_by_pos(
+                artifact_build.get("artifact_ids_by_pos")
+            ).values())
+        for group in find_ambiguous_mixed_source_artifact_groups(conn):
+            if len(allocated_ids.intersection(group)) >= 2:
+                allocation_issues.append(_issue(
+                    "artifact_mixed_source_copy_ambiguous",
+                    "selected_team.artifact_ids",
+                    "Team uses matching scanner and HoYoLAB records without proof of separate copies.",
+                    entity_type="artifact",
+                ))
+
     warnings = _dedupe_tuple(
         warning
         for detail in details
         for warning in detail.warnings
     )
-    issues = tuple(issue for detail in details for issue in detail.issues)
-    ready = bool(details) and all(detail.ready for detail in details)
+    issues = tuple(issue for detail in details for issue in detail.issues) + tuple(allocation_issues)
+    ready = bool(details) and all(detail.ready for detail in details) and not allocation_issues
     payload = _payload(
         team_index=team_index,
         required_slots=tuple(detail.slot_index for detail in details),
@@ -1410,12 +1431,31 @@ def _artifact_payload_from_snapshot(
     for item in summary.get("set_counts") or []:
         if not isinstance(item, Mapping):
             continue
-        resolved = artifact_set_resolver.resolve(
-            set_uid=_text(item.get("set_uid")),
-            set_name=_text(item.get("set_name")),
-        )
+        set_uid = _text(item.get("set_uid"))
         count = _optional_int(item.get("count")) or 0
-        if count >= 2 and not resolved["gcsim_key"]:
+        resolved = (
+            artifact_set_resolver.resolve(
+                set_uid=set_uid,
+                set_name=_text(item.get("set_name")),
+            )
+            if set_uid else {
+                "gcsim_key": "", "source": "canonical_set_unresolved",
+                "ambiguous": False, "warnings": (),
+            }
+        )
+        if count >= 2 and not set_uid:
+            issues.append(
+                _issue(
+                    "artifact_set_canonical_mapping_missing",
+                    "artifacts.set_uid",
+                    "Active source artifact set has no canonical set identity.",
+                    entity_type="artifact_set",
+                    project_id="",
+                    display_name=_text(item.get("set_name")),
+                    slot_index=slot_index,
+                )
+            )
+        elif count >= 2 and not resolved["gcsim_key"]:
             issues.append(
                 _issue(
                     "artifact_set_gcsim_key_not_ready",
@@ -1430,7 +1470,9 @@ def _artifact_payload_from_snapshot(
         warnings.extend(resolved["warnings"])
         set_counts.append(
             {
-                "set_uid": _text(item.get("set_uid")),
+                "set_uid": set_uid,
+                "source_set_id": item.get("source_set_id"),
+                "canonical_set_resolved": bool(set_uid),
                 "display_name": _text(item.get("set_name")) or _text(item.get("set_uid")),
                 "set_name": _text(item.get("set_name")),
                 "count": count,

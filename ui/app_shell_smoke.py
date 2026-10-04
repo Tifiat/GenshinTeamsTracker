@@ -19,12 +19,20 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print opt-in AppShell timing logs for click/filter profiling.",
     )
+    parser.add_argument("--profile-child", action="store_true", help=argparse.SUPPRESS)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if not args.profile_child:
+        from run_workspace.profile_control import supervise_app
+        return supervise_app(["--perf-log"] if args.perf_log else [])
+    from run_workspace.profile_context import bootstrap_profile
+    from run_workspace.profile_control import profile_operation_lock
+    with profile_operation_lock():
+        bootstrap_profile()
     if args.perf_log:
         os.environ["GTT_PERF_LOG"] = "1"
     configure_startup_ui_scale()

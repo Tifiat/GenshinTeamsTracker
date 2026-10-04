@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import io
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
 from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -30,6 +31,10 @@ from .network_config import (
     DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS,
     normalize_network_workers,
 )
+from .monster_icon_catalog import (
+    enrich_missing_monster_icons,
+    fetch_nanoka_monster_icon_catalog,
+)
 
 
 SCHEMA_VERSION = 1
@@ -48,6 +53,10 @@ class AbyssSourceDataCacheError(ValueError):
     """Raised when a cached Abyss source-data file is malformed."""
 
 
+class AbyssIconBrowserRequired(AbyssSourceDataCacheError):
+    """A public icon needs an ordinary browser navigation, not an HTTP retry."""
+
+
 @dataclass(frozen=True, slots=True)
 class AbyssMonsterIconCacheEntry:
     row_index: int
@@ -57,6 +66,7 @@ class AbyssMonsterIconCacheEntry:
     cached_icon_path: str | None
     status: str
     warning: str | None = None
+    needs_browser: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,9 +159,13 @@ def cache_abyss_floor_monster_icons(
     *,
     cache_dir: str | Path | None = None,
     icon_fetcher: IconBytesFetcher | None = None,
+    catalog_fetcher: Callable[[str | None], Mapping[str, tuple[str, ...]]] | None = None,
+    browser_fetcher: Callable[..., Any] | None = None,
     max_workers: int = DEFAULT_ICON_CACHE_WORKERS,
+    executor: Executor | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> IconCacheResult:
-    """Cache local monster icons for source-data rows without fetching pages."""
+    """Cache icons, repairing missing tower URLs from Nanoka's monster catalog."""
 
     # A later successful retry must replace warnings from an earlier HTTP
     # failure, rather than leaving obsolete failures in the saved source data.
@@ -170,6 +184,31 @@ def cache_abyss_floor_monster_icons(
         cache_dir=cache_dir,
     )
     asset_dir.mkdir(parents=True, exist_ok=True)
+    catalog_work = int(any(not row.nanoka_icon_url and not _has_cached_icon(row, asset_dir)
+                           for row in data.enemy_rows))
+    browser_work = sum(
+        bool(row.fandom_icon_url and not _has_cached_icon(row, asset_dir))
+        for row in data.enemy_rows
+    ) if icon_fetcher is None or browser_fetcher is not None else 0
+    # Reserve potential browser work before reporting progress. HTTP completion
+    # must not show 100% while a required browser download is still outstanding.
+    total = len(data.enemy_rows) + catalog_work + browser_work
+    _notify_icon_progress(progress_callback, 0, total)
+    if catalog_work:
+        # Empty period enemy lists must not disable a separate display source.
+        # One catalog request serves every missing row, including cache retries.
+        # Reuse the shared executor to stay within the HP/icon network bound.
+        loader = catalog_fetcher or fetch_nanoka_monster_icon_catalog
+        manifest = data.source_urls.get("nanoka_manifest_json_url")
+        try:
+            catalog = (executor.submit(loader, manifest).result()
+                       if executor is not None else loader(manifest))
+            data = enrich_missing_monster_icons(data, catalog)
+        except Exception:  # Optional metadata must not prevent Fandom/cache fallback.
+            data = replace(data, global_warnings=(
+                *data.global_warnings, "nanoka_icon_catalog_unavailable",
+            ))
+        _notify_icon_progress(progress_callback, catalog_work, total)
     fetcher = icon_fetcher or _fetch_url_bytes
     updated_rows: list[AbyssEnemySourceRow] = []
     entries: list[AbyssMonsterIconCacheEntry] = []
@@ -184,7 +223,23 @@ def cache_abyss_floor_monster_icons(
         normalize_network_workers(max_workers),
         len(data.enemy_rows) or 1,
     )
-    if worker_count == 1 or len(data.enemy_rows) <= 1:
+    if executor is not None:
+        futures = {
+            executor.submit(
+                _cache_icon_for_row,
+                row,
+                row_index=row_index,
+                asset_dir=asset_dir,
+                fetcher=fetcher,
+            ): row_index
+            for row_index, row in enumerate(data.enemy_rows)
+        }
+        completed = 0
+        for future in as_completed(futures):
+            row_results[futures[future]] = future.result()
+            completed += 1
+            _notify_icon_progress(progress_callback, completed + catalog_work, total)
+    elif worker_count == 1 or len(data.enemy_rows) <= 1:
         for row_index, row in enumerate(data.enemy_rows):
             row_results[row_index] = _cache_icon_for_row(
                 row,
@@ -192,10 +247,11 @@ def cache_abyss_floor_monster_icons(
                 asset_dir=asset_dir,
                 fetcher=fetcher,
             )
+            _notify_icon_progress(progress_callback, row_index + 1 + catalog_work, total)
     else:
-        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        with ThreadPoolExecutor(max_workers=worker_count) as local_executor:
             futures = {
-                executor.submit(
+                local_executor.submit(
                     _cache_icon_for_row,
                     row,
                     row_index=row_index,
@@ -204,8 +260,58 @@ def cache_abyss_floor_monster_icons(
                 ): row_index
                 for row_index, row in enumerate(data.enemy_rows)
             }
+            completed = 0
             for future in as_completed(futures):
                 row_results[futures[future]] = future.result()
+                completed += 1
+                _notify_icon_progress(progress_callback, completed + catalog_work, total)
+
+    # Keep the fast HTTP/cache path. Only an explicit browser-verification
+    # response uses one normal browser for the outstanding public images.
+    # Injected HTTP providers retain a fully offline/testable boundary unless
+    # their caller also supplies a browser provider.
+    browser_rows = [index for index, value in enumerate(row_results)
+                    if value is not None and value[0].needs_browser]
+    if browser_rows and (icon_fetcher is None or browser_fetcher is not None):
+        from .browser_image_fetcher import fetch_public_fandom_images
+
+        browser_loader = browser_fetcher or fetch_public_fandom_images
+        urls = tuple(dict.fromkeys(row_results[index][0].source_url for index in browser_rows))
+        completed = len(data.enemy_rows) + catalog_work
+        _notify_icon_progress(progress_callback, completed, total)
+        try:
+            # Keep navigation in a fresh public browser ordered. Besides
+            # respecting the shared HP/icon budget, a later request must not
+            # race the first navigation's ordinary browser/session setup.
+            if executor is not None:
+                browser_result = executor.submit(browser_loader, urls, max_concurrency=1).result()
+            else:
+                browser_result = browser_loader(urls, max_concurrency=1)
+            images, errors = browser_result.images, browser_result.errors
+        except Exception as exc:
+            images = {}
+            errors = {url: f"browser_unavailable:{type(exc).__name__}" for url in urls}
+
+        for index in browser_rows:
+            entry, failed_row, _ = row_results[index]
+            if entry.source_url in images:
+                # Reuse the existing row/counter/warning path, with no
+                # additional network request to either source.
+                row_results[index] = _cache_icon_for_row(
+                    data.enemy_rows[index], row_index=index, asset_dir=asset_dir,
+                    fetcher=images.__getitem__,
+                )
+            else:
+                error = errors.get(entry.source_url, "image_unavailable")
+                row_results[index] = (
+                    replace(entry, warning=f"{entry.warning}:browser_icon_cache_failed:{error}"),
+                    failed_row, None,
+                )
+            completed += 1
+            _notify_icon_progress(progress_callback, completed, total)
+
+    if browser_work:
+        _notify_icon_progress(progress_callback, total, total)
 
     for row_result in row_results:
         if row_result is None:
@@ -239,6 +345,20 @@ def cache_abyss_floor_monster_icons(
         entries=tuple(entries),
         warnings=tuple(global_warnings),
     )
+
+
+def _notify_icon_progress(
+    callback: Callable[[str, int, int], None] | None,
+    completed: int,
+    total: int,
+) -> None:
+    if callback is None:
+        return
+    try:
+        callback("icons", completed, total)
+    except Exception:
+        # Progress is observational; a UI/logger failure cannot block caching.
+        pass
 
 
 def _is_icon_cache_warning(warning: str) -> bool:
@@ -690,6 +810,7 @@ def _cache_icon_for_row(
         ("fandom", row.fandom_icon_url),
     ]
     source_failures: list[str] = []
+    needs_browser = False
     usable_candidates = [
         (source_kind, source_url)
         for source_kind, source_url in candidates
@@ -711,9 +832,10 @@ def _cache_icon_for_row(
             None,
         )
 
+    # Reuse either source's saved image before attempting any network request.
     for source_kind, source_url in usable_candidates:
         target_path = _monster_icon_cache_path(row, source_url, asset_dir=asset_dir)
-        if target_path.is_file():
+        if target_path.is_file() and target_path.stat().st_size:
             warning = _fallback_warning(source_kind, source_failures)
             return (
                 AbyssMonsterIconCacheEntry(
@@ -728,6 +850,8 @@ def _cache_icon_for_row(
                 _row_with_cached_icon(row, target_path, warning),
                 "cache_hit",
             )
+    for source_kind, source_url in usable_candidates:
+        target_path = _monster_icon_cache_path(row, source_url, asset_dir=asset_dir)
         try:
             content = fetcher(source_url)
             if not content:
@@ -735,6 +859,9 @@ def _cache_icon_for_row(
             target_path.parent.mkdir(parents=True, exist_ok=True)
             target_path.write_bytes(content)
         except Exception as exc:  # noqa: BLE001 - cache failures must not break source data.
+            needs_browser = needs_browser or (
+                source_kind == "fandom" and isinstance(exc, AbyssIconBrowserRequired)
+            )
             source_failures.append(f"{source_kind}_icon_cache_failed")
             last_error = str(exc)
             continue
@@ -769,6 +896,7 @@ def _cache_icon_for_row(
             cached_icon_path=None,
             status="failed",
             warning=entry_warning,
+            needs_browser=needs_browser,
         ),
         _row_with_icon_cache_warning(row, warning),
         None,
@@ -797,6 +925,16 @@ def _fallback_warning(source_kind: str, failures: list[str]) -> str | None:
     if source_kind == "fandom" and failures:
         return "nanoka_icon_cache_failed_used_fandom_icon"
     return None
+
+
+def _has_cached_icon(row: AbyssEnemySourceRow, asset_dir: Path) -> bool:
+    for url in (row.nanoka_icon_url, row.fandom_icon_url):
+        if not url:
+            continue
+        path = _monster_icon_cache_path(row, url, asset_dir=asset_dir)
+        if path.is_file() and path.stat().st_size:
+            return True
+    return False
 
 
 def _monster_icon_cache_path(
@@ -829,8 +967,8 @@ def _fetch_url_bytes(url: str) -> bytes:
         "User-Agent": ICON_CACHE_USER_AGENT,
     }
     if urlparse(url).hostname == "static.wikia.nocookie.net":
-        # Wikia serves public images with HTTP 403 when the source site's
-        # referrer is missing. This is the same referrer used by its pages.
+        # Preserve the public page's referrer. A Cloudflare challenge can still
+        # reject a plain HTTP client; a referrer alone does not solve it.
         headers["Referer"] = "https://genshin-impact.fandom.com/"
     request = Request(
         url,
@@ -838,6 +976,16 @@ def _fetch_url_bytes(url: str) -> bytes:
     )
     try:
         with urlopen(request, timeout=30) as response:
-            return response.read()
-    except (HTTPError, URLError, TimeoutError) as exc:
+            content = response.read()
+        from PIL import Image
+        with Image.open(io.BytesIO(content)) as image:
+            image.verify()
+        return content
+    except HTTPError as exc:
+        if exc.code == 403 and (exc.headers or {}).get("Cf-Mitigated", "").casefold() == "challenge":
+            raise AbyssIconBrowserRequired(
+                f"Icon source requires browser verification (Cloudflare challenge): {url}"
+            ) from exc
+        raise AbyssSourceDataCacheError(f"Failed to fetch icon {url}: {exc}") from exc
+    except (URLError, OSError, ValueError) as exc:
         raise AbyssSourceDataCacheError(f"Failed to fetch icon {url}: {exc}") from exc

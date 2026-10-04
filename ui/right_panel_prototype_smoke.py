@@ -21,6 +21,7 @@ from hoyolab_export.display_stat_effects import (
     list_weapon_display_stat_effects,
 )
 from hoyolab_export.paths import PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT, account_asset_path
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
     MODE_DPS_DUMMY,
@@ -749,7 +750,7 @@ def _weapon_passive_tooltip_for_stack(
 
 
 def _account_content_language() -> str:
-    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    path = ACCOUNT_ROOT / "data" / "hoyolab" / "account_language.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -798,9 +799,7 @@ def _existing_project_path(value: Any) -> Path | None:
     text = _text(value)
     if not text:
         return None
-    path = Path(text)
-    if not path.is_absolute():
-        path = PROJECT_ROOT / path
+    path = account_asset_path(text)
     return path if path.exists() else None
 
 

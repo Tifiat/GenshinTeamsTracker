@@ -5,6 +5,11 @@ reads it at runtime, and what each layer is not allowed to mean. This is a
 boundary map, not a full architecture document. Detailed table/source notes live
 in the linked handoffs.
 
+Account-relative paths below resolve under the selected `ACCOUNT_ROOT`.
+[Saved accounts and defaults](ACCOUNT_PROFILES.md) owns profile isolation,
+legacy migration, explicit deletion and complete preference reset. Public
+reference caches and engine installations remain checkout-wide.
+
 ## Generated output lifecycle (mandatory)
 
 Every new persistent generated-output root must declare its producer, consumers,
@@ -220,18 +225,19 @@ Paths:
 
 Role:
 
-- source/cache output of the HoYoLAB import pipeline;
-- input to account SQLite sync, artifact import, crop/asset generation, and
-  explicit debug/source inspection tools;
+- rebuildable projections of the committed HoYoLAB source snapshot in SQLite;
+- input to manual/debug sync, asset generation and explicit source inspection;
 - test fixture source where a parser/source path is being tested.
 
-Import preparation validates inventory/detail batches and non-empty export
-layout/crops before publishing account data. Crops use a temporary path mirror;
-account JSON replacement is atomic per file, not across SQLite and all files.
+Import preparation validates the account identity and complete inventory/detail
+batch. Source artifacts, account observations, optional equipment and receipt
+commit together; catalog/image readiness is independent. JSON replacement and
+staged image publication are atomic per file and recoverable from the receipt.
 Failure coverage: `docs/handoff/HOYOLAB_IMPORT_RELIABILITY.md`.
 
-The default-OFF HoYoLAB "Change equipment" setting explicitly applies fresh
-observations to canonical SQLite equipment after successful account sync.
+The HoYoLAB "Change equipment" setting applies fresh observations to canonical
+SQLite equipment inside source publication when enabled. Its first-run default
+is ON; saved choices are preserved (see `ACCOUNT_EQUIPMENT_STATE_DESIGN.md`).
 Runtime UI still reads SQLite; merged historical source inventory is not an
 equipment assignment source. Presets remain separate and are never rewritten.
 
@@ -260,8 +266,8 @@ Runtime account tables:
 
 Writers:
 
-- normal HoYoLAB import (`python -m hoyolab_export.run_import`) after raw JSON,
-  artifacts, and crop manifest are written;
+- normal HoYoLAB import (`python -m hoyolab_export.run_import`) inside the core
+  snapshot transaction, before derived JSON/catalog/image publication;
 - manual/debug resync (`python -m hoyolab_export.account_storage`), optionally
   with `--download-side-icons`.
 
@@ -501,7 +507,7 @@ Boundaries:
   right-panel target remains only as a secondary operation target;
 - separate from build preset definitions;
 - separate from HoYoLAB observed current-equipped provenance;
-- live import applies fresh observations only when the default-OFF Change
+- live import applies fresh observations only when the persistent Change
   equipment setting is enabled and account SQLite sync succeeds, through one
   validated equipment batch; presets remain unchanged;
 - missing HoYoLAB equipment data means "no data", not "clear local equipment";

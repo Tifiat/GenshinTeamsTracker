@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 from PySide6.QtCore import Qt, QProcess, QSize, QTimer
 from PySide6.QtGui import QIcon
@@ -63,9 +64,10 @@ from ui.widgets.team import TeamSlot
 from ui.widgets.timers import AbyssFloorRow
 from ui.widgets.loader import HoYoLABLoadingDialog
 from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
+from ui.utils.tooltips import install_custom_tooltip
 
-STATE_FILE = "state.json"
-RUNS_FILE = "runs_history.json"
+STATE_FILE = str(ACCOUNT_ROOT / "state.json")
+RUNS_FILE = str(ACCOUNT_ROOT / "runs_history.json")
 HOYOLAB_IMPORT_STATUSES = {
     "preparing": ("loader.preparing", 0.03),
     "opening_hoyolab": ("loader.opening_hoyolab", 0.10),
@@ -268,18 +270,18 @@ class App(QWidget):
 
         if import_running:
             self.btn_hoyolab_export.setEnabled(False)
-            self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
+            self._hoyolab_export_tooltip.set_text(tr("hoyolab.import_running_tooltip"))
             return
 
         if import_cooldown:
             self.btn_hoyolab_export.setEnabled(False)
-            self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_cleanup_tooltip"))
+            self._hoyolab_export_tooltip.set_text(tr("hoyolab.import_cleanup_tooltip"))
             return
 
         if login_running:
             self.btn_hoyolab_export.setText(tr("hoyolab.login_waiting_button"))
             self.btn_hoyolab_export.setEnabled(False)
-            self.btn_hoyolab_export.setToolTip("")
+            self._hoyolab_export_tooltip.set_text("")
             return
 
         if status == AuthStatus.LOGGED_IN:
@@ -289,11 +291,11 @@ class App(QWidget):
                 else tr("hoyolab.import_button")
             )
             self.btn_hoyolab_export.setEnabled(True)
-            self.btn_hoyolab_export.setToolTip("")
+            self._hoyolab_export_tooltip.set_text("")
             return
 
         self.btn_hoyolab_export.setText(tr("hoyolab.authorize_or_select_profile"))
-        self.btn_hoyolab_export.setToolTip("")
+        self._hoyolab_export_tooltip.set_text("")
 
         if status == AuthStatus.PROFILE_LOCKED:
             self.btn_hoyolab_export.setEnabled(False)
@@ -477,7 +479,7 @@ class App(QWidget):
         self._hoyolab_import_lines = []
 
         self.btn_hoyolab_export.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
+        self._hoyolab_export_tooltip.set_text(tr("hoyolab.import_running_tooltip"))
 
         process.start()
 
@@ -567,7 +569,7 @@ class App(QWidget):
         self._hoyolab_import_cooldown_active = True
 
         self.btn_hoyolab_export.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_cleanup_tooltip"))
+        self._hoyolab_export_tooltip.set_text(tr("hoyolab.import_cleanup_tooltip"))
         QTimer.singleShot(HOYOLAB_IMPORT_COOLDOWN_MS, self._finish_hoyolab_import_cooldown)
 
         if exit_code == 0 and exit_status == QProcess.NormalExit:
@@ -754,6 +756,7 @@ class App(QWidget):
 
         self.btn_hoyolab_export = QPushButton(tr("hoyolab.import_button"))
         self.btn_hoyolab_export.setMinimumHeight(30)
+        self._hoyolab_export_tooltip = install_custom_tooltip(self.btn_hoyolab_export)
         self.btn_hoyolab_export.clicked.connect(self.run_hoyolab_export)
 
         self.btn_profile_menu = QPushButton(tr("profile.menu_button"))

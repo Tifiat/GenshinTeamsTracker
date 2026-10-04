@@ -651,9 +651,10 @@ Equipment-state note:
 - Artifact/preset/weapon side icons should come from persistent current
   equipment tables. `artifact_build_targets` remains intended/available target
   metadata, not current ownership.
-- Live HoYoLAB import calls the equipment batch path only when the default-OFF
-  Change equipment setting is enabled and account sync succeeds. Missing
-  observations must not clear local equipment; presets stay separate.
+- Live HoYoLAB import calls the equipment batch path when Change equipment is
+  enabled, within the atomic account publication. Its current default and
+  saved-choice policy are owned by `ACCOUNT_EQUIPMENT_STATE_DESIGN.md`.
+  Missing observations must not clear local equipment; presets stay separate.
 - Right-panel slot drag/swap is connected through `slot_dropped` to
   `AppShell._on_slot_dropped` / controller `swap_slots`; it supports within-team
   and cross-team moves independently of quick-pick.

@@ -172,6 +172,8 @@ class CustomTooltipController(QObject):
 		QWidget.setToolTip(self.owner, "")
 		if not self.text():
 			self.hide()
+		elif self._popup.isVisible():
+			self.show()
 
 	def text(self) -> str:
 		provider = self._text_provider
@@ -219,4 +221,13 @@ def install_custom_tooltip(
 	*,
 	delay_ms: int = CUSTOM_TOOLTIP_DELAY_MS,
 ) -> CustomTooltipController:
-	return CustomTooltipController(owner, text, delay_ms=delay_ms)
+	# Reusing an icon/button must update its existing hover surface. Multiple
+	# event filters would otherwise show both the old and the new description.
+	controller = getattr(owner, "_custom_tooltip_controller", None)
+	if isinstance(controller, CustomTooltipController):
+		controller._delay_ms = int(delay_ms)
+		controller.set_text(text)
+		return controller
+	controller = CustomTooltipController(owner, text, delay_ms=delay_ms)
+	owner._custom_tooltip_controller = controller
+	return controller

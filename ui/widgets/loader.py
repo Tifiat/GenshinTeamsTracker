@@ -1,3 +1,5 @@
+import time
+
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QDialog, QLabel, QVBoxLayout
 
@@ -22,6 +24,8 @@ class HoYoLABLoadingDialog(QDialog):
 
         self._progress_value = 0.0
         self._target_progress = 0.0
+        self._started_at = time.monotonic()
+        self._elapsed_seconds = -1
 
         self.bar = ElementProgressBar(self)
 
@@ -55,11 +59,22 @@ class HoYoLABLoadingDialog(QDialog):
             """
         )
 
+        self.details_label = QLabel()
+        self.details_label.setTextFormat(Qt.PlainText)
+        self.details_label.setWordWrap(True)
+        self.details_label.setMinimumHeight(116)
+        self.details_label.setStyleSheet("color: #f4ead8; font-size: 14px;")
+        self.elapsed_label = QLabel()
+        self.elapsed_label.setAlignment(Qt.AlignCenter)
+        self.elapsed_label.setStyleSheet("color: #c8c0b1; font-size: 13px;")
+
         root = QVBoxLayout(self)
         root.setContentsMargins(30, 24, 30, 24)
         root.setSpacing(16)
         root.addWidget(self.bar, alignment=Qt.AlignCenter)
         root.addWidget(self.status_label)
+        root.addWidget(self.details_label)
+        root.addWidget(self.elapsed_label)
         root.addWidget(self.notice_label)
 
         self.setStyleSheet(
@@ -77,7 +92,10 @@ class HoYoLABLoadingDialog(QDialog):
         self.timer.timeout.connect(self._tick)
         self.timer.start()
 
-        self.resize(620, 240)
+        self.resize(620, 390)
+
+    def set_details(self, text: str) -> None:
+        self.details_label.setText(text)
 
     def set_status(self, text: str, progress: float | None = None) -> None:
         self.status_label.setText(text)
@@ -94,11 +112,12 @@ class HoYoLABLoadingDialog(QDialog):
         self.notice_label.setText(tr("loader.notice"))
 
     def _tick(self) -> None:
-        # Пока импорт не завершён, прогресс сам медленно ползёт вперёд,
-        # чтобы loader не стоял ступеньками между статусами.
-        if self._target_progress < 1.0:
-            self._target_progress = min(0.94, self._target_progress + 0.0002)
+        elapsed = int(time.monotonic() - self._started_at)
+        if elapsed != self._elapsed_seconds:
+            self._elapsed_seconds = elapsed
+            self.elapsed_label.setText(tr("loader.elapsed", time=f"{elapsed // 60}:{elapsed % 60:02d}"))
 
+        # Interpolate only confirmed work. Waiting never invents progress.
         if self._progress_value >= self._target_progress:
             return
 

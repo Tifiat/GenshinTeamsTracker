@@ -2,6 +2,67 @@
 
 Research date: 2026-05-18
 
+<!-- handoff-current: abyss-icon-recovery -->
+2026-10-04, Worker5. Icons no longer depend exclusively on a
+successful Nanoka period/HP join. Missing Nanoka URLs are resolved once per
+icon batch from the separate general monster catalog, by unambiguous exact
+name or documented icon-only alias. HP, monster identity, waves and counts
+retain their existing authority. The catalog request shares the HP/icon
+network limit; progress includes it, and existing cached images take priority.
+Resolved URLs persist in the existing period JSON; no catalog dump is stored.
+
+Public comparison found the same 2026-09-16 period in main and Worker5. Main's
+2026-09-27 images were already cached. Both unchanged main HTTP code and a
+fresh headless browser received `Cf-Mitigated: challenge`; ordinary visible
+browsers retrieved the exact missing files. Old/new urllib paths never used
+browser cookies, and the refusal reproduces without concurrency. Cookie-only
+causality is not established.
+
+After cache and Nanoka/HTTP attempts, an explicit Fandom browser-verification
+response now uses one transient ordinary Chrome/Edge browser for missing icons.
+Its navigations are ordered; it shares the HP/icon worker budget, validates
+bytes/URLs, closes owned resources and reserves progress until done. It never
+opens account profiles, copies cookies, solves challenges or retries indefinitely.
+A continued refusal stays an optional asset failure. Files use the existing
+period cache/cleanup; there is no new browser-state or catalog cache.
+
+Worker5's real period cache now has eight validated images: six Nanoka and two
+Fandom browser downloads. An initial integrated pass recovered only one of the
+two (7/8); the ordered follow-up recovered the last. Enemy/HP/wave/count fields
+were unchanged. A subsequent run returned eight cache hits with zero HTTP or
+browser calls. This proves this cache repair, not permanent server availability
+or a new authenticated full-import timing. The focused source/cache suite
+passed 83 tests. Fact DPS rich-text icons use local file URIs; Windows path and
+tooltip regressions are in [tooltip contracts](TOOLTIP_CONTRACTS.md). Visible
+AppShell acceptance and the full-import/multiaccount gate remain open. The
+later local-commit authorization does not close those gates; see the
+[transfer scope](WORKER5_TRANSFER_PACKAGE.md). No new app/import/network run
+was made while packaging the existing verified source.
+<!-- /handoff-current -->
+
+## 2026-10-04 browser recovery receipt
+
+The original Nanoka tower 123 enemy lists were empty. General monster lookup
+recovered six icons (140,948 bytes); Churin/Domovoy Sculptor and
+Sigurd/Lightkeeper were absent there. The successful ordinary-browser probe
+visited their exact cached Fandom URLs sequentially, without a period-page
+visit, profile or transferred cookies: Churin 3,832 bytes, Sigurd 3,322 bytes.
+Codex's browser also displayed both as 74x74 WebP. A fresh headless browser
+received the challenge. These observations do not identify which browser
+attribute Cloudflare uses or establish a cookie race as the cause.
+
+The initial integrated cache pass took 14.689s (6 hits, 1 download, 1 refusal).
+The ordered follow-up took 14.501s (7 hits, 1 download, 0 failures). All 8 Pillow
+checks passed; total cached image bytes: 148,102. Reuse made no image HTTP/browser
+calls. The first partial failure is retained as evidence of external variability,
+not rewritten as a single flawless 8/8 first import. The user's authenticated
+import was not rerun. Browser fallback is bounded to one batch per cache repair.
+`test_icon_browser_fallback.py` covers failed-only batching, partial refusal,
+launch failure, cache reuse, source preservation, ordered navigation budget and
+progress; `test_browser_image_fetcher.py` covers ordinary launch/context ownership,
+timeouts, image validation and allowed input/redirect URLs. Their 14 checks are
+included in the 83-test source/cache/refresh run, not additional to it.
+
 Document role: current production source-data notes in the Overview, followed
 by the historical 2026-05 source audit. The original audit changed no app/account
 state. Historical source availability and MVP recommendations are not a current
@@ -288,8 +349,19 @@ MVP recommendation:
   paths. Loading resolves the row value to the current local file path for Qt
   rendering, and schema-v1 compatibility can recover old absolute entries by
   filename when the copied file exists in the current period/floor icon asset
-  directory. Asset source priority is Nanoka monster icon URL, then Fandom
-  composition icon URL fallback. Missing/failed icons add warnings but keep
+  directory. Either source's existing cache is reused before networking. Missing
+  Nanoka URLs can be resolved by `monster_icon_catalog.py` from the independently
+  published `monster.json`, including when tower enemy arrays are empty. The
+  page declares the versioned endpoint; a verified tower manifest can supply
+  that same version without a second discovery request. Only unambiguous names
+  and explicit icon-only aliases are accepted; no HP or enemy identity is
+  inferred from this lookup. Current explicit aliases include Fandom redirects
+  from Battle-Hardened Chimeric Burrowbeast to Chimeric Burrowbeast and from
+  Battle-Hardened Fireblade Shock Trooper to Oprichniki Fireblade Shock Trooper.
+  Network priority is Nanoka monster icon URL, then Fandom composition icon URL.
+  Cloudflare challenge responses remain explicit failures; no challenge bypass
+  is attempted. Downloaded bytes must decode as an image before publication.
+  Missing/failed icons add warnings but keep
   source data usable. Icon downloads run with small bounded parallelism and
   existing URL-hash cache files are reused even during source-data `--force`;
   force refreshes the source JSON but does not blindly redownload identical icons.
@@ -335,6 +407,8 @@ MVP recommendation:
   calculation mode, HP/sec, DPS result/reason, and source summary including
   composition/name/count source, HP source, and match method/confidence. Native
   Qt/system tooltips are not acceptable for this user-facing surface.
+  HTML image `src` values must use `Path.resolve().as_uri()` for local cached
+  files; raw Windows drive paths can decode as pixmaps yet fail in Qt rich text.
   Account/Data has a persistent DPS setting for multi-target HP mode; default
   is off/solo-target.
 - Manual/debug period switching utility exists at

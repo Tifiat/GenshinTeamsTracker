@@ -4,6 +4,10 @@ import html
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
+
+from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
+from hoyolab_export.paths import HOYOLAB_DATA_DIR
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QPixmap
@@ -163,6 +167,7 @@ class RightPanelArtifactMiniZoneWidget(QLabel):
         super().__init__("", parent)
         self._tooltip_controller = None
         self._model_key: tuple[object, ...] | None = None
+        self._tooltip_key: tuple[object, ...] | None = None
         self._state = RightPanelArtifactMiniZoneState()
         self._box_size = QSize(box_size or QSize(SLOT_EQUIP_BOX_SIZE, SLOT_EQUIP_BOX_SIZE))
         self._icon_size = QSize(icon_size or QSize(SLOT_EQUIP_ICON_SIZE, SLOT_EQUIP_ICON_SIZE))
@@ -183,10 +188,24 @@ class RightPanelArtifactMiniZoneWidget(QLabel):
             self._icon_size.height(),
             int(round(effective_pixmap_dpr(self.devicePixelRatioF()) * 1000)),
         )
-        if model_key == self._model_key:
-            return
+        if model_key != self._model_key:
+            self._model_key = model_key
+            self._render_visual(state)
 
-        self._model_key = model_key
+        source_key = _set_bonus_description_source_key() if state.mini_sets else ()
+        descriptions = _set_bonus_descriptions(source_key) if state.mini_sets else {}
+        tooltip_key = (tuple(state.mini_sets), source_key, bool(descriptions))
+        if tooltip_key == self._tooltip_key:
+            return
+        self._tooltip_key = tooltip_key
+        tooltip = _build_mini_set_tooltip_html(state.mini_sets, descriptions=descriptions)
+        self._tooltip_controller = _set_custom_tooltip_text(
+            self,
+            self._tooltip_controller,
+            tooltip,
+        )
+
+    def _render_visual(self, state: RightPanelArtifactMiniZoneState) -> None:
         is_missing = state.label in {"Equip", "Fix", "ART"}
         object_name = self._missing_object_name if is_missing else self._object_name
         if object_name:
@@ -210,13 +229,6 @@ class RightPanelArtifactMiniZoneWidget(QLabel):
             self.setPixmap(pixmap)
         elif state.mini_sets:
             self.setText(_build_mini_set_fallback_text(state.mini_sets))
-
-        tooltip = _build_mini_set_tooltip_html(state.mini_sets)
-        self._tooltip_controller = _set_custom_tooltip_text(
-            self,
-            self._tooltip_controller,
-            tooltip,
-        )
 
     def refresh_hidpi_pixmap(self) -> None:
         self._model_key = None
@@ -370,8 +382,10 @@ def _build_mini_set_tooltip(
 
 def _build_mini_set_tooltip_html(
     active_sets: tuple[RightPanelBuildMiniSetViewModel, ...],
+    *,
+    descriptions: dict[tuple[str, int], str] | None = None,
 ) -> str:
-    rows = _build_mini_set_tooltip_rows(active_sets)
+    rows = _build_mini_set_tooltip_rows(active_sets, descriptions=descriptions)
     rendered_rows: list[str] = []
     for piece_count, description in rows:
         description_html = html.escape(description).replace("\n", "<br>")
@@ -404,8 +418,11 @@ def _build_mini_set_tooltip_html(
 
 def _build_mini_set_tooltip_rows(
     active_sets: tuple[RightPanelBuildMiniSetViewModel, ...],
+    *,
+    descriptions: dict[tuple[str, int], str] | None = None,
 ) -> list[tuple[int, str]]:
-    descriptions = _set_bonus_descriptions()
+    if descriptions is None:
+        descriptions = _set_bonus_descriptions()
     rows: list[tuple[int, str]] = []
     for item in active_sets[:2]:
         if not item.set_uid:
@@ -420,12 +437,38 @@ def _build_mini_set_tooltip_rows(
     return rows
 
 
-@lru_cache(maxsize=1)
-def _set_bonus_descriptions() -> dict[tuple[str, int], str]:
+def _set_bonus_description_source_key() -> tuple[tuple[str, int, int], ...]:
+    paths = (
+        ARTIFACT_DB_PATH,
+        Path(str(ARTIFACT_DB_PATH) + "-wal"),
+        HOYOLAB_DATA_DIR / "account_language.json",
+    )
+    key: list[tuple[str, int, int]] = []
+    for path in paths:
+        try:
+            stat = path.stat()
+            key.append((str(path), stat.st_mtime_ns, stat.st_size))
+        except OSError:
+            key.append((str(path), 0, 0))
+    return tuple(key)
+
+
+def _set_bonus_descriptions(
+    source_key: tuple[tuple[str, int, int], ...] | None = None,
+) -> dict[tuple[str, int], str]:
     try:
-        return list_set_bonus_description_map()
+        return _cached_set_bonus_descriptions(
+            source_key if source_key is not None else _set_bonus_description_source_key()
+        )
     except Exception:
         return {}
+
+
+@lru_cache(maxsize=1)
+def _cached_set_bonus_descriptions(
+    source_key: tuple[tuple[str, int, int], ...],
+) -> dict[tuple[str, int], str]:
+    return list_set_bonus_description_map(db_path=Path(source_key[0][0]))
 
 
 def _clean_set_bonus_description(description: str) -> str:

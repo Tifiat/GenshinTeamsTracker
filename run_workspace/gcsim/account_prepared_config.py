@@ -876,12 +876,29 @@ def _current_artifact_payload_from_account_rows(
     for item in summary.get("set_counts") or []:
         if not isinstance(item, Mapping):
             continue
-        resolved = artifact_set_resolver.resolve(
-            set_uid=_text(item.get("set_uid")),
-            set_name=_text(item.get("set_name")),
-        )
+        set_uid = _text(item.get("set_uid"))
         count = _optional_int(item.get("count")) or 0
-        if count >= 2 and not resolved["gcsim_key"]:
+        # A localized name can coincidentally match an engine key; it cannot
+        # establish the canonical identity of an unmapped source set.
+        resolved = (
+            artifact_set_resolver.resolve(
+                set_uid=set_uid,
+                set_name=_text(item.get("set_name")),
+            )
+            if set_uid else {
+                "gcsim_key": "", "source": "canonical_set_unresolved",
+                "ambiguous": False, "warnings": (),
+            }
+        )
+        if count >= 2 and not set_uid:
+            issues.append(
+                AccountPreparedConfigIssue(
+                    "artifact_set_canonical_mapping_missing",
+                    "artifacts.set_uid",
+                    "Active source artifact set has no canonical set identity.",
+                )
+            )
+        elif count >= 2 and not resolved["gcsim_key"]:
             issues.append(
                 AccountPreparedConfigIssue(
                     "artifact_set_gcsim_key_not_ready",
@@ -892,7 +909,9 @@ def _current_artifact_payload_from_account_rows(
         warnings.extend(resolved["warnings"])
         set_counts.append(
             {
-                "set_uid": _text(item.get("set_uid")),
+                "set_uid": set_uid,
+                "source_set_id": item.get("source_set_id"),
+                "canonical_set_resolved": bool(set_uid),
                 "display_name": _text(item.get("set_name")) or _text(item.get("set_uid")),
                 "set_name": _text(item.get("set_name")),
                 "count": count,

@@ -1,19 +1,20 @@
 import shutil
 from pathlib import Path
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-HOYOLAB_EXPORT_DIR = PROJECT_ROOT / "hoyolab_export"
+HOYOLAB_EXPORT_DIR = ACCOUNT_ROOT / "hoyolab_export"
 HOYOLAB_PROFILE_DIR = HOYOLAB_EXPORT_DIR / "profile"
 
-HOYOLAB_DATA_DIR = PROJECT_ROOT / "data" / "hoyolab"
-HOYOLAB_ASSETS_DIR = PROJECT_ROOT / "assets" / "hoyolab"
+HOYOLAB_DATA_DIR = ACCOUNT_ROOT / "data" / "hoyolab"
+HOYOLAB_ASSETS_DIR = ACCOUNT_ROOT / "assets" / "hoyolab"
 HOYOLAB_CHARACTER_ASSETS_DIR = HOYOLAB_ASSETS_DIR / "characters"
 HOYOLAB_WEAPON_ASSETS_DIR = HOYOLAB_ASSETS_DIR / "weapons"
 HOYOLAB_SHARED_ASSETS_DIR = HOYOLAB_ASSETS_DIR / "shared"
 HOYOLAB_ARTIFACT_ASSETS_DIR = HOYOLAB_ASSETS_DIR / "artifacts"
-HOYOLAB_DEBUG_DIR = PROJECT_ROOT / "debug" / "hoyolab"
+HOYOLAB_DEBUG_DIR = ACCOUNT_ROOT / "debug" / "hoyolab"
 
 
 def ensure_hoyolab_dirs() -> None:

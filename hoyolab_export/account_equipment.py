@@ -4,6 +4,8 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from run_workspace.settings_defaults import settings_default
+
 
 ARTIFACT_SLOT_KEYS = ("flower", "plume", "sands", "goblet", "circlet")
 ARTIFACT_SLOT_KEY_BY_POS = {
@@ -22,7 +24,9 @@ ARTIFACT_POS_BY_SLOT_KEY = {
     "circlet": 5,
 }
 EQUIPMENT_SOURCES = ("manual", "hoyolab_import", "preset_equip", "future_sync")
-AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT = False
+AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT = bool(
+    settings_default("hoyolab_change_equipment_on_import")
+)
 
 
 class EquipmentError(ValueError):
@@ -616,13 +620,15 @@ def apply_hoyolab_equipment_snapshot(
     *,
     artifacts: list[tuple[int, int]],
     weapons: dict[int, str],
+    initialize: bool = True,
 ) -> dict[str, int]:
     """Apply only fresh visible assignments, atomically, without manual swaps.
 
     Unobserved slots survive unless their item is needed by an observed owner.
     This never creates items, increases weapon counts or edits saved presets.
     """
-    init_account_equipment_storage(conn)
+    if initialize:
+        init_account_equipment_storage(conn)
     artifact_targets = []
     seen_slots = set()
     seen_artifacts = set()

@@ -512,6 +512,123 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
         self.assertIsNone(summary)
         self.assertEqual(error, "network offline")
 
+    def test_optional_progress_callback_reaches_refresh_updater(self) -> None:
+        period = parse_hoyolab_abyss_period("2026/05/16-2026/06/16")
+        progress: list[tuple[str, int, int]] = []
+        callback = lambda phase, completed, total: progress.append((phase, completed, total))
+        received: list[object] = []
+
+        def updater(update_period: HoYoLABAbyssPeriod, *, progress_callback=None, **kwargs):
+            received.append(progress_callback)
+            return AbyssSourceDataRefreshResult(
+                period=update_period,
+                floor=12,
+                cache_saved=False,
+                cache_path=None,
+                matched=0,
+                unmatched=0,
+                ambiguous=0,
+                enemy_rows=0,
+                assets={"enabled": False},
+            )
+
+        summary, error = refresh_cached_abyss_source_data_for_hoyolab_period(
+            period,
+            updater=updater,
+            progress_callback=callback,
+        )
+
+        self.assertIsNone(error)
+        self.assertIsNotNone(summary)
+        self.assertEqual(received, [callback])
+
+
+    def test_failed_icons_leave_abyss_job_pending_and_retry_only_cached_icons(self) -> None:
+        period = parse_hoyolab_abyss_period("2026/05/16-2026/06/16")
+        source = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [
+                    fandom_row("Failed Enemy", chamber=1, side=1, wave=1),
+                    fandom_row("Good Enemy", chamber=1, side=1, wave=2),
+                ],
+            ),
+            nanoka_report=nanoka_report(
+                "119",
+                [
+                    nanoka_row("Failed Enemy", chamber=1, side=1, hp=100, monster_id="failed"),
+                    nanoka_row("Good Enemy", chamber=1, side=1, hp=200, monster_id="good"),
+                ],
+            ),
+        )
+
+        def initial_fetch(url: str) -> bytes:
+            if "failed" in url.lower():
+                raise OSError("fixture offline")
+            return b"fixture icon"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            first = cache_abyss_floor_monster_icons(
+                source, cache_dir=tmp, icon_fetcher=initial_fetch,
+            )
+            save_abyss_floor_source_data(first.data, cache_dir=tmp)
+            self.assertEqual((first.saved, first.failed), (1, 1))
+
+            def partial_updater(
+                update_period: HoYoLABAbyssPeriod, *, floor: int = 12, **_kwargs,
+            ) -> AbyssSourceDataRefreshResult:
+                return AbyssSourceDataRefreshResult(
+                    period=update_period,
+                    floor=floor,
+                    cache_saved=True,
+                    cache_path="fixture cache",
+                    matched=2,
+                    unmatched=0,
+                    ambiguous=0,
+                    enemy_rows=2,
+                    assets={"enabled": True, "attempted": 2, "saved": 1, "failed": 1},
+                )
+
+            pending_summary, pending_error = refresh_cached_abyss_source_data_for_hoyolab_period(
+                period,
+                cache_dir=tmp,
+                updater=partial_updater,
+            )
+            self.assertIsNotNone(pending_summary)
+            self.assertEqual(pending_error, "abyss_monster_icon_cache_incomplete")
+
+            def retry_icons(data, **kwargs):
+                return cache_abyss_floor_monster_icons(
+                    data,
+                    cache_dir=tmp,
+                    icon_fetcher=lambda _url: b"repaired icon",
+                    max_workers=kwargs["max_workers"],
+                    progress_callback=kwargs.get("progress_callback"),
+                )
+
+            with patch(
+                "hoyolab_export.abyss_source_refresh.cache_abyss_floor_monster_icons",
+                side_effect=retry_icons,
+            ), patch(
+                "hoyolab_export.abyss_source_refresh.build_update_report",
+                side_effect=AssertionError("same-period retry must reuse source JSON"),
+            ) as source_builder:
+                retry_summary, retry_error = refresh_cached_abyss_source_data_for_hoyolab_period(
+                    period,
+                    cache_dir=tmp,
+                )
+
+            self.assertIsNone(retry_error)
+            self.assertIsNotNone(retry_summary)
+            assert retry_summary is not None
+            self.assertTrue(retry_summary["skipped"])
+            self.assertEqual(retry_summary["skipReason"], "same_period_source_cache_icons_only")
+            self.assertEqual(retry_summary["assets"]["failed"], 0)
+            self.assertEqual(retry_summary["assets"]["downloaded"], 1)
+            source_builder.assert_not_called()
+
     def test_import_refresh_helper_calls_abyss_refresh_once_and_reports_status(self) -> None:
         period = parse_hoyolab_abyss_period("2026/05/16-2026/06/16")
         calls: list[HoYoLABAbyssPeriod] = []

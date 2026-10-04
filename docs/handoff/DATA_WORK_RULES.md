@@ -11,6 +11,11 @@ owners in `README.md` and `DATA_RUNTIME_BOUNDARIES.md`.
   Measure bytes before/after heavy experiments; do not accumulate cloned
   source trees or build caches.
 - `data/artifacts.db` is the unified local runtime SQLite DB despite its name.
+  Account-relative paths resolve under the selected profile root; see
+  [profiles/defaults](ACCOUNT_PROFILES.md). New preferences and dismissed-hint
+  flags must register defaults in `run_workspace/settings_defaults.py` and
+  participate in the shared Clear all reset. Saved accounts persist until
+  explicit deletion; account-derived caches retain bounded cleanup.
   Raw HoYoLAB JSON is source/import cache. Move remaining catalogs to normalized
   tables only after usage shows frequent runtime joins, filters, mapping or
   stat-calculator needs; retain small rebuildable source JSON where suitable.
@@ -20,11 +25,12 @@ owners in `README.md` and `DATA_RUNTIME_BOUNDARIES.md`.
 - Current equipment, HoYoLAB observations and saved build presets are separate.
   Removing a team member does not unequip them. Equipment is per character;
   normal team selection is per mode and PvP equipment is scoped. HoYoLAB
-  `Change equipment` defaults OFF; enabled imports apply fresh observations in
+  `Change equipment` defaults ON; enabled imports apply fresh observations in
   one validated batch. Missing observations never clear equipment or presets.
 - Artifact content twins usually dedupe; simultaneous distinct observed
   wearers can prove additional copies. Reuse IDs on reimport; repeated rows
-  alone do not prove copies. DB/JSON/image import publication is not atomic.
+  alone do not prove copies. Account/source/receipt publication is one SQLite
+  transaction; JSON and images are independent recoverable projections.
 - Account/API content language differs from UI language. EN service details
   are mapping inputs. Catalog detail refresh is explicit; ordinary import must
   not fetch every character/weapon detail page.

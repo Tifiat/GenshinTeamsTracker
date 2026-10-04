@@ -1,0 +1,1 @@
+"""Focused tooltip content contracts."""

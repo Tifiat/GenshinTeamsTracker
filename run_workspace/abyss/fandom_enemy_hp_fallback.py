@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import re
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, replace
 from typing import Any, Callable
 from urllib.parse import urljoin
@@ -126,6 +126,8 @@ def apply_fandom_enemy_page_hp_fallback(
     mode: str = HP_FALLBACK_MODE_AUTO,
     enemy_page_fetcher: EnemyPageFetcher = None,
     enemy_page_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+    executor: Executor | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> FandomEnemyHpFallbackResult:
     """Fill missing/forced enemy HP from Fandom enemy level/HP tables.
 
@@ -136,6 +138,7 @@ def apply_fandom_enemy_page_hp_fallback(
     normalized_mode = normalize_hp_fallback_mode(mode)
     workers = normalize_network_workers(enemy_page_workers)
     if normalized_mode == HP_FALLBACK_MODE_NANOKA_ONLY:
+        _notify_hp_progress(progress_callback, 0, 0)
         return FandomEnemyHpFallbackResult(
             data=data,
             attempted=0,
@@ -174,6 +177,8 @@ def apply_fandom_enemy_page_hp_fallback(
         page_errors=page_errors,
         fetcher=fetcher,
         workers=workers,
+        executor=executor,
+        progress_callback=progress_callback,
     )
     page_cache_hits = max(
         0,
@@ -238,6 +243,8 @@ def _prefetch_enemy_pages(
     page_errors: dict[str, Exception],
     fetcher: EnemyPageFetcher,
     workers: int,
+    executor: Executor | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> int:
     urls = sorted(
         {
@@ -247,23 +254,53 @@ def _prefetch_enemy_pages(
         }
     )
     if not urls:
+        _notify_hp_progress(progress_callback, 0, 0)
         return 0
-    if workers <= 1 or len(urls) == 1:
+    _notify_hp_progress(progress_callback, 0, len(urls))
+    if executor is None and (workers <= 1 or len(urls) == 1):
+        completed = 0
         for url in urls:
             try:
                 page_cache[url] = fetcher(url)
             except Exception as exc:  # noqa: BLE001 - fallback reports per-row failures.
                 page_errors[url] = exc
+            completed += 1
+            _notify_hp_progress(progress_callback, completed, len(urls))
         return len(urls)
-    with ThreadPoolExecutor(max_workers=min(workers, len(urls))) as executor:
-        future_by_url = {executor.submit(fetcher, url): url for url in urls}
+
+    def collect(future_by_url) -> None:
+        completed = 0
         for future in as_completed(future_by_url):
             url = future_by_url[future]
             try:
                 page_cache[url] = future.result()
             except Exception as exc:  # noqa: BLE001 - fallback reports per-row failures.
                 page_errors[url] = exc
+            completed += 1
+            _notify_hp_progress(progress_callback, completed, len(urls))
+
+    if executor is not None:
+        future_by_url = {executor.submit(fetcher, url): url for url in urls}
+        collect(future_by_url)
+    else:
+        with ThreadPoolExecutor(max_workers=min(workers, len(urls))) as local_executor:
+            future_by_url = {local_executor.submit(fetcher, url): url for url in urls}
+            collect(future_by_url)
     return len(urls)
+
+
+def _notify_hp_progress(
+    callback: Callable[[str, int, int], None] | None,
+    completed: int,
+    total: int,
+) -> None:
+    if callback is None:
+        return
+    try:
+        callback("hp", completed, total)
+    except Exception:
+        # Progress is observational; a UI/logger failure cannot affect source data.
+        pass
 
 
 def fetch_enemy_page(url: str) -> EnemyPage:

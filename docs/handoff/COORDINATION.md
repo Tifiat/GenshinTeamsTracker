@@ -1,49 +1,36 @@
 # Shared worker coordination
 
 <!-- handoff-current: worker-coordination -->
-Reviewed 2026-10-04. The local sibling hub `GTT coordination` owns active task
-order and the area backlog for five registered checkouts. Worker1 owns shared
-queue/decisions/registry files; each worker owns its own short status file.
-Local `coordination.json` names the hub relative to the checkout. No junction or
-shared technical `docs` directory is used.
+Reviewed 2026-10-04. The sibling `GTT coordination` hub owns the single active
+queue and registry for five checkouts. Worker1's existing main/master checkout
+is coordinated by the new orchestrator chat named in the registry; the previous
+optimizer chat is a read-only consultant. Each worker applies changes only in
+its own checkout and owns its short shared status. No duplicate checkout entry,
+shared technical-doc junction or second editable queue is used.
 
-Versioned contracts, current subsystem checkpoints, engine identities and dated
-evidence remain in their branch. Branch work, ready-for-review and accepted-on-
-master are distinct. A registry entry or a notification is not user-path or
-gameplay acceptance. Existing energy work is deferred to a joint Theory stage.
+The user authorized reverse local synchronization of completed Workers1/3/4/5
+from accepted master `ad0ea8c`; Worker2 and unfinished Theory/energy are excluded.
+Owners first preserve dirty work; the user explicitly approved verified archives
+for Worker3/4 overlays. They apply agreed local operations sequentially. The hub's
+[technical event log](../../../GTT%20coordination/archive/GIT_EVENTS_20261004_REVERSE_SYNC.md)
+owns before/after hashes, archive provenance and actual results. A plan or source
+commit alone is not completed synchronization or product acceptance.
 
-The migration preserves five original queue/backlog documents with hashes,
-including Theory and Worker3/Worker4 deltas. Root TODO and WORK_BACKLOG are
-routers, not duplicate editable queues. New task selection and closeout read
-the shared queue and own status. Missing hub is reported; never regenerate it
-from an old checkout. Checkouts outside the registry require explicit admission.
+Master includes Worker1's saved stage, merged browser/display and PvP packages,
+and only the scoped Worker5 import/profiles/icons/tooltips transfer. Older History
+lineage is excluded. The [integration receipt](integration_receipts/2026-10-04_ready_workers.md)
+owns target compatibility, overlapping test scopes, the old startup-fixture
+escape/main-account migration and its guarded repair. Retain migrated data;
+no before-hash exists. Manual multiaccount/import/hover/display, the old timer
+width failure and Chasca numerical acceptance remain open. No app, real import
+or numerical engine run belongs to this synchronization. Push requires separate
+approval; Worker2's later role change remains unapplied.
 
-`tools/check_coordination.py` is read-only and checks routing, ownership, paths,
-links and declared status, not Git ancestry or acceptance. Handoff closeout
-also checks local structural and live-manifest facts. Workers receive migration
-instructions and applied their own routing edits, preserving dirty files. All
-five explicit-root handoff checks pass; 36 focused doc checks pass with one
-Windows symlink-creation skip (escape tests also run independently). No
-app restart, engine or account write is part of this setup.
-The user's Git-policy/Obsidian request has approved rules and a factual local-refs
-journal in the hub. On 2026-10-04 the user authorized ready local transfers. Main
-switched cleanly to master and carries Worker1's saved stage, Worker3 browser/
-display, Worker4 PvP and Worker5's scoped import/profiles/icons/tooltips package.
-The last transfer preserves browser APIs, match isolation and the central
-defaults registry; controlled combined tests pass. An old startup fixture
-unintentionally launched an offscreen child and migrated the main legacy account;
-its isolation repair and read-only integrity inspection are recorded explicitly.
-Do not describe that integration as account-write-free. Real user acceptance,
-Chasca numerical response and the unchanged timer-width failure stay open.
-The [integration receipt](integration_receipts/2026-10-04_ready_workers.md)
-owns source pins, conflict handling and remaining acceptance.
-Worker2 still owns Theory; its later role change is not applied.
-Push still requires separate approval. Worker events are retained until collected
-in the common journal; branch integration does not close numerical or visible
-user acceptance gates.
-The hub itself can be
-opened as a separate Obsidian vault; no vault junction, plugin/settings change
-or physical render is claimed.
+The hub is a separate Obsidian vault. Its compact Git journal retains Mermaid
+gitGraph and newest-first Worker1–5 lists, with full events linked in archives.
+Slick Mermaid was added only to the hub from the user's installed reference;
+personal settings were not changed. The user chose file-only setup and will
+verify the enlargement button. No live render is claimed.
 <!-- /handoff-current -->
 
 ## Local routing

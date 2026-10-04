@@ -385,3 +385,51 @@ transport/codec, engine, retention, bootstrap and offscreen result UI tests:
 82 total,79 PASS,3 Windows link skips,0 errors/failures. Its job was removed.
 No simulator search, account mutation or physical button was run. Branch
 separation is source/runtime readiness; numerical and user-path gates stay open.
+
+## 10. Bounded polish closeout — 2026-10-04
+
+The user authorized one changed-item numerical case, guarded cleanup and own
+verified local commits, not another matrix or cross-branch transfer. The current
+checkpoint owns the resulting acceptance boundary; the new closeout receipt
+records the response evidence separately from the dated matrix.
+
+Rechecked the old-code callers before deletion. Removed only the unexported
+`constantEffectKey` forwarding alias. Its five native test calls and the
+historical effects-comparison overlay now call the existing
+`projectedConstantEffectKey(keys, keys, effects)` directly. Full-vector identity,
+signed-zero/rejection and eviction controls remain; live projection, formula
+arithmetic, cache limits and effect evaluation are unchanged.
+
+Retain adaptive metadata/warnings and historical verification controls;
+signal/discovery oracles; Python farming exports/mixed contracts; schema-v1
+compatibility readers; source overlays and guarded research promoters. These
+still have useful reference or compatibility obligations. No Theory/finite
+coordinator, engine/patch stack or gameplay implementation was removed.
+
+The compact-adapter smoke test initially counted two patches because an
+unchanged context line in patch0009 mentions the capability defined by patch0001.
+It now counts added definitions and tests definition/context/removal/duplicate
+cases. This is a test repair, not an adapter or engine fix. The failed initial
+check remains evidence; the focused rerun passes.
+
+[Closeout evidence](../optimizer-evidence/2026-10-04-optimizer-closeout/README.md)
+records123 distinct Python/offscreen checks with no skips, four native package
+vet/unit checks and the injected config predicate PASS. The initial numerical
+harness failed to compile before any engine capture; its immutable failure is
+retained. One local harness-only repair enabled the bounded retry: exactly10
+trace seed members, no ordinary n500 stage or full All Sets search.
+
+Numerical acceptance FAILED. Chasca top1 reused150008.566 versus fresh
+151488.295 DPS; plume/goblet alternatives remain worse in both estimates.
+The three fresh cases have identical topology to each other, but differ from
+the incumbent/neutral panel in both seeds. Neutral fixed-package predictions
+equal Selected predictions. This does not establish an arithmetic error or
+exact response; frozen dependencies and changed-schedule attribution remain.
+The pinned Selected case was mislabeled Navia in earlier prose: its input is
+Chasca, unchanged SHA25611532ecb. Older All Sets Navia evidence remains dated.
+
+Both managed jobs were removed (79,926,578 and183,394,212 bytes), with no residue;
+active engine and default consumer hashes were preserved. Only one regenerable
+11,994-byte research bytecode file was removed separately. UI geometry/help and
+mocked save payload pass; actual visible UI/preset persistence are unverified.
+No cross-branch transfer, push or other worker's source modification occurred.

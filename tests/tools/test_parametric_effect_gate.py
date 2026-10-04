@@ -33,7 +33,7 @@ class ParametricEffectGateTests(unittest.TestCase):
         key = "\tkey, constant := projectedConstantEffectKey(m.effectKeys, m.constantKeys, effects)"
         fast = "\tif bound, constant, err := p.bindConstantEffects(effects); constant {\n\t\treturn bound, err\n\t}\n"
         cache, expression = without_constant_binding("prefix\n" + key + "\nsuffix", "prefix\n" + fast + "suffix")
-        self.assertIn("constantEffectKey(m.effectKeys, effects)", cache)
+        self.assertIn("projectedConstantEffectKey(m.effectKeys, m.effectKeys, effects)", cache)
         self.assertEqual(expression, "prefix\nsuffix")
         with self.assertRaises(ValueError):
             without_constant_binding(key + key, fast)

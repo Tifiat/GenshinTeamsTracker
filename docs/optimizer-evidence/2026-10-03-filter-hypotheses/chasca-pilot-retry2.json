@@ -1,0 +1,14 @@
+{
+  "exit_code": 1,
+  "protected_inputs_unchanged": true,
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "request_sha256": "43db6218200f074fe182eaf66821f9b42e68f9fe39c07799f94e03fd3e65a6bf",
+  "scope": "actual fixed-context two-slot domains; not full search",
+  "prototype_sha256": {
+    "box_bounds.go": "65575ee9468e63d60f5df4c2c03c3c19a2ec3d157bdfccb9d114c75058771863",
+    "box_bounds_test.go": "5331cd3e27fecfb147745672ff718f4c5f5fb2a2b0663955fd5e7b6bae9b57cb",
+    "pilot_test.go": "1f8b4bdc2427e38b6c9514e1df5b39a85693c1e4b93723a938fa3ca22a780c39",
+    "replay_gate.go": "f9cad87ad1285c21cde6f54ae29054488f58d667a8916e7da53a20d1a55a93f5"
+  }
+}

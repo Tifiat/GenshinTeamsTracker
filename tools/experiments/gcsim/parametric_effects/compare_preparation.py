@@ -37,7 +37,7 @@ def without_constant_binding(cache: str, expression: str) -> tuple[str, str]:
     fast = "\tif bound, constant, err := p.bindConstantEffects(effects); constant {\n\t\treturn bound, err\n\t}\n"
     if cache.count(key) != 1 or expression.count(fast) != 1:
         raise ValueError("Constant binding control target changed")
-    return cache.replace(key, "\tkey, constant := constantEffectKey(m.effectKeys, effects)"), expression.replace(fast, "")
+    return cache.replace(key, "\tkey, constant := projectedConstantEffectKey(m.effectKeys, m.effectKeys, effects)"), expression.replace(fast, "")
 
 
 def semantic_profile(row: dict, *, effect_cache: bool = False) -> dict:

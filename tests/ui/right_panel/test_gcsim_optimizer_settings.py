@@ -13,7 +13,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QMessageBox, QScrollArea
 
 from hoyolab_export.auth import AuthStatus
-from localization import tr
+from localization import tr, tr_for_language
 from run_workspace.gcsim.settings import (
     GcsimOptimizerSettings,
     effective_gcsim_optimizer_settings,
@@ -156,6 +156,44 @@ class GcsimOptimizerSettingsUiTests(unittest.TestCase):
                 page.set_gcsim_optimizer_fast_mode_enabled(True)
 
             warning.assert_not_called()
+
+    def test_fast_mode_help_is_adjacent_and_uses_localized_custom_tooltip(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            page = self._make_account_page(Path(temporary_directory) / "settings.json")
+            page.resize(700, 700)
+            page.show()
+            page.settings_scroll.ensureWidgetVisible(page.gcsim_optimizer_fast_mode_help)
+            QApplication.processEvents()
+
+            help_label = page.gcsim_optimizer_fast_mode_help
+            label = page.gcsim_optimizer_fast_mode_label
+            controller = page.gcsim_optimizer_fast_mode_tooltip
+            self.assertEqual(help_label.text(), "?")
+            self.assertEqual(help_label.toolTip(), "")
+            self.assertEqual(controller.owner, help_label)
+            self.assertEqual(controller.text(), tr("settings.gcsim.optimizer.fast_mode.tooltip"))
+            self.assertIn("\n\n", controller.text())
+            self.assertEqual(help_label.accessibleDescription(), controller.text())
+            self.assertGreater(help_label.x(), label.geometry().right())
+            self.assertLessEqual(help_label.x() - label.geometry().right(), 12)
+
+            controller.show()
+            self.assertTrue(controller._popup.isVisible())
+            self.assertEqual(controller._popup.text(), controller.text())
+            controller.hide()
+
+            for language in ("ru", "en", "pt-br"):
+                with self.subTest(language=language), patch(
+                    "ui.right_panel.settings.account_data.tr",
+                    side_effect=lambda key, language=language: tr_for_language(language, key),
+                ):
+                    text = controller.text()
+                    self.assertIn("GCSIM", text)
+                    self.assertIn("\n\n", text)
+                    self.assertEqual(
+                        text,
+                        tr_for_language(language, "settings.gcsim.optimizer.fast_mode.tooltip"),
+                    )
 
     def test_mode_limits_warn_bound_work_and_handle_zero_replacements(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

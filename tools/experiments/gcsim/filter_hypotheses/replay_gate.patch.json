@@ -1,0 +1,8 @@
+{
+  "replacements": [
+    {
+      "old": "\tadvance := func(order uint64, frame int) error {\n\t\tfor {\n",
+      "new": "\tadvance := func(order uint64, frame int) error {\n\t\tif hypothesisReplayGateEnabled && h.hypothesisCanSkipEventWalk() {\n\t\t\toldEventIndex, oldHitlagIndex := eventIndex, hitlagIndex\n\t\t\teventIndex += sort.Search(len(neutral.Ledger.Events)-eventIndex, func(i int) bool {\n\t\t\t\treturn neutral.Ledger.Events[eventIndex+i].Order >= order\n\t\t\t})\n\t\t\thitlagIndex += sort.Search(len(hitlag)-hitlagIndex, func(i int) bool {\n\t\t\t\treturn hitlag[hitlagIndex+i].Order >= order\n\t\t\t})\n\t\t\tif stats := hypothesisReplayGateStats; stats != nil {\n\t\t\t\tstats.Advances++\n\t\t\t\tif order != ^uint64(0) {\n\t\t\t\t\tstats.Queries++\n\t\t\t\t}\n\t\t\t\tstats.SkippedEvents += eventIndex - oldEventIndex\n\t\t\t\tstats.SkippedHitlag += hitlagIndex - oldHitlagIndex\n\t\t\t}\n\t\t\treturn nil\n\t\t}\n\t\tfor {\n"
+    }
+  ]
+}

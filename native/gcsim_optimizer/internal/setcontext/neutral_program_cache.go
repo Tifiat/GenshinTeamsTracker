@@ -25,10 +25,6 @@ const neutralExpressionDepthLimit = 4096
 const neutralExpressionVisitLimit = 2_000_000
 const neutralExpressionByteLimit = 64 << 20
 
-func constantEffectKey(keys []string, effects map[string]*formula.InputExpression) ([32]byte, bool) {
-	return projectedConstantEffectKey(keys, keys, effects)
-}
-
 func projectedConstantEffectKey(keys, relevant []string, effects map[string]*formula.InputExpression) ([32]byte, bool) {
 	if len(keys) != len(effects) {
 		return [32]byte{}, false

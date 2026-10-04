@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import unittest
 
 
@@ -13,6 +14,15 @@ RECEIPT = (
     / "gcsim_optimizer_go_v1"
     / "gob2_frozen_seed_receipt_v1.json"
 )
+
+
+def _defines_compact_capability(patch_text: str) -> bool:
+    # Later patches may mention the same capability in unchanged context.
+    # Count its added definition, not every mention of the spelling.
+    return bool(re.search(
+        r'^\+\s*CompactEquationV1Capability\s*=\s*"gtt_compact_equation_v1"\s*$',
+        patch_text, re.MULTILINE,
+    ))
 
 
 class GoCompactAdapterReceiptTests(unittest.TestCase):
@@ -52,11 +62,21 @@ class GoCompactAdapterReceiptTests(unittest.TestCase):
         patches = tuple(sorted(patch_dir.glob("*.patch")))
         self.assertTrue(patches)
         patch_texts = [patch.read_text(encoding="utf-8") for patch in patches]
-        adapters = [text for text in patch_texts if "gtt_compact_equation_v1" in text]
+        adapters = [text for text in patch_texts if _defines_compact_capability(text)]
         self.assertEqual(len(adapters), 1)
         text = adapters[0]
         self.assertIn("gtt_compact_equation_v1", text)
         self.assertIn("diff --git a/pkg/gttcompact/", text)
+
+    def test_extension_context_does_not_count_as_another_adapter(self) -> None:
+        definition = '+\tCompactEquationV1Capability = "gtt_compact_equation_v1"\n'
+        context = ' \tCompactEquationV1Capability = "gtt_compact_equation_v1"\n'
+        removal = '-\tCompactEquationV1Capability = "gtt_compact_equation_v1"\n'
+        self.assertTrue(_defines_compact_capability(definition))
+        self.assertFalse(_defines_compact_capability(context))
+        self.assertFalse(_defines_compact_capability(removal))
+        self.assertEqual(sum(map(_defines_compact_capability, (definition, context))), 1)
+        self.assertEqual(sum(map(_defines_compact_capability, (definition, definition))), 2)
 
 
 if __name__ == "__main__":

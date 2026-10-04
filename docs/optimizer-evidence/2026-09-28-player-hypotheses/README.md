@@ -8,6 +8,10 @@ do not read a historical prototype pass as production acceptance. The main agent
 bounded Sol helpers write small isolated helpers; Luna runs serialized managed
 jobs. No Computer Use, account/equipment writes, or application restart.
 
+Later [2026-10-03 isolated filters/settings evidence](../2026-10-03-filter-hypotheses/README.md)
+uses a different saved user request. It adds no promotion or full-search timing
+claim to this dated ledger.
+
 ## Comparison contract
 
 Same saved Chasca request, inventory, rotation and two seeds:

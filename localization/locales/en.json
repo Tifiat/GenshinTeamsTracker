@@ -373,6 +373,7 @@
   "settings.gcsim.optimizer.set_group_limit": "Set combinations",
   "settings.gcsim.optimizer.builds_per_group": "Swaps per combination",
   "settings.gcsim.optimizer.fast_mode": "Fast mode",
+  "settings.gcsim.optimizer.fast_mode.tooltip": "Candidates are evaluated using the formula without final GCSIM verification, so DPS may be inaccurate. This mode does not shorten the main search, but displays the configured number of found variants without spending time on final simulations.\n\nRecommended for displaying many artifact replacements.",
   "settings.gcsim.optimizer.fast_mode.warning_title": "Estimate without GCSIM verification",
   "settings.gcsim.optimizer.fast_mode.warning_body": "DPS is calculated from the formula. Final builds are not verified in GCSIM, so the result may be wrong.",
   "settings.pvp.title": "PvP",

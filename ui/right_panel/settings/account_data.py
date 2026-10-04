@@ -53,6 +53,8 @@ from run_workspace.gcsim.settings import (
     set_gcsim_boosted_energy_enabled,
 )
 from ui.utils.toggle_switch import ToggleSwitch
+from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.ui_palette import UI_BORDER_DEFAULT, UI_TEXT_MUTED
 from hoyolab_export.import_settings import change_equipment_on_import, set_change_equipment_on_import
 from ui.utils.pvp_colors import (
     pvp_player_color,
@@ -368,6 +370,24 @@ class AccountDataPage(QWidget):
         self.gcsim_optimizer_fast_mode_label = QLabel(
             tr("settings.gcsim.optimizer.fast_mode")
         )
+        self.gcsim_optimizer_fast_mode_help = QLabel("?")
+        self.gcsim_optimizer_fast_mode_help.setObjectName("gcsimOptimizerFastModeHelp")
+        self.gcsim_optimizer_fast_mode_help.setFixedSize(20, 20)
+        self.gcsim_optimizer_fast_mode_help.setAlignment(Qt.AlignCenter)
+        self.gcsim_optimizer_fast_mode_help.setStyleSheet(
+            f"QLabel {{ color: {UI_TEXT_MUTED}; border: 1px solid {UI_BORDER_DEFAULT}; "
+            "border-radius: 10px; padding: 0; font-size: 12px; font-weight: 600; }"
+        )
+        self.gcsim_optimizer_fast_mode_help.setAccessibleName(
+            tr("settings.gcsim.optimizer.fast_mode")
+        )
+        self.gcsim_optimizer_fast_mode_help.setAccessibleDescription(
+            tr("settings.gcsim.optimizer.fast_mode.tooltip")
+        )
+        self.gcsim_optimizer_fast_mode_tooltip = install_custom_tooltip(
+            self.gcsim_optimizer_fast_mode_help,
+            lambda: tr("settings.gcsim.optimizer.fast_mode.tooltip"),
+        )
         self.gcsim_optimizer_fast_mode_switch = ToggleSwitch()
         self.gcsim_optimizer_fast_mode_switch.setObjectName(
             "gcsimOptimizerFastMode"
@@ -378,7 +398,9 @@ class AccountDataPage(QWidget):
         self.gcsim_optimizer_fast_mode_switch.toggled.connect(
             self.on_gcsim_optimizer_fast_mode_changed
         )
-        fast_mode_row.addWidget(self.gcsim_optimizer_fast_mode_label, 1)
+        fast_mode_row.addWidget(self.gcsim_optimizer_fast_mode_label)
+        fast_mode_row.addWidget(self.gcsim_optimizer_fast_mode_help)
+        fast_mode_row.addStretch(1)
         fast_mode_row.addWidget(self.gcsim_optimizer_fast_mode_switch)
         gcsim_layout.addLayout(fast_mode_row)
         self.gcsim_optimizer_expanded_limits_checkbox = QCheckBox(
@@ -1041,6 +1063,12 @@ class AccountDataPage(QWidget):
         )
         self.gcsim_optimizer_fast_mode_label.setText(
             tr("settings.gcsim.optimizer.fast_mode")
+        )
+        self.gcsim_optimizer_fast_mode_help.setAccessibleName(
+            tr("settings.gcsim.optimizer.fast_mode")
+        )
+        self.gcsim_optimizer_fast_mode_help.setAccessibleDescription(
+            tr("settings.gcsim.optimizer.fast_mode.tooltip")
         )
         self.gcsim_optimizer_expanded_limits_checkbox.setText(tr("settings.gcsim.optimizer.expanded_limits"))
         self.gcsim_optimizer_expanded_limits_note.setText(tr("settings.gcsim.optimizer.expanded_limits_note"))

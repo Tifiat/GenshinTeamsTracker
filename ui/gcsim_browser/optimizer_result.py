@@ -64,6 +64,11 @@ ELEMENT_MAIN_STAT_ICONS = {
     DENDRO_DAMAGE: "dendro",
 }
 
+_CARD_MIN_WIDTH = 170
+_CARD_HEIGHT = 146
+_REPLACEMENT_CARD_HEIGHT = 171
+_ACTION_WIDTH = 116
+
 
 @dataclass(frozen=True, slots=True)
 class OptimizerItemReplacement:
@@ -393,6 +398,9 @@ class OptimizerResultBuildsWidget(QFrame):
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setHorizontalSpacing(5)
         self.grid.setVerticalSpacing(5)
+        self.grid.setAlignment(Qt.AlignmentFlag.AlignTop)
+        for column in range(1, 6):
+            self.grid.setColumnStretch(column, 1)
         root.addWidget(self.table)
         self.retranslate_ui()
 
@@ -448,32 +456,39 @@ class OptimizerResultBuildsWidget(QFrame):
         for column, text in enumerate(headers, start=1):
             label = QLabel(text)
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            label.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 9px;")
+            label.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 14px;")
             self.grid.addWidget(label, 0, column)
 
         for actor_index, row in enumerate(rows):
             row_index = 1 + actor_index * 2
-            self.grid.addWidget(_CharacterBadge(row), row_index, 0)
+            self.grid.addWidget(
+                _CharacterBadge(row), row_index, 0,
+                alignment=Qt.AlignmentFlag.AlignTop,
+            )
             artifacts_by_pos = {int(item.pos): item for item in row.artifacts}
             for column, position in enumerate(range(1, 6), start=1):
                 artifact = artifacts_by_pos.get(position)
                 if artifact is None:
                     missing = QLabel("—")
                     missing.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    missing.setMinimumSize(104, 88)
-                    self.grid.addWidget(missing, row_index, column)
+                    missing.setMinimumSize(_CARD_MIN_WIDTH, _CARD_HEIGHT)
+                    missing.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+                    self.grid.addWidget(missing, row_index, column, alignment=Qt.AlignmentFlag.AlignTop)
                 else:
                     self.grid.addWidget(
                         CompactOptimizerArtifactCard(artifact),
                         row_index,
                         column,
+                        alignment=Qt.AlignmentFlag.AlignTop,
                     )
 
             action = QWidget()
+            action.setFixedWidth(_ACTION_WIDTH)
             action_layout = QVBoxLayout(action)
-            action_layout.setContentsMargins(2, 0, 0, 0)
+            action_layout.setContentsMargins(0, 0, 0, 0)
             action_layout.setSpacing(4)
             button = QPushButton(_translated("artifact.build.save", "Save"))
+            button.setMinimumHeight(28)
             button.setEnabled(row.can_save and row.character_id is not None)
             tooltip = install_custom_tooltip(
                 button,
@@ -487,8 +502,7 @@ class OptimizerResultBuildsWidget(QFrame):
             )
             status = QLabel()
             status.setWordWrap(True)
-            status.setMaximumWidth(78)
-            status.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 9px;")
+            status.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 11px;")
             if not row.can_save:
                 status.setText(
                     _translated(
@@ -513,7 +527,7 @@ class OptimizerResultBuildsWidget(QFrame):
                 box.setContentsMargins(0, 0, 0, 4)
                 note = QLabel(tr("gcsim.optimizer.replacements_independent"))
                 note.setWordWrap(True)
-                note.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 10px;")
+                note.setStyleSheet(f"color: {UI_TEXT_MUTED}; font-size: 12px;")
                 box.addWidget(note)
                 swap_grid = QGridLayout()
                 swap_grid.setContentsMargins(0, 0, 0, 0)
@@ -524,7 +538,7 @@ class OptimizerResultBuildsWidget(QFrame):
                     offset = counts.get(column, 0)
                     counts[column] = offset + 1
                     card = CompactOptimizerArtifactCard(replacement.artifact, replacement=replacement)
-                    swap_grid.addWidget(card, offset, column)
+                    swap_grid.addWidget(card, offset, column, alignment=Qt.AlignmentFlag.AlignTop)
                 for column in range(5):
                     swap_grid.setColumnStretch(column, 1)
                 box.addLayout(swap_grid)
@@ -535,7 +549,7 @@ class OptimizerResultBuildsWidget(QFrame):
                 self._replacement_containers[row.wearer_key] = container
             action_layout.addWidget(status)
             action_layout.addStretch(1)
-            self.grid.addWidget(action, row_index, 6)
+            self.grid.addWidget(action, row_index, 6, alignment=Qt.AlignmentFlag.AlignTop)
             self._save_buttons[row.wearer_key] = button
             self._save_tooltips[row.wearer_key] = tooltip
             self._status_labels[row.wearer_key] = status
@@ -711,8 +725,9 @@ class CompactOptimizerArtifactCard(QFrame):
         super().__init__(parent)
         self.artifact = artifact
         self.setObjectName("OptimizerCompactArtifactCard")
-        self.setFixedSize(104, 104 if replacement is not None else 88)
-        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.setMinimumWidth(_CARD_MIN_WIDTH)
+        self.setFixedHeight(_REPLACEMENT_CARD_HEIGHT if replacement is not None else _CARD_HEIGHT)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setStyleSheet(
             "QFrame#OptimizerCompactArtifactCard {"
             f"background: {UI_BG_PANEL}; border: 1px solid {UI_BORDER_DEFAULT}; "
@@ -727,17 +742,17 @@ class CompactOptimizerArtifactCard(QFrame):
         )
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(3, 3, 3, 3)
-        root.setSpacing(2)
+        root.setContentsMargins(6, 6, 6, 6)
+        root.setSpacing(3)
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
-        top.setSpacing(3)
+        top.setSpacing(4)
         icon = QLabel()
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setFixedSize(38, 52)
+        icon.setFixedSize(60, 86)
         if artifact.icon_path is not None:
             pixmap = cached_scaled_pixmap(
-                artifact.icon_path, QSize(38, 48),
+                artifact.icon_path, QSize(60, 80),
                 dpr=self.devicePixelRatioF(),
             )
             if pixmap is not None:
@@ -769,7 +784,7 @@ class CompactOptimizerArtifactCard(QFrame):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setStyleSheet(
                 f"color: {UI_STATE_DANGER if delta < 0 else UI_STATE_SUCCESS}; "
-                "font-size: 8px;"
+                "font-size: 14px; font-weight: 700;"
             )
             root.addWidget(label)
             install_custom_tooltip(
@@ -780,18 +795,18 @@ class CompactOptimizerArtifactCard(QFrame):
 class _MainStatWidget(QWidget):
     def __init__(self, artifact: ArtifactItem) -> None:
         super().__init__()
-        self.setFixedHeight(19)
+        self.setFixedHeight(26)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
+        layout.setSpacing(3)
         element = ELEMENT_MAIN_STAT_ICONS.get(artifact.main_property_type)
         element_icon = (element_icon_path(element) or PROJECT_ROOT / "assets" / "filters" / f"element_{element}.png") if element else None
         if element_icon is not None and element_icon.exists():
             icon = QLabel()
-            icon.setFixedSize(17, 17)
+            icon.setFixedSize(22, 22)
             result = load_hidpi_pixmap(
                 element_icon,
-                QSize(16, 16),
+                QSize(21, 21),
                 dpr=self.devicePixelRatioF(),
                 surface="optimizer_result_element",
             )
@@ -801,7 +816,7 @@ class _MainStatWidget(QWidget):
         else:
             layout.addWidget(_badge_label(stat_badge(artifact.main_property_type)))
         value = QLabel(artifact.main_property_value)
-        value.setStyleSheet(f"color: {UI_TEXT_PRIMARY}; font-size: 9px;")
+        value.setStyleSheet(f"color: {UI_TEXT_PRIMARY}; font-size: 15px;")
         layout.addWidget(value)
         layout.addStretch(1)
 
@@ -809,17 +824,18 @@ class _MainStatWidget(QWidget):
 class _CharacterBadge(QWidget):
     def __init__(self, row: OptimizerResultBuildRow) -> None:
         super().__init__()
-        self.setFixedWidth(52)
+        self.setFixedWidth(80)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 3, 0)
+        layout.setContentsMargins(0, 0, 2, 0)
         layout.setSpacing(2)
         icon = QLabel()
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setFixedSize(42, 42)
+        icon.setFixedSize(64, 64)
         if row.character_icon_path is not None:
             result = load_hidpi_pixmap(
                 row.character_icon_path,
-                QSize(40, 40),
+                QSize(62, 62),
                 dpr=self.devicePixelRatioF(),
                 surface="optimizer_result_character",
             )
@@ -828,19 +844,20 @@ class _CharacterBadge(QWidget):
         name = QLabel(row.character_name)
         name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         name.setWordWrap(True)
-        name.setStyleSheet("font-size: 9px;")
+        name.setStyleSheet("font-size: 15px;")
         layout.addWidget(icon, 0, Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(name)
 
 
 def _stat_row(badge: str, value: str, times: int | None) -> QWidget:
     row = QWidget()
+    row.setFixedHeight(22)
     layout = QHBoxLayout(row)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(3)
     layout.addWidget(_badge_label(badge))
     value_label = QLabel(str(value))
-    value_label.setStyleSheet(f"color: {UI_TEXT_SECONDARY}; font-size: 8px;")
+    value_label.setStyleSheet(f"color: {UI_TEXT_SECONDARY}; font-size: 15px;")
     layout.addWidget(value_label, 1)
     return row
 
@@ -851,7 +868,7 @@ def _badge_label(text: str) -> QLabel:
     label.setStyleSheet(
         f"QLabel {{ background: {UI_BG_BUTTON_CHECKED}; color: {UI_TEXT_SECONDARY}; "
         f"border: 1px solid {UI_BORDER_DEFAULT}; "
-        "border-radius: 6px; padding: 0 2px; font-size: 8px; font-weight: 600; }"
+        "border-radius: 6px; padding: 0 3px; font-size: 14px; font-weight: 600; }"
     )
     return label
 

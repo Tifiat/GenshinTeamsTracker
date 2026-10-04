@@ -226,6 +226,16 @@ and contiguous operand storage must preserve arithmetic and gradient accumulatio
 order. Prepared single-wearer legality may reuse the other fifteen validated IDs;
 the changed five still satisfy physical uniqueness, slots and exact bonus tiers.
 These are computation reuse, not new item pruning or a global search guarantee.
+
+Local single/pair refinement may prepare physical-family compatibility once for
+its fixed team/base/pools. Fold outsiders together only when distinct selected
+requirements force at least four of five pieces; single2p/no-bonus keep real
+family identities to forbid accidental bonus tiers. Preserve every permissible
+ID and original visit order, including a pair which repairs a failed single.
+Surviving leaves still use the existing validator/formula; no stat-strength or
+response-bound inference is permitted. Preparation is cooperative with Finish/
+Cancel; incompatible metadata falls back to original enumeration. This table is
+run-local, never reused across anchors or teams. GP-3 owns its installation gates.
 The checkpoint owns installed acceptance; implementation alone does not accept UI.
 
 The2026-09-28 exact-reuse combination keeps the original proposal/refinement
@@ -287,13 +297,18 @@ distance-two rows, do not attribute their joint delta to one item or refill with
 extra simulations. Thus fewer swaps may appear than requested.
 Pages show distinct bonus groups; swaps expand below their wearer with team-DPS
 delta against the displayed group leader. Deltas are independent, not additive.
+The five slot columns share available width, with a bounded action column;
+replacement cards align to their primary slots and expand below the wearer.
 Limits are maxima, not a promise of G*K legal rows or a global optimum.
 
 Fast mode skips the ordinary finalist stage and uses formula ordering. Initial
 engine captures needed to obtain the formula still occur. `ranking_basis=formula`
 and `formula_only_unverified` are mandatory; omit measured DPS, SE, engine result
 hash and residual. Every user OFF->ON transition warns; restored preferences
-do not reopen the modal, while each result remains visibly labeled. Finite
+do not reopen the modal, while each result remains visibly labeled. Settings
+include a custom help tooltip beside the mode label: the main search is unchanged,
+configured output skips final verification, and many swaps are the recommended use.
+Finite
 mode also reports `energy_not_simulator_verified`: modeled deadline feasibility
 is not ordinary energy verification. Recommended normal output caps at55 ordinary
 checks; fast at410 formula rows. Expanded output caps at5050 rows/checks in either

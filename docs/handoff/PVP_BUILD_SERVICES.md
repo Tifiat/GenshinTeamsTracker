@@ -1,6 +1,6 @@
 # Scoped PvP build services
 
-This checkpoint owns the current Artifact Browser and GCSIM preparation route.
+This checkpoint owns scoped Artifact/GCSIM services and local period admission.
 Product direction stays in `PVP_UI_ROADMAP.md`; source/package ownership stays
 in `PVP_PROFILE_PACKAGE.md`.
 
@@ -10,12 +10,18 @@ for each seat. It reads the seat inventory without source writes; artifact
 ownership, swaps and saved-build application live only in match memory. Normal
 account equipment, presets, deck files and the other seat remain separate.
 
-The existing GCSIM Browser is also routed per seat for preparation only. It uses
-the current seat controller and selected engine registry, explicit source DB
-and disposable per-seat outputs. Preparing an empty scoped equipment selection
-cannot borrow normal account gear. Simulation, optimizer, virtual roster and
-save actions are unavailable in this route; authoritative Abyss-period admission
-and executable scoped runs remain unfinished.
+The existing GCSIM Browser prepares and dispatches selected/three-chamber runs
+for each seat through the canonical browser workers. Requests capture the seat
+DB/team/equipment, team half, selected engine and admitted period. Account gear
+fallback is disabled. Optimizer, virtual roster and save actions remain hidden.
+Cancellation, late-result rejection, bounded output ownership and deferred
+imported-source cleanup are connected; verification uses fake executors only.
+
+Play requires both profiles to match a current direct HoYoLAB period before
+Draft. Decks export records its canonical start/end identity. Missing, fallback,
+expired or mismatched provenance blocks admission with a refresh/re-export
+message. Runs recheck admission and matching floor-12 source data; completion
+rechecks the captured period and engine. Date-only precision is limited below.
 
 The package advances to v3 to retain the selected weapons' static display
 effects/passive references. Old development v1/v2 archives require re-export.
@@ -26,8 +32,9 @@ Verification uses temporary synthetic fixtures and headless widgets, documented
 below. Physical smoke acceptance belongs to the user; Computer Use is forbidden.
 No application launch, real-account capture, engine run or rules import occurred.
 
-Next: user-owned build/profile acceptance, isolated second-account source and
-usable rules sources; then authoritative-period admission before run dispatch.
+Next: user-owned build/profile/engine acceptance, isolated second-account source
+and usable rules sources. Online server authority, scoring/History/result export
+remain later work. The existing timer header width failure is retained below.
 <!-- /handoff-current -->
 
 ## Equipment contract
@@ -68,7 +75,63 @@ weapon, artifact and rotation changes invalidate the affected preparation text.
 Prepared configs are development diagnostics, not PvP scores, verified engine
 results, authoritative-period evidence or History entries.
 
-## Focused verification receipt
+## Period admission and scoped execution
+
+`period_admission.py` accepts only the captured direct
+`hoyolab_spiral_abyss_overview` source, `fallback=False`, nonempty official source
+path, no warnings, valid ISO dates and `start <= UTC today < end`. The period ID
+is exactly `start/end`; no calendar-derived schedule, newest-cache selection,
+Nanoka/Fandom fallback or client manifest is an authority. The producer has no
+schedule ID or precise boundary timestamps/timezone. Date-only checks cannot
+certify the exact reset hour; precise sub-day admission remains a producer gap.
+Standalone package APIs still allow empty metadata, but Play rejects it. Existing
+v3 archives without a matching period must be re-exported; no schema bump occurs.
+
+An active draft freezes the admitted ID. Run admission and result delivery both
+compare it, both providers and current authority; floor-12 cache start must match.
+Team index 0/1 selects first/second half within either player's own teams.
+Normal result converters store results only in that seat's in-memory controller.
+They do not determine PvP scores or write normal Run/History/account state.
+
+`PvpGcsimRunSession` owns one replaceable latest job tree per seat under an OS
+temporary root. A single job contains at most three chamber subdirectories;
+global PvP capacity is two active jobs, including cancelled jobs of cleared
+matches. A new run replaces that seat's old output; invalidation cancels and
+discards it. The cancellable runner polls every 100ms and kills/reaps its owned
+direct process before cleanup. Clear/close stops polling and cancels; a reader
+lease delays imported-profile deletion until the worker exits. The app-exit
+weak registry also cancels old matches and shares a five-second join budget.
+Cleanup failure preserves the owned reference for retry; normal source and unowned
+paths are never cleanup targets. Closed/changed build generations cannot adopt
+late payloads. Gear or rotation changes clear only that seat's saved results.
+
+## Authority/dispatch verification receipt
+
+2026-10-04, temporary synthetic sources and offscreen Qt; main-checkout dependency
+interpreter reused read-only. Final scope:
+
+| Scope | Cases | Result |
+| --- | --- | --- |
+| Period provenance/admission, canonical worker hooks, scoped runner/lifetime, preparation/config, package/schema regressions | 95 | 94 PASS; 1 host-limited symlink test SKIP (Windows privilege 1314) |
+| Local/profile/build/period routing, scoped execution and normal GCSIM controls | 87 | 86 PASS; existing timer header-width assertion FAIL |
+| Final cleanup-error fixes: scoped artifact/GCSIM/profile integration | 17 repeated | PASS |
+
+The unchanged timer layout and width assertion reproduce independently:
+`test_pvp_timers_table_fits_readable_width_or_scrolls_when_narrow` reports a
+96px multi-target HP title against a 208px size hint. This remains a UI defect,
+not a passed acceptance; the source timer widget was not changed in this stage.
+Symlink creation is unavailable on this host; unowned-output preservation,
+partial cleanup retry, process kill/reap and imported-reader lifetime pass.
+
+Early fixture failures treated a deliberately deleted imported runtime as a
+source to preserve and assumed imported metadata access for a local provider;
+both assertions were corrected. A cleanup-error test also caught a misplaced
+error accumulator in UI disposal; its initialization was moved to the actual
+cleanup method, both adapters/seats are attempted, and the final focused rerun
+passes. All actual engines/processes are substituted in these checks. No real
+engine, application smoke, account capture/import or rules import occurred.
+
+## Preparation/v3 verification receipt
 
 2026-10-04, Worker4-owned temporary sources; dependency interpreter reused
 read-only from the main checkout. Final focused checks passed:
@@ -102,7 +165,8 @@ acceptance, a real engine run, performance or accepted master integration.
    unchanged. Compare imported set and weapon static bonuses where available.
 3. Open each player's GCSIM, edit distinct rotations and prepare each team.
    Check the displayed team/gear and retain separate editors/reports when
-   switching players. Execution remains unavailable pending period admission.
+   switching players. With matching current HoYoLAB/profile/cache data, run a
+   chamber and all three for each team's half; verify separate player results.
 4. Change equipment and check that the old preparation report clears. Clear the
    match, keep the selected profile, start another match and verify empty runtime
    equipment. Close normally. Temporary cleanup is additionally covered by

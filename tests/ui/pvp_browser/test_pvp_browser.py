@@ -30,6 +30,7 @@ from hoyolab_export.account_equipment import (
 from hoyolab_export.artifact_db import connect_db, init_db
 from localization import tr
 from ui.app_shell import AppShellController
+from tests.ui.pvp_browser._period_fixture import fixture_period_provider_kwargs
 from ui.character_browser.filter_bar import CharacterFilterBar
 from ui.pvp_browser.build_flow import (
     PVP_SCOPED_CHARACTER_ROW_HEIGHT,
@@ -84,6 +85,7 @@ class PvpBrowserTest(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -121,6 +123,7 @@ class PvpBrowserTest(unittest.TestCase):
     def test_pvp_decks_workspace_empty_account_does_not_create_fake_deck(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: [],
                 weapon_assets_provider=lambda: [],
@@ -134,6 +137,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("13407", "Favonius Lance", weapon_type=13)]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -150,6 +154,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("13407", "Favonius Lance", weapon_type=13)]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -166,6 +171,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -199,6 +205,7 @@ class PvpBrowserTest(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -242,6 +249,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -274,6 +282,7 @@ class PvpBrowserTest(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -306,6 +315,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -366,6 +376,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -392,6 +403,7 @@ class PvpBrowserTest(unittest.TestCase):
     def test_pvp_play_start_disabled_without_valid_decks(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: [],
                 weapon_assets_provider=lambda: [],
@@ -411,6 +423,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -449,6 +462,7 @@ class PvpBrowserTest(unittest.TestCase):
         weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: characters,
                 weapon_assets_provider=lambda: weapons,
@@ -471,6 +485,7 @@ class PvpBrowserTest(unittest.TestCase):
     def test_pvp_draft_tab_without_active_session_shows_empty_state(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: [],
                 weapon_assets_provider=lambda: [],
@@ -1173,7 +1188,11 @@ class PvpBrowserTest(unittest.TestCase):
                 (int(_asset_character_id(characters[0])),),
             )
 
-        workspace = PvpWorkspace(db_path=db_path, deck_dir=temp_dir.name)
+        workspace = PvpWorkspace(
+            **fixture_period_provider_kwargs(),
+            db_path=db_path,
+            deck_dir=temp_dir.name,
+        )
         self.assertTrue(
             any(
                 weapon.get("metadata", {}).get("owner_badges")
@@ -2096,6 +2115,7 @@ class PvpBrowserTest(unittest.TestCase):
             equip_weapon(conn, _asset_character_id(characters[0]), weapon_fingerprint)
             conn.commit()
         workspace = PvpWorkspace(
+            **fixture_period_provider_kwargs(),
             db_path=db_path,
             deck_dir=temp_dir.name,
             character_assets_provider=lambda: characters,
@@ -2156,6 +2176,7 @@ class PvpBrowserTest(unittest.TestCase):
     def test_pvp_right_panel_host_switches_decks_and_play_pages(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpWorkspace(
+                **fixture_period_provider_kwargs(),
                 deck_dir=temp_dir,
                 character_assets_provider=lambda: [],
                 weapon_assets_provider=lambda: [],
@@ -2214,6 +2235,7 @@ class PvpBrowserTest(unittest.TestCase):
         db_path = Path(temp_dir.name) / "pvp-build.sqlite"
         _seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
         workspace = PvpWorkspace(
+            **fixture_period_provider_kwargs(),
             db_path=db_path,
             deck_dir=temp_dir.name,
             character_assets_provider=lambda: characters,

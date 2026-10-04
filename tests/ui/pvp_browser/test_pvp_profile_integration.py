@@ -10,6 +10,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 from PIL import Image
+from tests.ui.pvp_browser._period_fixture import fixture_period_provider_kwargs, fixture_profile_options
 
 from run_workspace.pvp.deck_preset import PvpDeckPreset, save_deck_preset, weapon_ref_from_asset
 from run_workspace.pvp.profile_package import export_pvp_profile_package
@@ -63,11 +64,20 @@ class PvpProfileIntegrationTest(unittest.TestCase):
                 character_ids=tuple(_asset_character_id(asset) for asset in characters),
                 weapon_refs=tuple(weapon_ref_from_asset(asset) for asset in weapons)), directory)
         self.package = self.root / "remote.gttpvp"
-        export_pvp_profile_package(self.package, db_path=remote_db, deck_dir=remote_decks,
-            character_asset_paths={_asset_character_id(asset): self.remote_portrait for asset in self.remote_characters})
-        self.workspace = PvpWorkspace(db_path=self.local_db, deck_dir=self.local_decks,
+        export_pvp_profile_package(
+            self.package,
+            db_path=remote_db,
+            deck_dir=remote_decks,
+            options=fixture_profile_options(),
+            character_asset_paths={_asset_character_id(asset): self.remote_portrait for asset in self.remote_characters},
+        )
+        self.workspace = PvpWorkspace(
+            **fixture_period_provider_kwargs(),
+            db_path=self.local_db,
+            deck_dir=self.local_decks,
             character_assets_provider=lambda: self.local_characters,
-            weapon_assets_provider=lambda: self.local_weapons)
+            weapon_assets_provider=lambda: self.local_weapons,
+        )
         self.addCleanup(self.workspace.close)
         self.source_hash = hashlib.sha256(self.local_db.read_bytes()).hexdigest()
         self.local_files = {path.name: path.read_bytes() for path in self.local_decks.iterdir()}
@@ -124,8 +134,13 @@ class PvpProfileIntegrationTest(unittest.TestCase):
         save_deck_preset(PvpDeckPreset(deck_id="remote", name="remote",
             character_ids=tuple(_asset_character_id(asset) for asset in self.local_characters),
             weapon_refs=tuple(weapon_ref_from_asset(asset) for asset in self.remote_weapons)), self.remote_decks)
-        export_pvp_profile_package(self.package, db_path=self.remote_db, deck_dir=self.remote_decks,
-            character_asset_paths={_asset_character_id(asset): self.remote_portrait for asset in self.remote_characters})
+        export_pvp_profile_package(
+            self.package,
+            db_path=self.remote_db,
+            deck_dir=self.remote_decks,
+            options=fixture_profile_options(),
+            character_asset_paths={_asset_character_id(asset): self.remote_portrait for asset in self.remote_characters},
+        )
         self.assertTrue(self.workspace.import_profile_for_seat("player_2", self.package))
         shared = self.workspace._shared_character_assets()
         self.assertEqual(len(shared), 24)

@@ -12,7 +12,8 @@ import zipfile
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Protocol
+from threading import RLock
+from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
 from .deck_preset import DEFAULT_PVP_DECK_PRESET_DIR, PvpDeckPreset, deck_preset_from_mapping, load_deck_presets
@@ -83,13 +84,36 @@ class ImportedPvpProfile:
     weapon_asset_paths: Mapping[str, Path] = field(default_factory=dict)
     _temp_dir: Any = field(default=None, repr=False)
     _closed: bool = field(default=False, init=False, repr=False)
+    _runtime_users: int = field(default=0, init=False, repr=False)
+    _lifecycle_lock: Any = field(default_factory=RLock, init=False, repr=False)
 
     def close(self) -> None:
-        if not self._closed:
+        with self._lifecycle_lock:
             self._closed = True
-            temporary, self._temp_dir = self._temp_dir, None
-            if temporary is not None:
-                temporary.cleanup()
+            self._cleanup_if_unused()
+
+    def retain_runtime(self) -> Callable[[], None]:
+        """A cancelled background reader must finish before its source is removed."""
+        with self._lifecycle_lock:
+            if self._closed:
+                raise PvpProfilePackageError("PvP profile provider is closed.")
+            self._runtime_users += 1
+        released = False
+
+        def release() -> None:
+            nonlocal released
+            with self._lifecycle_lock:
+                if not released:
+                    released = True
+                    self._runtime_users -= 1
+                    self._cleanup_if_unused()
+
+        return release
+
+    def _cleanup_if_unused(self) -> None:
+        if self._closed and not self._runtime_users and self._temp_dir is not None:
+            self._temp_dir.cleanup()
+            self._temp_dir = None
 
     def __enter__(self) -> "ImportedPvpProfile":
         return self
@@ -103,6 +127,7 @@ class LocalPvpProfileProvider:
     source_db_path: str | Path | None = None
     deck_dir: str | Path = DEFAULT_PVP_DECK_PRESET_DIR
     profile_metadata: Mapping[str, Any] = field(default_factory=dict)
+    period_id_provider: Callable[[], str] | None = field(default=None, repr=False)
 
     @property
     def db_path(self) -> Path:
@@ -110,7 +135,10 @@ class LocalPvpProfileProvider:
 
     @property
     def metadata(self) -> Mapping[str, Any]:
-        return dict(self.profile_metadata)
+        metadata = dict(self.profile_metadata)
+        if self.period_id_provider is not None:
+            metadata["abyss_period_id"] = self.period_id_provider()
+        return metadata
 
     def load_deck_presets(self) -> tuple[PvpDeckPreset, ...]:
         return tuple(load_deck_presets(self.deck_dir))
@@ -137,6 +165,9 @@ class ImportedPvpProfileProvider:
 
     def close(self) -> None:
         self.profile.close()
+
+    def retain_runtime(self) -> Callable[[], None]:
+        return self.profile.retain_runtime()
 
 
 def export_pvp_profile_package(

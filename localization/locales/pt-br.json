@@ -1,4 +1,12 @@
 {
+  "app_shell.pvp.gcsim.busy": "Aguarde a conclusão da simulação anterior.",
+  "app_shell.pvp.period.unavailable": "É necessário um período atual do Abismo do HoYoLAB. Atualize os dados da conta.",
+  "app_shell.pvp.period.expired": "O período salvo do Abismo expirou. Atualize os dados da conta.",
+  "app_shell.pvp.period.profile_stale": "Um perfil usa outro período do Abismo. Atualize seus dados e exporte-o novamente.",
+  "app_shell.pvp.period.match_changed": "O período do Abismo mudou. Inicie um novo draft com perfis atuais.",
+  "app_shell.pvp.period.cache_missing": "Faltam dados dos inimigos para o período atual do Abismo. Atualize os dados do Abismo.",
+  "app_shell.pvp.gcsim.running": "Simulando a equipe deste jogador…",
+  "app_shell.pvp.gcsim.engine_changed": "O motor GCSIM mudou. Execute a simulação novamente.",
   "app_shell.pvp.gcsim.preparation_only": "Preparação da equipe PvP. A simulação requer um período do Abismo validado.",
   "app_shell.pvp.gcsim.prepare_failed": "Não foi possível preparar a equipe: {error}",
   "gcsim.optimizer.finish_requested": "Encerrando a busca e mostrando os resultados encontrados. Se ainda não houver uma build completa, isso será informado.",

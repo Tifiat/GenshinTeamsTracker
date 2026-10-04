@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,14 @@ from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
 from localization import tr
 from run_workspace.abyss.source_data import AbyssFloorSourceData
 from run_workspace.abyss.source_data_runtime import (
-    load_current_cached_abyss_floor_source_data,
+    CachedAbyssPeriodRef, read_cached_hoyolab_abyss_period,
+)
+from run_workspace.abyss.source_data_cache import (
+    DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR, load_cached_abyss_floor_source_data,
+    AbyssSourceDataCacheError,
+)
+from run_workspace.pvp.period_admission import (
+    evaluate_pvp_period_admission, validate_current_official_period,
 )
 from run_workspace.models import ABYSS_CHAMBER_START_SECONDS
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
@@ -58,6 +66,7 @@ from run_workspace.pvp.profile_package import (
     ImportedPvpProfileProvider,
     LocalPvpProfileProvider,
     PvpProfileProvider,
+    PvpProfilePackageOptions,
     export_pvp_profile_package,
     import_pvp_profile_package,
 )
@@ -177,6 +186,7 @@ class PvpActiveDraftSession:
     player_2_deck_id: str
     player_2_deck_name: str
     controller: FreeDraftController
+    abyss_period_id: str = ""
 
     def board_dict(self) -> dict[str, Any]:
         return self.controller.to_board_dict()
@@ -190,6 +200,18 @@ class PvpDeckStartStatus:
     text: str
     ready: bool
     issue_codes: tuple[str, ...] = ()
+
+
+def _utc_today() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def _pvp_period_message(decision) -> str:
+    if decision.status in {"profile_period_id_missing", "profile_period_ids_missing", "profile_period_id_mismatch"}:
+        return tr("app_shell.pvp.period.profile_stale")
+    if decision.status == "period_not_current":
+        return tr("app_shell.pvp.period.expired")
+    return tr("app_shell.pvp.period.unavailable")
 
 
 class PvpDeckAssetIconLabel(QLabel):
@@ -435,6 +457,8 @@ class PvpDecksWorkspace(QWidget):
         deck_dir: str | Path = DEFAULT_PVP_DECK_PRESET_DIR,
         character_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
         weapon_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
+        abyss_period_provider: Callable[[], CachedAbyssPeriodRef | None] | None = None,
+        today_provider: Callable[[], date] | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpDecksWorkspace")
@@ -445,6 +469,8 @@ class PvpDecksWorkspace(QWidget):
         self.deck_dir = resolve_deck_preset_dir(deck_dir)
         self._character_assets_provider = character_assets_provider
         self._weapon_assets_provider = weapon_assets_provider
+        self._abyss_period_provider = abyss_period_provider or read_cached_hoyolab_abyss_period
+        self._today_provider = today_provider or _utc_today
         self._resize_timer: QTimer | None = None
         self._last_refresh_viewport_widths: tuple[int, int] | None = None
         self.character_assets: list[dict[str, Any]] = []
@@ -696,10 +722,16 @@ class PvpDecksWorkspace(QWidget):
 
     def export_profile(self, output_path: str | Path) -> bool:
         try:
+            period = validate_current_official_period(
+                self._abyss_period_provider(), today=self._today_provider(),
+            )
+            if not period.ready:
+                raise ValueError(_pvp_period_message(period))
             report = export_pvp_profile_package(
                 output_path,
                 deck_dir=self.deck_dir,
                 db_path=self.db_path,
+                options=PvpProfilePackageOptions(abyss_period_id=period.period_id or ""),
                 character_asset_paths={
                     character_id_from_asset(asset): _asset_image_path(asset)
                     for asset in self.character_assets
@@ -1875,13 +1907,19 @@ class PvpWorkspace(QWidget):
         character_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
         weapon_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
         abyss_source_data_provider: Callable[[], AbyssFloorSourceData | None] | None = None,
+        abyss_period_provider: Callable[[], CachedAbyssPeriodRef | None] | None = None,
+        today_provider: Callable[[], date] | None = None,
+        abyss_cache_dir: str | Path = DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpWorkspace")
         self.db_path = Path(db_path)
         self.deck_dir = resolve_deck_preset_dir(deck_dir)
+        self._abyss_period_provider = abyss_period_provider or read_cached_hoyolab_abyss_period
+        self._today_provider = today_provider or _utc_today
+        self._abyss_cache_dir = Path(abyss_cache_dir)
         self._abyss_source_data_provider = (
-            abyss_source_data_provider or load_current_cached_abyss_floor_source_data
+            abyss_source_data_provider or self._load_abyss_source_data
         )
         self._abyss_source_data_loaded = False
         self._abyss_source_data: AbyssFloorSourceData | None = None
@@ -1894,6 +1932,7 @@ class PvpWorkspace(QWidget):
         self._local_profile_provider = LocalPvpProfileProvider(
             source_db_path=self.db_path,
             deck_dir=self.deck_dir,
+            period_id_provider=self._local_period_id,
         )
         self._profile_providers_by_seat: dict[str, PvpProfileProvider] = {
             seat: self._local_profile_provider
@@ -1919,6 +1958,8 @@ class PvpWorkspace(QWidget):
             deck_dir=self.deck_dir,
             character_assets_provider=character_assets_provider,
             weapon_assets_provider=weapon_assets_provider,
+            abyss_period_provider=self._abyss_period_provider,
+            today_provider=self._today_provider,
         )
         self.play_workspace = PvpPlayWorkspace()
         self.draft_workspace = PvpDraftWorkspace()
@@ -1937,7 +1978,7 @@ class PvpWorkspace(QWidget):
 
         application = QApplication.instance()
         if application is not None:
-            application.aboutToQuit.connect(self.close_profile_providers)
+            application.aboutToQuit.connect(self._on_application_quit)
 
     @property
     def character_assets(self) -> list[dict[str, Any]]:
@@ -2226,6 +2267,8 @@ class PvpWorkspace(QWidget):
 
     def can_start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
         return (
+            self.period_admission().ready
+            and
             self.deck_start_status(
                 player_1_deck_id,
                 player_label="Player 1",
@@ -2239,6 +2282,11 @@ class PvpWorkspace(QWidget):
         )
 
     def start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
+        period = self.period_admission()
+        if not period.ready:
+            self._last_play_status = _pvp_period_message(period)
+            self.state_changed.emit()
+            return False
         player_1_status = self.deck_start_status(
             player_1_deck_id,
             player_label="Player 1",
@@ -2287,6 +2335,7 @@ class PvpWorkspace(QWidget):
             player_2_deck_id=player_2_status.preset.deck_id,
             player_2_deck_name=player_2_status.preset.name,
             controller=controller,
+            abyss_period_id=period.period_id or "",
         )
         self._last_play_status = ""
         self._last_draft_status = ""
@@ -2397,6 +2446,8 @@ class PvpWorkspace(QWidget):
             parent=self.draft_workspace,
         )
         for seat, seat_context in context.seats.items():
+            seat_context.run_source_provider = self.gcsim_run_source
+            seat_context.gcsim_result_callback = self._on_build_gcsim_result
             seat_context.equipment_changed_callback = lambda _result, s=seat: self._on_build_source_changed(s)
             seat_context.source_workspace.character_clicked.connect(
                 lambda _asset, s=seat: self._on_build_source_changed(s)
@@ -2411,6 +2462,10 @@ class PvpWorkspace(QWidget):
         context = self.build_flow_context
         if context is not None:
             context.set_active_seat(seat)
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+
+    def _on_build_gcsim_result(self) -> None:
         self._sync_draft_workspace()
         self.state_changed.emit()
 
@@ -2661,6 +2716,7 @@ class PvpWorkspace(QWidget):
         self.build_flow_context = None
         if context is None:
             return
+        cleanup_error = None
         for seat_context in getattr(context, "seats", {}).values():
             for kind in ("artifact", "gcsim"):
                 browser = getattr(seat_context, f"{kind}_browser", None)
@@ -2669,17 +2725,77 @@ class PvpWorkspace(QWidget):
                     self.draft_workspace.build_browser_stack.removeWidget(browser)
                     browser.setParent(self)
                     browser.deleteLater()
-            seat_context.close_gcsim_preparation()
+            try:
+                seat_context.close_gcsim_preparation()
+            except Exception as exc:
+                cleanup_error = cleanup_error or exc
             source = getattr(seat_context, "source_workspace", None)
             if source is not None:
                 source.hide()
                 source.setParent(self)
                 source.deleteLater()
+        if cleanup_error is not None:
+            raise cleanup_error
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt override
-        self._dispose_build_flow_context()
-        self.close_profile_providers()
-        super().closeEvent(event)
+        try:
+            self._dispose_build_flow_context()
+        finally:
+            self.close_profile_providers()
+            super().closeEvent(event)
+
+    def _on_application_quit(self) -> None:
+        from run_workspace.pvp.gcsim_execution import close_pvp_gcsim_sessions
+
+        try:
+            self._dispose_build_flow_context()
+        finally:
+            try:
+                self.close_profile_providers()
+            finally:
+                close_pvp_gcsim_sessions()
+
+    def _local_period_id(self) -> str:
+        period = validate_current_official_period(
+            self._abyss_period_provider(), today=self._today_provider(),
+        )
+        return (period.period_id or "") if period.ready else ""
+
+    def period_admission(self):
+        return evaluate_pvp_period_admission(
+            self._abyss_period_provider(), today=self._today_provider(),
+            profile_period_ids=[
+                self.seat_profile_provider(seat).metadata.get("abyss_period_id", "")
+                for seat in PVP_SEATS
+            ],
+        )
+
+    def period_admission_text(self) -> str:
+        decision = self.period_admission()
+        return "" if decision.ready else _pvp_period_message(decision)
+
+    def gcsim_run_source(self) -> dict[str, Any]:
+        period = self.period_admission()
+        if not period.ready:
+            raise ValueError(_pvp_period_message(period))
+        if self.active_draft_session is None or self.active_draft_session.abyss_period_id != period.period_id:
+            raise ValueError(tr("app_shell.pvp.period.match_changed"))
+        source = self._abyss_source_data_provider()
+        if source is None or source.floor != 12 or source.period.start_date != period.ref.start_date:
+            raise ValueError(tr("app_shell.pvp.period.cache_missing"))
+        return {"abyss_period_id": period.period_id, "abyss_period_start": period.ref.start_date, "abyss_floor": source.floor,
+                "abyss_cache_dir": str(self._abyss_cache_dir), "source_data": source}
+
+    def _load_abyss_source_data(self) -> AbyssFloorSourceData | None:
+        ref = self._abyss_period_provider()
+        if ref is None:
+            return None
+        try:
+            return load_cached_abyss_floor_source_data(
+                ref.start_date, floor=12, cache_dir=self._abyss_cache_dir,
+            )
+        except (AbyssSourceDataCacheError, OSError, ValueError):
+            return None
 
     def close_profile_providers(self) -> None:
         closed: set[int] = set()
@@ -2731,10 +2847,15 @@ class PvpWorkspace(QWidget):
         }
 
     def _current_abyss_source_data(self) -> AbyssFloorSourceData | None:
+        period = self.period_admission()
+        if (not period.ready or self.active_draft_session is None
+                or self.active_draft_session.abyss_period_id != period.period_id):
+            return None
         if not self._abyss_source_data_loaded:
             self._abyss_source_data_loaded = True
             self._abyss_source_data = self._abyss_source_data_provider()
-        return self._abyss_source_data
+        source = self._abyss_source_data
+        return source if source is not None and source.floor == 12 and source.period.start_date == period.ref.start_date else None
 
     def _on_decks_state_changed(self) -> None:
         self._sync_play_workspace()

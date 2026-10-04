@@ -1,4 +1,12 @@
 {
+  "app_shell.pvp.gcsim.busy": "Wait for a previous simulation to finish.",
+  "app_shell.pvp.period.unavailable": "A current Abyss period from HoYoLAB is required. Refresh account data.",
+  "app_shell.pvp.period.expired": "The saved Abyss period has expired. Refresh account data.",
+  "app_shell.pvp.period.profile_stale": "A profile targets a different Abyss period. Refresh its data and export it again.",
+  "app_shell.pvp.period.match_changed": "The Abyss period changed. Start a new draft with current profiles.",
+  "app_shell.pvp.period.cache_missing": "Enemy data for the current Abyss period is unavailable. Refresh Abyss data.",
+  "app_shell.pvp.gcsim.running": "Simulating this player's team…",
+  "app_shell.pvp.gcsim.engine_changed": "The GCSIM engine changed. Run the simulation again.",
   "app_shell.pvp.gcsim.preparation_only": "PvP team preparation. Simulation requires a validated Abyss period.",
   "app_shell.pvp.gcsim.prepare_failed": "Could not prepare the team: {error}",
   "gcsim.optimizer.finish_requested": "Stopping search and showing results found so far. If no complete build exists yet, this will be reported.",

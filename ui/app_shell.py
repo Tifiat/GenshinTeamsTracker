@@ -1129,12 +1129,15 @@ class AppShellController:
 
     def gcsim_browser_abyss_targets_preview(
         self,
+        *,
+        abyss_source_data: AbyssFloorSourceData | None = None,
     ) -> tuple[str, tuple[tuple[str, ...], ...]]:
         if self.mode != MODE_ABYSS:
             return "", ((), ())
         chamber_rows = build_abyss_chamber_rows(
             self.abyss_timer_states,
-            abyss_source_data=self.cached_abyss_source_data(),
+            abyss_source_data=(abyss_source_data if abyss_source_data is not None
+                               else self.cached_abyss_source_data()),
             fact_dps_multi_target_enabled=self.abyss_fact_dps_multi_target_enabled,
         )
         mode_label = (

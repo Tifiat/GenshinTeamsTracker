@@ -761,9 +761,9 @@ Stage G: local hot-seat UI.
 - Team/weapon assignment.
 - Timer/result summary.
 - Status: implemented as a playable local hot-seat loop through read-only
-  result summary. Scoped artifact equipment and GCSIM preparation are available;
-  acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`. Executable scoped
-  GCSIM, History and result export remain later stages.
+  result summary. Scoped artifact equipment, GCSIM dispatch and local period
+  admission are available; controlled acceptance/lifecycle limits live in
+  `PVP_BUILD_SERVICES.md`. History and result export remain later stages.
 
 Stage H: deck builder/exporter UI.
 

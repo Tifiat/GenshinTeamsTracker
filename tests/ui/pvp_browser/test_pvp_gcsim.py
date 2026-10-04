@@ -1,4 +1,4 @@
-"""Scoped preparation only; no engine execution or physical UI acceptance."""
+"""Scoped browser preparation; no engine execution or physical UI acceptance."""
 
 from __future__ import annotations
 

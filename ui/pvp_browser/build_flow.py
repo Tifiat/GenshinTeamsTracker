@@ -523,6 +523,12 @@ class PvpSeatBuildContext:
     artifact_browser: Any | None = field(default=None, init=False)
     gcsim_browser: Any | None = field(default=None, init=False)
     gcsim_preparation: Any | None = field(default=None, init=False)
+    gcsim_execution: Any | None = field(default=None, init=False)
+    run_source_provider: Any | None = field(default=None, repr=False)
+    gcsim_result_callback: Any | None = field(default=None, repr=False)
+    _gcsim_generation: int = field(default=0, init=False)
+    _gcsim_closed: bool = field(default=False, init=False)
+    _gcsim_poll_timer: QTimer = field(init=False, repr=False)
     equipment_changed_callback: Any | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
@@ -558,6 +564,9 @@ class PvpSeatBuildContext:
         self._weapon_filter_timer = QTimer(self.source_workspace)
         self._weapon_filter_timer.setSingleShot(True)
         self._weapon_filter_timer.timeout.connect(self._apply_deferred_weapon_filter)
+        self._gcsim_poll_timer = QTimer(self.source_workspace)
+        self._gcsim_poll_timer.setInterval(75)
+        self._gcsim_poll_timer.timeout.connect(self._poll_gcsim_run)
         self.sync_source_workspace(reload_grids=True)
 
     @property
@@ -589,8 +598,10 @@ class PvpSeatBuildContext:
         if self.gcsim_browser is None:
             from ui.gcsim_browser.window import GcsimBrowserWorkspace
 
-            self.gcsim_browser = GcsimBrowserWorkspace(parent=parent, mode=MODE_ABYSS, preparation_only=True)
+            self.gcsim_browser = GcsimBrowserWorkspace(parent=parent, mode=MODE_ABYSS, scoped_build=True)
             self.gcsim_browser.prepare_requested.connect(self._prepare_gcsim_config)
+            self.gcsim_browser.run_selected_requested.connect(self._run_gcsim_selected)
+            self.gcsim_browser.run_all_requested.connect(self._run_gcsim_all)
             self.gcsim_browser.rotation_text_changed.connect(self.invalidate_gcsim_preparation)
             self.invalidate_gcsim_preparation()
         self.sync_gcsim_browser_context()
@@ -601,12 +612,30 @@ class PvpSeatBuildContext:
             return
         for team_index, slots in enumerate(self.controller.gcsim_browser_team_previews()):
             self.gcsim_browser.set_team_preview(team_index, list(slots))
+        allowed = False
+        preview = ((), ())
+        message = tr("app_shell.pvp.gcsim.preparation_only")
+        try:
+            source = self.run_source_provider() if self.run_source_provider is not None else None
+            if source is not None:
+                message, preview = self.controller.gcsim_browser_abyss_targets_preview(
+                    abyss_source_data=source["source_data"],
+                )
+                allowed = True
+        except Exception as exc:
+            message = str(exc)
+        self.gcsim_browser.set_run_admission(allowed, message="" if allowed else message)
         self.gcsim_browser.set_abyss_targets_preview(
-            target_mode_label=tr("app_shell.pvp.gcsim.preparation_only"),
+            target_mode_label=message, preview_by_team=preview,
             energy_mode_label=_gcsim_browser_energy_mode_label(self.controller.gcsim_run_settings().boosted_energy_enabled),
         )
 
     def invalidate_gcsim_preparation(self) -> None:
+        self.ready = False
+        self._gcsim_generation += 1
+        self.controller.session.clear_gcsim_results()
+        if self.gcsim_execution is not None:
+            self.gcsim_execution.cancel()
         if self.gcsim_browser is not None:
             self.sync_gcsim_browser_context()
             self.gcsim_browser.set_prepare_result_text(tr("app_shell.pvp.gcsim.preparation_only"))
@@ -634,9 +663,100 @@ class PvpSeatBuildContext:
         self.gcsim_browser.set_prepare_result_text(_gcsim_prepare_report_text(report.to_dict()))
 
     def close_gcsim_preparation(self) -> None:
-        if self.gcsim_preparation is not None:
-            self.gcsim_preparation.close()
-            self.gcsim_preparation = None
+        self._gcsim_closed = True
+        self._gcsim_poll_timer.stop()
+        try:
+            if self.gcsim_execution is not None:
+                self.gcsim_execution.close()
+        finally:
+            if self.gcsim_preparation is not None:
+                self.gcsim_preparation.close()
+                self.gcsim_preparation = None
+
+    def _run_gcsim_selected(self, team_index: int, chamber: int, rotation_shell_text: str) -> None:
+        self._start_gcsim_run(team_index, rotation_shell_text, chamber=chamber)
+
+    def _run_gcsim_all(self, team_index: int, rotation_shell_text: str) -> None:
+        self._start_gcsim_run(team_index, rotation_shell_text)
+
+    def _start_gcsim_run(self, team_index: int, rotation_shell_text: str, *, chamber: int | None = None) -> None:
+        from run_workspace.pvp.gcsim_execution import PvpGcsimRunSession
+        from ui.gcsim_browser.run_worker import (
+            GcsimBrowserRunRequest, GcsimBrowserBatchRunRequest, _active_run_binding,
+            run_gcsim_browser_selected_chamber, run_gcsim_browser_three_chambers,
+        )
+
+        if self._gcsim_closed or (self.gcsim_execution is not None and self.gcsim_execution.busy):
+            return
+        try:
+            if type(team_index) is not int or team_index not in (0, 1):
+                raise ValueError("Invalid PvP team index.")
+            if chamber is not None and (type(chamber) is not int or chamber not in (1, 2, 3)):
+                raise ValueError("Invalid PvP chamber.")
+            if self.run_source_provider is None:
+                raise ValueError(tr("app_shell.pvp.period.unavailable"))
+            source = self.run_source_provider()
+            binding = _active_run_binding(_selected_gcsim_engine_id(), require_enemy_registry=True)
+            common = dict(
+                db_path=str(self.db_path), selected_team=self.controller.gcsim_browser_selected_team(team_index),
+                team_index=team_index, side=team_index + 1, rotation_shell_text=rotation_shell_text,
+                abyss_period_start=source["abyss_period_start"], abyss_floor=source["abyss_floor"],
+                abyss_period_id=source["abyss_period_id"],
+                abyss_cache_dir=source["abyss_cache_dir"], target_mode=self.controller.gcsim_target_mode(),
+                boosted_energy_enabled=self.controller.gcsim_run_settings().boosted_energy_enabled,
+                expected_engine_id=binding.engine_id, allow_account_equipment_fallback=False,
+            )
+            request = (GcsimBrowserBatchRunRequest(**common) if chamber is None
+                       else GcsimBrowserRunRequest(**common, chamber=chamber))
+            if self.gcsim_execution is None:
+                self.gcsim_execution = PvpGcsimRunSession(provider=self.provider)
+            started = self.gcsim_execution.start(
+                request, generation=self._gcsim_generation, batch=chamber is None,
+                executor=run_gcsim_browser_three_chambers if chamber is None else run_gcsim_browser_selected_chamber,
+            )
+            if started:
+                self.gcsim_browser.set_actions_busy(True, message=tr("app_shell.pvp.gcsim.running"))
+                self._gcsim_poll_timer.start()
+            else:
+                self.gcsim_browser.set_prepare_result_text(tr("app_shell.pvp.gcsim.busy"))
+        except Exception as exc:
+            self.gcsim_browser.set_prepare_result_text(tr("app_shell.pvp.gcsim.prepare_failed").format(error=exc))
+
+    def _poll_gcsim_run(self) -> None:
+        from ui.gcsim_browser.run_worker import format_gcsim_browser_batch_report, format_gcsim_browser_run_report
+
+        if self._gcsim_closed or self.gcsim_execution is None or self.gcsim_execution.busy:
+            return
+        self._gcsim_poll_timer.stop()
+        result = self.gcsim_execution.take_result()
+        self.gcsim_browser.set_actions_busy(False)
+        self.sync_gcsim_browser_context()
+        if result is None or result.generation != self._gcsim_generation:
+            return
+        try:
+            source = self.run_source_provider()
+            if (source["abyss_period_id"] != result.request.abyss_period_id
+                    or source["abyss_period_start"] != result.request.abyss_period_start):
+                raise ValueError(tr("app_shell.pvp.period.match_changed"))
+            if _selected_gcsim_engine_id() != result.request.expected_engine_id:
+                raise ValueError(tr("app_shell.pvp.gcsim.engine_changed"))
+        except Exception as exc:
+            self.gcsim_execution.cancel()
+            self.gcsim_browser.set_prepare_result_text(str(exc))
+            return
+        if result.batch:
+            self.controller.store_gcsim_browser_batch_payload(
+                result.payload, rotation_shell_text=result.request.rotation_shell_text,
+            )
+            text = format_gcsim_browser_batch_report(result.payload)
+        else:
+            self.controller.store_gcsim_browser_selected_payload(
+                result.payload, rotation_shell_text=result.request.rotation_shell_text,
+            )
+            text = format_gcsim_browser_run_report(result.payload)
+        self.gcsim_browser.set_prepare_result_text(text)
+        if self.gcsim_result_callback is not None:
+            self.gcsim_result_callback()
 
     def _on_artifact_equipment_changed(self, result: EquipmentChangeResult) -> None:
         if result.changed:

@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PySide6.QtWidgets import QApplication
+from tests.ui.pvp_browser._period_fixture import fixture_period_provider_kwargs, fixture_profile_options
 
 from hoyolab_export.artifact_db import create_build_preset, upsert_artifact_set_bonus_description
 from hoyolab_export.account_equipment import equip_artifact
@@ -65,10 +66,20 @@ class PvpBuildFixture(unittest.TestCase):
                 character_ids=tuple(_asset_character_id(asset) for asset in self.characters),
                 weapon_refs=tuple(weapon_ref_from_asset(asset) for asset in self.weapons)), directory)
         archive = self.root / "remote.gttpvp"
-        export_pvp_profile_package(archive, db_path=self.remote_db, deck_dir=remote_decks,
-            character_asset_paths={_asset_character_id(asset): portrait for asset in self.characters})
-        self.workspace = PvpWorkspace(db_path=self.local_db, deck_dir=self.local_decks,
-            character_assets_provider=lambda: self.characters, weapon_assets_provider=lambda: self.weapons)
+        export_pvp_profile_package(
+            archive,
+            db_path=self.remote_db,
+            deck_dir=remote_decks,
+            options=fixture_profile_options(),
+            character_asset_paths={_asset_character_id(asset): portrait for asset in self.characters},
+        )
+        self.workspace = PvpWorkspace(
+            **fixture_period_provider_kwargs(),
+            db_path=self.local_db,
+            deck_dir=self.local_decks,
+            character_assets_provider=lambda: self.characters,
+            weapon_assets_provider=lambda: self.weapons,
+        )
         self.addCleanup(self.workspace.close)
         self.assertTrue(self.workspace.import_profile_for_seat("player_2", archive))
         self.assertTrue(self.workspace.start_local_draft("local", "remote"))

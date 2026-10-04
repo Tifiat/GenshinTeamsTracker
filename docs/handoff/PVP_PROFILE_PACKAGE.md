@@ -39,8 +39,11 @@ targeting those characters or their engine keys. Universal/unrelated builds,
 normal equipment ownership, source metadata, paths, history, tags, auth and
 debug data are excluded. Selected weapon static display effects and passive
 reference text are transported without full catalogs or source metadata.
-Optional nickname/locale/period metadata is descriptive;
-authoritative Abyss-period admission remains unimplemented.
+Nickname/locale metadata remains optional. Play requires period metadata to
+match current direct HoYoLAB authority; export fills it from validated captured
+dates. Local admission, scoped execution and date-precision limits are owned by
+`PVP_BUILD_SERVICES.md`. Existing v3 archives with missing/stale period metadata
+need re-export; package/schema validation itself does not certify currentness.
 
 One transparent portrait per game id is reused across seats, scopes, Pick/Ban
 and result cards. Per-seat stats and fresh runtime equipment remain independent.
@@ -184,6 +187,10 @@ lives until replacement, return to the local provider, workspace close or app
 exit. Match teardown discards match equipment/context while retaining the
 selected profile for another match. Neither its decks nor equipment enter the
 normal local account.
+
+An active scoped GCSIM reader retains the imported runtime before dispatch.
+Provider close blocks new readers immediately and defers its managed-directory
+removal until the final reader releases it after execution/cancellation.
 
 Archive limits are 128 MiB for the file and total unpacked content, 64 MiB per
 non-JSON member, 1 MiB per JSON member, 4096 members and a maximum compression

@@ -1,4 +1,12 @@
 {
+  "app_shell.pvp.gcsim.busy": "Дождитесь завершения предыдущего расчёта.",
+  "app_shell.pvp.period.unavailable": "Нужен актуальный период Бездны из HoYoLAB. Обновите данные аккаунта.",
+  "app_shell.pvp.period.expired": "Сохранённый период Бездны уже не действует. Обновите данные аккаунта.",
+  "app_shell.pvp.period.profile_stale": "Период одного из профилей не совпадает с текущим. Обновите данные и экспортируйте профиль заново.",
+  "app_shell.pvp.period.match_changed": "Период Бездны изменился. Начните новый драфт с актуальными профилями.",
+  "app_shell.pvp.period.cache_missing": "Нет данных врагов для текущего периода Бездны. Обновите данные Бездны.",
+  "app_shell.pvp.gcsim.running": "Рассчитываем команду этого игрока…",
+  "app_shell.pvp.gcsim.engine_changed": "Движок GCSIM изменился. Запустите расчёт заново.",
   "app_shell.pvp.gcsim.preparation_only": "Подготовка команды PvP. Для запуска нужна проверка периода Бездны.",
   "app_shell.pvp.gcsim.prepare_failed": "Не удалось подготовить команду: {error}",
   "gcsim.optimizer.finish_requested": "Завершаем поиск и покажем найденное. Если полной сборки ещё нет, сообщим об этом.",

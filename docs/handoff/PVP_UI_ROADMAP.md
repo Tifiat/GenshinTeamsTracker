@@ -43,9 +43,9 @@ remains in `PVP_BACKEND_STATUS.md`.
   completed result summary v0 are implemented for local hot-seat matches.
   Development-only profile package import/export actions are also available,
   with validated portable v3 slices/assets and pending real-account acceptance.
-  Scoped Artifact Browser and GCSIM preparation routing are implemented; their
-  current acceptance/lifecycle owner is `PVP_BUILD_SERVICES.md`. Executable scoped PvP GCSIM,
-  online play, ruleset costs, immune picks, result PNG/export, and PvP History
+  Scoped Artifact Browser, GCSIM dispatch and local period admission are
+  implemented; current acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`.
+  Online play, ruleset costs, immune picks, result PNG/export, and PvP History
   are still not implemented. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
 
@@ -379,8 +379,8 @@ Current v0 scope:
 - After pick/ban completion, current v0 continues through internal Assignment,
   Weapon assignment, Timers/results, and Completed result stages for local
   hot-seat play.
-- Current v0 includes artifact equipment and preparation-only GCSIM; executable
-  scoped runs remain later work under the same scoped build architecture.
+- Current v0 includes artifact equipment and scoped GCSIM dispatch through
+  normal services; real-engine/user acceptance remains open in `PVP_BUILD_SERVICES.md`.
 - Online mode, ruleset cost rendering, immune picks, session files, PvP History
   writes, and result export are not implemented in current v0. The separate
   portable profile implementation is still awaiting real-account/user-path
@@ -568,12 +568,13 @@ Hot-seat layout direction:
   content alignment. Draft order overlays remain translucent when inactive:
   picks use the acting player's color, bans use the ban semantic red, and immune
   actions keep their dedicated semantic color.
-- Future match admission must validate Abyss period identity before Draft
+- Local match admission validates Abyss period identity before Draft
   starts. Local/hot-seat profiles must resolve to the same period; a mismatch
   must be checked against the current authoritative period and require stale
   data to be updated. Online room create/join must use the server-advertised
   current period as authority and block/ask the client to refresh when its
-  profile period differs. This admission gate is not implemented yet.
+  profile period differs. Local gates and date-precision limits are owned by
+  `PVP_BUILD_SERVICES.md`; online server admission is still future work.
 - Factual DPS, restarts, technical-loss UI, bundle/export actions, and GCSIM
   scoring are still future work.
 
@@ -693,8 +694,8 @@ Right-panel architecture status before more PvP growth:
 > canonical in `ui/right_panel/pvp/_shared.py`. Assignment/Weapon stages now
 > use scoped normal AppShell controller/workspace state and the shared
 > `RunRightPanelWidget`; the previous custom source/target implementation must
-> not return. Artifact Browser and preparation-only GCSIM now use that pipeline;
-> executable scoped runs remain later work. See `PVP_BUILD_SERVICES.md`.
+> not return. Artifact Browser and scoped GCSIM now use that pipeline;
+> controlled evidence and pending real-engine acceptance live in `PVP_BUILD_SERVICES.md`.
 
 Current v0 limitations / later work:
 

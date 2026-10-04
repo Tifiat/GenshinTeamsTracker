@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-07-17.
+Last updated: 2026-10-04 (scoped services and local period admission only).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -74,9 +74,10 @@ Draft board v0:
   remaining real-account/user-smoke gates are owned by `PVP_PROFILE_PACKAGE.md`.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
-- Abyss-period match admission is still a backend gap. Future local matches
-  must reject/refresh mismatched seat periods, while future online create/join
-  must validate clients against a server-authoritative current period.
+- Local match/run admission rejects missing/stale/mismatched profile periods
+  against captured direct HoYoLAB authority. Scoped GCSIM dispatch, controlled
+  verification and precise-date limitations live in `PVP_BUILD_SERVICES.md`.
+  Future online create/join still needs server-advertised period authority.
 - The UI roadmap and stage direction are owned by
   `PVP_UI_ROADMAP.md`; this file should remain backend/status focused.
 
@@ -249,9 +250,9 @@ Still out of scope / not implemented:
 
 - real-account/user-path acceptance of the two-seat portable profile boundary
   and isolated second-account exchange; see `PVP_PROFILE_PACKAGE.md`;
-- executable scoped PvP GCSIM and authoritative-period admission; artifact
-  equipment and preparation routing are implemented with acceptance/lifecycle
-  limits in `PVP_BUILD_SERVICES.md`;
+- real-engine/user acceptance of scoped PvP GCSIM and exact reset-hour admission;
+  implemented local period gates, dispatch and lifecycle limits are owned by
+  `PVP_BUILD_SERVICES.md`;
 - online/P2P/relay transport;
 - PvP History persistence;
 - result PNG/export UI;

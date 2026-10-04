@@ -40,7 +40,11 @@ conversation is usually Russian.
   tokens, request headers, browser profiles or private debug/network output.
   Generated files require an owner, finite retention and connected cleanup:
   see `docs/handoff/DATA_WORK_RULES.md`.
-- Do not commit or push task changes unless the user requests it.
+- Automatically commit checked, completed local stages of your own work under
+  the Git policy routed through [COORDINATION](docs/handoff/COORDINATION.md).
+  This grants no new product scope. Transfers between branches, push and other
+  Git writes require separate explicit authorization; never commit temporary
+  instrumentation scheduled for rollback or another worker's unfinished work.
 - Parallel workers use separate Git worktrees. Resolve imports, databases,
   settings, engines, caches and outputs inside the calling worker's checkout;
   never edit another worker's files or share its live database. Git objects and

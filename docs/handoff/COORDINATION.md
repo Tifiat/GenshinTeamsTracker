@@ -14,9 +14,12 @@ Local TODO and WORK_BACKLOG are routers. Branch work, review readiness and
 acceptance on master stay separate. A registry entry or document check does
 not prove product or user-path acceptance.
 
-The migration grants no app, account, engine or Git authorization. The current
-application launch is separately authorized by the user in the History chat.
-No commits, pushes, merges or transfers were requested or performed here.
+The user approved checked local commits of own completed stages on 2026-10-04.
+Transfers between branches, push and other Git writes require separate explicit
+authorization. This grants no new product scope. The History chat separately
+authorized its application launch, pre-measurement commits and later rollback
+of temporary timers. No transfers or pushes occurred. Current measurements
+remain in progress; their instrumentation is not a completed commit package.
 <!-- /handoff-current -->
 
 ## Local routing
@@ -27,6 +30,12 @@ Read [hub rules](../../../GTT%20coordination/README.md),
 scope changes and closeout. Read only the selected
 [backlog](../../../GTT%20coordination/BACKLOG.md) area, then this checkout's
 technical owner. Existing local TODO/backlog links remain valid routers.
+
+Read the [approved Git policy](../../../GTT%20coordination/GIT_POLICY.md) before
+Git writes. Record time, branch, full parent/result hashes, checks and remaining
+gates in Worker5 status; Worker1 owns the common Git journal. Keep unsynchronised
+events until collected. Temporary instrumentation and account runtime are outside
+automatic completed-stage commits.
 
 Only Worker1 reconciles shared queue changes. Worker5 records proposals in its
 own status and preserves other workers' files. Subagents report to their parent.

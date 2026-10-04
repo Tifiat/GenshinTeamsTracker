@@ -19,7 +19,23 @@ algorithmic shortcut that should be fixed directly.
   - why it is not fixed now;
   - what the loader should eventually bake, prewarm, or cache.
 - Keep measurement details in `docs/handoff/performance_measurements/`; keep
-  this file as the curated loader queue.
+this file as the curated loader queue.
+
+## Current Artifact Browser Direct Fixes
+
+The 2026-10-03 first-open optimization and pending user smoke gate are owned by
+[ARTIFACT_BROWSER.md](ARTIFACT_BROWSER.md#artifact-browser-storage-and-json-import).
+The [dated receipt](performance_measurements/2026-10-03_artifact_first_open_worker3.md)
+remeasures this worker's current inventory, including preset-target batching,
+single construction with known targets, initialized reads and alpha trimming.
+It supersedes June estimates for that specific scenario only. Remaining store,
+widget and raster preparation are still candidates for measured direct fixes
+before an approved loader; no new cache/prewarm stage is installed.
+The [2026-10-04 continuation](performance_measurements/2026-10-04_artifact_scaling_actions_worker3.md)
+adds scaled inventories and equipment-action measurements. It confirms bounded
+inventory query counts and removes avoidable apply-time row rebuilding. Initial
+widget/raster work and long target-switch list rebuilding remain measurable;
+the continuation makes no claim of an additional first-open speedup.
 
 ## Historical Measurement Sources (2026-06-13)
 

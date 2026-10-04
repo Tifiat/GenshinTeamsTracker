@@ -3,8 +3,8 @@
 This file lists the available handoff documents for discovery and structural
 coverage. It is not startup reading. Use `README.md` to choose one area and
 read only that area's current status and relevant contract section. Read
-`TODO.md` when selecting the current stage and `WORK_BACKLOG.md` when a deferred
-area is selected.
+`TODO.md` as the shared-queue router when selecting the current stage and
+`WORK_BACKLOG.md` as the shared-backlog router when a deferred area is selected.
 
 ## Authority
 
@@ -28,10 +28,11 @@ in every file.
 | [README.md](README.md) | Short area router and reading policy |
 | [HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md) | Durable-fact closeout, compaction and consistency checks |
 | [COORDINATION.md](COORDINATION.md) | Shared queue, per-worker ownership and checkout-local technical evidence |
+| [integration_receipts/2026-10-04_ready_workers.md](integration_receipts/2026-10-04_ready_workers.md) | Local ready-branch integration sources, combined checks and acceptance limits |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |
-| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Deferred open work by area; current priority stays in TODO |
+| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Router to shared deferred scopes; active priority routes through TODO |
 
 ## Account, Data And Artifacts
 
@@ -51,6 +52,7 @@ in every file.
 | Document | Role |
 | --- | --- |
 | [APP_SHELL_WORKSPACE_PLAN.md](APP_SHELL_WORKSPACE_PLAN.md) | Current workspace/dock ownership and remaining launch migration |
+| [DISPLAY_SCALING.md](DISPLAY_SCALING.md) | Windows system-scaling Settings switch, startup/font/adaptive contract and pre-MVP user acceptance |
 | [MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md](MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md) | Right-panel package ownership and legacy boundary |
 | [RUN_WORKSPACE_SNAPSHOT_CONTRACT.md](RUN_WORKSPACE_SNAPSHOT_CONTRACT.md) | Live typed session, immutable saves and launch-readiness review |
 | [HISTORY_BROWSER.md](HISTORY_BROWSER.md) | Shared read-only snapshot contract, implemented cards/export and scoped UI verification |

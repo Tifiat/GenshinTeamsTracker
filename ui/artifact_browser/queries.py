@@ -24,7 +24,6 @@ from hoyolab_export.artifact_db import (
     replace_artifact_build_targets,
     update_build_preset as db_update_build_preset,
 )
-from hoyolab_export.account_equipment import init_account_equipment_storage
 from hoyolab_export.artiscan_importer import import_artiscan_file
 from hoyolab_export.paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 from run_workspace.perf import log_perf, perf_ms, perf_now
@@ -104,7 +103,6 @@ def load_artifact_browser_store_data(
     with closing(connect_db(db_path)) as conn:
         init_start = perf_now()
         init_db(conn)
-        init_account_equipment_storage(conn)
         init_ms = perf_ms(init_start)
         artifacts_start = perf_now()
         artifacts = _fetch_artifacts(conn, preferred_lang=preferred)
@@ -149,7 +147,7 @@ def _resolve_icon_path(local_path: str | None) -> Path | None:
 
     path = Path(local_path)
     path = path if path.is_absolute() else PROJECT_ROOT / path
-    return path if path.exists() and path.is_file() else None
+    return path if path.is_file() else None
 
 
 def list_all_artifacts(
@@ -162,7 +160,6 @@ def list_all_artifacts(
     preferred_lang = current_hoyolab_content_language()
     with closing(connect_db(db_path)) as conn:
         init_db(conn)
-        init_account_equipment_storage(conn)
         return _fetch_artifacts(conn, preferred_lang=preferred_lang)
 
 
@@ -237,6 +234,8 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
             artifacts.main_property_type,
             artifacts.main_property_name,
             artifacts.main_property_value,
+            artifacts.json_imported,
+            artifacts.import_source,
             set_icons.icon_url AS set_icon_url,
             set_icons.local_path AS set_icon_local_path,
             set_flower_icons.local_path AS set_flower_icon_local_path,
@@ -333,6 +332,8 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
                 owner_icon_path=cached_icon_path(row["owner_side_icon_path"]),
                 tags=tags_by_artifact.get(artifact_id, []),
                 substats=substats_by_artifact.get(artifact_id, []),
+                json_imported=row["json_imported"] == 1,
+                import_source=str(row["import_source"] or ""),
             )
         )
 
@@ -345,25 +346,23 @@ def _load_substats(
     *,
     preferred_lang: str | None = None,
 ) -> dict[int, list[ArtifactSubstat]]:
+    # This reader serves the full inventory; avoid one bind per artifact.
     if not artifact_ids:
         return {}
 
-    placeholders = ",".join("?" for _ in artifact_ids)
-
     rows = conn.execute(
-        f"""
+        """
         SELECT
-            artifact_id,
+            artifact_substats.artifact_id,
             slot_index,
             property_type,
             property_name,
             value,
             times
         FROM artifact_substats
-        WHERE artifact_id IN ({placeholders})
-        ORDER BY artifact_id, slot_index
+        JOIN artifacts ON artifacts.id = artifact_substats.artifact_id
+        ORDER BY artifact_substats.artifact_id, slot_index
         """,
-        artifact_ids,
     ).fetchall()
 
     result: dict[int, list[ArtifactSubstat]] = {
@@ -384,6 +383,8 @@ def _load_substats(
 
     for row in rows:
         artifact_id = int(row["artifact_id"])
+        if artifact_id not in result:
+            continue
         result[artifact_id].append(
             ArtifactSubstat(
                 slot_index=int(row["slot_index"]),
@@ -401,13 +402,12 @@ def _load_substats(
 
 
 def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]:
+    # Keep one indexed batch even beyond SQLite's bind-variable limit.
     if not artifact_ids:
         return {}
 
-    placeholders = ",".join("?" for _ in artifact_ids)
-
     rows = conn.execute(
-        f"""
+        """
         SELECT
             links.artifact_id,
             tags.id AS tag_id,
@@ -415,10 +415,9 @@ def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]
         FROM artifact_tag_links AS links
         JOIN artifact_tags AS tags
             ON tags.id = links.tag_id
-        WHERE links.artifact_id IN ({placeholders})
+        JOIN artifacts ON artifacts.id = links.artifact_id
         ORDER BY tags.sort_order, tags.name COLLATE NOCASE
         """,
-        artifact_ids,
     ).fetchall()
 
     result: dict[int, list[ArtifactTagRef]] = {
@@ -427,7 +426,10 @@ def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]
     }
 
     for row in rows:
-        result[int(row["artifact_id"])].append(
+        artifact_id = int(row["artifact_id"])
+        if artifact_id not in result:
+            continue
+        result[artifact_id].append(
             ArtifactTagRef(
                 id=int(row["tag_id"]),
                 name=row["tag_name"],
@@ -583,12 +585,15 @@ def replace_custom_set_artifacts(
 def list_build_presets(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    initialize: bool = True,
 ) -> list[dict[str, Any]]:
+    """Read presets; a browser whose store initialized this DB can skip DDL."""
     if not artifact_db_exists(db_path):
         return []
 
     with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+        if initialize:
+            init_db(conn)
         return db_list_build_presets(conn)
 
 
@@ -612,12 +617,14 @@ def get_build_preset(
     build_id: int,
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    initialize: bool = True,
 ) -> dict[str, Any] | None:
     if not artifact_db_exists(db_path):
         return None
 
     with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+        if initialize:
+            init_db(conn)
         return db_get_build_preset(conn, build_id)
 
 
@@ -664,12 +671,14 @@ def calculate_build_summary(
     slots: dict[int, int] | None = None,
     artifact_ids: list[int] | None = None,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    initialize: bool = True,
 ) -> dict[str, Any] | None:
     if not artifact_db_exists(db_path):
         return None
 
     with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+        if initialize:
+            init_db(conn)
         return db_calculate_raw_build_summary(
             conn,
             build_id=build_id,

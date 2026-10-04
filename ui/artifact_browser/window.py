@@ -102,8 +102,10 @@ from hoyolab_export.account_equipment import (
     EquipmentChangeResult,
     EquipmentError,
     equip_artifact,
+    get_applied_build_preset,
     get_equipped_artifact_owner,
     list_equipped_artifacts_for_character,
+    remember_applied_build_preset,
     unequip_artifact,
     unequip_artifact_slot,
 )
@@ -123,7 +125,6 @@ from .queries import (
 from .card_delegate import ArtifactCardDelegate, GRID_SIZE
 from .filter_popup import SetsFilterPopup
 from .json_import_actions import (
-    json_imports_available,
     run_artiscan_import_action,
     run_clear_json_imports_action,
 )
@@ -651,6 +652,9 @@ QFrame#summary_block {
     border-radius: 7px;
     background: #222630;
 }
+QFrame#build_slot_row[presetSelected="true"] {
+    border-color: #7dd7b7;
+}
 QFrame#build_slot_mini {
     border: 1px solid #343b49;
     border-radius: 6px;
@@ -900,6 +904,8 @@ class ArtifactBrowserWindow(QWidget):
         embedded: bool = False,
         db_path: str | Path = ARTIFACT_DB_PATH,
         character_asset_items: list[dict] | None = None,
+        operation_target: dict | None = None,
+        virtual_gcsim_targets: list[dict] | None = None,
     ):
         init_start = perf_now()
         super().__init__(parent)
@@ -949,7 +955,7 @@ class ArtifactBrowserWindow(QWidget):
         self.selected_build_targets: list[dict] = []
         self.selected_build_target_keys: set[str] = set()
         self.build_target_items_by_key: dict[str, dict] = {}
-        self._virtual_gcsim_targets: list[dict] = []
+        self._virtual_gcsim_targets = self._normalized_virtual_gcsim_targets(virtual_gcsim_targets or [])
         self.build_target_buttons_by_key: dict[str, QPushButton] = {}
         self._build_target_buttons_initialized = False
         self._build_target_button_order: list[str] = []
@@ -976,14 +982,16 @@ class ArtifactBrowserWindow(QWidget):
         self._build_target_keys_before_edit: set[str] | None = None
         self.pending_delete_build_id: int | None = None
         self.build_preset_row_buttons: dict[int, QPushButton] = {}
+        self.build_preset_rows: dict[int, QFrame] = {}
         self.build_row_name_input: QLineEdit | None = None
-        self._right_panel_operation_target: dict | None = None
+        self._right_panel_operation_target = self._normalized_operation_target(operation_target, source="right_panel")
         self._right_panel_target_selection_suppressed = False
         self.operation_target_character_id: int | None = None
         self.operation_target_character_name = ""
         self.operation_target_source: str | None = None
         self.equip_mode_enabled = False
         self.applied_current_equipment_label = ""
+        self.applied_current_equipment_build_id: int | None = None
         self.current_equipment_preview_slots: dict[int, int] = {}
         self.build_slot_rows: dict[int, QFrame] = {}
         self.build_slot_icon_labels: dict[int, QLabel] = {}
@@ -1014,6 +1022,11 @@ class ArtifactBrowserWindow(QWidget):
         )
         target_load_start = perf_now()
         self.load_build_target_items()
+        if self._right_panel_operation_target is not None:
+            self._ensure_operation_target_item(self._right_panel_operation_target)
+            target_key = self._right_panel_operation_target_key()
+            if target_key:
+                self.selected_build_target_keys = {target_key}
         target_load_ms = perf_ms(target_load_start)
 
         ui_start = perf_now()
@@ -1048,13 +1061,14 @@ class ArtifactBrowserWindow(QWidget):
         preset_start = perf_now()
         self.load_build_presets()
         preset_ms = perf_ms(preset_start)
-        filter_start = perf_now()
-        self.apply_current_filters()
-        filter_ms = perf_ms(filter_start)
         self.update_custom_edit_bar()
         build_panel_start = perf_now()
-        self.update_build_panel()
+        slots = self.update_build_panel()
+        self.update_edit_selection_mode(highlight_ids=set(slots.values()))
         build_panel_ms = perf_ms(build_panel_start)
+        filter_start = perf_now()
+        self.apply_current_filters(priority_ids=set(slots.values()))
+        filter_ms = perf_ms(filter_start)
         if not self.embedded:
             self.schedule_adaptive_target_panel_width_update(delay_ms=0)
         log_perf(
@@ -1918,10 +1932,6 @@ class ArtifactBrowserWindow(QWidget):
             self.update_build_panel()
 
     def refresh_equipment_target_state(self) -> None:
-        previous_target = (
-            self.operation_target_source,
-            self.operation_target_character_id,
-        )
         target = self._right_panel_operation_target or self._browser_operation_target()
         if target is None:
             self.operation_target_character_id = None
@@ -1933,13 +1943,25 @@ class ArtifactBrowserWindow(QWidget):
             self.operation_target_character_name = target.get("character_name") or ""
             self.operation_target_source = target.get("source") or "artifact_browser"
             self.equip_mode_enabled = True
-        current_target = (
-            self.operation_target_source,
-            self.operation_target_character_id,
-        )
-        if current_target != previous_target:
-            self.applied_current_equipment_label = ""
         self._update_equipment_zone()
+
+    def _refresh_applied_build_preset(self) -> None:
+        self.applied_current_equipment_label = ""
+        self.applied_current_equipment_build_id = None
+        if self.operation_target_character_id is None or not self.db_path.exists():
+            return
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                preset = get_applied_build_preset(
+                    conn, self.operation_target_character_id,
+                    initialize=not self.store.database_exists,
+                )
+                conn.commit()
+            if preset is not None:
+                self.applied_current_equipment_label = preset["name"]
+                self.applied_current_equipment_build_id = preset["build_id"]
+        except Exception as exc:
+            log_perf("artifact_applied_preset_read_failed", error=str(exc))
 
     def _right_panel_operation_target_key(self) -> str | None:
         if self._right_panel_operation_target is None:
@@ -2005,6 +2027,9 @@ class ArtifactBrowserWindow(QWidget):
     def _update_equipment_zone(self) -> None:
         if not hasattr(self, "equipment_target_label"):
             return
+
+        self._refresh_applied_build_preset()
+        self._sync_build_preset_row_selection()
 
         if self.equipment_zone_frame.property("equipMode") != self.equip_mode_enabled:
             self.equipment_zone_frame.setProperty("equipMode", self.equip_mode_enabled)
@@ -2384,7 +2409,7 @@ class ArtifactBrowserWindow(QWidget):
             icon_name=None,
             tooltip="",
             callback=self.clear_json_imports,
-            enabled=json_imports_available(),
+            enabled=self.store.has_clearable_json_imports(),
         )
 
     def _set_json_action_button(
@@ -2516,14 +2541,19 @@ class ArtifactBrowserWindow(QWidget):
             return
         try:
             with closing(connect_db(self.db_path)) as conn:
-                owner_character_id = get_equipped_artifact_owner(conn, artifact_id)
+                owner_character_id = get_equipped_artifact_owner(
+                    conn, artifact_id, initialize=not self.store.database_exists,
+                )
                 if owner_character_id == int(self.operation_target_character_id):
-                    result = unequip_artifact(conn, artifact_id)
+                    result = unequip_artifact(
+                        conn, artifact_id, initialize=not self.store.database_exists,
+                    )
                 else:
                     result = equip_artifact(
                         conn,
                         self.operation_target_character_id,
                         artifact_id,
+                        initialize=not self.store.database_exists,
                     )
                 conn.commit()
         except EquipmentError as exc:
@@ -2535,11 +2565,9 @@ class ArtifactBrowserWindow(QWidget):
             log_perf("artifact_equip_failed", artifact_id=artifact_id, error=str(exc))
             return
 
-        self.refresh_equipment_target_state()
-        self.applied_current_equipment_label = ""
         self.refresh_current_equipment_markers(result.affected_artifact_ids)
-        self.update_build_panel()
-        self.update_edit_selection_mode()
+        slots = self.update_build_panel()
+        self.update_edit_selection_mode(highlight_ids=set(slots.values()))
         self.equipment_changed.emit(result)
 
     def refresh_current_equipment_markers(self, artifact_ids) -> None:
@@ -2643,7 +2671,6 @@ class ArtifactBrowserWindow(QWidget):
             return
 
         target_character_id = int(self.operation_target_character_id)
-        applied_label = self._selected_build_preset_name()
         preset_slots = {
             int(pos): int(artifact_id)
             for pos, artifact_id in self.selected_build_slots.items()
@@ -2669,6 +2696,7 @@ class ArtifactBrowserWindow(QWidget):
                             target_character_id,
                             pos,
                             source="preset_equip",
+                            initialize=not self.store.database_exists,
                         )
                     else:
                         result = equip_artifact(
@@ -2676,10 +2704,15 @@ class ArtifactBrowserWindow(QWidget):
                             target_character_id,
                             artifact_id,
                             source="preset_equip",
+                            initialize=not self.store.database_exists,
                         )
                     changed = changed or result.changed
                     affected_character_ids.update(result.affected_character_ids)
                     affected_artifact_ids.update(result.affected_artifact_ids)
+                remember_applied_build_preset(
+                    conn, target_character_id, self.selected_build_id,
+                    initialize=not self.store.database_exists,
+                )
                 conn.commit()
         except EquipmentError as exc:
             self.status_label.setText(str(exc))
@@ -2690,18 +2723,16 @@ class ArtifactBrowserWindow(QWidget):
             log_perf("artifact_preset_equip_failed", error=str(exc))
             return
 
+        had_pending_delete = self.pending_delete_build_id is not None
         self.selected_build_id = None
         self.selected_build_slots = {}
         self.selected_build_targets = []
         self.pending_delete_build_id = None
-        self.applied_current_equipment_label = (
-            applied_label or tr("artifact.build.current_equipment")
-        )
         self.refresh_current_equipment_markers(affected_artifact_ids)
-        self.refresh_build_preset_list()
-        self.update_build_panel()
-        self.update_build_create_controls()
-        self.update_edit_selection_mode()
+        if had_pending_delete:
+            self.refresh_build_preset_list()
+        slots = self.update_build_panel()
+        self.update_edit_selection_mode(highlight_ids=set(slots.values()))
         self.equipment_changed.emit(
             EquipmentChangeResult(
                 operation="apply_build_preset",
@@ -2721,7 +2752,9 @@ class ArtifactBrowserWindow(QWidget):
                     return str(preset.get("name") or "").strip()
             except (TypeError, ValueError):
                 continue
-        preset = get_build_preset(int(selected_id), db_path=self.db_path)
+        preset = get_build_preset(
+            int(selected_id), db_path=self.db_path, initialize=not self.store.database_exists,
+        )
         return str((preset or {}).get("name") or "").strip()
 
     def _confirm_selected_preset_conflicts(
@@ -2742,17 +2775,11 @@ class ArtifactBrowserWindow(QWidget):
         target_character_id: int,
         artifact_ids,
     ) -> tuple[int, ...]:
-        owners: set[int] = set()
-        try:
-            with closing(connect_db(self.db_path)) as conn:
-                for artifact_id in artifact_ids:
-                    owner = get_equipped_artifact_owner(conn, artifact_id)
-                    if owner is not None and int(owner) != int(target_character_id):
-                        owners.add(int(owner))
-        except Exception as exc:
-            log_perf("artifact_preset_conflict_check_failed", error=str(exc))
-            return ()
-        return tuple(sorted(owners))
+        owners = self._current_equipment_owners(sorted({int(value) for value in artifact_ids}))
+        return tuple(sorted({
+            int(owner["character_id"]) for owner in owners.values()
+            if int(owner["character_id"]) != int(target_character_id)
+        }))
 
     def confirm_preset_equipment_conflicts(
         self,
@@ -2943,7 +2970,7 @@ class ArtifactBrowserWindow(QWidget):
             }
         }
         if self._preloaded_character_asset_items is not None:
-            assets = list(self._preloaded_character_asset_items)
+            assets = self._preloaded_character_asset_items
         else:
             assets = load_account_character_asset_items()
 
@@ -3017,7 +3044,8 @@ class ArtifactBrowserWindow(QWidget):
                 "path": target.get("icon_path") or None,
             }
 
-    def set_virtual_gcsim_targets(self, targets: list[dict]) -> None:
+    @staticmethod
+    def _normalized_virtual_gcsim_targets(targets: list[dict]) -> list[dict]:
         normalized: dict[str, dict] = {}
         for target in targets:
             gcsim_key = str(target.get("gcsim_character_key") or "").strip()
@@ -3029,7 +3057,10 @@ class ArtifactBrowserWindow(QWidget):
                 "character_name": str(target.get("character_name") or gcsim_key),
                 "icon_path": str(target.get("icon_path") or ""),
             }
-        self._virtual_gcsim_targets = list(normalized.values())
+        return list(normalized.values())
+
+    def set_virtual_gcsim_targets(self, targets: list[dict]) -> None:
+        self._virtual_gcsim_targets = self._normalized_virtual_gcsim_targets(targets)
         self.load_build_target_items()
         self.selected_build_target_keys.intersection_update(self.build_target_items_by_key)
         self.refresh_build_target_list()
@@ -3519,7 +3550,9 @@ class ArtifactBrowserWindow(QWidget):
         return self.selected_build_target_keys.issubset(preset_keys)
 
     def load_build_presets(self) -> None:
-        self.build_presets = list_build_presets(db_path=self.db_path)
+        self.build_presets = list_build_presets(
+            db_path=self.db_path, initialize=not self.store.database_exists,
+        )
         self.refresh_build_preset_list()
 
     def _sync_build_preset_row_selection(self) -> None:
@@ -3527,10 +3560,22 @@ class ArtifactBrowserWindow(QWidget):
             was_blocked = button.blockSignals(True)
             button.setChecked(int(build_id) == self.selected_build_id)
             button.blockSignals(was_blocked)
+        highlighted_id = (
+            self.selected_build_id if self.selected_build_id is not None
+            else self.applied_current_equipment_build_id
+        )
+        for build_id, row in self.build_preset_rows.items():
+            selected = int(build_id) == highlighted_id
+            if row.property("presetSelected") != selected:
+                row.setProperty("presetSelected", selected)
+                row.style().unpolish(row)
+                row.style().polish(row)
+                row.update()
 
     def refresh_build_preset_list(self) -> None:
         self._clear_layout(self.build_preset_list_layout)
         self.build_preset_row_buttons.clear()
+        self.build_preset_rows.clear()
         self.build_row_name_input = None
 
         has_targets = bool(self.selected_build_target_keys)
@@ -3574,9 +3619,8 @@ class ArtifactBrowserWindow(QWidget):
         for preset in filtered_presets:
             row = self._make_build_preset_row(preset)
             self.build_preset_list_layout.addWidget(row)
+            # Showing the completed row also shows its non-hidden descendants.
             row.show()
-            for child in row.findChildren(QWidget):
-                child.show()
         self.build_preset_list_layout.addStretch()
 
     def on_build_create_button_clicked(self) -> None:
@@ -3598,6 +3642,12 @@ class ArtifactBrowserWindow(QWidget):
 
         row = QFrame()
         row.setObjectName("build_slot_row")
+        self.build_preset_rows[build_id] = row
+        highlighted_id = (
+            self.selected_build_id if self.selected_build_id is not None
+            else self.applied_current_equipment_build_id
+        )
+        row.setProperty("presetSelected", build_id == highlighted_id)
         layout = QHBoxLayout(row)
         layout.setContentsMargins(6, 4, 6, 4)
         layout.setSpacing(5)
@@ -4103,7 +4153,9 @@ class ArtifactBrowserWindow(QWidget):
             self.empty_label.setText(tr("artifact.build.finish_edit_first"))
             return
         self.finish_custom_set_edit()
-        preset = get_build_preset(build_id, db_path=self.db_path)
+        preset = get_build_preset(
+            build_id, db_path=self.db_path, initialize=not self.store.database_exists,
+        )
         if preset is None:
             return
 
@@ -4146,13 +4198,15 @@ class ArtifactBrowserWindow(QWidget):
             self.selected_build_targets = []
             self.pending_delete_build_id = None
             self._sync_build_preset_row_selection()
-            self.update_build_panel()
-            self.update_build_create_controls()
-            self.update_edit_selection_mode()
-            self.apply_current_filters()
+            slots = self.update_build_panel()
+            highlight_ids = set(slots.values())
+            self.update_edit_selection_mode(highlight_ids=highlight_ids)
+            self.apply_current_filters(priority_ids=highlight_ids)
             return
 
-        preset = get_build_preset(build_id, db_path=self.db_path)
+        preset = get_build_preset(
+            build_id, db_path=self.db_path, initialize=not self.store.database_exists,
+        )
         if preset is None:
             return
 
@@ -4172,10 +4226,10 @@ class ArtifactBrowserWindow(QWidget):
             self.refresh_build_preset_list()
         else:
             self._sync_build_preset_row_selection()
-        self.update_build_panel()
-        self.update_build_create_controls()
-        self.update_edit_selection_mode()
-        self.apply_current_filters()
+        slots = self.update_build_panel()
+        highlight_ids = set(slots.values())
+        self.update_edit_selection_mode(highlight_ids=highlight_ids)
+        self.apply_current_filters(priority_ids=highlight_ids)
 
     def _focus_inline_build_name_input(self) -> None:
         if (
@@ -4319,7 +4373,9 @@ class ArtifactBrowserWindow(QWidget):
 
         try:
             with closing(connect_db(self.db_path)) as conn:
-                rows = list_equipped_artifacts_for_character(conn, character_id)
+                rows = list_equipped_artifacts_for_character(
+                    conn, character_id, initialize=not self.store.database_exists,
+                )
         except Exception as exc:
             log_perf(
                 "artifact_current_equipment_preview_failed",
@@ -4741,14 +4797,19 @@ class ArtifactBrowserWindow(QWidget):
                 summary = calculate_build_summary(
                     build_id=self.editing_build_id,
                     db_path=self.db_path,
+                    initialize=not self.store.database_exists,
                 )
             elif not editing and self.selected_build_id is not None:
                 summary = calculate_build_summary(
                     build_id=self.selected_build_id,
                     db_path=self.db_path,
+                    initialize=not self.store.database_exists,
                 )
             else:
-                summary = calculate_build_summary(slots=slots, db_path=self.db_path)
+                summary = calculate_build_summary(
+                    slots=slots, db_path=self.db_path,
+                    initialize=not self.store.database_exists,
+                )
         except Exception as exc:
             label = QLabel(tr("artifact.build.summary_error", error=str(exc)))
             label.setObjectName("small_muted")
@@ -4759,17 +4820,21 @@ class ArtifactBrowserWindow(QWidget):
             self.fill_build_stat_summary({})
             return
 
-        self.fill_build_bonus_summary(summary.get("set_counts") or [])
+        self.fill_build_bonus_summary(
+            summary.get("set_counts") or [], artifact_ids=set(slots.values()),
+        )
         self.fill_build_stat_summary(summary)
 
-    def fill_build_bonus_summary(self, set_counts: list[dict]) -> None:
+    def fill_build_bonus_summary(self, set_counts: list[dict], *, artifact_ids=None) -> None:
         active_sets = self._active_set_bonus_items(set_counts)
 
         if not active_sets:
             return
 
+        if artifact_ids is None:
+            artifact_ids = self.current_build_artifact_ids()
         for item in active_sets[:2]:
-            self.build_bonus_layout.addWidget(self._make_set_bonus_cell(item))
+            self.build_bonus_layout.addWidget(self._make_set_bonus_cell(item, artifact_ids=artifact_ids))
 
     @staticmethod
     def _active_set_bonus_items(set_counts: list[dict]) -> list[dict]:
@@ -4855,7 +4920,7 @@ class ArtifactBrowserWindow(QWidget):
         if tooltip:
             install_custom_tooltip(widget, tooltip)
 
-    def _make_set_bonus_cell(self, item: dict) -> QFrame:
+    def _make_set_bonus_cell(self, item: dict, *, artifact_ids=None) -> QFrame:
         cell = QFrame()
         cell.setObjectName("build_slot_mini")
         cell.setFixedSize(
@@ -4880,7 +4945,7 @@ class ArtifactBrowserWindow(QWidget):
         pixmap = self._make_set_bonus_pixmap(
             item,
             BUILD_PREVIEW_BONUS_ICON_SIZE,
-            self.current_build_artifact_ids(),
+            self.current_build_artifact_ids() if artifact_ids is None else artifact_ids,
         )
         if pixmap is not None:
             icon.setPixmap(pixmap)

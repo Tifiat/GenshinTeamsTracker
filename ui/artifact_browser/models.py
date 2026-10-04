@@ -52,6 +52,8 @@ class ArtifactItem:
     owner_icon_path: Path | None = None
     tags: list[ArtifactTagRef] = field(default_factory=list)
     substats: list[ArtifactSubstat] = field(default_factory=list)
+    json_imported: bool = False
+    import_source: str = ""
 
     @property
     def is_equipped(self) -> bool:

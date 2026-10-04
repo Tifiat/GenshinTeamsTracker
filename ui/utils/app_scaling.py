@@ -5,13 +5,18 @@ import math
 import os
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, MutableMapping
+
+from run_workspace.display_settings import use_system_scaling
 
 
 REFERENCE_SCREEN_WIDTH = 1920
 MIN_AUTO_SCALE = 0.60
 UI_SCALE_ENV = "GTT_UI_SCALE"
 QT_SCALE_FACTOR_ENV = "QT_SCALE_FACTOR"
+QT_ENABLE_HIGHDPI_SCALING_ENV = "QT_ENABLE_HIGHDPI_SCALING"
+QT_FONT_DPI_ENV = "QT_FONT_DPI"
 _PERF_TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
@@ -23,6 +28,36 @@ class StartupScaleResult:
     action: str
     reason: str
     qt_scale_factor: str | None
+
+
+def configure_startup_display_scaling(
+    env: MutableMapping[str, str] | None = None,
+    *,
+    platform: str | None = None,
+    settings_file: str | Path | None = None,
+    monitor_width_detector: Callable[[], int | None] | None = None,
+) -> StartupScaleResult:
+    """Apply the saved OS-scaling choice and physical-width adaptation before Qt starts."""
+    env = os.environ if env is None else env
+    platform = sys.platform if platform is None else platform
+    if platform == "win32":
+        enabled = use_system_scaling(settings_file=settings_file)
+        # Keep Qt's default Windows per-monitor DPI awareness. Only its conversion
+        # of Windows logical DPI into UI geometry/point fonts is controlled here.
+        env[QT_ENABLE_HIGHDPI_SCALING_ENV] = "1" if enabled else "0"
+        if enabled:
+            env.pop(QT_FONT_DPI_ENV, None)
+        else:
+            env[QT_FONT_DPI_ENV] = "96"
+        # These overrides would bypass the saved choice on one or more displays.
+        env.pop("QT_SCREEN_SCALE_FACTORS", None)
+        env.pop("QT_USE_PHYSICAL_DPI", None)
+        if env.get("GTT_PERF_LOG", "").strip().casefold() in _PERF_TRUE_VALUES:
+            print(f"[PERF] app_startup_system_scaling enabled={enabled}", flush=True)
+
+    return configure_startup_ui_scale(
+        env, platform=platform, monitor_width_detector=monitor_width_detector
+    )
 
 
 def configure_startup_ui_scale(

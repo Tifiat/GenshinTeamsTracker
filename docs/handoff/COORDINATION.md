@@ -26,10 +26,16 @@ five explicit-root handoff checks pass; 36 focused doc checks pass with one
 Windows symlink-creation skip (escape tests also run independently). No
 app restart, engine or account write is part of this setup.
 The user's additional Git-policy/Obsidian request now has separate approved rules
-and a factual local-refs journal in the hub. The main-folder master/orchestrator
-and Worker2 optimizer roles are planned, not switched. The user authorized own
-verified local commits; transfers, push and other Git mutations require explicit
-confirmation. Worker events are retained until collected in the common journal.
+and a factual local-refs journal in the hub. On 2026-10-04 the user authorized
+local integration of ready branches. The clean main folder switched to master
+and fast-forwarded Worker1's saved stage. Worker3's target merge passes 95 safe
+equipment/browser/settings/scaling tests; Worker4 integration remains next.
+The [integration receipt](integration_receipts/2026-10-04_ready_workers.md)
+owns source pins, conflict handling and remaining acceptance.
+Worker2 still owns Theory; its later role change is not applied.
+Push still requires separate approval. Worker events are retained until collected
+in the common journal; branch integration does not close numerical or visible
+user acceptance gates.
 The hub itself can be
 opened as a separate Obsidian vault; no vault junction, plugin/settings change
 or physical render is claimed.

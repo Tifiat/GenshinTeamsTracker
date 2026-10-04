@@ -3520,6 +3520,8 @@ class LeftWorkspaceHost(QWidget):
             embedded=True,
             db_path=self.artifact_db_path,
             character_asset_items=self.character_weapon_workspace.character_asset_items_snapshot(),
+            operation_target=self._pending_artifact_right_panel_target,
+            virtual_gcsim_targets=self._pending_virtual_gcsim_artifact_targets,
         )
         self.stack.removeWidget(self.artifact_browser_placeholder)
         self.artifact_browser_placeholder.deleteLater()
@@ -3527,12 +3529,6 @@ class LeftWorkspaceHost(QWidget):
         self.artifact_browser_workspace = browser
         if self.artifact_equipment_changed is not None:
             browser.equipment_changed.connect(self.artifact_equipment_changed)
-        browser.set_right_panel_operation_target(
-            self._pending_artifact_right_panel_target
-        )
-        browser.set_virtual_gcsim_targets(
-            self._pending_virtual_gcsim_artifact_targets
-        )
         log_perf(
             "artifact_workspace_lazy_create",
             total=perf_ms(create_start),

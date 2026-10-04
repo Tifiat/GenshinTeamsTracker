@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sqlite3
 import sys
 from contextlib import closing
 from dataclasses import dataclass, field, replace
@@ -991,7 +992,8 @@ class AppShellController:
             )
             details["account_weapon"] = dict(weapon)
             details["weapon_image_path"] = _text(weapon.get("icon_path"))
-            details.update(_weapon_bonus_context(weapon, db_path=self.equipment_db_path))
+            details.update(_weapon_bonus_context(weapon, db_path=self.equipment_db_path,
+                                                read_only=self.equipment_state is not None))
         else:
             self.state = self.state.clear_weapon(
                 self.selected_team_index,
@@ -1127,12 +1129,15 @@ class AppShellController:
 
     def gcsim_browser_abyss_targets_preview(
         self,
+        *,
+        abyss_source_data: AbyssFloorSourceData | None = None,
     ) -> tuple[str, tuple[tuple[str, ...], ...]]:
         if self.mode != MODE_ABYSS:
             return "", ((), ())
         chamber_rows = build_abyss_chamber_rows(
             self.abyss_timer_states,
-            abyss_source_data=self.cached_abyss_source_data(),
+            abyss_source_data=(abyss_source_data if abyss_source_data is not None
+                               else self.cached_abyss_source_data()),
             fact_dps_multi_target_enabled=self.abyss_fact_dps_multi_target_enabled,
         )
         mode_label = (
@@ -1490,18 +1495,22 @@ class AppShellController:
                 )(character_id)
             )
             weapon_bonus_context = (
-                _weapon_bonus_context(session_weapon, db_path=self.equipment_db_path)
+                _weapon_bonus_context(session_weapon, db_path=self.equipment_db_path, read_only=True)
                 if session_weapon
                 else {
                     "weapon_passive_reference": {},
                     "weapon_display_stat_effects": [],
                 }
             )
+            artifact_snapshot, artifact_set_effects = None, []
+            scoped_snapshot = getattr(self.equipment_state, "artifact_snapshot_for_character", None)
+            if current_artifacts and callable(scoped_snapshot):
+                artifact_snapshot, artifact_set_effects = scoped_snapshot(character_id)
             hydration = PersistentEquipmentHydration(
                 weapon=session_weapon,
                 current_artifacts=current_artifacts,
-                artifact_snapshot=None,
-                artifact_set_effects=[],
+                artifact_snapshot=artifact_snapshot,
+                artifact_set_effects=artifact_set_effects,
                 weapon_bonus_context=dict(weapon_bonus_context),
             )
             if use_cache:
@@ -1644,7 +1653,7 @@ def _apply_current_artifact_snapshot_to_details(
         "build_name": artifact_snapshot.build_name,
         "identity_source": BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT,
         "provenance_note": (
-            "Current equipment is runtime SQLite state, not an artifact_build preset."
+            "Current equipment comes from runtime equipment state."
         ),
     }
     details["stat_snapshot"] = {
@@ -4987,9 +4996,13 @@ def _weapon_bonus_context(
     weapon: dict[str, Any],
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    read_only: bool = False,
 ) -> dict[str, Any]:
     try:
-        with closing(connect_db(db_path)) as conn:
+        connection = (sqlite3.connect(Path(db_path).resolve().as_uri() + "?mode=ro", uri=True)
+                      if read_only else connect_db(db_path))
+        connection.row_factory = sqlite3.Row
+        with closing(connection) as conn:
             return _weapon_bonus_context_from_conn(conn, weapon)
     except Exception:
         return {

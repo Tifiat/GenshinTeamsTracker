@@ -29,7 +29,9 @@ The user's additional Git-policy/Obsidian request now has separate approved rule
 and a factual local-refs journal in the hub. On 2026-10-04 the user authorized
 local integration of ready branches. The clean main folder switched to master
 and fast-forwarded Worker1's saved stage. Worker3's target merge passes 95 safe
-equipment/browser/settings/scaling tests; Worker4 integration remains next.
+equipment/browser/settings/scaling tests; Worker4's target integration passes
+270 browser/backend checks with one host skip. Its unchanged timer-width failure
+is retained separately. Worker5's scoped packet is next; visual gates stay open.
 The [integration receipt](integration_receipts/2026-10-04_ready_workers.md)
 owns source pins, conflict handling and remaining acceptance.
 Worker2 still owns Theory; its later role change is not applied.

@@ -227,6 +227,7 @@ class SetsFilterPopup(QWidget):
         on_custom_set_create: Callable[[str], None],
         on_custom_set_edit: Callable[[int], None],
         on_custom_set_delete: Callable[[int], list[CustomSetOption]],
+        allow_custom_set_editing: bool = True,
     ):
         super().__init__(parent)
         self.setWindowFlag(Qt.WindowType.Popup, True)
@@ -239,6 +240,7 @@ class SetsFilterPopup(QWidget):
         self._on_custom_set_create = on_custom_set_create
         self._on_custom_set_edit = on_custom_set_edit
         self._on_custom_set_delete = on_custom_set_delete
+        self._allow_custom_set_editing = bool(allow_custom_set_editing)
         self._pending_delete_tag_id: int | None = None
         self._custom_sets = list(custom_sets)
         self._custom_selected_ids = set(selected_custom_set_ids)
@@ -380,6 +382,8 @@ class SetsFilterPopup(QWidget):
         )
         create_button.clicked.connect(self._create_custom_set)
         create_row.addWidget(create_button)
+        self._new_custom_set_input.setVisible(self._allow_custom_set_editing)
+        create_button.setVisible(self._allow_custom_set_editing)
 
         outer_layout.addLayout(create_row)
 
@@ -428,6 +432,9 @@ class SetsFilterPopup(QWidget):
             )
             row.toggled.connect(self._emit_selection_changed)
             self._custom_rows[option.tag_id] = row
+            if not self._allow_custom_set_editing:
+                layout.addWidget(row)
+                continue
 
             edit_button = self._icon_button(
                 "edit",
@@ -568,6 +575,8 @@ class SetsFilterPopup(QWidget):
         self._emit_selection_changed()
 
     def _create_custom_set(self) -> None:
+        if not self._allow_custom_set_editing:
+            return
         name = self._new_custom_set_input.text().strip()
         if not name:
             self._new_custom_set_input.setProperty("invalid", True)
@@ -592,11 +601,15 @@ class SetsFilterPopup(QWidget):
         self._new_custom_set_input.style().polish(self._new_custom_set_input)
 
     def _request_delete(self, tag_id: int) -> None:
+        if not self._allow_custom_set_editing:
+            return
         self._pending_delete_tag_id = tag_id
         self._set_pending_delete_shortcuts_enabled(True)
         self._refresh_custom_rows()
 
     def _confirm_delete(self, tag_id: int) -> None:
+        if not self._allow_custom_set_editing:
+            return
         self._custom_selected_ids = self.selected_custom_set_ids()
         self._custom_selected_ids.discard(tag_id)
         self._custom_sets = self._on_custom_set_delete(tag_id)

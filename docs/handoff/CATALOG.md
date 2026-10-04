@@ -96,6 +96,7 @@ in every file.
 | [PVP_BACKEND_STATUS.md](PVP_BACKEND_STATUS.md) | Implemented modules, smoke paths and backend gaps |
 | [PVP_UI_ROADMAP.md](PVP_UI_ROADMAP.md) | Current Decks/Play/Draft/build/timer UI and later stages |
 | [PVP_PROFILE_PACKAGE.md](PVP_PROFILE_PACKAGE.md) | Immediate independent-provider then portable-profile sequence |
+| [PVP_BUILD_SERVICES.md](PVP_BUILD_SERVICES.md) | Scoped artifact/GCSIM services, local period admission, lifecycle and acceptance |
 | [PVP_REFERENCE_SITE_AUDIT.md](PVP_REFERENCE_SITE_AUDIT.md) | Dated Abyss Draft/Gentor product-reference research |
 | [PVP_RULESETS_AUDIT.md](PVP_RULESETS_AUDIT.md) | Historical tournament source research |
 | [PVP_RULESET_SOURCE_MATRIX.md](PVP_RULESET_SOURCE_MATRIX.md) | Source/applicability map; import work paused pending usable sources |

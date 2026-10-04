@@ -65,8 +65,17 @@ class ArtifactBrowserStore:
         )
 
     @classmethod
-    def load_from_db(cls, db_path=None) -> "ArtifactBrowserStore":
-        data = load_artifact_browser_store_data(db_path=db_path) if db_path is not None else load_artifact_browser_store_data()
+    def load_from_db(
+        cls,
+        db_path=None,
+        *,
+        preferred_lang: str | None = None,
+        read_only: bool = False,
+    ) -> "ArtifactBrowserStore":
+        options = {"preferred_lang": preferred_lang, "read_only": read_only}
+        if db_path is not None:
+            options["db_path"] = db_path
+        data = load_artifact_browser_store_data(**options)
         return cls(
             database_exists=bool(data["database_exists"]),
             artifacts=list(data["artifacts"]),

@@ -476,6 +476,17 @@ def build_current_equipment_artifact_snapshot(
             continue
         slots_by_pos[int(pos)] = int(record.artifact_id)
 
+    return build_artifact_equipment_snapshot(conn, slots_by_pos, build_name=build_name)
+
+
+def build_artifact_equipment_snapshot(
+    conn: sqlite3.Connection,
+    slots_by_pos: Mapping[int, int],
+    *,
+    build_name: str = "Current Equipment",
+) -> ArtifactBuildSnapshot:
+    """Build the normal display snapshot from explicit runtime equipment ids."""
+
     existing_slots, slot_rows, missing_artifact_ids = _current_equipment_slot_rows(
         conn,
         slots_by_pos,

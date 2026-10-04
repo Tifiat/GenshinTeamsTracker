@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, QSize, QTimer, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QFrame,
     QGridLayout,
@@ -26,7 +28,14 @@ from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
 from localization import tr
 from run_workspace.abyss.source_data import AbyssFloorSourceData
 from run_workspace.abyss.source_data_runtime import (
-    load_current_cached_abyss_floor_source_data,
+    CachedAbyssPeriodRef, read_cached_hoyolab_abyss_period,
+)
+from run_workspace.abyss.source_data_cache import (
+    DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR, load_cached_abyss_floor_source_data,
+    AbyssSourceDataCacheError,
+)
+from run_workspace.pvp.period_admission import (
+    evaluate_pvp_period_admission, validate_current_official_period,
 )
 from run_workspace.models import ABYSS_CHAMBER_START_SECONDS
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
@@ -57,6 +66,7 @@ from run_workspace.pvp.profile_package import (
     ImportedPvpProfileProvider,
     LocalPvpProfileProvider,
     PvpProfileProvider,
+    PvpProfilePackageOptions,
     export_pvp_profile_package,
     import_pvp_profile_package,
 )
@@ -176,6 +186,7 @@ class PvpActiveDraftSession:
     player_2_deck_id: str
     player_2_deck_name: str
     controller: FreeDraftController
+    abyss_period_id: str = ""
 
     def board_dict(self) -> dict[str, Any]:
         return self.controller.to_board_dict()
@@ -189,6 +200,18 @@ class PvpDeckStartStatus:
     text: str
     ready: bool
     issue_codes: tuple[str, ...] = ()
+
+
+def _utc_today() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def _pvp_period_message(decision) -> str:
+    if decision.status in {"profile_period_id_missing", "profile_period_ids_missing", "profile_period_id_mismatch"}:
+        return tr("app_shell.pvp.period.profile_stale")
+    if decision.status == "period_not_current":
+        return tr("app_shell.pvp.period.expired")
+    return tr("app_shell.pvp.period.unavailable")
 
 
 class PvpDeckAssetIconLabel(QLabel):
@@ -434,6 +457,8 @@ class PvpDecksWorkspace(QWidget):
         deck_dir: str | Path = DEFAULT_PVP_DECK_PRESET_DIR,
         character_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
         weapon_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
+        abyss_period_provider: Callable[[], CachedAbyssPeriodRef | None] | None = None,
+        today_provider: Callable[[], date] | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpDecksWorkspace")
@@ -444,6 +469,8 @@ class PvpDecksWorkspace(QWidget):
         self.deck_dir = resolve_deck_preset_dir(deck_dir)
         self._character_assets_provider = character_assets_provider
         self._weapon_assets_provider = weapon_assets_provider
+        self._abyss_period_provider = abyss_period_provider or read_cached_hoyolab_abyss_period
+        self._today_provider = today_provider or _utc_today
         self._resize_timer: QTimer | None = None
         self._last_refresh_viewport_widths: tuple[int, int] | None = None
         self.character_assets: list[dict[str, Any]] = []
@@ -695,10 +722,25 @@ class PvpDecksWorkspace(QWidget):
 
     def export_profile(self, output_path: str | Path) -> bool:
         try:
+            period = validate_current_official_period(
+                self._abyss_period_provider(), today=self._today_provider(),
+            )
+            if not period.ready:
+                raise ValueError(_pvp_period_message(period))
             report = export_pvp_profile_package(
                 output_path,
                 deck_dir=self.deck_dir,
                 db_path=self.db_path,
+                options=PvpProfilePackageOptions(abyss_period_id=period.period_id or ""),
+                character_asset_paths={
+                    character_id_from_asset(asset): _asset_image_path(asset)
+                    for asset in self.character_assets
+                    if Path(_asset_image_path(asset)).is_file()
+                    and (
+                        _mapping(asset.get("metadata")).get("source") != "account_sqlite"
+                        or _mapping(asset.get("metadata")).get("portrait_pvp_path")
+                    )
+                },
             )
         except Exception as exc:
             self._last_status = str(exc) or exc.__class__.__name__
@@ -1225,6 +1267,7 @@ class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
     timer_text_changed = Signal(str, int, str)
     finalize_result_requested = Signal()
+    build_browser_back_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1300,6 +1343,21 @@ class PvpDraftWorkspace(QWidget):
         self.scroll_area.setWidget(self.scroll_content)
         root.addWidget(self.scroll_area, 1)
 
+        self.build_browser_frame = QFrame(self)
+        browser_layout = QVBoxLayout(self.build_browser_frame)
+        browser_layout.setContentsMargins(0, 0, 0, 0)
+        browser_header = QHBoxLayout()
+        self.build_browser_back_button = QPushButton(self.build_browser_frame)
+        self.build_browser_back_button.clicked.connect(self.build_browser_back_requested)
+        browser_header.addWidget(self.build_browser_back_button)
+        self.build_browser_seat_label = QLabel(self.build_browser_frame)
+        browser_header.addWidget(self.build_browser_seat_label, 1)
+        browser_layout.addLayout(browser_header)
+        self.build_browser_stack = QStackedWidget(self.build_browser_frame)
+        browser_layout.addWidget(self.build_browser_stack, 1)
+        root.addWidget(self.build_browser_frame, 1)
+        self.build_browser_frame.hide()
+
         self.status_label = QLabel()
         self.status_label.setObjectName("small_muted")
         self.status_label.setWordWrap(True)
@@ -1342,6 +1400,7 @@ class PvpDraftWorkspace(QWidget):
         self._draft_actions_by_character_id.clear()
 
         if session is None:
+            self.build_browser_frame.hide()
             self.source_zone_frames_by_seat.clear()
             self.source_body_widgets_by_seat.clear()
             self.source_header_labels_by_seat.clear()
@@ -1440,8 +1499,26 @@ class PvpDraftWorkspace(QWidget):
                 self.scroll_layout.addWidget(pool_frame)
                 self.scroll_layout.addStretch(1)
 
+        self._refresh_build_browser_workspace(stage)
+
+    def _refresh_build_browser_workspace(self, stage: str) -> None:
+        context = self._build_flow_context
+        seat = getattr(context, "browser_seat", "")
+        seat_context = context.seat(seat) if seat else None
+        kind = getattr(context, "browser_kind", "")
+        browser = getattr(seat_context, f"{kind}_browser", None) if kind in {"artifact", "gcsim"} else None
+        visible = browser is not None and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
+        self.build_browser_frame.setVisible(visible)
+        self.scroll_area.setVisible(not visible)
+        if visible:
+            if self.build_browser_stack.indexOf(browser) < 0:
+                self.build_browser_stack.addWidget(browser)
+            self.build_browser_stack.setCurrentWidget(browser)
+            _configure_postdraft_seat_label(self.build_browser_seat_label, seat=seat)
+
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
+        self.build_browser_back_button.setText(tr("app_shell.workspace.characters_weapons"))
         self.empty_title_label.setText(tr("app_shell.pvp.draft.no_active_title"))
         self.empty_body_label.setText(tr("app_shell.pvp.draft.no_active_body"))
         self._refresh_pool_scope_texts()
@@ -1830,13 +1907,19 @@ class PvpWorkspace(QWidget):
         character_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
         weapon_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
         abyss_source_data_provider: Callable[[], AbyssFloorSourceData | None] | None = None,
+        abyss_period_provider: Callable[[], CachedAbyssPeriodRef | None] | None = None,
+        today_provider: Callable[[], date] | None = None,
+        abyss_cache_dir: str | Path = DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpWorkspace")
         self.db_path = Path(db_path)
         self.deck_dir = resolve_deck_preset_dir(deck_dir)
+        self._abyss_period_provider = abyss_period_provider or read_cached_hoyolab_abyss_period
+        self._today_provider = today_provider or _utc_today
+        self._abyss_cache_dir = Path(abyss_cache_dir)
         self._abyss_source_data_provider = (
-            abyss_source_data_provider or load_current_cached_abyss_floor_source_data
+            abyss_source_data_provider or self._load_abyss_source_data
         )
         self._abyss_source_data_loaded = False
         self._abyss_source_data: AbyssFloorSourceData | None = None
@@ -1849,6 +1932,7 @@ class PvpWorkspace(QWidget):
         self._local_profile_provider = LocalPvpProfileProvider(
             source_db_path=self.db_path,
             deck_dir=self.deck_dir,
+            period_id_provider=self._local_period_id,
         )
         self._profile_providers_by_seat: dict[str, PvpProfileProvider] = {
             seat: self._local_profile_provider
@@ -1874,6 +1958,8 @@ class PvpWorkspace(QWidget):
             deck_dir=self.deck_dir,
             character_assets_provider=character_assets_provider,
             weapon_assets_provider=weapon_assets_provider,
+            abyss_period_provider=self._abyss_period_provider,
+            today_provider=self._today_provider,
         )
         self.play_workspace = PvpPlayWorkspace()
         self.draft_workspace = PvpDraftWorkspace()
@@ -1882,12 +1968,17 @@ class PvpWorkspace(QWidget):
         self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
         self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
+        self.draft_workspace.build_browser_back_requested.connect(self.close_build_browser)
         self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
         self.draft_workspace.finalize_result_requested.connect(
             self.finalize_match_result,
         )
         self._sync_play_workspace()
         self._sync_draft_workspace()
+
+        application = QApplication.instance()
+        if application is not None:
+            application.aboutToQuit.connect(self._on_application_quit)
 
     @property
     def character_assets(self) -> list[dict[str, Any]]:
@@ -2038,12 +2129,54 @@ class PvpWorkspace(QWidget):
             )
         cached = self._profile_assets_by_seat.get(seat)
         if cached is None:
+            packaged_paths = (
+                provider.profile.character_asset_paths
+                if isinstance(provider, ImportedPvpProfileProvider) else {}
+            )
+            characters = []
+            for asset in load_account_character_asset_items(db_path=provider.db_path):
+                metadata = dict(asset.get("metadata") or {})
+                packaged = packaged_paths.get(character_id_from_asset(asset))
+                if packaged is not None:
+                    metadata.setdefault("portrait_pvp_path", str(packaged))
+                characters.append(pvp_character_asset_item({**asset, "metadata": metadata}))
             cached = (
-                [pvp_character_asset_item(asset) for asset in load_account_character_asset_items(db_path=provider.db_path)],
+                characters,
                 list(load_account_weapon_stack_asset_items(db_path=provider.db_path)),
             )
             self._profile_assets_by_seat[seat] = cached
         return (list(cached[0]), list(cached[1]))
+
+    def _shared_character_assets(self) -> list[dict[str, Any]]:
+        """One bitmap per game id; each seat keeps its own account metadata."""
+        shared = _character_assets_by_id(self.character_assets)
+        for seat in PVP_SEATS:
+            for asset in self._profile_assets(seat)[0]:
+                character_id = character_id_from_asset(asset)
+                previous = shared.get(character_id)
+                if previous is None or (
+                    not Path(_asset_image_path(previous)).is_file()
+                    and Path(_asset_image_path(asset)).is_file()
+                ):
+                    shared[character_id] = asset
+        return list(shared.values())
+
+    def _build_character_assets_for_seat(self, seat: str) -> list[dict[str, Any]]:
+        portraits = {
+            character_id_from_asset(asset): _asset_image_path(asset)
+            for asset in self._shared_character_assets()
+        }
+        result = []
+        for source in self._profile_assets(seat)[0]:
+            path = portraits.get(character_id_from_asset(source), _asset_image_path(source))
+            metadata = dict(source.get("metadata") or {})
+            character = dict(metadata.get("character") or {})
+            character["portrait_path"] = path
+            character["local_portrait_path"] = path
+            metadata["portrait_pvp_path"] = path
+            metadata["character"] = character
+            result.append({**source, "path": Path(path), "metadata": metadata})
+        return result
 
     def _seat_preset_by_id(self, seat: str, deck_id: str) -> PvpDeckPreset | None:
         for preset in self.play_deck_options(seat):
@@ -2134,6 +2267,8 @@ class PvpWorkspace(QWidget):
 
     def can_start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
         return (
+            self.period_admission().ready
+            and
             self.deck_start_status(
                 player_1_deck_id,
                 player_label="Player 1",
@@ -2147,6 +2282,11 @@ class PvpWorkspace(QWidget):
         )
 
     def start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
+        period = self.period_admission()
+        if not period.ready:
+            self._last_play_status = _pvp_period_message(period)
+            self.state_changed.emit()
+            return False
         player_1_status = self.deck_start_status(
             player_1_deck_id,
             player_label="Player 1",
@@ -2195,6 +2335,7 @@ class PvpWorkspace(QWidget):
             player_2_deck_id=player_2_status.preset.deck_id,
             player_2_deck_name=player_2_status.preset.name,
             controller=controller,
+            abyss_period_id=period.period_id or "",
         )
         self._last_play_status = ""
         self._last_draft_status = ""
@@ -2295,7 +2436,7 @@ class PvpWorkspace(QWidget):
                 for seat in PVP_SEATS
             },
             character_assets_by_seat={
-                seat: self._profile_assets(seat)[0]
+                seat: self._build_character_assets_for_seat(seat)
                 for seat in PVP_SEATS
             },
             weapon_assets_by_seat={
@@ -2305,6 +2446,9 @@ class PvpWorkspace(QWidget):
             parent=self.draft_workspace,
         )
         for seat, seat_context in context.seats.items():
+            seat_context.run_source_provider = self.gcsim_run_source
+            seat_context.gcsim_result_callback = self._on_build_gcsim_result
+            seat_context.equipment_changed_callback = lambda _result, s=seat: self._on_build_source_changed(s)
             seat_context.source_workspace.character_clicked.connect(
                 lambda _asset, s=seat: self._on_build_source_changed(s)
             )
@@ -2321,10 +2465,44 @@ class PvpWorkspace(QWidget):
         self._sync_draft_workspace()
         self.state_changed.emit()
 
+    def _on_build_gcsim_result(self) -> None:
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+
     def build_source_workspace(self, seat: str):
         context = self.build_flow_context
         seat_context = context.seat(seat) if context is not None else None
         return None if seat_context is None else seat_context.source_workspace
+
+    def open_build_artifacts(self, seat: str) -> bool:
+        return self._open_build_browser(seat, "artifact")
+
+    def open_build_gcsim(self, seat: str) -> bool:
+        return self._open_build_browser(seat, "gcsim")
+
+    def _open_build_browser(self, seat: str, kind: str) -> bool:
+        context = self.build_flow_context
+        seat_context = context.seat(seat) if context is not None else None
+        if seat_context is None or self.draft_stage not in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}:
+            return False
+        context.set_active_seat(seat)
+        if kind == "artifact":
+            seat_context.ensure_artifact_browser(self.draft_workspace.build_browser_stack)
+        elif kind == "gcsim":
+            seat_context.ensure_gcsim_browser(self.draft_workspace.build_browser_stack)
+        else:
+            return False
+        context.browser_seat, context.browser_kind = seat, kind
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+        return True
+
+    def close_build_browser(self) -> None:
+        if self.build_flow_context is not None:
+            self.build_flow_context.browser_seat = ""
+            self.build_flow_context.browser_kind = ""
+        self._sync_draft_workspace()
+        self.state_changed.emit()
 
     def handle_build_character_clicked(self, seat: str, asset: Mapping[str, Any]) -> bool:
         context = self.build_flow_context
@@ -2362,6 +2540,9 @@ class PvpWorkspace(QWidget):
             return
         context.set_active_seat(seat)
         seat_context.toggle_slot_selection(team_index, slot_index)
+        seat_context.sync_artifact_operation_target()
+        if context.browser_seat and self._open_build_browser(seat, context.browser_kind):
+            return
         self._sync_draft_workspace()
         self.state_changed.emit()
 
@@ -2535,15 +2716,88 @@ class PvpWorkspace(QWidget):
         self.build_flow_context = None
         if context is None:
             return
+        cleanup_error = None
         for seat_context in getattr(context, "seats", {}).values():
+            for kind in ("artifact", "gcsim"):
+                browser = getattr(seat_context, f"{kind}_browser", None)
+                if browser is not None:
+                    browser.hide()
+                    self.draft_workspace.build_browser_stack.removeWidget(browser)
+                    browser.setParent(self)
+                    browser.deleteLater()
+            try:
+                seat_context.close_gcsim_preparation()
+            except Exception as exc:
+                cleanup_error = cleanup_error or exc
             source = getattr(seat_context, "source_workspace", None)
             if source is not None:
                 source.hide()
                 source.setParent(self)
                 source.deleteLater()
+        if cleanup_error is not None:
+            raise cleanup_error
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt override
-        self._dispose_build_flow_context()
+        try:
+            self._dispose_build_flow_context()
+        finally:
+            self.close_profile_providers()
+            super().closeEvent(event)
+
+    def _on_application_quit(self) -> None:
+        from run_workspace.pvp.gcsim_execution import close_pvp_gcsim_sessions
+
+        try:
+            self._dispose_build_flow_context()
+        finally:
+            try:
+                self.close_profile_providers()
+            finally:
+                close_pvp_gcsim_sessions()
+
+    def _local_period_id(self) -> str:
+        period = validate_current_official_period(
+            self._abyss_period_provider(), today=self._today_provider(),
+        )
+        return (period.period_id or "") if period.ready else ""
+
+    def period_admission(self):
+        return evaluate_pvp_period_admission(
+            self._abyss_period_provider(), today=self._today_provider(),
+            profile_period_ids=[
+                self.seat_profile_provider(seat).metadata.get("abyss_period_id", "")
+                for seat in PVP_SEATS
+            ],
+        )
+
+    def period_admission_text(self) -> str:
+        decision = self.period_admission()
+        return "" if decision.ready else _pvp_period_message(decision)
+
+    def gcsim_run_source(self) -> dict[str, Any]:
+        period = self.period_admission()
+        if not period.ready:
+            raise ValueError(_pvp_period_message(period))
+        if self.active_draft_session is None or self.active_draft_session.abyss_period_id != period.period_id:
+            raise ValueError(tr("app_shell.pvp.period.match_changed"))
+        source = self._abyss_source_data_provider()
+        if source is None or source.floor != 12 or source.period.start_date != period.ref.start_date:
+            raise ValueError(tr("app_shell.pvp.period.cache_missing"))
+        return {"abyss_period_id": period.period_id, "abyss_period_start": period.ref.start_date, "abyss_floor": source.floor,
+                "abyss_cache_dir": str(self._abyss_cache_dir), "source_data": source}
+
+    def _load_abyss_source_data(self) -> AbyssFloorSourceData | None:
+        ref = self._abyss_period_provider()
+        if ref is None:
+            return None
+        try:
+            return load_cached_abyss_floor_source_data(
+                ref.start_date, floor=12, cache_dir=self._abyss_cache_dir,
+            )
+        except (AbyssSourceDataCacheError, OSError, ValueError):
+            return None
+
+    def close_profile_providers(self) -> None:
         closed: set[int] = set()
         for provider in self._profile_providers_by_seat.values():
             if provider is self._local_profile_provider or id(provider) in closed:
@@ -2552,7 +2806,6 @@ class PvpWorkspace(QWidget):
             close = getattr(provider, "close", None)
             if callable(close):
                 close()
-        super().closeEvent(event)
 
     def _draft_view_state(self) -> dict[str, Any]:
         assignment_slots = {
@@ -2594,10 +2847,15 @@ class PvpWorkspace(QWidget):
         }
 
     def _current_abyss_source_data(self) -> AbyssFloorSourceData | None:
+        period = self.period_admission()
+        if (not period.ready or self.active_draft_session is None
+                or self.active_draft_session.abyss_period_id != period.period_id):
+            return None
         if not self._abyss_source_data_loaded:
             self._abyss_source_data_loaded = True
             self._abyss_source_data = self._abyss_source_data_provider()
-        return self._abyss_source_data
+        source = self._abyss_source_data
+        return source if source is not None and source.floor == 12 and source.period.start_date == period.ref.start_date else None
 
     def _on_decks_state_changed(self) -> None:
         self._sync_play_workspace()
@@ -2611,7 +2869,7 @@ class PvpWorkspace(QWidget):
             self.active_draft_session,
             status_text=self._last_draft_status,
             view_state=self._draft_view_state(),
-            character_assets=self.character_assets,
+            character_assets=self._shared_character_assets(),
             weapon_assets=self.weapon_assets,
             build_flow_context=self.build_flow_context,
             abyss_source_data=(

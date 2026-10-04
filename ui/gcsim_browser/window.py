@@ -100,9 +100,15 @@ class GcsimBrowserWorkspace(QWidget):
         parent: QWidget | None = None,
         *,
         mode: str = MODE_ABYSS,
+        preparation_only: bool = False,
+        scoped_build: bool = False,
     ) -> None:
         super().__init__(parent)
         self._mode = mode if mode in {MODE_ABYSS, MODE_DPS_DUMMY} else MODE_ABYSS
+        self._preparation_only = bool(preparation_only)
+        self._restricted_build = bool(scoped_build or preparation_only)
+        self._run_admitted = not self._preparation_only
+        self._actions_busy = False
         self._selected_chamber_index = 0
         self._optimizer_mode = "selected"
         self._optimizer_busy = False
@@ -343,6 +349,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.optimizer_description.setWordWrap(True)
         optimizer_intro_layout.addWidget(self.optimizer_description)
         optimizer_layout.addWidget(optimizer_intro)
+        self.workspace_tabs.setTabVisible(1, not self._restricted_build)
 
         optimizer_actions, optimizer_actions_layout = _make_section()
         mode_row = QHBoxLayout()
@@ -637,6 +644,7 @@ class GcsimBrowserWorkspace(QWidget):
         cards: list[_TeamCard] = []
         for slot_index in range(4):
             card = _TeamCard(team_index=team_index, slot_index=slot_index)
+            card.activate_virtual_button.setVisible(not self._restricted_build)
             card.setObjectName(f"gcsimTeamCard{team_index}_{slot_index}")
             card.virtual_character_requested.connect(
                 lambda key, team=team_index, slot=slot_index: (
@@ -688,7 +696,12 @@ class GcsimBrowserWorkspace(QWidget):
         is_abyss = self._mode == MODE_ABYSS
         self.team_tabs.setTabVisible(1, is_abyss)
         self.targets_section.setVisible(is_abyss)
-        self.run_all_button.setVisible(is_abyss)
+        self.run_all_button.setVisible(is_abyss and not self._preparation_only)
+        self.run_selected_button.setVisible(not self._preparation_only)
+        if self._preparation_only or not self._run_admitted:
+            self.run_selected_button.setEnabled(False)
+        if self._restricted_build:
+            self.optimizer_selected_button.setEnabled(False)
         self.run_all_button.setEnabled(is_abyss and self.run_selected_button.isEnabled())
         self._refresh_context()
 
@@ -735,6 +748,8 @@ class GcsimBrowserWorkspace(QWidget):
         self.prepare_requested.emit(team_index, self.rotation_editor.toPlainText())
 
     def _request_run_selected_chamber(self) -> None:
+        if self._preparation_only or not self._run_admitted or self._actions_busy or self._optimizer_busy:
+            return
         team_index = max(0, int(self.team_tabs.currentIndex()))
         if self._mode == MODE_DPS_DUMMY:
             team_index = 0
@@ -749,6 +764,8 @@ class GcsimBrowserWorkspace(QWidget):
         )
 
     def _request_run_all_chambers(self) -> None:
+        if self._preparation_only or not self._run_admitted or self._actions_busy or self._optimizer_busy:
+            return
         team_index = max(0, int(self.team_tabs.currentIndex()))
         if self._mode == MODE_DPS_DUMMY:
             team_index = 0
@@ -779,6 +796,8 @@ class GcsimBrowserWorkspace(QWidget):
         )
 
     def _request_optimizer_mode(self, mode: str) -> None:
+        if self._restricted_build:
+            return
         self._optimizer_mode = mode
         team_index = max(0, int(self.team_tabs.currentIndex()))
         if self._mode == MODE_DPS_DUMMY:
@@ -857,9 +876,9 @@ class GcsimBrowserWorkspace(QWidget):
             self.optimizer_progress_bar.setTextVisible(False)
         self._optimizer_busy = normalized_busy
         self.prepare_button.setEnabled(not busy)
-        self.run_selected_button.setEnabled(not busy)
-        self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
-        self.optimizer_selected_button.setEnabled(not busy)
+        self.run_selected_button.setEnabled(not busy and not self._actions_busy and self._run_admitted)
+        self.run_all_button.setEnabled(not busy and not self._actions_busy and self._mode == MODE_ABYSS and self._run_admitted)
+        self.optimizer_selected_button.setEnabled(not busy and not self._restricted_build)
         self.optimizer_all_sets_button.setEnabled(not busy and self._optimizer_all_sets_available)
         self.optimizer_theory_button.setEnabled(not busy and self._optimizer_theory_available)
         self.optimizer_infinite_energy_switch.setEnabled(not busy)
@@ -1091,14 +1110,21 @@ class GcsimBrowserWorkspace(QWidget):
         )
 
     def set_actions_busy(self, busy: bool, *, message: str = "") -> None:
+        self._actions_busy = bool(busy)
         self.prepare_button.setEnabled(not busy)
-        self.run_selected_button.setEnabled(not busy)
-        self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
-        self.optimizer_selected_button.setEnabled(not busy)
+        self.run_selected_button.setEnabled(not busy and not self._optimizer_busy and self._run_admitted)
+        self.run_all_button.setEnabled(not busy and not self._optimizer_busy and self._mode == MODE_ABYSS and self._run_admitted)
+        self.optimizer_selected_button.setEnabled(not busy and not self._restricted_build)
         self.optimizer_all_sets_button.setEnabled(not busy and self._optimizer_all_sets_available)
         self.optimizer_theory_button.setEnabled(not busy and self._optimizer_theory_available)
         if message:
             self._set_result_text(message)
+
+    def set_run_admission(self, allowed: bool, *, message: str = "") -> None:
+        self._run_admitted = bool(allowed) and not self._preparation_only
+        self.set_actions_busy(self._actions_busy)
+        self.run_selected_button.setToolTip(message)
+        self.run_all_button.setToolTip(message)
 
     def set_prepare_result_text(self, text: str) -> None:
         self._set_result_text(

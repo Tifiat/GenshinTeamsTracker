@@ -34,8 +34,8 @@ owners in `README.md` and `DATA_RUNTIME_BOUNDARIES.md`.
 - History freezes each occupied slot's display data/assets and reuses an
   isolated read-only Run panel. Factual DPS is HP/time from authoritative Abyss
   cache; missing period/cache/HP means unavailable. PvP has independent source
-  providers and scoped runtime state. Its development `.gttpvp` is not yet a
-  portable public format.
+  providers and scoped runtime state. The `.gttpvp` development boundary and
+  pending real-account acceptance are owned by `PVP_PROFILE_PACKAGE.md`.
 - Normal offline profile export is an allowlisted ZIP with a SQLite backup,
   account JSON/assets and language metadata. It excludes authentication,
   private debug and browser state. PvP exchange is a separate boundary.

@@ -42,9 +42,10 @@ remains in `PVP_BACKEND_STATUS.md`.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
   completed result summary v0 are implemented for local hot-seat matches.
   Development-only profile package import/export actions are also available,
-  but the current package is not yet portable, privacy-safe, or a finalized
-  exchange schema. Artifact Browser routing, executable scoped PvP GCSIM,
-  online play, ruleset costs, immune picks, result PNG/export, and PvP History
+  with validated portable v3 slices/assets and pending real-account acceptance.
+  Scoped Artifact Browser, GCSIM dispatch and local period admission are
+  implemented; current acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`.
+  Online play, ruleset costs, immune picks, result PNG/export, and PvP History
   are still not implemented. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
 
@@ -113,18 +114,11 @@ scoped instance of the normal live-run build pipeline:
   never mutates normal account equipment. Imported/future remote players read
   source data from their `.gttpvp` package while still receiving a fresh PvP
   runtime equipment state for the current match.
-- `.gttpvp` is the intended versioned ZIP container. The current internal v1
-  prototype contains `manifest.json`, `decks.json`, and
-  `account_slice.sqlite`; its buttons and version number do not make it the
-  finalized public schema. It is not `.npz`: NumPy adds no useful contract
-  here. Import must validate archive entries and materialize only validated
-  provider data/assets to a managed temp path, not unpack an arbitrary folder
-  tree.
-- Target `.gttpvp` packages contain deck presets, a deduplicated account slice
-  for characters/weapons/artifacts/presets used by those decks, and the bitmap
-  assets needed for autonomous display on another machine. Current package
-  implementation still has an asset-portability gap and must not fall back to
-  image paths as identity.
+- `.gttpvp` v3 contains selected decks, an allowlisted SQLite slice and neutral
+  bitmap assets with a content-hash manifest. Import validates the complete
+  boundary before populating a managed provider; old v1 packages require
+  re-export. Inventory scope and current fixture/user acceptance belong to
+  `PVP_PROFILE_PACKAGE.md`. Paths never become backend identity.
 - The left Characters/Weapons view for Assignment/Weapon stages must use the
   same normal quick-pick and marker machinery as AppShell. Selected characters
   show team-colored team-local slot markers `1-4` for team 1 and `1-4` for team
@@ -253,19 +247,18 @@ Card identity and presentation note:
 
 - Draft identity is the stable `character_id`; images/icons are optional
   presentation assets and must never be identity.
-- The earlier risk with one shared visual card was ambiguity, not a rule that
-  opponent images are forbidden. A shared card is acceptable when it has
-  explicit ownership markers and per-seat metadata.
+- One shared neutral portrait per character id is sufficient. Ownership and
+  per-seat constellation data are shown through frames and separate badges.
 - Ownership styling never follows the active turn. A Player-1-only card has a
   full Player 1 frame and left constellation badge; a Player-2-only card has a
   full Player 2 frame and right badge; a shared card has a frame split Player 1
   on the left / Player 2 on the right and both badges on their corresponding
   sides.
-- Per-seat images are presentation data resolved by the seat provider. Player
-  scope tabs show that player's image. In the unified pool, a single-owner card
-  uses its owner's image; a shared Pick uses the acting player's image and a
-  shared Ban uses the opponent's image. The full fallback/result-zone rules and
-  package boundary live in `PVP_PROFILE_PACKAGE.md`.
+- All Player scopes, unified-pool Pick/Ban actions and result zones reuse that
+  neutral portrait. Seat/action-dependent bitmap selection is not required;
+  transparent source portraits from the archive may fill missing ids or local
+  files. Shared characters keep the local portrait when available. The full
+  fallback rules and package boundary live in `PVP_PROFILE_PACKAGE.md`.
 - Draft/session logic must work without image paths. Prefer package/local cache,
   bundled/common fallback icons, or client-side asset resolution; do not assume
   a future server hosts images.
@@ -386,11 +379,12 @@ Current v0 scope:
 - After pick/ban completion, current v0 continues through internal Assignment,
   Weapon assignment, Timers/results, and Completed result stages for local
   hot-seat play.
-- Current v0 skips Artifact equipment and scoped PvP GCSIM, but the target
-  architecture must prepare right-panel slots/stages for them.
+- Current v0 includes artifact equipment and scoped GCSIM dispatch through
+  normal services; real-engine/user acceptance remains open in `PVP_BUILD_SERVICES.md`.
 - Online mode, ruleset cost rendering, immune picks, session files, PvP History
   writes, and result export are not implemented in current v0. The separate
-  profile-package prototype exists but is not a finalized portable export.
+  portable profile implementation is still awaiting real-account/user-path
+  acceptance; see `PVP_PROFILE_PACKAGE.md`.
 
 ## Team Assignment
 
@@ -459,9 +453,9 @@ Current v0 scope:
 
 ## Artifact Equipment
 
-Artifact equipment is target product direction for PvP. It is not implemented
-in current v0, and the immediate source-ownership refactor should preserve the
-structure needed for it rather than implementing the full equipment flow.
+Artifact equipment now uses the existing browser with match-local ownership.
+Current implementation, acceptance and source-write limits are owned by
+`PVP_BUILD_SERVICES.md`.
 
 - After Draft pick/ban plus team and weapon assignment, PvP should support an
   Artifact equipment stage inside Draft.
@@ -470,7 +464,8 @@ structure needed for it rather than implementing the full equipment flow.
   the whole local artifact DB.
 - Imported/remote Player 2 reads artifact source data from the imported package
   and uses the same scoped PvP runtime artifact equipment state boundary.
-- Player 2 can import artifacts from JSON into that temporary PvP session.
+- Separate Player 2 JSON import remains a future scoped-session enhancement;
+  current inventory/builds come from the validated profile package.
 - PvP artifact data is scoped to the active PvP match/session.
 - Changes made inside PvP must not affect the main Artifact Browser, main
   account artifact state, normal live-run builds, or current account equipment.
@@ -573,12 +568,13 @@ Hot-seat layout direction:
   content alignment. Draft order overlays remain translucent when inactive:
   picks use the acting player's color, bans use the ban semantic red, and immune
   actions keep their dedicated semantic color.
-- Future match admission must validate Abyss period identity before Draft
+- Local match admission validates Abyss period identity before Draft
   starts. Local/hot-seat profiles must resolve to the same period; a mismatch
   must be checked against the current authoritative period and require stale
   data to be updated. Online room create/join must use the server-advertised
   current period as authority and block/ask the client to refresh when its
-  profile period differs. This admission gate is not implemented yet.
+  profile period differs. Local gates and date-precision limits are owned by
+  `PVP_BUILD_SERVICES.md`; online server admission is still future work.
 - Factual DPS, restarts, technical-loss UI, bundle/export actions, and GCSIM
   scoring are still future work.
 
@@ -698,18 +694,19 @@ Right-panel architecture status before more PvP growth:
 > canonical in `ui/right_panel/pvp/_shared.py`. Assignment/Weapon stages now
 > use scoped normal AppShell controller/workspace state and the shared
 > `RunRightPanelWidget`; the previous custom source/target implementation must
-> not return. Artifact Browser and executable scoped GCSIM remain later steps
-> on the same scoped pipeline.
+> not return. Artifact Browser and scoped GCSIM now use that pipeline;
+> controlled evidence and pending real-engine acceptance live in `PVP_BUILD_SERVICES.md`.
 
 Current v0 limitations / later work:
 
-- finalized two-seat provider and portable/privacy-safe profile package;
+- real-account/user-path acceptance of portable profile exchange and isolated
+  second-account decks under `PVP_PROFILE_PACKAGE.md`;
 - online;
 - History;
 - PNG/export result card;
 - ruleset cost rendering;
 - Gentor/Abyss importer;
-- scoped PvP artifact equipment implementation;
+- user acceptance of scoped artifact equipment and GCSIM preparation;
 - extended GTT JSON artifact+preset import/export QoL;
 - scoped PvP GCSIM scoring;
 - final styling.

@@ -12,7 +12,7 @@ events and final hashes live in the shared hub's `GIT_JOURNAL.md`.
 | --- | --- | --- |
 | Worker1 saved polish | `95427ca338f38ad76708da317b231bb736058e5d` | Main switched cleanly to master; fast-forward from `bde62f972ac77c50bffcf6f54cd08beeb0558457`. Prior 123 checks/four Go packages remain dated evidence. Chasca numerical response and visible UI remain unaccepted. |
 | Worker3 browser and display | `2055515e28841b18771e9c38156ceee0fa2c115d` | Target merge built on `95427ca`; original browser `827028e` and display `2055515` commits retained. 95 safe combined tests pass. |
-| Worker4 PvP | `b165a9ca82fc2036fa4a642b65742c0fe13485c8` | Static review complete; target integration follows Worker3. No current target-test result yet. |
+| Worker4 PvP | `b165a9ca82fc2036fa4a642b65742c0fe13485c8` | Target combines both browser APIs and closes metadata/marker isolation gaps. 274 unique target tests: 272 PASS, 1 host symlink SKIP, 1 unchanged timer-width FAIL retained. |
 | Worker5 import and icons | No final packet accepted | Await exact verified independent commit. Never merge the old History checkpoint wholesale: it includes inherited optimizer/research work. |
 | Worker2 Theory | `918b0724c5a63dfe33cb682ab6edcdfc8910c9d2` is a research checkpoint | Excluded. New solver/source-helper work is still being verified; no candidate engine is installed here. |
 
@@ -47,12 +47,36 @@ its read-only seat routes are included.
 
 Worker4's original timer HP-header failure remains separate and unaccepted;
 its source timer layout was not changed in that package. Static review found a
-portable-text privacy gap: SQLite rejects absolute local paths while manifest
-and deck metadata do not yet share that check. Close it with the existing path
-policy and temporary export/import regressions during target integration.
+portable-text privacy gap. The target now uses the existing SQLite path detector
+for manifest, deck and weapon-reference text too. Synthetic Windows, UNC and
+POSIX metadata rejection tests preserve the source and an existing destination;
+valid metadata round-trips and managed temporary files are released. The bounded
+31-case profile/schema/package check passes.
+
+Target browser resolution retains both `initialize` and `read_only` rather than
+discarding either API. Normal account applied-preset persistence and batched
+inventory work remain; PvP uses match equipment and read-only source queries.
+The combined preset-marker reader now clears/returns before account marker
+access for a scoped/readonly browser. A new fixture spies on writable opens and
+marker reads/writes across open, equip, preset application and panel refresh,
+while verifying byte-identical source databases and deck files.
+
+The first target run covers 271 distinct tests and finds one new fixture
+expectation error: normal `connect_db` enables SQLite WAL, so its header can
+change even when rows/schema do not. The corrected assertion retains byte
+identity for both readonly initialization flags and verifies schema/data
+identity for the normal no-DDL route. Product code was not changed to mask the
+fixture failure. The corrected focused batch passes 11/11. Counting repeated
+tests once, the final target scope is 274 tests: 272 PASS, one host symlink SKIP
+and the same old timer-width FAIL (96px versus 208px). That timer module ran
+separately; the 271-case browser/backend batch is now 270 PASS and one SKIP.
+Independent escape/cleanup controls remain. No universal/UI acceptance is claimed.
 
 Worker5 received bounded safe icon hypotheses. Its stricter verification gate
-remains in force; absent a verified packet, defer its transfer until the user's
-return. A persisted heartbeat watches meaningful progress; no Computer Use,
-app launch, network/account import or optimizer/engine run belongs to this
+initially blocked a commit despite 8/8 icons and passing branch tooltip/cache
+checks. The returning user's repeated instruction to finish synchronization
+authorizes a scoped local commit/transfer with visual and authenticated-account
+acceptance explicitly still open. Exact packet/dependencies are being prepared;
+no whole History checkpoint is accepted. A persisted heartbeat watches meaningful
+progress; no Computer Use, app launch, network/account import or optimizer/engine run belongs to this
 integration task. Peer dirty work is retained, not stashed or overwritten.

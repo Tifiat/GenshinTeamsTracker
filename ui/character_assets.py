@@ -307,12 +307,11 @@ def account_character_asset_item(
         "source_metadata": dict(record.source_metadata or {}),
         "warnings": list(record.warnings),
     }
-    # A packaged PvP account contains SQLite but no separate image manifest.
-    # Reuse local variants only when its browser bitmap is exactly the one in
-    # the current manifest; a matching ID alone could belong to another owner.
+    # PvP reuses transparent source portraits by game id. History variants can
+    # contain account-specific overlays, so only reuse a matching browser crop.
     manifest_browser = character_variant_path(record.character_id, "crop")
     matching_variants = manifest_browser is not None and manifest_browser.resolve() == path.resolve()
-    pvp_path = character_variant_path(record.character_id, "pvp") if matching_variants else None
+    pvp_path = character_variant_path(record.character_id, "portrait")
     history_path = character_variant_path(record.character_id, "history") if matching_variants else None
     if pvp_path is not None:
         metadata["portrait_pvp_path"] = str(pvp_path)
@@ -328,16 +327,18 @@ def account_character_asset_item(
 
 
 def pvp_character_asset_item(asset: dict[str, Any]) -> dict[str, Any]:
-    """Swap only the baked image; per-seat PvP constellation badges stay intact."""
+    """Use a transparent portrait; keep constellation badges outside the bitmap."""
     metadata = dict(asset.get("metadata") or {})
     pvp_path = _existing_project_path(metadata.get("portrait_pvp_path"))
-    if pvp_path is None:
+    if pvp_path is None and metadata.get("source") != "account_sqlite":
         return asset
     character = dict(metadata.get("character") or {})
-    character["portrait_path"] = str(pvp_path)
-    character["local_portrait_path"] = str(pvp_path)
+    path_text = str(pvp_path) if pvp_path is not None else ""
+    metadata["portrait_pvp_path"] = path_text
+    for field in ("portrait_path", "local_portrait_path", "side_icon_path", "icon_path"):
+        character[field] = path_text
     metadata["character"] = character
-    return {**asset, "path": pvp_path, "filename": pvp_path.name, "metadata": metadata}
+    return {**asset, "path": Path(path_text), "filename": pvp_path.name if pvp_path is not None else "", "metadata": metadata}
 
 
 def account_weapon_stack_asset_item(

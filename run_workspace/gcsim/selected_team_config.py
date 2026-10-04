@@ -262,6 +262,7 @@ def build_selected_team_payload(
     artifact_set_registry_source: str | Path | None = None,
     virtual_artifact_policy: str = VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
     virtual_artifact_baselines: Mapping[int, Mapping[str, Any]] | None = None,
+    allow_account_equipment_fallback: bool = True,
 ) -> SelectedTeamBuild:
     if virtual_artifact_policy not in {
         VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
@@ -301,6 +302,7 @@ def build_selected_team_payload(
                 virtual_artifact_baseline=(virtual_artifact_baselines or {}).get(
                     int(slot.get("slot_index", -1))
                 ),
+                allow_account_equipment_fallback=allow_account_equipment_fallback,
             )
             details.append(built)
             if built.payload_character:
@@ -343,6 +345,7 @@ def build_selected_team_full_config_report(
     run_settings: GcsimRunSettings | None = None,
     virtual_artifact_policy: str = VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
     virtual_artifact_baselines: Mapping[int, Mapping[str, Any]] | None = None,
+    allow_account_equipment_fallback: bool = True,
 ) -> SelectedTeamFullConfigReport:
     effective_run_dir = (
         Path(run_dir)
@@ -362,6 +365,7 @@ def build_selected_team_full_config_report(
         artifact_set_registry_source=artifact_set_registry_source,
         virtual_artifact_policy=virtual_artifact_policy,
         virtual_artifact_baselines=virtual_artifact_baselines,
+        allow_account_equipment_fallback=allow_account_equipment_fallback,
     )
     prepared_team = _build_selected_team_config_result(team.payload)
     blocks = tuple(
@@ -764,6 +768,7 @@ def _build_slot_payload(
     artifact_set_resolver: Any,
     virtual_artifact_policy: str,
     virtual_artifact_baseline: Mapping[str, Any] | None,
+    allow_account_equipment_fallback: bool,
 ) -> SelectedTeamCharacterDetail:
     slot_index = _optional_int(slot.get("slot_index"))
     slot_index = int(slot_index) if slot_index is not None else -1
@@ -852,6 +857,7 @@ def _build_slot_payload(
         conn,
         slot,
         character_id=character_id,
+        allow_account_equipment_fallback=allow_account_equipment_fallback,
     )
     issues.extend(weapon_issues)
     weapon_ready = (
@@ -886,6 +892,7 @@ def _build_slot_payload(
                 slot,
                 character_id=character_id,
                 artifact_set_resolver=artifact_set_resolver,
+                allow_account_equipment_fallback=allow_account_equipment_fallback,
             )
         )
     warnings.extend(artifact_warnings)
@@ -1319,6 +1326,7 @@ def _selected_weapon_payload(
     slot: Mapping[str, Any],
     *,
     character_id: str,
+    allow_account_equipment_fallback: bool,
 ) -> tuple[dict[str, Any], str, tuple[SelectedTeamConfigIssue, ...]]:
     weapon = _selected_weapon(slot)
     fingerprint = _text(
@@ -1329,9 +1337,10 @@ def _selected_weapon_payload(
         if row:
             return row, "selected_weapon_fingerprint", ()
 
-    current = _current_equipped_weapon_stack(conn, _optional_int(character_id))
-    if current is not None:
-        return _row_dict(current), "current_equipped_weapon", ()
+    if allow_account_equipment_fallback:
+        current = _current_equipped_weapon_stack(conn, _optional_int(character_id))
+        if current is not None:
+            return _row_dict(current), "current_equipped_weapon", ()
 
     issue = _issue(
         "weapon_missing",
@@ -1351,6 +1360,7 @@ def _selected_artifact_payload(
     *,
     character_id: str,
     artifact_set_resolver: Any,
+    allow_account_equipment_fallback: bool,
 ) -> tuple[
     dict[str, Any] | None,
     dict[str, Any],
@@ -1358,7 +1368,7 @@ def _selected_artifact_payload(
     tuple[str, ...],
 ]:
     summary = _slot_artifact_summary(slot)
-    if summary:
+    if summary or not allow_account_equipment_fallback:
         payload, report, issues, warnings = _artifact_payload_from_snapshot(
             summary,
             artifact_set_resolver=artifact_set_resolver,

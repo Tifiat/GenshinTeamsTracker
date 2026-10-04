@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from ui.gcsim_browser.run_worker import (
+    ERROR_CANCELLED,
     ERROR_ARTIFACT_PREFLIGHT_FAILED,
     ERROR_CONFIG_PARSE_OR_ROTATION_ERROR,
     ERROR_GCSIM_RUNTIME_ERROR,
@@ -29,6 +30,167 @@ from ui.gcsim_browser.run_worker import (
 
 
 class GcsimBrowserRunWorkerTest(unittest.TestCase):
+    def test_account_equipment_fallback_defaults_and_explicit_override(self) -> None:
+        selected = GcsimBrowserRunRequest(
+            db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+            chamber=1, side=1, rotation_shell_text="active chasca;",
+        )
+        batch = GcsimBrowserBatchRunRequest(
+            db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+            side=1, rotation_shell_text="active chasca;",
+        )
+        dummy = GcsimBrowserDpsDummyRunRequest(
+            db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+            rotation_shell_text="active chasca;",
+        )
+        self.assertTrue(selected.allow_account_equipment_fallback)
+        self.assertTrue(batch.allow_account_equipment_fallback)
+        self.assertTrue(dummy.allow_account_equipment_fallback)
+        self.assertFalse(GcsimBrowserRunRequest(
+            db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+            chamber=1, side=1, rotation_shell_text="active chasca;",
+            allow_account_equipment_fallback=False,
+        ).allow_account_equipment_fallback)
+
+    def test_selected_forwards_fallback_and_optional_runner_with_fake_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            request = GcsimBrowserRunRequest(
+                db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+                chamber=1, side=1, rotation_shell_text="active chasca;",
+                abyss_period_start="2026-06-01", abyss_floor=12,
+                run_root=temporary, expected_engine_id="engine-1",
+                allow_account_equipment_fallback=False,
+            )
+            report = SimpleNamespace(ready=True)
+            finished_report = SimpleNamespace(to_dict=lambda: {
+                "ready": True, "smoke": {"success": True, "status": "run_passed"},
+            })
+            fake_runner = lambda *_args: None
+            with (
+                patch("ui.gcsim_browser.run_worker._active_run_binding", return_value=SimpleNamespace(
+                    engine_id="engine-1", artifact_registry=Path(temporary) / "artifact.go",
+                    enemy_registry=Path(temporary) / "enemy.go",
+                )) as binding,
+                patch("ui.gcsim_browser.run_worker.build_selected_team_full_config_report", return_value=report) as build,
+                patch("ui.gcsim_browser.run_worker.run_selected_team_abyss_smoke", return_value={"success": True}) as smoke,
+                patch("ui.gcsim_browser.run_worker.report_with_smoke", return_value=finished_report),
+                patch("ui.gcsim_browser.run_worker.build_gcsim_readiness_summary", return_value=SimpleNamespace(blocked=False)),
+            ):
+                payload = run_gcsim_browser_selected_chamber(request, artifact_runner=fake_runner)
+            self.assertTrue(payload["success"])
+            binding.assert_called_once()
+            self.assertFalse(build.call_args.kwargs["allow_account_equipment_fallback"])
+            run_func = smoke.call_args.kwargs["artifact_run_func"]
+            self.assertIs(run_func.keywords["runner"], fake_runner)
+            self.assertEqual(run_func.keywords["expected_engine_id"], "engine-1")
+
+    def test_selected_cancelled_before_output_allocation_or_binding(self) -> None:
+        request = GcsimBrowserRunRequest(
+            db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+            chamber=1, side=1, rotation_shell_text="active chasca;",
+            abyss_period_start="2026-06-01", abyss_floor=12,
+        )
+        with (
+            patch("ui.gcsim_browser.run_worker._new_run_dir") as allocate,
+            patch("ui.gcsim_browser.run_worker._active_run_binding") as binding,
+            patch("ui.gcsim_browser.run_worker.build_selected_team_full_config_report") as build,
+        ):
+            payload = run_gcsim_browser_selected_chamber(request, cancel_requested=lambda: True)
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["status"], ERROR_CANCELLED)
+        self.assertEqual(payload["error_category"], ERROR_CANCELLED)
+        allocate.assert_not_called()
+        binding.assert_not_called()
+        build.assert_not_called()
+
+    def test_selected_cancelled_after_binding_skips_config_and_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            request = GcsimBrowserRunRequest(
+                db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+                chamber=1, side=1, rotation_shell_text="active chasca;",
+                abyss_period_start="2026-06-01", abyss_floor=12, run_root=temporary,
+            )
+            cancelled = False
+
+            def bind(*_args, **_kwargs):
+                nonlocal cancelled
+                cancelled = True
+                return SimpleNamespace(engine_id="engine-1", artifact_registry=Path(temporary) / "artifact.go")
+
+            with (
+                patch("ui.gcsim_browser.run_worker._active_run_binding", side_effect=bind),
+                patch("ui.gcsim_browser.run_worker.build_selected_team_full_config_report") as build,
+                patch("ui.gcsim_browser.run_worker.run_selected_team_abyss_smoke") as smoke,
+            ):
+                payload = run_gcsim_browser_selected_chamber(
+                    request, cancel_requested=lambda: cancelled,
+                )
+            self.assertEqual(payload["status"], ERROR_CANCELLED)
+            build.assert_not_called()
+            smoke.assert_not_called()
+
+    def test_dps_dummy_forwards_account_equipment_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            request = GcsimBrowserDpsDummyRunRequest(
+                db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+                rotation_shell_text="active chasca;", run_root=temporary,
+                allow_account_equipment_fallback=False,
+            )
+            report = SimpleNamespace(ready=False, to_dict=lambda: {"ready": False})
+            with (
+                patch("ui.gcsim_browser.run_worker._active_run_binding", return_value=SimpleNamespace(
+                    engine_id="engine-1", artifact_registry=Path(temporary) / "artifact.go",
+                )),
+                patch("ui.gcsim_browser.run_worker.build_selected_team_full_config_report", return_value=report) as build,
+                patch("ui.gcsim_browser.run_worker.build_gcsim_readiness_summary", return_value=SimpleNamespace(blocked=False)),
+            ):
+                run_gcsim_browser_dps_dummy(request)
+            self.assertFalse(build.call_args.kwargs["allow_account_equipment_fallback"])
+
+    def test_batch_cancellation_stops_before_remaining_chambers(self) -> None:
+        request = GcsimBrowserBatchRunRequest(
+            db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+            side=1, rotation_shell_text="active chasca;", abyss_period_start="2026-06-01",
+            abyss_floor=12, allow_account_equipment_fallback=False,
+        )
+        completed = []
+
+        def fake_selected(chamber_request, **kwargs):
+            completed.append(chamber_request)
+            self.assertFalse(chamber_request.allow_account_equipment_fallback)
+            self.assertIs(kwargs["artifact_runner"], fake_runner)
+            return _chamber_payload(chamber_request.chamber, success=True, status="run_passed")
+
+        fake_runner = lambda *_args: None
+        with (
+            patch("ui.gcsim_browser.run_worker._active_run_binding", return_value=SimpleNamespace(engine_id="engine-1")),
+            patch("ui.gcsim_browser.run_worker.run_gcsim_browser_selected_chamber", side_effect=fake_selected) as selected,
+        ):
+            payload = run_gcsim_browser_three_chambers(
+                request, artifact_runner=fake_runner, cancel_requested=lambda: bool(completed),
+            )
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["batch_status"], ERROR_CANCELLED)
+        self.assertEqual(payload["error_category"], ERROR_CANCELLED)
+        self.assertEqual(len(payload["chambers"]), 1)
+        self.assertEqual(selected.call_count, 1)
+
+    def test_batch_cancelled_before_binding_has_no_chambers(self) -> None:
+        request = GcsimBrowserBatchRunRequest(
+            db_path="fixture.db", selected_team=_selected_team(), team_index=0,
+            side=1, rotation_shell_text="active chasca;", abyss_period_start="2026-06-01",
+            abyss_floor=12,
+        )
+        with (
+            patch("ui.gcsim_browser.run_worker._active_run_binding") as binding,
+            patch("ui.gcsim_browser.run_worker.run_gcsim_browser_selected_chamber") as selected,
+        ):
+            payload = run_gcsim_browser_three_chambers(request, cancel_requested=lambda: True)
+        self.assertEqual(payload["batch_status"], ERROR_CANCELLED)
+        self.assertEqual(payload["chambers"], [])
+        binding.assert_not_called()
+        selected.assert_not_called()
+
     def test_normal_run_registry_binding_uses_only_selected_engine(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

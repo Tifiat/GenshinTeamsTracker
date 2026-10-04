@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Signal, Slot
 
@@ -21,7 +21,7 @@ from run_workspace.gcsim.selected_team_config import (
     run_selected_team_dps_dummy_artifact,
 )
 from run_workspace.gcsim.settings import GcsimRunSettings
-from run_workspace.gcsim.artifact_runner import run_active_gcsim_artifact
+from run_workspace.gcsim.artifact_runner import ArtifactRunner, run_active_gcsim_artifact
 from run_workspace.gcsim.engine_store import GcsimEngineStore
 from run_workspace.gcsim.optimizer_go_selected import (
     GcsimOptimizerGoSelectedRequest,
@@ -43,6 +43,7 @@ ERROR_ARTIFACT_PREFLIGHT_FAILED = "artifact_preflight_failed"
 ERROR_GCSIM_RUNTIME_ERROR = "gcsim_runtime_error"
 ERROR_CONFIG_PARSE_OR_ROTATION_ERROR = "config_parse_or_rotation_error"
 ERROR_UNKNOWN = "unknown_error"
+ERROR_CANCELLED = "cancelled"
 WARNING_ABYSS_PREVIEW_SCENARIO_SOURCE_MISMATCH = (
     "abyss_preview_scenario_source_mismatch"
 )
@@ -77,6 +78,8 @@ class GcsimBrowserRunRequest:
     boosted_energy_enabled: bool = False
     run_root: str = ""
     expected_engine_id: str = ""
+    allow_account_equipment_fallback: bool = True
+    abyss_period_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +97,8 @@ class GcsimBrowserBatchRunRequest:
     boosted_energy_enabled: bool = False
     run_root: str = ""
     expected_engine_id: str = ""
+    allow_account_equipment_fallback: bool = True
+    abyss_period_id: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +110,7 @@ class GcsimBrowserDpsDummyRunRequest:
     boosted_energy_enabled: bool = False
     run_root: str = ""
     expected_engine_id: str = ""
+    allow_account_equipment_fallback: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -230,7 +236,12 @@ class GcsimBrowserSelectedOptimizerWorker(QObject):
 
 def run_gcsim_browser_selected_chamber(
     request: GcsimBrowserRunRequest,
+    *,
+    artifact_runner: ArtifactRunner | None = None,
+    cancel_requested: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
+    if cancel_requested is not None and cancel_requested():
+        return _cancelled_run_payload(_selection_report(request))
     if _selected_slot_count(request.selected_team) <= 0:
         return _with_readiness_summary(
             _selected_team_empty_error_payload(
@@ -246,14 +257,24 @@ def run_gcsim_browser_selected_chamber(
             "warnings": [WARNING_ABYSS_SOURCE_IDENTITY_MISSING],
         }
 
+    if cancel_requested is not None and cancel_requested():
+        return _cancelled_run_payload(_selection_report(request))
     run_dir = _new_run_dir(request.run_root)
     rotation_shell_path = run_dir / "rotation_shell.from_editor.txt"
     try:
+        if cancel_requested is not None and cancel_requested():
+            return _cancelled_run_payload(_selection_report(request))
         run_dir.mkdir(parents=True, exist_ok=True)
+        if cancel_requested is not None and cancel_requested():
+            return _cancelled_run_payload(_selection_report(request))
         binding = _active_run_binding(
             request.expected_engine_id, require_enemy_registry=True
         )
+        if cancel_requested is not None and cancel_requested():
+            return _cancelled_run_payload(_selection_report(request))
         rotation_shell_path.write_text(request.rotation_shell_text, encoding="utf-8")
+        if cancel_requested is not None and cancel_requested():
+            return _cancelled_run_payload(_selection_report(request))
         report = build_selected_team_full_config_report(
             db_path=request.db_path,
             selected_team=request.selected_team,
@@ -262,11 +283,17 @@ def run_gcsim_browser_selected_chamber(
             run_dir=run_dir,
             write_config=True,
             artifact_set_registry_source=binding.artifact_registry,
+            allow_account_equipment_fallback=request.allow_account_equipment_fallback,
             run_settings=GcsimRunSettings(
                 boosted_energy_enabled=request.boosted_energy_enabled,
             ),
         )
         if report.ready:
+            if cancel_requested is not None and cancel_requested():
+                return _cancelled_run_payload(_selection_report(request))
+            run_keywords: dict[str, Any] = {"expected_engine_id": binding.engine_id}
+            if artifact_runner is not None:
+                run_keywords["runner"] = artifact_runner
             smoke = run_selected_team_abyss_smoke(
                 report,
                 abyss_period_start=request.abyss_period_start,
@@ -280,7 +307,7 @@ def run_gcsim_browser_selected_chamber(
                 gcsim_enemy_registry_source=binding.enemy_registry,
                 artifact_run_func=partial(
                     run_active_gcsim_artifact,
-                    expected_engine_id=binding.engine_id,
+                    **run_keywords,
                 ),
             )
             report = report_with_smoke(report, smoke)
@@ -339,6 +366,7 @@ def run_gcsim_browser_dps_dummy(
             run_dir=run_dir,
             write_config=True,
             artifact_set_registry_source=binding.artifact_registry,
+            allow_account_equipment_fallback=request.allow_account_equipment_fallback,
             run_settings=GcsimRunSettings(
                 boosted_energy_enabled=request.boosted_energy_enabled,
             ),
@@ -380,7 +408,12 @@ def run_gcsim_browser_dps_dummy(
 
 def run_gcsim_browser_three_chambers(
     request: GcsimBrowserBatchRunRequest,
+    *,
+    artifact_runner: ArtifactRunner | None = None,
+    cancel_requested: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
+    if cancel_requested is not None and cancel_requested():
+        return _cancelled_run_payload(_batch_selection_report(request), chambers=[])
     if _selected_slot_count(request.selected_team) <= 0:
         return _with_readiness_summary(
             {
@@ -402,6 +435,8 @@ def run_gcsim_browser_three_chambers(
             "chambers": [],
         }
 
+    if cancel_requested is not None and cancel_requested():
+        return _cancelled_run_payload(_batch_selection_report(request), chambers=[])
     try:
         binding = _active_run_binding(
             request.expected_engine_id, require_enemy_registry=True
@@ -417,6 +452,8 @@ def run_gcsim_browser_three_chambers(
         })
     chambers: list[dict[str, Any]] = []
     for chamber in request.chambers:
+        if cancel_requested is not None and cancel_requested():
+            return _cancelled_run_payload(_batch_selection_report(request), chambers=chambers)
         chamber_request = GcsimBrowserRunRequest(
             db_path=request.db_path,
             selected_team=request.selected_team,
@@ -425,14 +462,25 @@ def run_gcsim_browser_three_chambers(
             side=request.side,
             rotation_shell_text=request.rotation_shell_text,
             abyss_period_start=request.abyss_period_start,
+            abyss_period_id=request.abyss_period_id,
             abyss_floor=request.abyss_floor,
             abyss_cache_dir=request.abyss_cache_dir,
             target_mode=request.target_mode,
             boosted_energy_enabled=request.boosted_energy_enabled,
             run_root=request.run_root,
             expected_engine_id=binding.engine_id,
+            allow_account_equipment_fallback=request.allow_account_equipment_fallback,
         )
-        chambers.append(run_gcsim_browser_selected_chamber(chamber_request))
+        chamber_payload = run_gcsim_browser_selected_chamber(
+            chamber_request,
+            **({} if artifact_runner is None and cancel_requested is None else {
+                "artifact_runner": artifact_runner,
+                "cancel_requested": cancel_requested,
+            }),
+        )
+        chambers.append(chamber_payload)
+        if chamber_payload.get("status") == ERROR_CANCELLED:
+            return _cancelled_run_payload(_batch_selection_report(request), chambers=chambers)
 
     status = _batch_status(chambers)
     return {
@@ -1029,6 +1077,27 @@ def _dps_dummy_selection_report(
         "boosted_energy_enabled": bool(request.boosted_energy_enabled),
         "expected_engine_id": request.expected_engine_id,
     }
+
+
+def _cancelled_run_payload(
+    selection: dict[str, Any],
+    *,
+    chambers: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "success": False,
+        "status": ERROR_CANCELLED,
+        "error_category": ERROR_CANCELLED,
+        "error": "Run cancelled.",
+        "selection": selection,
+    }
+    if chambers is not None:
+        payload["batch_status"] = ERROR_CANCELLED
+        payload["chambers"] = chambers
+        payload["warnings"] = _dedupe(
+            warning for chamber in chambers for warning in (chamber.get("warnings") or [])
+        )
+    return payload
 
 
 def _source_mismatch_warning(

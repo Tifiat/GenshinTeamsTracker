@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import os
 import re
+import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
@@ -906,11 +907,15 @@ class ArtifactBrowserWindow(QWidget):
         character_asset_items: list[dict] | None = None,
         operation_target: dict | None = None,
         virtual_gcsim_targets: list[dict] | None = None,
+        read_only_source: bool = False,
+        equipment_state=None,
     ):
         init_start = perf_now()
         super().__init__(parent)
         self.embedded = bool(embedded)
         self.db_path = Path(db_path)
+        self.read_only_source = bool(read_only_source)
+        self.equipment_state = equipment_state
         if not self.embedded:
             self.setWindowFlag(Qt.Window, True)
         self.setWindowTitle(tr("artifact.browser.title"))
@@ -928,7 +933,7 @@ class ArtifactBrowserWindow(QWidget):
 
         self.current_pos = 1
         store_start = perf_now()
-        self.store = ArtifactBrowserStore.load_from_db(self.db_path)
+        self.store = self._load_source_store()
         store_ms = perf_ms(store_start)
         model_start = perf_now()
         self.model = ArtifactListModel(self.store, self)
@@ -1085,6 +1090,27 @@ class ArtifactBrowserWindow(QWidget):
             artifacts=self.model.rowCount(),
             resize_events=self._resize_event_count,
         )
+
+    def _source_read_options(self) -> dict:
+        return {"read_only": True} if self.read_only_source else {}
+
+    def _source_connection(self):
+        if not self.read_only_source:
+            return connect_db(self.db_path)
+        connection = sqlite3.connect(self.db_path.resolve().as_uri() + "?mode=ro", uri=True)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    def _load_source_store(self) -> ArtifactBrowserStore:
+        store = ArtifactBrowserStore.load_from_db(self.db_path, **self._source_read_options())
+        if self.equipment_state is not None:
+            owners = self.equipment_state.artifact_owners(store.artifacts_by_id)
+            for artifact_id, artifact in store.artifacts_by_id.items():
+                owner = owners.get(artifact_id, {})
+                artifact.owner_character_id = owner.get("character_id")
+                artifact.character_name = str(owner.get("character_name") or "")
+                artifact.owner_icon_path = self._resolve_existing_path(owner.get("side_icon_path"))
+        return store
 
     def event(self, event) -> bool:
         if event.type() in (
@@ -1942,12 +1968,14 @@ class ArtifactBrowserWindow(QWidget):
             self.operation_target_character_id = target["character_id"]
             self.operation_target_character_name = target.get("character_name") or ""
             self.operation_target_source = target.get("source") or "artifact_browser"
-            self.equip_mode_enabled = True
+            self.equip_mode_enabled = not self.read_only_source or self.equipment_state is not None
         self._update_equipment_zone()
 
     def _refresh_applied_build_preset(self) -> None:
         self.applied_current_equipment_label = ""
         self.applied_current_equipment_build_id = None
+        if self.read_only_source or self.equipment_state is not None:
+            return
         if self.operation_target_character_id is None or not self.db_path.exists():
             return
         try:
@@ -2107,6 +2135,7 @@ class ArtifactBrowserWindow(QWidget):
                 on_custom_set_create=self.create_and_edit_custom_set,
                 on_custom_set_edit=self.start_custom_set_edit,
                 on_custom_set_delete=self.delete_custom_set_from_popup,
+                allow_custom_set_editing=not self.read_only_source,
                 parent=self,
             )
             self._sets_popup.installEventFilter(self)
@@ -2372,6 +2401,10 @@ class ArtifactBrowserWindow(QWidget):
     def update_json_import_actions(self) -> None:
         if self.import_json_button is None or self.clear_json_button is None:
             return
+        if self.read_only_source:
+            self.import_json_button.hide()
+            self.clear_json_button.hide()
+            return
         if self.edit_selection_mode != EDIT_MODE_NONE:
             self._set_json_action_button(
                 self.import_json_button,
@@ -2451,6 +2484,8 @@ class ArtifactBrowserWindow(QWidget):
         )
 
     def import_artiscan_json(self) -> None:
+        if self.read_only_source:
+            return
         run_artiscan_import_action(
             self,
             confirm_ready=self._confirm_json_action,
@@ -2459,6 +2494,8 @@ class ArtifactBrowserWindow(QWidget):
         )
 
     def clear_json_imports(self) -> None:
+        if self.read_only_source:
+            return
         run_clear_json_imports_action(
             self,
             confirm_ready=self._confirm_json_action,
@@ -2481,7 +2518,7 @@ class ArtifactBrowserWindow(QWidget):
             if not self.confirm_discard_build_edit():
                 return
 
-        self.store = ArtifactBrowserStore.load_from_db(self.db_path)
+        self.store = self._load_source_store()
         self.model.set_store(self.store)
         self._clear_build_row_pixmap_cache()
         self._clear_target_preview_pixmap_cache()
@@ -2540,22 +2577,25 @@ class ArtifactBrowserWindow(QWidget):
         except (TypeError, ValueError):
             return
         try:
-            with closing(connect_db(self.db_path)) as conn:
-                owner_character_id = get_equipped_artifact_owner(
-                    conn, artifact_id, initialize=not self.store.database_exists,
-                )
-                if owner_character_id == int(self.operation_target_character_id):
-                    result = unequip_artifact(
+            if self.equipment_state is not None:
+                result = self.equipment_state.toggle_artifact(self.operation_target_character_id, artifact_id)
+            else:
+                with closing(connect_db(self.db_path)) as conn:
+                    owner_character_id = get_equipped_artifact_owner(
                         conn, artifact_id, initialize=not self.store.database_exists,
                     )
-                else:
-                    result = equip_artifact(
-                        conn,
-                        self.operation_target_character_id,
-                        artifact_id,
-                        initialize=not self.store.database_exists,
-                    )
-                conn.commit()
+                    if owner_character_id == int(self.operation_target_character_id):
+                        result = unequip_artifact(
+                            conn, artifact_id, initialize=not self.store.database_exists,
+                        )
+                    else:
+                        result = equip_artifact(
+                            conn,
+                            self.operation_target_character_id,
+                            artifact_id,
+                            initialize=not self.store.database_exists,
+                        )
+                    conn.commit()
         except EquipmentError as exc:
             self.status_label.setText(str(exc))
             log_perf("artifact_equip_failed", artifact_id=artifact_id, error=str(exc))
@@ -2622,9 +2662,11 @@ class ArtifactBrowserWindow(QWidget):
     def _current_equipment_owners(self, artifact_ids: list[int]) -> dict[int, dict]:
         if not artifact_ids:
             return {}
+        if self.equipment_state is not None:
+            return self.equipment_state.artifact_owners(artifact_ids)
         placeholders = ",".join("?" for _ in artifact_ids)
         try:
-            with closing(connect_db(self.db_path)) as conn:
+            with closing(self._source_connection()) as conn:
                 rows = conn.execute(
                     f"""
                     SELECT
@@ -2687,33 +2729,39 @@ class ArtifactBrowserWindow(QWidget):
         affected_artifact_ids: set[int] = set()
         changed = False
         try:
-            with closing(connect_db(self.db_path)) as conn:
-                for pos in ARTIFACT_POSITIONS:
-                    artifact_id = preset_slots.get(pos)
-                    if artifact_id is None:
-                        result = unequip_artifact_slot(
-                            conn,
-                            target_character_id,
-                            pos,
-                            source="preset_equip",
-                            initialize=not self.store.database_exists,
-                        )
-                    else:
-                        result = equip_artifact(
-                            conn,
-                            target_character_id,
-                            artifact_id,
-                            source="preset_equip",
-                            initialize=not self.store.database_exists,
-                        )
-                    changed = changed or result.changed
-                    affected_character_ids.update(result.affected_character_ids)
-                    affected_artifact_ids.update(result.affected_artifact_ids)
-                remember_applied_build_preset(
-                    conn, target_character_id, self.selected_build_id,
-                    initialize=not self.store.database_exists,
-                )
-                conn.commit()
+            if self.equipment_state is not None:
+                result = self.equipment_state.apply_artifact_preset(target_character_id, preset_slots)
+                changed = result.changed
+                affected_character_ids.update(result.affected_character_ids)
+                affected_artifact_ids.update(result.affected_artifact_ids)
+            else:
+                with closing(connect_db(self.db_path)) as conn:
+                    for pos in ARTIFACT_POSITIONS:
+                        artifact_id = preset_slots.get(pos)
+                        if artifact_id is None:
+                            result = unequip_artifact_slot(
+                                conn,
+                                target_character_id,
+                                pos,
+                                source="preset_equip",
+                                initialize=not self.store.database_exists,
+                            )
+                        else:
+                            result = equip_artifact(
+                                conn,
+                                target_character_id,
+                                artifact_id,
+                                source="preset_equip",
+                                initialize=not self.store.database_exists,
+                            )
+                        changed = changed or result.changed
+                        affected_character_ids.update(result.affected_character_ids)
+                        affected_artifact_ids.update(result.affected_artifact_ids)
+                    remember_applied_build_preset(
+                        conn, target_character_id, self.selected_build_id,
+                        initialize=not self.store.database_exists,
+                    )
+                    conn.commit()
         except EquipmentError as exc:
             self.status_label.setText(str(exc))
             log_perf("artifact_preset_equip_failed", error=str(exc))
@@ -2754,6 +2802,7 @@ class ArtifactBrowserWindow(QWidget):
                 continue
         preset = get_build_preset(
             int(selected_id), db_path=self.db_path, initialize=not self.store.database_exists,
+            **self._source_read_options(),
         )
         return str((preset or {}).get("name") or "").strip()
 
@@ -2820,7 +2869,7 @@ class ArtifactBrowserWindow(QWidget):
                 "character_name": item.get("character_name") or str(character_id),
             }
         try:
-            with closing(connect_db(self.db_path)) as conn:
+            with closing(self._source_connection()) as conn:
                 row = conn.execute(
                     """
                     SELECT name
@@ -2847,6 +2896,8 @@ class ArtifactBrowserWindow(QWidget):
         self.update_edit_selection_mode()
 
     def create_and_edit_custom_set(self, name: str) -> None:
+        if self.read_only_source:
+            return
         name = name.strip()
         if not name:
             self.empty_label.setText(tr("artifact.custom.empty_name"))
@@ -2871,6 +2922,8 @@ class ArtifactBrowserWindow(QWidget):
         self._sets_popup = None
 
     def start_custom_set_edit(self, tag_id: int) -> None:
+        if self.read_only_source:
+            return
         if self.editing_build_dirty:
             self.empty_label.setText(tr("artifact.build.finish_edit_first"))
             return
@@ -2958,7 +3011,11 @@ class ArtifactBrowserWindow(QWidget):
         return asset_copy
 
     def load_build_target_items(self) -> None:
-        self._load_character_region_data()
+        if self.read_only_source:
+            self._character_region_by_name = {}
+            self._region_names_by_key = {}
+        else:
+            self._load_character_region_data()
         self.build_target_items_by_key = {
             BUILD_TARGET_UNIVERSAL_KEY: {
                 "key": BUILD_TARGET_UNIVERSAL_KEY,
@@ -2972,7 +3029,7 @@ class ArtifactBrowserWindow(QWidget):
         if self._preloaded_character_asset_items is not None:
             assets = self._preloaded_character_asset_items
         else:
-            assets = load_account_character_asset_items()
+            assets = [] if self.read_only_source else load_account_character_asset_items()
 
         for asset in assets:
             char_id = character_id(asset)
@@ -3002,7 +3059,7 @@ class ArtifactBrowserWindow(QWidget):
             and str(character_metadata(asset).get("gcsim_character_key") or "").strip()
         }
         try:
-            with closing(connect_db(self.db_path)) as conn:
+            with closing(self._source_connection()) as conn:
                 account_rows = conn.execute(
                     """
                     SELECT character_id, name, gcsim_character_key
@@ -3014,6 +3071,8 @@ class ArtifactBrowserWindow(QWidget):
         except Exception:
             account_rows = ()
         for row in account_rows:
+            if self.equipment_state is not None and str(row["character_id"]) not in self.equipment_state.allowed_character_ids:
+                continue
             account_key = self._character_target_key(int(row["character_id"]))
             account_target_key_by_gcsim_key[str(row["gcsim_character_key"])] = account_key
             if account_key not in self.build_target_items_by_key:
@@ -3552,6 +3611,7 @@ class ArtifactBrowserWindow(QWidget):
     def load_build_presets(self) -> None:
         self.build_presets = list_build_presets(
             db_path=self.db_path, initialize=not self.store.database_exists,
+            **self._source_read_options(),
         )
         self.refresh_build_preset_list()
 
@@ -3579,7 +3639,7 @@ class ArtifactBrowserWindow(QWidget):
         self.build_row_name_input = None
 
         has_targets = bool(self.selected_build_target_keys)
-        self.build_create_row_widget.setVisible(has_targets)
+        self.build_create_row_widget.setVisible(has_targets and not self.read_only_source)
         self.build_preset_list_scroll.setVisible(has_targets)
         self.build_target_hint_label.setVisible(not has_targets)
         if not has_targets:
@@ -3679,6 +3739,8 @@ class ArtifactBrowserWindow(QWidget):
 
         if not editing_this_row and not pending:
             self._add_build_preset_row_metadata(layout, preset)
+        if self.read_only_source:
+            return row
 
         if pending:
             confirm_label = QLabel(tr("artifact.build.delete_confirm_short"))
@@ -4121,6 +4183,8 @@ class ArtifactBrowserWindow(QWidget):
         return label
 
     def start_new_build_preset(self) -> None:
+        if self.read_only_source:
+            return
         if not self.selected_build_target_keys:
             self.empty_label.setText(tr("artifact.build.no_target_hint"))
             return
@@ -4147,6 +4211,8 @@ class ArtifactBrowserWindow(QWidget):
         self._activate_preset_edit_layout()
 
     def start_build_preset_edit(self, build_id: int) -> None:
+        if self.read_only_source:
+            return
         if not self.confirm_discard_custom_edit():
             return
         if self.editing_build_dirty and build_id != self.editing_build_id:
@@ -4155,6 +4221,7 @@ class ArtifactBrowserWindow(QWidget):
         self.finish_custom_set_edit()
         preset = get_build_preset(
             build_id, db_path=self.db_path, initialize=not self.store.database_exists,
+            **self._source_read_options(),
         )
         if preset is None:
             return
@@ -4206,6 +4273,7 @@ class ArtifactBrowserWindow(QWidget):
 
         preset = get_build_preset(
             build_id, db_path=self.db_path, initialize=not self.store.database_exists,
+            **self._source_read_options(),
         )
         if preset is None:
             return
@@ -4273,6 +4341,8 @@ class ArtifactBrowserWindow(QWidget):
         self.update_edit_selection_mode()
 
     def save_build_preset_edit(self) -> None:
+        if self.read_only_source:
+            return
         if not self.selected_build_target_keys:
             self.empty_label.setText(tr("artifact.build.no_target_hint"))
             return
@@ -4372,7 +4442,12 @@ class ArtifactBrowserWindow(QWidget):
             return {}
 
         try:
-            with closing(connect_db(self.db_path)) as conn:
+            if self.equipment_state is not None:
+                slots = {ARTIFACT_POS_BY_SLOT_KEY[key]: value for key, value in
+                         self.equipment_state.artifact_ids_for_character(character_id).items()}
+                self.current_equipment_preview_slots = dict(slots)
+                return slots
+            with closing(self._source_connection()) as conn:
                 rows = list_equipped_artifacts_for_character(
                     conn, character_id, initialize=not self.store.database_exists,
                 )
@@ -4798,17 +4873,20 @@ class ArtifactBrowserWindow(QWidget):
                     build_id=self.editing_build_id,
                     db_path=self.db_path,
                     initialize=not self.store.database_exists,
+                    **self._source_read_options(),
                 )
             elif not editing and self.selected_build_id is not None:
                 summary = calculate_build_summary(
                     build_id=self.selected_build_id,
                     db_path=self.db_path,
                     initialize=not self.store.database_exists,
+                    **self._source_read_options(),
                 )
             else:
                 summary = calculate_build_summary(
                     slots=slots, db_path=self.db_path,
                     initialize=not self.store.database_exists,
+                    **self._source_read_options(),
                 )
         except Exception as exc:
             label = QLabel(tr("artifact.build.summary_error", error=str(exc)))
@@ -5120,6 +5198,8 @@ class ArtifactBrowserWindow(QWidget):
         self.refresh_build_preset_list()
 
     def confirm_delete_build_preset(self, build_id: int) -> None:
+        if self.read_only_source:
+            return
         if self.pending_delete_build_id != int(build_id):
             return
         delete_build_preset(int(build_id), db_path=self.db_path)
@@ -5168,6 +5248,8 @@ class ArtifactBrowserWindow(QWidget):
         self._save_custom_set_edit(reload_after=True)
 
     def _save_custom_set_edit(self, *, reload_after: bool) -> None:
+        if self.read_only_source:
+            return
         if self.editing_custom_set_id is None:
             return
 
@@ -5190,6 +5272,8 @@ class ArtifactBrowserWindow(QWidget):
         self.finish_custom_set_edit()
 
     def delete_custom_set_from_popup(self, tag_id: int):
+        if self.read_only_source:
+            return self.store.custom_set_options
         if not self.confirm_discard_custom_edit():
             return self.store.custom_set_options
 

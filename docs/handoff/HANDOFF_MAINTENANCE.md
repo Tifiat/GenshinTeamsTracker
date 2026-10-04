@@ -45,6 +45,8 @@ proof that product tests or external research were rerun.
 ## Closeout for an affected fact
 
 1. Read the current owner, relevant task item and live machine fields only.
+   Read the shared queue and your own status named by the registry. Only the
+   queue owner edits shared queue/decisions/registry files; others propose there.
    Inspect the present worktree/diff; preserve concurrent edits.
 2. Update the owner in place with the actual outcome and its verification
    boundary. Keep backend, controlled response, installed engine and real UI

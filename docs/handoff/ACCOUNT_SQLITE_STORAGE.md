@@ -520,6 +520,30 @@ Tables:
 - `account_character_equipped_artifacts`
 - `account_character_equipped_weapons`
 
+Applied-preset presentation uses `account_character_applied_build_presets`:
+one row per `character_id`, with `build_id`, `artifact_slots_json` (canonical
+slot keys to stable artifact IDs) and `applied_at`. Character and preset foreign
+keys cascade on deletion. Equipment insert/delete or a changed slot/owner/item
+invalidates the affected marker through SQLite triggers, including transfers,
+imports and artifact deletion. Identical assignments and weapon-only changes
+preserve it. The getter validates both current equipment and current preset
+slots against the stored snapshot; it prunes a mismatched marker and resolves
+the current preset name, so renames do not leave stale display text.
+
+Markers are account-owned data, bounded to one row per character; explicit
+reapplication replaces that row. Trigger invalidation, validated reads and
+cascades provide connected cleanup without a new cache or output directory.
+Schema initialization preserves the caller's transaction; applying artifacts
+and saving their marker commit or roll back together. Existing databases gain
+the empty marker table without guessing which preset was previously applied.
+Presentation and acceptance are owned by `ARTIFACT_BROWSER_EQUIPMENT_UX.md`.
+
+Standalone equipment services initialize their schema by default. The browser
+may explicitly skip setup after its store has run `init_db` for that database;
+validation, live reads and transaction ownership are unchanged. The full
+inventory reader loads indexed substat/tag batches without binding every
+artifact ID, then restricts the result to its loaded parent IDs.
+
 Rules:
 
 - artifacts reference `artifacts.id`;

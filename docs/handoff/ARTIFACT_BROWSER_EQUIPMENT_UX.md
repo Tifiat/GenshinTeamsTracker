@@ -6,6 +6,33 @@ operation target sync, current-equipment preview, manual artifact equip/unequip,
 preset apply, conflict confirmation, selected-card highlights, and owner
 side-icons are wired through persistent current-equipment state.
 
+<!-- handoff-current: artifact-applied-preset -->
+2026-10-04, worker3: applied preset names persist per account character in
+the equipment database, with exact artifact-slot validation. The preset list
+uses a green row border for the selected preview; when no preview is selected,
+it highlights that character's valid applied preset. This changes presentation
+only; selecting a row still does not equip it.
+
+Equipment actions now avoid repeated schema setup after the store has initialized
+this database. They still validate live owners/slots and commit equipment plus
+the applied marker together. Apply updates existing preset rows in place unless
+pending-delete controls need rebuilding; deselection and bonus icons share only
+the slots from the current panel refresh. The
+[action receipt](performance_measurements/2026-10-04_artifact_scaling_actions_worker3.md)
+owns performance evidence and the focused gates.
+
+Focused service and offscreen widget/AppShell gates cover database reopen,
+target switching, incomplete/empty presets, preview toggle, mutation/import
+invalidation, rename/delete and failed-apply rollback. User-facing acceptance
+remains pending: Computer Use was stopped by the user and further UI checks
+must be performed by the user. Repeatable smoke: explicitly apply a preset,
+switch to another character and back, restart AppShell, preview another preset
+and deselect it, then manually change one artifact. Check retained name/green
+border until equipment changes, followed by the default current-build label.
+The interrupted disposable window was not a physical UI acceptance result.
+The user currently waits for the import fix before this smoke.
+<!-- /handoff-current -->
+
 Related handoffs:
 
 - `docs/handoff/ACCOUNT_EQUIPMENT_STATE_DESIGN.md`
@@ -132,15 +159,16 @@ Current/preset zone presentation:
   to current equipment;
 - after manual artifact changes, the zone returns to current equipment/current
   preset text.
-- Current implementation note: the applied preset label is only
-  `ArtifactBrowserWindow.applied_current_equipment_label`, an in-memory browser
-  field. It is not persisted per character and is cleared by target changes or
-  manual artifact equipment changes.
-- Future durable behavior: store the last applied preset marker per character
-  (`character_id`, preset id/name, and enough slot snapshot/fingerprint data to
-  validate it). Show `{preset}: {character}` across app restarts and character
-  switches only while that character's live artifact equipment still matches the
-  applied preset; clear the marker on any manual/current-equipment slot change.
+- The applied preset marker is persisted per character through the account
+  equipment service; the storage schema belongs to `ACCOUNT_SQLITE_STORAGE.md`.
+  Show `{preset}: {character}` across app restarts and character switches only
+  while the live artifact slots and preset definition match the applied snapshot.
+  A preset rename uses its current name. Equipment changes or preset deletion
+  clear the marker; a changed preset definition invalidates it on the next read.
+- The entire selected preset row has a green border without changing geometry.
+  A preview selection takes priority; deselecting it restores the valid applied
+  preset's border. An applied preset outside the current target filter retains
+  its label but has no visible row to highlight.
 
 ## Applying A Preset
 
@@ -166,9 +194,10 @@ match the visible preset instead of silently preserving hidden old artifacts.
 
 After applying:
 
-- current equipment may temporarily show the applied preset name;
-- that name is UI-buffer text only and is not persisted;
-- do not add `last_applied_build_id` now;
+- persist the applied marker with the equipment changes in the same transaction;
+- current equipment shows the applied preset name until invalidated;
+- keep the unchanged preset-list widgets and update checked/outline state in
+  place; rebuild only when pending-delete controls must be canceled;
 - if the user manually changes any artifact after applying, reset the label back
   to the default current-equipment label.
 
@@ -196,7 +225,7 @@ Manual artifact equip:
   current-target click toggle;
 - does not mutate presets;
 - updates current equipment;
-- clears the temporary applied-preset label back to the default
+- clears the persisted applied-preset marker back to the default
   current-equipment label.
 
 ## Conflict Confirmation
@@ -321,11 +350,9 @@ Remaining/future stages:
   choice before moving or swapping; do not silently steal an exhausted assigned
   weapon by fingerprint.
 
-## Non-Goals
+## Storage And Import Ownership
 
-This handoff does not implement:
-
-- equipment SQLite schema changes;
-- build preset schema changes;
-- live HoYoLAB import auto-apply behavior;
-- `last_applied_build_id` persistence.
+Equipment schema, including the applied-preset marker, belongs to
+`ACCOUNT_SQLITE_STORAGE.md`. Preset definitions belong to `ARTIFACT_BROWSER.md`.
+HoYoLAB observation/auto-apply policy belongs to `ACCOUNT_EQUIPMENT_STATE_DESIGN.md`.
+This document owns their equipment presentation and interaction contract.

@@ -466,8 +466,9 @@ Detailed UX contract:
   an `artifact_build` preset;
 - selecting a preset changes the top zone to the apply-preset preview/action
   state;
-- applied preset name is temporary UI-buffer text only and should reset to the
-  default current-equipment label after manual artifact equip;
+- applied preset presentation persists per character and is invalidated by
+  artifact-equipment changes; storage is owned by `ACCOUNT_SQLITE_STORAGE.md`
+  and name/selection behavior by `ARTIFACT_BROWSER_EQUIPMENT_UX.md`;
 - artifact/preset/weapon owner side icons must be derived from current
   equipment tables, not from preset target metadata.
 

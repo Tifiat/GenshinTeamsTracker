@@ -53,6 +53,7 @@ from run_workspace.gcsim.settings import (
     set_gcsim_boosted_energy_enabled,
 )
 from ui.utils.toggle_switch import ToggleSwitch
+from ui.right_panel.settings.display import DisplaySettingsBlock
 from hoyolab_export.import_settings import change_equipment_on_import, set_change_equipment_on_import
 from ui.utils.pvp_colors import (
     pvp_player_color,
@@ -238,6 +239,9 @@ class AccountDataPage(QWidget):
         language_layout.addWidget(self.language_label)
         language_layout.addWidget(self.language_combo, 1)
         content_layout.addWidget(language_frame)
+
+        self.display_settings = DisplaySettingsBlock(settings_file=self._settings_file)
+        content_layout.addWidget(self.display_settings)
 
         dps_frame = QFrame()
         dps_frame.setObjectName("InfoBlock")
@@ -1021,6 +1025,7 @@ class AccountDataPage(QWidget):
         self.action_import_profile.setText(tr("profile.import"))
         self.action_switch_profile.setText(tr("profile.switch"))
         self.language_label.setText(tr("language.selector"))
+        self.display_settings.retranslate_ui()
         self.dps_label.setText(tr("settings.dps.title"))
         self.fact_dps_multi_target_label.setText(
             tr("settings.dps.multi_target_hp")

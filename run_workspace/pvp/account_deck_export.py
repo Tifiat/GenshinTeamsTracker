@@ -32,11 +32,12 @@ from .validation import (
     UNSUPPORTED_TRAVELER_CHARACTER_IDS,
     validate_draft_deck,
 )
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
 APP_NAME = "GenshinTeamsTracker"
 DEFAULT_DECK_NAME = "Local Account Free Draft Deck"
-DEFAULT_OUTPUT_DIR = Path("data") / "pvp" / "decks"
+DEFAULT_OUTPUT_DIR = ACCOUNT_ROOT / "data" / "pvp" / "decks"
 
 ISSUE_NO_ACCOUNT_CHARACTERS = "no_account_characters"
 ISSUE_NO_ACCOUNT_WEAPON_STACKS = "no_account_weapon_stacks"

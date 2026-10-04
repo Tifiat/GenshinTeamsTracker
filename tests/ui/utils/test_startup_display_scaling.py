@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 import sys
 import tempfile
@@ -130,10 +131,29 @@ class StartupDisplayScalingTests(unittest.TestCase):
         with (
             patch.dict(sys.modules, {"ui.app_shell": shell}),
             patch("builtins.__import__", side_effect=import_spy),
+            patch("run_workspace.profile_control.supervise_app", side_effect=AssertionError("No real supervisor in a fixture")) as supervisor,
+            patch("run_workspace.profile_control.profile_operation_lock", return_value=nullcontext()),
+            patch("run_workspace.profile_context.bootstrap_profile", side_effect=lambda: events.append("profile")),
             patch.object(app_shell_smoke, "configure_startup_display_scaling", side_effect=lambda: events.append("scale")),
         ):
-            self.assertEqual(app_shell_smoke.main([]), 0)
-        self.assertEqual(events, ["scale", "import", "launch"])
+            self.assertEqual(app_shell_smoke.main(["--profile-child"]), 0)
+        supervisor.assert_not_called()
+        self.assertEqual(events, ["profile", "scale", "import", "launch"])
+
+    def test_public_launcher_delegates_without_bootstrapping_or_importing_ui(self) -> None:
+        from ui import app_shell_smoke
+
+        for arguments, forwarded in (([], []), (["--perf-log"], ["--perf-log"])):
+            with (
+                self.subTest(arguments=arguments),
+                patch("run_workspace.profile_control.supervise_app", return_value=37) as supervisor,
+                patch("run_workspace.profile_context.bootstrap_profile", side_effect=AssertionError("No real profile mutation")) as bootstrap,
+                patch.object(app_shell_smoke, "configure_startup_display_scaling") as scaling,
+            ):
+                self.assertEqual(app_shell_smoke.main(arguments), 37)
+                supervisor.assert_called_once_with(forwarded)
+                bootstrap.assert_not_called()
+                scaling.assert_not_called()
 
 
 if __name__ == "__main__":

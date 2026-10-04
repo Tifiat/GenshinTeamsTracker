@@ -15,9 +15,11 @@ No Computer Use, visible application launch or live account/settings write.
 Worker1's master target combines the scaling stage with optimizer settings;
 95 safe equipment/browser/settings/scaling integration tests pass. The
 [integration receipt](integration_receipts/2026-10-04_ready_workers.md) owns the
-source pins and target scope. Migration to the separate default-settings store
-being developed in another chat and final pre-MVP display acceptance remain
-open in the [shared TODO](../../TODO.md).
+source pins and target scope. The Worker5 transfer registers this preference
+in the central defaults store and the typed accessor reuses it. First-read,
+saved-ON and reset-OFF semantics pass temporary-settings checks.
+Final pre-MVP physical display acceptance remains open in the
+[shared TODO](../../TODO.md).
 <!-- /handoff-current -->
 
 ## Contract
@@ -27,7 +29,8 @@ open in the [shared TODO](../../TODO.md).
   `run_workspace/app_settings.py` storage in this checkout's `settings.json`.
   Startup reads neither create nor rewrite a missing/corrupt settings file.
   An explicit saved value survives restart and writes preserve other keys.
-  There is no second settings/defaults store in this stage.
+  `run_workspace/settings_defaults.py` owns its default; the typed accessor
+  delegates to that same registry. No second settings/defaults store is created.
 - The localized Settings block follows the language selector, uses the shared
   vector toggle, wraps long labels, and always explains restart. Changing it
   saves the next-startup choice without rescaling a running window. Failed
@@ -100,8 +103,7 @@ the test now passes a relative path.
 4. On the 1366px RDP display at its previous scale, confirm prior layout and
    adaptive downscale are preserved. Check monitor moves and RDP reconnect;
    relaunch on that screen if the launch-monitor adaptation needs refreshing.
-5. Before MVP, integrate the other chat's defaults store and register
-   `ui_use_system_scaling: false` there. Verify missing-key defaults, any reset
-   feature, migration preserving saved ON/OFF, and that the actual final
-   launcher reads the choice before Qt. Repeat steps 1-4 on the integrated
-   version. Default-store integration and user acceptance are separate gates.
+5. The central default-store integration passes first-read, persisted-choice
+   and reset fixtures. Before MVP, verify that the actual final launcher reads
+   the choice before Qt and repeat steps1-4 on the integrated version.
+   Default-store checks do not accept physical displays.

@@ -47,11 +47,12 @@ from .session import (
     validate_weapon_assignment,
 )
 from .validation import SEVERITY_ERROR, validate_draft_deck
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
 PVP_SESSION_BUNDLE_SCHEMA_VERSION = 1
 PVP_SESSION_BUNDLE_KIND = "gtt.pvp_session_bundle"
-DEFAULT_SESSION_BUNDLE_OUTPUT_DIR = Path("data") / "pvp" / "sessions"
+DEFAULT_SESSION_BUNDLE_OUTPUT_DIR = ACCOUNT_ROOT / "data" / "pvp" / "sessions"
 
 ISSUE_BUNDLE_SCHEMA_VERSION_INVALID = "bundle_schema_version_invalid"
 ISSUE_BUNDLE_KIND_INVALID = "bundle_kind_invalid"

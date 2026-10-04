@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from run_workspace.profile_context import account_asset_path
 
 from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QPainter, QPixmap
@@ -135,7 +136,7 @@ def _resolve_pixmap_path(path: str) -> Path:
     resolved = Path(path)
     if resolved.is_absolute():
         return resolved
-    project_path = _PROJECT_ROOT / resolved
+    project_path = account_asset_path(resolved)
     if project_path.is_file():
         return project_path
     return resolved

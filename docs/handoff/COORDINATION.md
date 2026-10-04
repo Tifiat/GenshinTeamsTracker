@@ -25,13 +25,16 @@ instructions and applied their own routing edits, preserving dirty files. All
 five explicit-root handoff checks pass; 36 focused doc checks pass with one
 Windows symlink-creation skip (escape tests also run independently). No
 app restart, engine or account write is part of this setup.
-The user's additional Git-policy/Obsidian request now has separate approved rules
-and a factual local-refs journal in the hub. On 2026-10-04 the user authorized
-local integration of ready branches. The clean main folder switched to master
-and fast-forwarded Worker1's saved stage. Worker3's target merge passes 95 safe
-equipment/browser/settings/scaling tests; Worker4's target integration passes
-270 browser/backend checks with one host skip. Its unchanged timer-width failure
-is retained separately. Worker5's scoped packet is next; visual gates stay open.
+The user's Git-policy/Obsidian request has approved rules and a factual local-refs
+journal in the hub. On 2026-10-04 the user authorized ready local transfers. Main
+switched cleanly to master and carries Worker1's saved stage, Worker3 browser/
+display, Worker4 PvP and Worker5's scoped import/profiles/icons/tooltips package.
+The last transfer preserves browser APIs, match isolation and the central
+defaults registry; controlled combined tests pass. An old startup fixture
+unintentionally launched an offscreen child and migrated the main legacy account;
+its isolation repair and read-only integrity inspection are recorded explicitly.
+Do not describe that integration as account-write-free. Real user acceptance,
+Chasca numerical response and the unchanged timer-width failure stay open.
 The [integration receipt](integration_receipts/2026-10-04_ready_workers.md)
 owns source pins, conflict handling and remaining acceptance.
 Worker2 still owns Theory; its later role change is not applied.

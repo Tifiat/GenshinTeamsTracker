@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT, account_asset_path
 
 
 MANIFEST_PATH = HOYOLAB_DATA_DIR / "crop_manifest.json"
@@ -35,9 +36,9 @@ def existing_manifest_asset(value: object) -> Path | None:
         return None
     path = Path(str(value))
     if not path.is_absolute():
-        path = PROJECT_ROOT / path
+        path = account_asset_path(path)
     try:
-        path.resolve().relative_to(PROJECT_ROOT.resolve())
+        path.resolve().relative_to(ACCOUNT_ROOT.resolve())
     except ValueError:
         return None
     return path if path.is_file() else None
@@ -50,6 +51,21 @@ def character_variant_path(character_id: object, variant: str) -> Path | None:
     for asset in current_manifest().get("characterAssets", []):
         if isinstance(asset, dict) and str((asset.get("character") or {}).get("id") or "") == wanted:
             return existing_manifest_asset(asset.get(variant))
+    return None
+
+
+def weapon_transparent_icon_path(weapon_id: object, display_path: str | Path) -> Path | None:
+    """Reuse a raw layer only for the exact locally imported weapon bitmap."""
+    wanted = str(weapon_id or "")
+    displayed = Path(display_path)
+    if not displayed.is_absolute():
+        displayed = account_asset_path(displayed)
+    for asset in current_manifest().get("weaponAssets", []):
+        if not isinstance(asset, dict) or str((asset.get("weapon") or {}).get("id") or "") != wanted:
+            continue
+        crop = existing_manifest_asset(asset.get("crop"))
+        if crop is not None and crop.resolve() == displayed.resolve():
+            return existing_manifest_asset(asset.get("icon"))
     return None
 
 

@@ -7,6 +7,7 @@ import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
+from run_workspace.profile_context import account_asset_path
 
 from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize, QTimer, Signal
 from PySide6.QtWidgets import (
@@ -1422,7 +1423,7 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_reset_button.setIconSize(
             QSize(UI_ICON_DEFAULT_SIZE, UI_ICON_DEFAULT_SIZE)
         )
-        self.build_target_reset_button.setToolTip(tr("artifact.build.targets_reset"))
+        install_custom_tooltip(self.build_target_reset_button, tr("artifact.build.targets_reset"))
         self.build_target_reset_button.clicked.connect(self.reset_build_targets)
         header_row.addWidget(self.build_target_reset_button)
         layout.addLayout(header_row)
@@ -1632,14 +1633,14 @@ class ArtifactBrowserWindow(QWidget):
         self.new_build_button = QPushButton()
         self.new_build_button.setObjectName("icon_button")
         self.new_build_button.setIcon(self._ui_icon("plus"))
-        self.new_build_button.setToolTip(tr("artifact.build.new"))
+        install_custom_tooltip(self.new_build_button, tr("artifact.build.new"))
         self.new_build_button.clicked.connect(self.on_build_create_button_clicked)
         create_row.addWidget(self.new_build_button)
 
         self.cancel_new_build_button = QPushButton()
         self.cancel_new_build_button.setObjectName("row_cancel_button")
         self.cancel_new_build_button.setIcon(self._ui_icon("x"))
-        self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
+        install_custom_tooltip(self.cancel_new_build_button, tr("artifact.build.cancel"))
         self.cancel_new_build_button.clicked.connect(self.cancel_build_preset_edit)
         create_row.addWidget(self.cancel_new_build_button)
         layout.addWidget(self.build_create_row_widget)
@@ -1906,8 +1907,8 @@ class ArtifactBrowserWindow(QWidget):
             self.build_target_items_by_key[BUILD_TARGET_UNIVERSAL_KEY][
                 "character_name"
             ] = tr("artifact.build.target_universal")
-        self.new_build_button.setToolTip(tr("artifact.build.new"))
-        self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
+        install_custom_tooltip(self.new_build_button, tr("artifact.build.new"))
+        install_custom_tooltip(self.cancel_new_build_button, tr("artifact.build.cancel"))
         self.build_name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
         self.update_sets_filter_switch_text()
         self.update_sets_button_text()
@@ -2463,7 +2464,7 @@ class ArtifactBrowserWindow(QWidget):
         button.setObjectName(object_name)
         button.setText(text)
         button.setIcon(self._ui_icon(icon_name) if icon_name is not None else QIcon())
-        button.setToolTip(tooltip)
+        install_custom_tooltip(button, tooltip)
         button.setEnabled(enabled)
         button.clicked.connect(callback)
         button.style().unpolish(button)
@@ -2700,7 +2701,7 @@ class ArtifactBrowserWindow(QWidget):
             return None
         path = Path(text)
         if not path.is_absolute():
-            path = PROJECT_ROOT / path
+            path = account_asset_path(path)
         return path if path.exists() and path.is_file() else None
 
     def apply_selected_build_preset_to_current_equipment(self) -> None:
@@ -3750,7 +3751,7 @@ class ArtifactBrowserWindow(QWidget):
             confirm_button = QPushButton()
             confirm_button.setObjectName("row_save_button")
             confirm_button.setIcon(self._ui_icon("check"))
-            confirm_button.setToolTip(tr("artifact.build.delete"))
+            install_custom_tooltip(confirm_button, tr("artifact.build.delete"))
             confirm_button.clicked.connect(
                 lambda _checked=False, value=build_id: self.confirm_delete_build_preset(value)
             )
@@ -3760,7 +3761,7 @@ class ArtifactBrowserWindow(QWidget):
             cancel_button = QPushButton()
             cancel_button.setObjectName("row_cancel_button")
             cancel_button.setIcon(self._ui_icon("x"))
-            cancel_button.setToolTip(tr("common.cancel"))
+            install_custom_tooltip(cancel_button, tr("common.cancel"))
             cancel_button.clicked.connect(self.cancel_delete_build_preset)
             self._prepare_row_action_button(cancel_button)
             layout.addWidget(cancel_button)
@@ -3770,7 +3771,7 @@ class ArtifactBrowserWindow(QWidget):
             save_button = QPushButton()
             save_button.setObjectName("row_save_button")
             save_button.setIcon(self._ui_icon("save"))
-            save_button.setToolTip(tr("artifact.build.save"))
+            install_custom_tooltip(save_button, tr("artifact.build.save"))
             save_button.clicked.connect(self.save_build_preset_edit)
             self._prepare_row_action_button(save_button)
             layout.addWidget(save_button)
@@ -3778,7 +3779,7 @@ class ArtifactBrowserWindow(QWidget):
             cancel_button = QPushButton()
             cancel_button.setObjectName("row_cancel_button")
             cancel_button.setIcon(self._ui_icon("x"))
-            cancel_button.setToolTip(tr("artifact.build.cancel"))
+            install_custom_tooltip(cancel_button, tr("artifact.build.cancel"))
             cancel_button.clicked.connect(self.cancel_build_preset_edit)
             self._prepare_row_action_button(cancel_button)
             layout.addWidget(cancel_button)
@@ -3787,7 +3788,7 @@ class ArtifactBrowserWindow(QWidget):
         edit_button = QPushButton()
         edit_button.setObjectName("icon_button")
         edit_button.setIcon(self._ui_icon("edit"))
-        edit_button.setToolTip(tr("artifact.build.edit"))
+        install_custom_tooltip(edit_button, tr("artifact.build.edit"))
         edit_button.clicked.connect(
             lambda _checked=False, value=build_id: self.start_build_preset_edit(value)
         )
@@ -3796,7 +3797,7 @@ class ArtifactBrowserWindow(QWidget):
         delete_button = QPushButton()
         delete_button.setObjectName("icon_button")
         delete_button.setIcon(self._ui_icon("delete"))
-        delete_button.setToolTip(tr("artifact.build.delete"))
+        install_custom_tooltip(delete_button, tr("artifact.build.delete"))
         delete_button.clicked.connect(
             lambda _checked=False, value=build_id: self.request_delete_build_preset(value)
         )
@@ -3953,7 +3954,7 @@ class ArtifactBrowserWindow(QWidget):
 
     def _normalized_build_row_icon_path(self, icon_path: str) -> Path:
         path = Path(icon_path)
-        return path if path.is_absolute() else PROJECT_ROOT / path
+        return account_asset_path(path)
 
     def _build_row_icon_file_identity(self, icon_path: str) -> dict | None:
         path = self._normalized_build_row_icon_path(icon_path)
@@ -4481,7 +4482,7 @@ class ArtifactBrowserWindow(QWidget):
     def _target_preview_file_identity(self, path_value) -> dict:
         path = Path(path_value)
         if not path.is_absolute():
-            path = PROJECT_ROOT / path
+            path = account_asset_path(path)
         resolved_path = path.resolve()
         try:
             stat = resolved_path.stat()
@@ -4748,7 +4749,7 @@ class ArtifactBrowserWindow(QWidget):
             "row_save_button" if new_draft else "icon_button"
         )
         self.new_build_button.setIcon(self._ui_icon("save" if new_draft else "plus"))
-        self.new_build_button.setToolTip(
+        install_custom_tooltip(self.new_build_button,
             tr("artifact.build.save") if new_draft else tr("artifact.build.new")
         )
         self.cancel_new_build_button.setVisible(new_draft)
@@ -4787,7 +4788,7 @@ class ArtifactBrowserWindow(QWidget):
         slot_name = self._position_label(pos)
         if artifact_id is None:
             self._set_slot_placeholder_icon(pos)
-            self.build_slot_icon_labels[pos].setToolTip(slot_name)
+            install_custom_tooltip(self.build_slot_icon_labels[pos], slot_name)
             self.build_slot_stat_labels[pos].setText("-")
             return
 
@@ -4796,7 +4797,7 @@ class ArtifactBrowserWindow(QWidget):
         except KeyError:
             self.build_slot_icon_labels[pos].clear()
             self.build_slot_icon_labels[pos].setText("?")
-            self.build_slot_icon_labels[pos].setToolTip(slot_name)
+            install_custom_tooltip(self.build_slot_icon_labels[pos], slot_name)
             self.build_slot_stat_labels[pos].setText(tr("artifact.build.slot_missing"))
             return
 
@@ -4816,7 +4817,7 @@ class ArtifactBrowserWindow(QWidget):
                     result.pixmap
                 )
 
-        self.build_slot_icon_labels[pos].setToolTip(
+        install_custom_tooltip(self.build_slot_icon_labels[pos],
             f"{slot_name}: {artifact.name or artifact.set_name}"
         )
         self.build_slot_stat_labels[pos].setText(self._compact_main_stat_text(artifact))
@@ -4995,7 +4996,7 @@ class ArtifactBrowserWindow(QWidget):
 
     def _install_set_bonus_tooltip(self, widget: QWidget, rows: list[tuple[int, str]]) -> None:
         tooltip = self._set_bonus_tooltip_html(rows)
-        if tooltip:
+        if tooltip or getattr(widget, "_custom_tooltip_controller", None) is not None:
             install_custom_tooltip(widget, tooltip)
 
     def _make_set_bonus_cell(self, item: dict, *, artifact_ids=None) -> QFrame:

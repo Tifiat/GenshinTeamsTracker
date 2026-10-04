@@ -23,8 +23,8 @@ from .engine_store import (
     DEFAULT_GCSIM_ENGINE_STORE_DIR,
     GcsimEngineStoreError,
     GcsimEngineStore,
-    PROJECT_ROOT,
 )
+from run_workspace.profile_context import ACCOUNT_ROOT
 from .runtime_probe import DEFAULT_GO_PROBE_TIMEOUT_SECONDS, _trim_probe_text
 from .shipped_artifact import (
     GcsimShippedArtifactResolution,
@@ -32,7 +32,7 @@ from .shipped_artifact import (
 )
 
 
-DEFAULT_GCSIM_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "runs"
+DEFAULT_GCSIM_RUNS_DIR = ACCOUNT_ROOT / "data" / "gcsim" / "runs"
 DEFAULT_GCSIM_CONFIG_FILENAME = "config.txt"
 DEFAULT_GCSIM_RESULT_FILENAME = "result.json"
 MAX_RESULT_LIST_ITEMS = 50

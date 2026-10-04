@@ -1,5 +1,6 @@
 import json
 import os
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QScrollArea, QSizePolicy, QVBoxLayout, QWidget
@@ -10,7 +11,7 @@ from .widgets.run_history_container import RunHistoryContainer
 from localization import tr
 
 
-RUNS_FILE = "runs_history.json"
+RUNS_FILE = str(ACCOUNT_ROOT / "runs_history.json")
 
 
 class ZoomScrollArea(QScrollArea):

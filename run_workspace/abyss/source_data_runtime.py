@@ -12,11 +12,11 @@ from .source_data_cache import (
     AbyssSourceDataCacheError,
     load_cached_abyss_floor_source_data,
 )
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH = (
-    PROJECT_ROOT / "data" / "hoyolab" / "spiral_abyss_period.json"
+    ACCOUNT_ROOT / "data" / "hoyolab" / "spiral_abyss_period.json"
 )
 
 _DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")

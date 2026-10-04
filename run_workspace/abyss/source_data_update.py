@@ -11,16 +11,17 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, replace
 from datetime import datetime
 from time import perf_counter
-from typing import Any
+from typing import Any, Callable
 
 from .source_data import (
     AbyssFloorSourceData,
     load_abyss_floor12_source_data,
     period_url_for_start,
+    rebuild_abyss_floor_source_data_with_rows,
 )
 from .fandom_enemy_hp_fallback import (
     DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
@@ -60,6 +61,7 @@ def fetch_abyss_floor12_source_data(
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
     network_workers: int | None = None,
     fandom_hp_workers: int | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> AbyssFloorSourceData:
     """Fetch live source reports and build production Floor 12 source data."""
 
@@ -73,7 +75,19 @@ def fetch_abyss_floor12_source_data(
         hp_multiplier=hp_multiplier,
         network_workers=network_workers,
         fandom_hp_workers=fandom_hp_workers,
+        progress_callback=progress_callback,
     )
+    fallback_result = apply_fandom_enemy_page_hp_fallback(
+        data,
+        hp_multiplier=hp_multiplier,
+        mode=hp_source_mode,
+        enemy_page_workers=_resolve_network_workers(
+            network_workers=network_workers,
+            fandom_hp_workers=fandom_hp_workers,
+        ),
+        progress_callback=progress_callback,
+    )
+    data = fallback_result.data
     return data
 
 
@@ -88,15 +102,15 @@ def _fetch_abyss_floor12_source_data_with_timings(
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
     network_workers: int | None = None,
     fandom_hp_workers: int | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> tuple[AbyssFloorSourceData, dict[str, float]]:
     timings: dict[str, float] = {}
     normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
-    normalized_workers = _resolve_network_workers(
-        network_workers=network_workers,
-        fandom_hp_workers=fandom_hp_workers,
-    )
     period_url = period_url_for_start(period_start)
     source_start = perf_counter()
+    source_total = 1 if normalized_hp_mode == HP_FALLBACK_MODE_FANDOM_ONLY else 2
+    _notify_progress(progress_callback, "sources", 0, 0)
+    _notify_progress(progress_callback, "sources", 0, source_total)
     if normalized_hp_mode == HP_FALLBACK_MODE_FANDOM_ONLY:
         composition_report, source_timings = _fetch_fandom_composition_with_timings(
             period_url,
@@ -104,6 +118,7 @@ def _fetch_abyss_floor12_source_data_with_timings(
         )
         nanoka_report = _skipped_nanoka_report()
         source_timings["nanoka_source_fetch_parse"] = 0.0
+        _notify_progress(progress_callback, "sources", 1, source_total)
     else:
         with ThreadPoolExecutor(max_workers=2) as executor:
             fandom_future = executor.submit(
@@ -120,8 +135,20 @@ def _fetch_abyss_floor12_source_data_with_timings(
                 locale=locale,
                 hp_source_mode=normalized_hp_mode,
             )
-            composition_report, fandom_timings = fandom_future.result()
-            nanoka_report, nanoka_timings = nanoka_future.result()
+            results: dict[str, Any] = {}
+            source_completed = 0
+            futures = {fandom_future: "fandom", nanoka_future: "nanoka"}
+            for future in as_completed(futures):
+                source_kind = futures[future]
+                try:
+                    results[source_kind] = future.result()
+                finally:
+                    source_completed += 1
+                    _notify_progress(
+                        progress_callback, "sources", source_completed, source_total,
+                    )
+            composition_report, fandom_timings = results["fandom"]
+            nanoka_report, nanoka_timings = results["nanoka"]
         source_timings = {**fandom_timings, **nanoka_timings}
     timings.update(source_timings)
     timings["source_fetch_parallel"] = _elapsed_ms(source_start)
@@ -135,17 +162,6 @@ def _fetch_abyss_floor12_source_data_with_timings(
         nanoka_report=nanoka_report,
     )
     timings["join_build_source_data"] = _elapsed_ms(build_start)
-    fallback_start = perf_counter()
-    fallback_result = apply_fandom_enemy_page_hp_fallback(
-        data,
-        hp_multiplier=hp_multiplier,
-        mode=normalized_hp_mode,
-        enemy_page_workers=normalized_workers,
-    )
-    timings["fandom_enemy_page_hp_fallback"] = _elapsed_ms(fallback_start)
-    timings["fandom_enemy_page_hp_fallback_requests"] = float(fallback_result.page_fetches)
-    timings["fandom_enemy_page_hp_fallback_attempted"] = float(fallback_result.attempted)
-    data = fallback_result.data
     return data, timings
 
 
@@ -177,6 +193,7 @@ def build_update_report(
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
     network_workers: int | None = None,
     fandom_hp_workers: int | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> dict[str, Any]:
     total_start = perf_counter()
     normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
@@ -193,22 +210,78 @@ def build_update_report(
         hp_source_mode=normalized_hp_mode,
         hp_multiplier=hp_multiplier,
         network_workers=normalized_workers,
+        progress_callback=progress_callback,
     )
     cache_report: dict[str, Any] = {"saved": False}
     asset_report: dict[str, Any] = {"enabled": False}
     report_data = data
+    if save_cache and cache_assets:
+        phase_timings: dict[str, float] = {}
+
+        def run_fallback(executor):
+            started = perf_counter()
+            try:
+                return apply_fandom_enemy_page_hp_fallback(
+                    data,
+                    hp_multiplier=hp_multiplier,
+                    mode=normalized_hp_mode,
+                    enemy_page_workers=normalized_workers,
+                    executor=executor,
+                    progress_callback=progress_callback,
+                )
+            finally:
+                phase_timings["hp"] = _elapsed_ms(started)
+
+        def run_icons(executor):
+            started = perf_counter()
+            try:
+                return cache_abyss_floor_monster_icons(
+                    data,
+                    cache_dir=cache_dir,
+                    max_workers=normalized_workers,
+                    executor=executor,
+                    progress_callback=progress_callback,
+                )
+            finally:
+                phase_timings["icons"] = _elapsed_ms(started)
+
+        # HP fallback pages and display icons are independent once the two
+        # authoritative source reports have been joined. Share one network
+        # executor so overlap does not raise the configured request bound.
+        with ThreadPoolExecutor(max_workers=normalized_workers) as network_executor:
+            with ThreadPoolExecutor(max_workers=2) as phase_executor:
+                hp_future = phase_executor.submit(run_fallback, network_executor)
+                icon_future = phase_executor.submit(run_icons, network_executor)
+                fallback_result = hp_future.result()
+                icon_result = icon_future.result()
+
+        timings["fandom_enemy_page_hp_fallback"] = phase_timings["hp"]
+        timings["fandom_enemy_page_hp_fallback_requests"] = float(fallback_result.page_fetches)
+        timings["fandom_enemy_page_hp_fallback_attempted"] = float(fallback_result.attempted)
+        timings["icon_asset_cache"] = phase_timings["icons"]
+        report_data = _merge_fallback_and_icon_results(
+            data,
+            fallback_result.data,
+            icon_result.data,
+        )
+        data = report_data
+        asset_report = _asset_cache_report(icon_result)
+    else:
+        hp_start = perf_counter()
+        fallback_result = apply_fandom_enemy_page_hp_fallback(
+            data,
+            hp_multiplier=hp_multiplier,
+            mode=normalized_hp_mode,
+            enemy_page_workers=normalized_workers,
+            progress_callback=progress_callback,
+        )
+        timings["fandom_enemy_page_hp_fallback"] = _elapsed_ms(hp_start)
+        timings["fandom_enemy_page_hp_fallback_requests"] = float(fallback_result.page_fetches)
+        timings["fandom_enemy_page_hp_fallback_attempted"] = float(fallback_result.attempted)
+        report_data = fallback_result.data
+        data = report_data
     if save_cache:
-        if cache_assets:
-            asset_start = perf_counter()
-            asset_result = cache_abyss_floor_monster_icons(
-                data,
-                cache_dir=cache_dir,
-                max_workers=normalized_workers,
-            )
-            timings["icon_asset_cache"] = _elapsed_ms(asset_start)
-            report_data = asset_result.data
-            asset_report = _asset_cache_report(asset_result)
-        else:
+        if not cache_assets:
             asset_report = {"enabled": False, "skipped": True}
             timings["icon_asset_cache"] = 0.0
         cache_start = perf_counter()
@@ -274,6 +347,60 @@ def build_update_report(
         "assets": asset_report,
         "source_data": asdict(report_data),
     }
+
+
+def _merge_fallback_and_icon_results(
+    original: AbyssFloorSourceData,
+    fallback_data: AbyssFloorSourceData,
+    icon_data: AbyssFloorSourceData,
+) -> AbyssFloorSourceData:
+    """Combine independent HP and icon projections over their shared source rows."""
+    if len(fallback_data.enemy_rows) != len(icon_data.enemy_rows):
+        raise ValueError("Abyss enrichment changed the source row count")
+    merged_rows = []
+    for fallback_row, icon_row in zip(fallback_data.enemy_rows, icon_data.enemy_rows):
+        warnings = [
+            warning for warning in fallback_row.warnings
+            if not _is_icon_warning(warning)
+        ]
+        warnings.extend(
+            warning for warning in icon_row.warnings
+            if _is_icon_warning(warning) and warning not in warnings
+        )
+        merged_rows.append(replace(
+            fallback_row,
+            nanoka_icon_url=icon_row.nanoka_icon_url,
+            cached_icon_path=icon_row.cached_icon_path,
+            warnings=tuple(warnings),
+        ))
+    hp_warnings = [
+        warning for warning in fallback_data.global_warnings
+        if warning not in original.global_warnings
+    ]
+    return rebuild_abyss_floor_source_data_with_rows(
+        icon_data,
+        merged_rows,
+        global_warnings=hp_warnings,
+    )
+
+
+def _is_icon_warning(warning: str) -> bool:
+    return str(warning).startswith(("monster_icon_", "nanoka_icon_", "fandom_icon_"))
+
+
+def _notify_progress(
+    callback: Callable[[str, int, int], None] | None,
+    phase: str,
+    completed: int,
+    total: int,
+) -> None:
+    if callback is None:
+        return
+    try:
+        callback(phase, completed, total)
+    except Exception:
+        # Progress is observational; a UI/logger failure cannot block source work.
+        pass
 
 
 def _resolved_nanoka_tower_id(nanoka_report: dict[str, Any] | None) -> str | None:

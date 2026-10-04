@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import threading
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,12 +11,13 @@ from run_workspace.abyss.source_data_cache import (
     IconCacheResult,
     load_cached_abyss_floor_source_data,
 )
+from run_workspace.abyss.source_data import rebuild_abyss_floor_source_data_with_rows
 from run_workspace.abyss.source_data_fetchers import AbyssSourceFetchError
 from run_workspace.abyss.fandom_enemy_hp_fallback import (
     FandomEnemyHpFallbackResult,
     HP_FALLBACK_MODE_NANOKA_ONLY,
 )
-from run_workspace.abyss.source_data_update import build_update_report
+from run_workspace.abyss.source_data_update import build_update_report, _merge_fallback_and_icon_results
 
 from tests.run_workspace.abyss.test_source_data import (
     composition_report,
@@ -66,6 +68,24 @@ def current_style_reports() -> tuple[dict, dict]:
 
 
 class AbyssSourceDataUpdateTest(unittest.TestCase):
+    def test_parallel_merge_keeps_catalog_icon_and_hp_fallback_independent(self) -> None:
+        from run_workspace.abyss.source_data import load_abyss_floor12_source_data
+        fandom, tower = current_style_reports()
+        original = load_abyss_floor12_source_data(
+            "2026-05-16", "119", composition_report=fandom, nanoka_report=tower,
+        )
+        row = original.enemy_rows[0]
+        hp = replace(original, enemy_rows=(replace(row, nanoka_hp=12345), *original.enemy_rows[1:]))
+        icon = replace(original, enemy_rows=(replace(
+            row, nanoka_icon_url="https://static.nanoka.cc/assets/gi/UI_MonsterIcon_Test.webp",
+            cached_icon_path="test.webp",
+        ), *original.enemy_rows[1:]))
+        merged = _merge_fallback_and_icon_results(original, hp, icon)
+        self.assertEqual(merged.enemy_rows[0].nanoka_hp, 12345)
+        self.assertEqual(merged.enemy_rows[0].nanoka_icon_url, icon.enemy_rows[0].nanoka_icon_url)
+        self.assertEqual(merged.enemy_rows[0].nanoka_monster_id, row.nanoka_monster_id)
+        self.assertEqual(merged.side_summaries[0].waves[0].enemies[0].cached_icon_path, "test.webp")
+
     def test_update_entrypoint_builds_current_style_data_from_period_lookup(self) -> None:
         fandom_report, tower_report = current_style_reports()
         with patch(
@@ -215,6 +235,108 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
         self.assertEqual(icon_workers, [7])
         self.assertEqual(report["probe"]["normal_path_contract"]["network_workers"], 7)
         self.assertEqual(report["assets"]["workers"], 7)
+
+    def test_hp_fallback_and_icons_overlap_on_one_bounded_executor(self) -> None:
+        fandom_report, tower_report = current_style_reports()
+        rendezvous = threading.Barrier(2)
+        executors = []
+        started: list[str] = []
+        progress: list[tuple[str, int, int]] = []
+
+        def record_progress(phase: str, completed: int, total: int) -> None:
+            progress.append((phase, completed, total))
+            if phase == "sources":
+                raise RuntimeError("progress observers must be non-fatal")
+
+        def blocking_job(name: str) -> None:
+            rendezvous.wait(timeout=2)
+            started.append(name)
+
+        def fake_fallback(data, **kwargs):
+            executor = kwargs["executor"]
+            executors.append(executor)
+            executor.submit(blocking_job, "hp").result(timeout=3)
+            row = replace(
+                data.enemy_rows[0],
+                nanoka_hp=4321,
+                hp_source="fandom_enemy_page_hp_fallback",
+                match_method="fandom_enemy_page_hp_fallback",
+                warnings=(*data.enemy_rows[0].warnings, "fandom_enemy_page_hp_fallback_used"),
+            )
+            updated = rebuild_abyss_floor_source_data_with_rows(
+                data, (row, *data.enemy_rows[1:]),
+                global_warnings=("fandom_enemy_page_hp_fallback_used",),
+            )
+            return FandomEnemyHpFallbackResult(
+                data=updated,
+                attempted=1,
+                resolved=1,
+                unresolved=0,
+                page_fetches=1,
+                page_cache_hits=0,
+                hp_multiplier=3.75,
+                mode="auto",
+                workers=kwargs["enemy_page_workers"],
+            )
+
+        def fake_icon_cache(data, **kwargs):
+            executor = kwargs["executor"]
+            executors.append(executor)
+            executor.submit(blocking_job, "icons").result(timeout=3)
+            row = replace(
+                data.enemy_rows[0],
+                cached_icon_path="fixture/icon.png",
+                warnings=(*data.enemy_rows[0].warnings, "monster_icon_cache_failed"),
+            )
+            updated = rebuild_abyss_floor_source_data_with_rows(
+                data, (row, *data.enemy_rows[1:]),
+                global_warnings=("monster_icon_cache_failed",),
+            )
+            return IconCacheResult(
+                data=updated,
+                cache_dir=Path(tempfile.gettempdir()),
+                attempted=len(data.enemy_rows),
+                saved=1,
+                failed=len(data.enemy_rows) - 1,
+                downloaded=1,
+                cache_hits=0,
+                workers=kwargs["max_workers"],
+                entries=(),
+            )
+
+        with tempfile.TemporaryDirectory() as tmp, patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            return_value=fandom_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
+            return_value=tower_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.apply_fandom_enemy_page_hp_fallback",
+            side_effect=fake_fallback,
+        ), patch(
+            "run_workspace.abyss.source_data_update.cache_abyss_floor_monster_icons",
+            side_effect=fake_icon_cache,
+        ):
+            report = build_update_report(
+                period_start="2026-05-16",
+                save_cache=True,
+                cache_dir=tmp,
+                network_workers=2,
+                progress_callback=record_progress,
+            )
+
+        self.assertEqual(sorted(started), ["hp", "icons"])
+        self.assertEqual(len(executors), 2)
+        self.assertIs(executors[0], executors[1])
+        self.assertEqual(executors[0]._max_workers, 2)
+        source_events = [event for event in progress if event[0] == "sources"]
+        self.assertIn(("sources", 0, 2), source_events)
+        self.assertIn(("sources", 2, 2), source_events)
+        first_row = report["source_data"]["enemy_rows"][0]
+        self.assertEqual(first_row["nanoka_hp"], 4321)
+        self.assertEqual(first_row["cached_icon_path"], "fixture/icon.png")
+        self.assertIn("fandom_enemy_page_hp_fallback_used", first_row["warnings"])
+        self.assertIn("monster_icon_cache_failed", first_row["warnings"])
 
     def test_fandom_hp_workers_alias_is_used_when_network_workers_missing(self) -> None:
         fandom_report, tower_report = current_style_reports()

@@ -487,19 +487,27 @@ Current Stage A policy:
 2. These helpers call the same service as manual equip actions and set
    `source='hoyolab_import'`.
 3. AppShell Account / HoYoLAB now has a persistent "Change equipment" switch,
-   default OFF (`hoyolab_change_equipment_on_import` in app settings). The UI
+   default ON for absent/new settings since the user's 2026-10-04 request
+   (`hoyolab_change_equipment_on_import` in app settings). A saved OFF/ON value
+   is preserved. The UI
    snapshots it into `--change-equipment` for that import subprocess; changing
    the switch alone never changes equipment, and it is disabled during import.
    Without that flag, CLI/backend imports also preserve user equipment.
-   After successful account-storage sync, enabled imports apply the fresh
-   snapshot via `apply_hoyolab_equipment_snapshot`, not sequential manual swaps.
+   Enabled imports apply the fresh snapshot via
+   `apply_hoyolab_equipment_snapshot` inside the atomic source publication.
+   Unknown canonical sets retain valid source IDs/stats and do not prevent this
+   application. A malformed source is rejected before staging; artifact,
+   account or equipment write failure rolls back the whole core transaction.
+   A concurrent equipment edit preserves user assignments while the new source
+   observations still commit. Receipt replay never applies gear again. Saved
+   presets remain unchanged. See `HOYOLAB_IMPORT_RELIABILITY.md` for recovery.
 4. Missing HoYoLAB character/slot/equipment data means "no data" and must not
    clear local equipment.
 5. The batch validates character/item references, weapon compatibility and
    known copy capacity before writes. A savepoint covers both equipment tables;
    no helper that commits schema initialization may run inside it. Failure
-   rolls back the whole equipment application. Raw import publication still
-   has its separately documented non-atomic file/DB boundary.
+   rolls back the whole equipment application and enclosing core import.
+   JSON/images are separate recoverable projections of the committed source.
 6. Observed assignments take priority over local ownership. A required artifact
    moves to its observed wearer; an unobserved weapon wearer is displaced only
    if known copies cannot cover both assignments. Missing slots otherwise stay.
@@ -510,8 +518,8 @@ Tradeoffs:
 - applying explicit observations gives the local state a useful starting point;
 - the missing-data rule avoids accidental destructive clears from partial
   payloads;
-- the default-OFF switch protects user-managed planning/equip changes when
-  the user does not want HoYoLAB observations applied.
+- switching OFF preserves user-managed planning/equip changes when the user
+  does not want HoYoLAB observations applied; that choice survives restarts.
 
 ## Completed Implementation Stages
 
@@ -574,11 +582,12 @@ Stage C: Artifact Browser embedded target UI and equipment writes - implemented
 - manual artifact click equips in equip mode and repeated current-target click
   unequips.
 
-Stage F: HoYoLAB seed/sync - implemented, default OFF
+Stage F: HoYoLAB seed/sync - implemented
 
 - optional application of explicit observed equipment through the Stage A
   helpers;
-- implemented default-OFF HoYoLAB import equipment switch;
+- implemented persistent HoYoLAB import equipment switch; its current
+  first-run default and preservation policy are defined above;
 - never clear local equipment from missing HoYoLAB payload data.
 
 ## Risks And Open Questions

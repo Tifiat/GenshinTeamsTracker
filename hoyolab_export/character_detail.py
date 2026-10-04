@@ -37,6 +37,7 @@ def pick_genshin_role(payload: dict[str, Any]) -> tuple[str, str]:
     data = payload.get("data") or {}
     roles = data.get("list") or []
 
+    choices = []
     for role in roles:
         if not isinstance(role, dict):
             continue
@@ -46,7 +47,13 @@ def pick_genshin_role(payload: dict[str, Any]) -> tuple[str, str]:
         role_id = role.get("game_uid") or role.get("game_role_id") or role.get("role_id")
         server = role.get("region") or role.get("server")
         if role_id and server:
-            return str(role_id), str(server)
+            choices.append((str(role_id), str(server)))
+
+    choices = list(dict.fromkeys(choices))
+    if len(choices) == 1:
+        return choices[0]
+    if len(choices) > 1:
+        raise RuntimeError("Select a Genshin account/server in HoYoLAB before importing.")
 
     raise RuntimeError("Could not detect Genshin role_id/server from HoYoLAB roles response.")
 

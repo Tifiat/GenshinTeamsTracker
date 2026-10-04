@@ -12,11 +12,11 @@ import time
 from typing import Mapping, Sequence
 import uuid
 
-from .engine_store import PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
 GCSIM_OPTIMIZER_CACHE_SCHEMA_VERSION = 1
-DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR = PROJECT_ROOT / "data" / "cache" / "gcsim_optimizer"
+DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR = ACCOUNT_ROOT / "data" / "cache" / "gcsim_optimizer"
 DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES = 20_000
 DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES = 256 * 1024 * 1024
 DEFAULT_GCSIM_OPTIMIZER_CACHE_PRUNE_INTERVAL_SECONDS = 5 * 60

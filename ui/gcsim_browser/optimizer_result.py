@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 import math
 from pathlib import Path
+from run_workspace.profile_context import account_asset_path
 from typing import Any, Mapping, Sequence
 
 from PySide6.QtCore import QSize, Qt, Signal
@@ -912,7 +913,7 @@ def _existing_project_path(value: Any) -> Path | None:
         return None
     path = Path(text)
     if not path.is_absolute():
-        path = PROJECT_ROOT / path
+        path = account_asset_path(path)
     return path if path.exists() and path.is_file() else None
 
 

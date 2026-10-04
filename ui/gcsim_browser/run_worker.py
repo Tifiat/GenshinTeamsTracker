@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from hoyolab_export.paths import PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT
 from run_workspace.gcsim.readiness_summary import (
     build_gcsim_readiness_summary,
     format_gcsim_readiness_summary,
@@ -1193,7 +1193,7 @@ def _dedupe(values: Any) -> list[str]:
 
 
 def _new_run_dir(run_root: str) -> Path:
-    root = Path(run_root) if run_root else PROJECT_ROOT / "data" / "gcsim" / "runs"
+    root = Path(run_root) if run_root else ACCOUNT_ROOT / "data" / "gcsim" / "runs"
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
     return root / f"gcsim-browser-run-{stamp}"
 

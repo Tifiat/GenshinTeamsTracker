@@ -33,12 +33,14 @@ in every file.
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |
 | [WORK_BACKLOG.md](WORK_BACKLOG.md) | Router to shared deferred scopes; active priority routes through TODO |
+| [WORKER5_TRANSFER_PACKAGE.md](WORKER5_TRANSFER_PACKAGE.md) | Worker5 source inventories, transfer dependencies, byte fingerprints and acceptance boundaries |
 
 ## Account, Data And Artifacts
 
 | Document | Role |
 | --- | --- |
 | [DATA_RUNTIME_BOUNDARIES.md](DATA_RUNTIME_BOUNDARIES.md) | Current source/cache, SQLite, assets/catalogs and normal offline-profile boundaries |
+| [ACCOUNT_PROFILES.md](ACCOUNT_PROFILES.md) | Isolated saved accounts, profile switching/deletion, login and central settings/reset contract |
 | [ACCOUNT_CHARACTER_DETAIL_FIELDS.md](ACCOUNT_CHARACTER_DETAIL_FIELDS.md) | Observed HoYoLAB character-detail source fields |
 | [ACCOUNT_SQLITE_STORAGE.md](ACCOUNT_SQLITE_STORAGE.md) | Runtime characters, talents, identities and observed weapon stacks |
 | [ACCOUNT_EQUIPMENT_STATE_DESIGN.md](ACCOUNT_EQUIPMENT_STATE_DESIGN.md) | Implemented persistent equipment service and import-apply contract |
@@ -60,6 +62,7 @@ in every file.
 | [PRELOADER_BACKLOG.md](PRELOADER_BACKLOG.md) | Deferred loader work; remeasure dated costs before implementation |
 | [performance_measurements/](performance_measurements/) | Historical device/commit-specific measurements, not current guarantees |
 | [TESTS.md](TESTS.md) | Test ownership, focused commands and validation rules |
+| [TOOLTIP_CONTRACTS.md](TOOLTIP_CONTRACTS.md) | Tooltip semantic families, first-available catalog witness and required regression workflow |
 
 ## Abyss
 

@@ -471,11 +471,13 @@ def update_cached_abyss_source_data_for_hoyolab_period(
     network_workers: int | None = None,
     fandom_hp_workers: int | None = None,
     update_report_builder: Callable[..., Mapping[str, Any]] | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> AbyssSourceDataRefreshResult:
     """Update Floor 12 source-data cache from an official HoYoLAB Abyss period."""
 
     total_start = perf_counter()
     timings: dict[str, float] = {}
+    _notify_progress(progress_callback, "sources", 0, 0)
     resolved_workers = _resolve_network_workers(
         network_workers=network_workers,
         fandom_hp_workers=fandom_hp_workers,
@@ -491,6 +493,10 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         )
         timings["cache_ready_lookup"] = _elapsed_ms(lookup_start)
         if cached is not None:
+            # The source JSON carries both composition and HP, so a hot-cache
+            # import completes those phases without upstream requests.
+            _notify_progress(progress_callback, "sources", 1, 1)
+            _notify_progress(progress_callback, "hp", 1, 1)
             stale_icon_failures = any(
                 str(warning).startswith("monster_icon_cache_failed")
                 for warning in cached.global_warnings
@@ -502,7 +508,11 @@ def update_cached_abyss_source_data_for_hoyolab_period(
                 # trigger another composition/HP fetch for the same period.
                 asset_start = perf_counter()
                 icon_result = cache_abyss_floor_monster_icons(
-                    cached, cache_dir=cache_dir, max_workers=resolved_workers,
+                    cached,
+                    cache_dir=cache_dir,
+                    max_workers=resolved_workers,
+                    **({"progress_callback": progress_callback}
+                       if progress_callback is not None else {}),
                 )
                 timings["icon_asset_cache"] = _elapsed_ms(asset_start)
                 save_start = perf_counter()
@@ -535,6 +545,7 @@ def update_cached_abyss_source_data_for_hoyolab_period(
                     timings_ms=timings,
                     network_workers=resolved_workers,
                 )
+            _notify_progress(progress_callback, "icons", 0, 0)
             timings["total"] = _elapsed_ms(total_start)
             return _cached_refresh_result(
                 parsed,
@@ -547,7 +558,7 @@ def update_cached_abyss_source_data_for_hoyolab_period(
             )
 
     builder = update_report_builder or build_update_report
-    report = builder(
+    builder_kwargs = dict(
         period_start=parsed.start_date,
         period_end=parsed.end_date,
         floor=floor,
@@ -558,6 +569,9 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         hp_multiplier=hp_multiplier,
         network_workers=resolved_workers,
     )
+    if progress_callback is not None:
+        builder_kwargs["progress_callback"] = progress_callback
+    report = builder(**builder_kwargs)
     summary = report.get("summary") if isinstance(report, Mapping) else {}
     cache = report.get("cache") if isinstance(report, Mapping) else {}
     assets = report.get("assets") if isinstance(report, Mapping) else {}
@@ -605,6 +619,7 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
     network_workers: int | None = None,
     fandom_hp_workers: int | None = None,
     updater: RefreshUpdateCallable = update_cached_abyss_source_data_for_hoyolab_period,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Best-effort import integration wrapper: never raises for cache refresh."""
 
@@ -621,10 +636,23 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
             hp_multiplier=hp_multiplier,
             network_workers=network_workers,
             fandom_hp_workers=fandom_hp_workers,
+            **({"progress_callback": progress_callback} if progress_callback is not None else {}),
         )
     except Exception as exc:
         return None, _compact_exception_summary(exc)
-    return result.to_dict(), None
+    summary = result.to_dict()
+    assets = summary.get("assets")
+    if isinstance(assets, Mapping) and assets.get("enabled"):
+        try:
+            failed_icons = int(assets.get("failed") or 0)
+        except (TypeError, ValueError):
+            failed_icons = 0
+        if failed_icons > 0:
+            # Keep the source JSON and successful icons cached; the importer
+            # records the optional Abyss job as unfinished so a retry can do
+            # the same-period icon-only repair without re-fetching source data.
+            return summary, "abyss_monster_icon_cache_incomplete"
+    return summary, None
 
 
 def _normalize_period_source(value: str | None) -> str:
@@ -959,6 +987,21 @@ def _optional_float(value: Any) -> float | None:
 
 def _elapsed_ms(start: float) -> float:
     return round((perf_counter() - start) * 1000, 3)
+
+
+def _notify_progress(
+    callback: Callable[[str, int, int], None] | None,
+    phase: str,
+    completed: int,
+    total: int,
+) -> None:
+    if callback is None:
+        return
+    try:
+        callback(phase, completed, total)
+    except Exception:
+        # Progress is observational; a UI/logger failure cannot block refresh.
+        pass
 
 
 def _resolve_network_workers(

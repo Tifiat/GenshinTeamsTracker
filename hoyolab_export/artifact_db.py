@@ -6,16 +6,19 @@ from typing import Any
 
 from .account_equipment import init_account_equipment_storage
 from .account_storage import init_account_storage
-from .artifact_fingerprint import artifact_content_fingerprint
+from .artifact_fingerprint import (
+    artifact_content_fingerprint,
+    artifact_source_content_fingerprint,
+)
 from .character_trait_catalog import init_character_trait_reference_storage
 from .display_stat_effects import (
     init_display_stat_effect_tables,
     upsert_artifact_set_display_stat_effects_for_description,
 )
-from .paths import PROJECT_ROOT
+from .paths import PROJECT_ROOT, ACCOUNT_ROOT
 
 
-ARTIFACT_DB_PATH = PROJECT_ROOT / "data" / "artifacts.db"
+ARTIFACT_DB_PATH = ACCOUNT_ROOT / "data" / "artifacts.db"
 
 
 def utc_now() -> str:
@@ -97,6 +100,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fingerprint TEXT NOT NULL UNIQUE,
             content_fingerprint TEXT,
+            source_content_fingerprint TEXT,
 
             relic_id INTEGER,
             name TEXT NOT NULL,
@@ -286,6 +290,8 @@ def init_db(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE artifacts ADD COLUMN set_uid TEXT")
     if "content_fingerprint" not in artifact_columns:
         conn.execute("ALTER TABLE artifacts ADD COLUMN content_fingerprint TEXT")
+    if "source_content_fingerprint" not in artifact_columns:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN source_content_fingerprint TEXT")
     if "import_source" not in artifact_columns:
         conn.execute("ALTER TABLE artifacts ADD COLUMN import_source TEXT")
     if "import_format" not in artifact_columns:
@@ -324,6 +330,13 @@ def init_db(conn: sqlite3.Connection) -> None:
 
     conn.execute(
         """
+        CREATE INDEX IF NOT EXISTS idx_artifacts_source_content_fingerprint
+            ON artifacts (source_content_fingerprint)
+        """
+    )
+
+    conn.execute(
+        """
         INSERT OR IGNORE INTO artifact_build_targets (
             build_id,
             target_type,
@@ -341,6 +354,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     )
 
     backfill_artifact_content_fingerprints(conn)
+    backfill_artifact_source_content_fingerprints(conn)
 
     conn.commit()
 
@@ -401,6 +415,65 @@ def backfill_artifact_content_fingerprints(conn: sqlite3.Connection) -> int:
             WHERE id = ?
             """,
             (content_fingerprint, int(row["id"])),
+        )
+        updated += 1
+
+    return updated
+
+
+def backfill_artifact_source_content_fingerprints(conn: sqlite3.Connection) -> int:
+    rows = conn.execute(
+        """
+        SELECT
+            id,
+            set_id,
+            pos,
+            rarity,
+            level,
+            main_property_type,
+            main_property_value
+        FROM artifacts
+        WHERE (source_content_fingerprint IS NULL OR source_content_fingerprint = '')
+            AND set_id IS NOT NULL
+        """
+    ).fetchall()
+
+    updated = 0
+    for row in rows:
+        substats = conn.execute(
+            """
+            SELECT property_type, value
+            FROM artifact_substats
+            WHERE artifact_id = ?
+            ORDER BY slot_index
+            """,
+            (int(row["id"]),),
+        ).fetchall()
+        source_fingerprint = artifact_source_content_fingerprint(
+            set_id=row["set_id"],
+            pos=row["pos"],
+            rarity=row["rarity"],
+            level=row["level"],
+            main_property_type=row["main_property_type"],
+            main_property_value=row["main_property_value"],
+            substats=[
+                {
+                    "property_type": substat["property_type"],
+                    "value": substat["value"],
+                }
+                for substat in substats
+            ],
+        )
+        if source_fingerprint is None:
+            continue
+
+        conn.execute(
+            """
+            UPDATE artifacts
+            SET source_content_fingerprint = ?
+            WHERE id = ?
+            """,
+            (source_fingerprint, int(row["id"])),
         )
         updated += 1
 
@@ -675,6 +748,7 @@ def upsert_artifact(
     *,
     fingerprint: str,
     content_fingerprint: str | None = None,
+    source_content_fingerprint: str | None = None,
     relic_id: int | None,
     name: str,
     set_id: int | None,
@@ -696,8 +770,34 @@ def upsert_artifact(
 ) -> tuple[int, bool]:
     now = utc_now()
 
+    observed_ids = observed_artifact_ids or set()
     existing = None
-    if content_fingerprint:
+    if source_content_fingerprint:
+        candidates = conn.execute(
+            """
+            SELECT id, fingerprint
+            FROM artifacts
+            WHERE source_content_fingerprint = ?
+            ORDER BY id
+            """,
+            (source_content_fingerprint,),
+        ).fetchall()
+        candidates = [row for row in candidates if row["id"] not in observed_ids]
+        exact_fingerprint_candidates = [
+            row
+            for row in candidates
+            if row["fingerprint"] == fingerprint
+            or str(row["fingerprint"]).startswith(f"{fingerprint}:observed-copy:")
+        ]
+        if exact_fingerprint_candidates:
+            candidates = exact_fingerprint_candidates
+        candidates = sorted(
+            candidates,
+            key=lambda row: (row["id"] != preferred_artifact_id, row["id"]),
+        )
+        existing = candidates[0] if candidates else None
+
+    if existing is None and content_fingerprint:
         candidates = conn.execute(
             """
             SELECT id
@@ -708,14 +808,14 @@ def upsert_artifact(
             (content_fingerprint,),
         ).fetchall()
         candidates = sorted(candidates, key=lambda row: (row["id"] != preferred_artifact_id, row["id"]))
-        existing = next((row for row in candidates if row["id"] not in (observed_artifact_ids or set())), None)
+        existing = next((row for row in candidates if row["id"] not in observed_ids), None)
 
     if existing is None:
         candidate = conn.execute(
             "SELECT id FROM artifacts WHERE fingerprint = ?",
             (fingerprint,),
         ).fetchone()
-        if candidate is not None and candidate["id"] not in (observed_artifact_ids or set()):
+        if candidate is not None and candidate["id"] not in observed_ids:
             existing = candidate
 
     if existing:
@@ -726,7 +826,7 @@ def upsert_artifact(
                 relic_id = ?,
                 name = ?,
                 set_id = ?,
-                set_uid = ?,
+                set_uid = COALESCE(?, set_uid),
                 set_name = ?,
                 pos = ?,
                 pos_name = ?,
@@ -736,6 +836,7 @@ def upsert_artifact(
                 main_property_name = ?,
                 main_property_value = ?,
                 content_fingerprint = COALESCE(?, content_fingerprint),
+                source_content_fingerprint = COALESCE(?, source_content_fingerprint),
                 import_source = COALESCE(?, import_source),
                 import_format = COALESCE(?, import_format),
                 import_batch_id = COALESCE(?, import_batch_id),
@@ -757,6 +858,7 @@ def upsert_artifact(
                 main_property_name,
                 main_property_value,
                 content_fingerprint,
+                source_content_fingerprint,
                 import_source,
                 import_format,
                 import_batch_id,
@@ -767,7 +869,7 @@ def upsert_artifact(
         )
         return artifact_id, False
 
-    if observed_artifact_ids:
+    if observed_ids:
         # Only the importer supplies ids already seen on OTHER characters in
         # this same snapshot. Reimports find existing copies by content above.
         original_fingerprint = fingerprint
@@ -781,6 +883,7 @@ def upsert_artifact(
         INSERT INTO artifacts (
             fingerprint,
             content_fingerprint,
+            source_content_fingerprint,
             relic_id,
             name,
             set_id,
@@ -800,11 +903,12 @@ def upsert_artifact(
             import_batch_id,
             json_imported
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             fingerprint,
             content_fingerprint,
+            source_content_fingerprint,
             relic_id,
             name,
             set_id,
@@ -1859,12 +1963,18 @@ def calculate_raw_build_summary(
             "artifact_ids_by_pos": artifact_ids_by_pos,
             "missing_positions": missing_positions,
             "set_counts": [],
+            "unresolved_active_sets": [],
             "total_stats": [],
             "crit_value": 0.0,
             "proc_count": 0,
         }
 
     placeholders = ",".join("?" for _ in selected_artifact_ids)
+    set_id_projection = (
+        "set_id" if any(
+            row["name"] == "set_id" for row in conn.execute("PRAGMA table_info(artifacts)")
+        ) else "NULL AS set_id"
+    )
     artifact_rows = conn.execute(
         f"""
         SELECT
@@ -1872,6 +1982,7 @@ def calculate_raw_build_summary(
             pos,
             name,
             set_uid,
+            {set_id_projection},
             set_name,
             main_property_type,
             main_property_name,
@@ -1894,7 +2005,7 @@ def calculate_raw_build_summary(
     if missing_artifact_ids:
         raise ValueError(f"Unknown artifact ids: {missing_artifact_ids}")
 
-    set_counts_by_uid: dict[str, dict[str, Any]] = {}
+    set_counts_by_uid: dict[tuple[str, int | None], dict[str, Any]] = {}
     stats_by_type: dict[int, dict[str, Any]] = {}
     proc_count = 0
 
@@ -1922,12 +2033,18 @@ def calculate_raw_build_summary(
     for artifact_id in selected_artifact_ids:
         artifact = artifacts_by_id[artifact_id]
         set_uid = artifact["set_uid"] or ""
+        source_set_id = artifact["set_id"]
         set_name = artifact["set_name"] or ""
-        set_key = set_uid or set_name
+        set_key = (
+            (set_uid, None)
+            if set_uid else ("", int(source_set_id) if source_set_id is not None else -artifact_id)
+        )
         set_count = set_counts_by_uid.setdefault(
             set_key,
             {
                 "set_uid": set_uid,
+                "source_set_id": source_set_id,
+                "canonical_set_resolved": bool(set_uid),
                 "set_name": set_name,
                 "count": 0,
             },
@@ -1965,17 +2082,22 @@ def calculate_raw_build_summary(
     crit_rate = stats_by_type.get(20, {}).get("raw_value", 0.0)
     crit_damage = stats_by_type.get(22, {}).get("raw_value", 0.0)
 
+    set_counts = sorted(
+        set_counts_by_uid.values(),
+        key=lambda item: (
+            -int(item["count"]),
+            str(item["set_name"]).casefold(),
+            str(item["set_uid"]).casefold(),
+        ),
+    )
     return {
         "artifact_ids_by_pos": artifact_ids_by_pos,
         "missing_positions": missing_positions,
-        "set_counts": sorted(
-            set_counts_by_uid.values(),
-            key=lambda item: (
-                -int(item["count"]),
-                str(item["set_name"]).casefold(),
-                str(item["set_uid"]).casefold(),
-            ),
-        ),
+        "set_counts": set_counts,
+        "unresolved_active_sets": [
+            dict(item) for item in set_counts
+            if not item["canonical_set_resolved"] and item["count"] >= 2
+        ],
         "total_stats": [
             {
                 "property_type": stat["property_type"],

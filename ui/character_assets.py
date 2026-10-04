@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import closing
 from pathlib import Path
+from run_workspace.profile_context import account_asset_path
 from typing import Any
 
 from PySide6.QtCore import Qt
@@ -158,7 +159,7 @@ def asset_path_from_manifest_crop(crop: str | None) -> Path | None:
 
     path = Path(crop)
     if not path.is_absolute():
-        path = PROJECT_ROOT / path
+        path = account_asset_path(path)
     return path
 
 

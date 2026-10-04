@@ -49,7 +49,7 @@ from .character_stat_snapshot import (
     build_character_stat_snapshot,
 )
 from .character_stats_catalog import CharacterBaseStatsEntry
-from .paths import PROJECT_ROOT
+from .paths import PROJECT_ROOT, ACCOUNT_ROOT
 from .weapon_stats_catalog import WeaponStatsEntry
 
 
@@ -692,7 +692,7 @@ def _content_language_from_source_notes(
 
 
 def _account_content_language() -> str:
-    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    path = ACCOUNT_ROOT / "data" / "hoyolab" / "account_language.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):

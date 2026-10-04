@@ -168,6 +168,57 @@ class PortableProfileValidationTest(unittest.TestCase):
     def test_rejects_bad_database_even_with_recomputed_hash(self) -> None:
         self._reject({PVP_PROFILE_DB_NAME: b"not a sqlite database"})
 
+    def test_default_weapon_export_resolves_active_account_assets_after_migration(self) -> None:
+        relative = Path("assets/hoyolab/weapons/fixture.png")
+        active = self.root / "data" / "profiles" / "profile-a"
+        other = self.root / "data" / "profiles" / "profile-b"
+        public_relative = Path("assets/public/fixture.png")
+        active_color = (30, 170, 70, 255)
+        public_color = (70, 90, 190, 255)
+        for path, color in (
+            (active / relative, active_color),
+            (self.root / relative, (200, 30, 30, 255)),
+            (other / relative, (200, 70, 20, 255)),
+            (self.root / public_relative, public_color),
+        ):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            Image.new("RGBA", (72, 72), color).save(path)
+
+        with (
+            patch("run_workspace.profile_context.PROJECT_ROOT", self.root),
+            patch("run_workspace.profile_context.ACCOUNT_ROOT", active),
+            patch("run_workspace.profile_context.PROFILE_ID", "profile-a"),
+        ):
+            for stored_path, expected in (
+                (relative, active_color),
+                (self.root / relative, active_color),
+                (active / relative, active_color),
+                (other / relative, None),
+                (public_relative, public_color),
+            ):
+                with self.subTest(stored_path=stored_path):
+                    with closing(sqlite3.connect(self.db)) as conn:
+                        conn.execute(
+                            "UPDATE account_weapon_observed_stacks SET icon_path = ? WHERE weapon_id = 11501",
+                            (str(stored_path),),
+                        )
+                        conn.commit()
+                    source_bytes = self.db.read_bytes()
+                    export_pvp_profile_package(
+                        self.package, db_path=self.db, deck_dir=self.decks,
+                        character_asset_paths={str(i): self.image for i in range(1001, 1025)},
+                    )
+                    self.assertEqual(self.db.read_bytes(), source_bytes)
+                    with zipfile.ZipFile(self.package) as archive:
+                        assets = json.loads(archive.read(PVP_PROFILE_ASSETS_NAME))
+                    with import_pvp_profile_package(self.package, temp_root=self.managed) as profile:
+                        is_placeholder = "11501" in assets["placeholders"]["weapons"]
+                        self.assertEqual(is_placeholder, expected is None)
+                        if expected is not None:
+                            with Image.open(profile.weapon_asset_paths["11501"]) as exported:
+                                self.assertEqual(exported.getpixel((0, 0)), expected)
+                                self.assertEqual(exported.info, {})
+
     def test_rejects_extra_schema_objects_and_dangling_references(self) -> None:
         for sql in (
             "CREATE TABLE cookie_dump (secret TEXT)",

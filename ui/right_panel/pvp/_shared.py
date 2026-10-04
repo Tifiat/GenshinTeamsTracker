@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
+from run_workspace.profile_context import account_asset_path
 from typing import Any
 
 from PySide6.QtCore import Qt
@@ -1315,7 +1316,7 @@ def _existing_local_asset_path(value: Any) -> str:
     path = Path(path_text)
     candidates = [path]
     if not path.is_absolute():
-        candidates.append(PVP_BROWSER_PROJECT_ROOT / path)
+        candidates.append(account_asset_path(path))
     for candidate in candidates:
         try:
             if candidate.is_file():

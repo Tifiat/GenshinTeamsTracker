@@ -1,4 +1,5 @@
 import os
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 from PySide6.QtCore import Qt, QMimeData, QEvent, QTimer
 from PySide6.QtGui import QPixmap, QDrag
@@ -119,8 +120,8 @@ class DraggableIcon(QLabel):
 				os.path.abspath("assets/weapons"),
 				os.path.abspath("assets/hd/characters"),
 				os.path.abspath("assets/hd/weapons"),
-				os.path.abspath("assets/hoyolab/characters"),
-				os.path.abspath("assets/hoyolab/weapons"),
+				str(ACCOUNT_ROOT / "assets/hoyolab/characters"),
+				str(ACCOUNT_ROOT / "assets/hoyolab/weapons"),
 			]
 
 			for assets_dir in assets_dirs:

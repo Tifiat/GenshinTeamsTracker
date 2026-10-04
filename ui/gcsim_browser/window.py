@@ -34,6 +34,7 @@ from ui.gcsim_browser.optimizer_result import (
     OptimizerResultBuildsWidget,
 )
 from ui.gcsim_browser.virtual_slot_editor import VirtualGcsimCardEditor
+from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.toggle_switch import ToggleSwitch
 from ui.utils.ui_palette import UI_TEXT_MUTED
 
@@ -1123,8 +1124,8 @@ class GcsimBrowserWorkspace(QWidget):
     def set_run_admission(self, allowed: bool, *, message: str = "") -> None:
         self._run_admitted = bool(allowed) and not self._preparation_only
         self.set_actions_busy(self._actions_busy)
-        self.run_selected_button.setToolTip(message)
-        self.run_all_button.setToolTip(message)
+        install_custom_tooltip(self.run_selected_button, message)
+        install_custom_tooltip(self.run_all_button, message)
 
     def set_prepare_result_text(self, text: str) -> None:
         self._set_result_text(

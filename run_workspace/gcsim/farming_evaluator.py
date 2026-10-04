@@ -43,7 +43,6 @@ from .config_structure import (
     build_gcsim_comment_free_view,
     validate_gcsim_farming_static_config,
 )
-from .engine_store import PROJECT_ROOT
 from .farming_search import CandidateEvaluation, SetProfileCandidate
 from .optimizer_backend import (
     GcsimBoundOptimizerError,
@@ -60,13 +59,14 @@ from .optimizer_config import (
 )
 from .optimizer_engine_context import GcsimOptimizerEngineContext
 from .runtime_probe import _trim_probe_text
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
 GCSIM_FARMING_EVALUATION_CONTRACT = "ordinary-screen-v2"
 GCSIM_FARMING_EVALUATION_IDENTITY_SCHEMA = 2
 GCSIM_FARMING_EVALUATION_CACHE_SCHEMA = 2
 GCSIM_FARMING_EVALUATION_CACHE_MODE = "farming_ordinary_screen_v2"
-DEFAULT_GCSIM_FARMING_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "farming-runs"
+DEFAULT_GCSIM_FARMING_RUNS_DIR = ACCOUNT_ROOT / "data" / "gcsim" / "farming-runs"
 DEFAULT_GCSIM_FARMING_CANDIDATE_TIMEOUT_SECONDS = 30.0
 PROCESS_POLL_INTERVAL_SECONDS = 0.05
 PROCESS_TERMINATE_GRACE_SECONDS = 0.5

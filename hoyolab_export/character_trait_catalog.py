@@ -14,7 +14,7 @@ from .hoyowiki_client import (
     fetch_hoyowiki_entry_page,
     normalize_hoyowiki_language,
 )
-from .paths import PROJECT_ROOT
+from .paths import PROJECT_ROOT, ACCOUNT_ROOT
 
 
 CHARACTER_TRAIT_CATALOG_SCHEMA_VERSION = 2
@@ -867,7 +867,7 @@ def refresh_hexerei_trait_reference(
         "localized_missing_count": localized_missing,
         "membership_rows": membership_rows,
         "language_summaries": summaries,
-        "db_path": str(PROJECT_ROOT / "data" / "artifacts.db"),
+        "db_path": str(ACCOUNT_ROOT / "data" / "artifacts.db"),
     }
 
 
@@ -1218,7 +1218,7 @@ def _dedupe_text(values: Iterable[str | None]) -> tuple[str, ...]:
 
 
 def _account_content_language() -> str:
-    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    path = ACCOUNT_ROOT / "data" / "hoyolab" / "account_language.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -1399,7 +1399,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--db-path",
-        default=str(PROJECT_ROOT / "data" / "artifacts.db"),
+        default=str(ACCOUNT_ROOT / "data" / "artifacts.db"),
         help="SQLite DB path to update.",
     )
     args = parser.parse_args(argv)

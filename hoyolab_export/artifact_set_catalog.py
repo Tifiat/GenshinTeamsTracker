@@ -1,10 +1,16 @@
 from __future__ import annotations
 
 import json
+import http.client
 import re
+import socket
+import sqlite3
+import time
 import unicodedata
 import urllib.error
 import urllib.request
+from contextlib import closing
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -28,6 +34,21 @@ SEED_CATALOG_PATH = PROJECT_ROOT / "data" / "static" / "artifact_set_catalog.jso
 USER_AGENT = "GenshinTeamsTracker/1.0"
 CANONICAL_LANGUAGE = "en-us"
 SEED_CATALOG_SCHEMA_VERSION = 3
+_CATALOG_FETCH_WORKERS = 4
+_CATALOG_NETWORK_ATTEMPTS = 3
+_CATALOG_RETRY_TABLE = "artifact_set_catalog_retry"
+
+
+class UnmappedArtifactSetError(RuntimeError):
+    """Raised when a HoYoLAB set id has no canonical catalog mapping."""
+
+    def __init__(self, *, hoyolab_set_id: int, display_name: str | None) -> None:
+        self.hoyolab_set_id = hoyolab_set_id
+        self.display_name = display_name
+        super().__init__(
+            "Artifact set mapping was not prepared: "
+            f"hoyolab_set_id={hoyolab_set_id}, display_name={display_name!r}"
+        )
 
 PIECE_ICON_FIELDS = {
     1: "flower_of_life_icon_url",
@@ -149,6 +170,34 @@ def download_file(url: str, destination: Path, *, timeout: float = 20.0) -> None
     tmp_path = destination.with_suffix(destination.suffix + ".tmp")
     tmp_path.write_bytes(data)
     tmp_path.replace(destination)
+
+
+def _is_retryable_catalog_network_error(exc: BaseException) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in {408, 425, 429} or 500 <= exc.code < 600
+    return isinstance(
+        exc,
+        (
+            urllib.error.URLError,
+            TimeoutError,
+            ConnectionError,
+            socket.timeout,
+            http.client.IncompleteRead,
+            http.client.RemoteDisconnected,
+        ),
+    )
+
+
+def _retry_catalog_network_call(operation: Callable[[], Any]) -> Any:
+    """Retry only transient transport failures; parsing and local I/O run once."""
+    for attempt in range(_CATALOG_NETWORK_ATTEMPTS):
+        try:
+            return operation()
+        except Exception as exc:
+            if attempt + 1 >= _CATALOG_NETWORK_ATTEMPTS or not _is_retryable_catalog_network_error(exc):
+                raise
+            time.sleep(0.1 * (attempt + 1))
+    raise RuntimeError("unreachable catalog retry state")
 
 
 def fetch_hoyowiki_artifact_sets(language: str = CANONICAL_LANGUAGE) -> list[dict[str, Any]]:
@@ -501,16 +550,41 @@ def update_artifact_set_catalog(
             f"localized names are handled by ensure_artifact_set_names({requested_language!r})."
         )
 
-    items = (list_fetcher or fetch_hoyowiki_artifact_sets)(language=CANONICAL_LANGUAGE)
+    try:
+        items = _retry_catalog_network_call(
+            lambda: (list_fetcher or fetch_hoyowiki_artifact_sets)(language=CANONICAL_LANGUAGE)
+        )
+        if not isinstance(items, list):
+            raise TypeError("artifact set list response is not an array")
+    except Exception as exc:
+        summary["errors"].append(
+            {
+                "stage": "list_fetch",
+                "error": _safe_catalog_error(exc),
+            }
+        )
+        return summary
     summary["sets_seen"] = len(items)
 
-    now = utc_now()
+    # Schema creation is committed before fetching starts. Read the current
+    # identity and icon cache in a short-lived connection, then release it.
+    with closing(connect_db(db_path)) as schema_conn:
+        init_db(schema_conn)
+        schema_conn.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {_CATALOG_RETRY_TABLE} (
+                entry_page_id TEXT PRIMARY KEY,
+                failure_stage TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        schema_conn.commit()
 
-    with connect_db(db_path) as conn:
-        init_db(conn)
+    with closing(connect_db(db_path)) as read_conn:
         existing_entry_ids = {
             str(row["hoyowiki_entry_id"] or "")
-            for row in conn.execute(
+            for row in read_conn.execute(
                 """
                 SELECT hoyowiki_entry_id
                 FROM artifact_sets
@@ -521,7 +595,7 @@ def update_artifact_set_catalog(
         }
         existing_set_uids = {
             str(row["set_uid"] or "")
-            for row in conn.execute(
+            for row in read_conn.execute(
                 """
                 SELECT set_uid
                 FROM artifact_sets
@@ -530,59 +604,216 @@ def update_artifact_set_catalog(
                 """
             ).fetchall()
         }
+        cached_icon_urls = {
+            (str(row["set_uid"]), int(row["pos"])): str(row["icon_url"] or "")
+            for row in read_conn.execute(
+                "SELECT set_uid, pos, icon_url FROM artifact_set_piece_icons"
+            ).fetchall()
+        }
+        retry_entry_ids = {
+            str(row["entry_page_id"])
+            for row in read_conn.execute(
+                f"SELECT entry_page_id FROM {_CATALOG_RETRY_TABLE}"
+            ).fetchall()
+        }
 
-        for item_index, item in enumerate(items, start=1):
-            entry_id = _entry_page_id(item)
-            fallback_name = _entry_name(item)
+    current_list_valid = bool(items) and all(
+        isinstance(item, dict)
+        and bool(_entry_page_id(item))
+        and bool(_entry_name(item))
+        and bool(set_uid_from_english_name(_entry_name(item)))
+        for item in items
+    )
+    if current_list_valid:
+        listed_entry_ids = {_entry_page_id(item) for item in items}
+        stale_retry_ids = retry_entry_ids - listed_entry_ids
+        if stale_retry_ids:
+            with closing(connect_db(db_path)) as prune_conn, prune_conn:
+                placeholders = ",".join("?" for _ in stale_retry_ids)
+                prune_conn.execute(
+                    f"DELETE FROM {_CATALOG_RETRY_TABLE} "
+                    f"WHERE entry_page_id IN ({placeholders})",
+                    tuple(sorted(stale_retry_ids)),
+                )
+            retry_entry_ids.difference_update(stale_retry_ids)
 
-            if not entry_id or not fallback_name:
-                continue
+    work_items: list[dict[str, Any]] = []
+    for item_index, item in enumerate(items, start=1):
+        if not isinstance(item, dict):
+            summary["errors"].append(
+                {
+                    "stage": "list_entry",
+                    "entry_page_id": "",
+                    "error": {"type": "ValueError", "message": "list entry is not an object"},
+                }
+            )
+            continue
+        entry_id = _entry_page_id(item)
+        fallback_name = _entry_name(item)
+        if not entry_id or not fallback_name:
+            summary["errors"].append(
+                {
+                    "stage": "list_entry",
+                    "entry_page_id": entry_id,
+                    "error": {"type": "ValueError", "message": "missing entry id or name"},
+                }
+            )
+            continue
 
-            set_uid = set_uid_from_english_name(fallback_name)
-            if not set_uid:
-                continue
+        set_uid = set_uid_from_english_name(fallback_name)
+        if not set_uid:
+            summary["errors"].append(
+                {
+                    "stage": "list_entry",
+                    "entry_page_id": entry_id,
+                    "error": {"type": "ValueError", "message": "could not derive set identity"},
+                }
+            )
+            continue
 
-            is_existing = entry_id in existing_entry_ids or set_uid in existing_set_uids
-            if is_existing:
-                summary["sets_existing"] += 1
-            else:
-                summary["sets_missing"] += 1
+        is_existing = entry_id in existing_entry_ids or set_uid in existing_set_uids
+        if is_existing:
+            summary["sets_existing"] += 1
+        else:
+            summary["sets_missing"] += 1
 
-            if missing_only and is_existing and not force_download:
-                summary["sets_skipped_existing"] += 1
-                continue
+        is_retry_pending = entry_id in retry_entry_ids
+        if missing_only and is_existing and not force_download and not is_retry_pending:
+            summary["sets_skipped_existing"] += 1
+            continue
 
-            print(f"[{item_index}/{len(items)}] {set_uid}")
+        display_field = item.get("display_field")
+        work_items.append(
+            {
+                "item_index": item_index,
+                "entry_page_id": entry_id,
+                "set_uid": set_uid,
+                "fallback_name": fallback_name,
+                "display_field": display_field if isinstance(display_field, dict) else {},
+                "is_existing": is_existing,
+                "retry_pending": is_retry_pending,
+            }
+        )
 
-            display_field = item.get("display_field")
-            if not isinstance(display_field, dict):
-                display_field = {}
-            try:
-                detail_page = fetch_hoyowiki_entry_page(
+    def prepare_entry(work_item: dict[str, Any]) -> dict[str, Any]:
+        prepared = {**work_item, "icons": [], "errors": [], "warnings": []}
+        set_uid = str(work_item["set_uid"])
+        entry_id = str(work_item["entry_page_id"])
+        display_field = work_item["display_field"]
+
+        try:
+            detail_page = _retry_catalog_network_call(
+                lambda: fetch_hoyowiki_entry_page(
                     entry_id,
                     language=CANONICAL_LANGUAGE,
                 )
-                piece_icons = extract_piece_icons_from_entry_page(detail_page)
-
-                if not piece_icons:
-                    summary["warnings"].append(
-                        f"{set_uid}: detail artifact_list has no piece icons; "
-                        "falling back to list display_field"
-                    )
-                    piece_icons = piece_icons_from_display_field(display_field)
-
-            except (
-                OSError,
-                urllib.error.URLError,
-                TimeoutError,
-                RuntimeError,
-                json.JSONDecodeError,
-            ) as exc:
-                summary["warnings"].append(
-                    f"{set_uid}: could not fetch detail piece icons: {exc}; "
-                    "falling back to list display_field"
+            )
+            piece_icons = extract_piece_icons_from_entry_page(detail_page)
+            if not piece_icons:
+                prepared["warnings"].append(
+                    "detail artifact_list has no piece icons; falling back to list display_field"
                 )
                 piece_icons = piece_icons_from_display_field(display_field)
+        except Exception as exc:
+            prepared["errors"].append(
+                {
+                    "stage": "detail_fetch",
+                    "error": _safe_catalog_error(exc),
+                }
+            )
+            prepared["warnings"].append(
+                "could not fetch detail piece icons; falling back to list display_field"
+            )
+            piece_icons = piece_icons_from_display_field(display_field)
+
+        for pos, raw_icon_url in sorted(piece_icons.items(), key=lambda item: str(item[0])):
+            icon_url = str(raw_icon_url or "").strip()
+            if not icon_url:
+                continue
+            status = "cached"
+            local_path = ""
+            try:
+                path = local_icon_path(set_uid, int(pos))
+                local_path = project_relative(path)
+                cached_icon_url = cached_icon_urls.get((set_uid, int(pos)), "")
+                should_download = (
+                    force_download
+                    or not path.exists()
+                    or not path.is_file()
+                    or cached_icon_url != icon_url
+                )
+                if should_download:
+                    _retry_catalog_network_call(
+                        lambda: download_file(icon_url, path)
+                    )
+                    status = "downloaded"
+            except Exception as exc:
+                status = "failed"
+                prepared["errors"].append(
+                    {
+                        "stage": "icon_download",
+                        "pos": pos,
+                        "error": _safe_catalog_error(exc),
+                    }
+                )
+            prepared["icons"].append(
+                {
+                    "pos": int(pos),
+                    "icon_url": icon_url,
+                    "local_path": local_path,
+                    "status": status,
+                }
+            )
+
+        return prepared
+
+    with ThreadPoolExecutor(max_workers=_CATALOG_FETCH_WORKERS) as executor:
+        prepared_entries = list(executor.map(prepare_entry, work_items))
+
+    now = utc_now()
+    with closing(connect_db(db_path)) as conn, conn:
+        for prepared in prepared_entries:
+            item_index = int(prepared["item_index"])
+            set_uid = str(prepared["set_uid"])
+            entry_id = str(prepared["entry_page_id"])
+            fallback_name = str(prepared["fallback_name"])
+            display_field = prepared["display_field"]
+            print(f"[{item_index}/{len(items)}] {set_uid}")
+
+            for warning in prepared["warnings"]:
+                summary["warnings"].append(f"{set_uid}: {warning}")
+            for error in prepared["errors"]:
+                if str(error.get("stage", "")).startswith("icon_"):
+                    summary["icons_failed"] += 1
+                summary["errors"].append(
+                    {
+                        "entry_page_id": entry_id,
+                        "set_uid": set_uid,
+                        **error,
+                    }
+                )
+
+            if prepared["errors"]:
+                failure_stages = ",".join(sorted({
+                    str(error.get("stage") or "unknown")
+                    for error in prepared["errors"]
+                }))
+                conn.execute(
+                    f"""
+                    INSERT INTO {_CATALOG_RETRY_TABLE} (
+                        entry_page_id, failure_stage, updated_at
+                    ) VALUES (?, ?, ?)
+                    ON CONFLICT(entry_page_id) DO UPDATE SET
+                        failure_stage = excluded.failure_stage,
+                        updated_at = excluded.updated_at
+                    """,
+                    (entry_id, failure_stages, now),
+                )
+            else:
+                conn.execute(
+                    f"DELETE FROM {_CATALOG_RETRY_TABLE} WHERE entry_page_id = ?",
+                    (entry_id,),
+                )
 
             conn.execute(
                 """
@@ -602,13 +833,7 @@ def update_artifact_set_catalog(
                     source = excluded.source,
                     updated_at = excluded.updated_at
                 """,
-                (
-                    set_uid,
-                    entry_id,
-                    set_uid,
-                    fallback_name,
-                    now,
-                ),
+                (set_uid, entry_id, set_uid, fallback_name, now),
             )
             summary["sets_upserted"] += 1
 
@@ -631,48 +856,17 @@ def update_artifact_set_catalog(
                 )
             )
 
-            for pos, icon_url in sorted(piece_icons.items()):
-                icon_url = str(icon_url or "").strip()
-                if not icon_url:
-                    continue
-
+            for icon in prepared["icons"]:
                 summary["icons_seen"] += 1
-
-                path = local_icon_path(set_uid, pos)
-                local_path = project_relative(path)
-
-                cached_icon_url = _cached_piece_icon_url(
-                    conn,
-                    set_uid=set_uid,
-                    pos=pos,
-                )
-                should_download = (
-                        force_download
-                        or not path.exists()
-                        or not path.is_file()
-                        or cached_icon_url != icon_url
-                )
-
-                if not should_download:
+                if icon["status"] == "downloaded":
+                    summary["icons_downloaded"] += 1
+                    print(f"  pos {icon['pos']}: downloaded")
+                elif icon["status"] == "cached":
                     summary["icons_already_cached"] += 1
-                    print(f"  pos {pos}: cached")
+                    print(f"  pos {icon['pos']}: cached")
                 else:
-                    try:
-                        download_file(icon_url, path)
-                        summary["icons_downloaded"] += 1
-                        print(f"  pos {pos}: downloaded")
-                    except (OSError, urllib.error.URLError, TimeoutError, RuntimeError) as exc:
-                        summary["icons_failed"] += 1
-                        print(f"  pos {pos}: failed: {exc}")
-                        if len(summary["errors"]) < 10:
-                            summary["errors"].append(
-                                {
-                                    "set_uid": set_uid,
-                                    "pos": pos,
-                                    "error": str(exc),
-                                }
-                            )
-                        continue
+                    print(f"  pos {icon['pos']}: failed")
+                    continue
 
                 conn.execute(
                     """
@@ -689,15 +883,22 @@ def update_artifact_set_catalog(
                         local_path = excluded.local_path,
                         updated_at = excluded.updated_at
                     """,
-                    (set_uid, pos, icon_url, local_path, now),
+                    (set_uid, icon["pos"], icon["icon_url"], icon["local_path"], now),
                 )
 
         _ensure_en_us_names_from_catalog(conn)
         backfill_artifact_set_uids(conn)
-        conn.commit()
 
-    conn.close()
     return summary
+
+
+def _safe_catalog_error(exc: Exception) -> dict[str, str]:
+    message = str(exc)
+    message = re.sub(r"https?://[^\s'\"]+", "<url>", message)
+    message = re.sub(r"[A-Za-z]:\\[^\s'\"]+", "<path>", message)
+    message = re.sub(r"/(?:[^\s'\"]+/)+[^\s'\"]*", "<path>", message)
+    message = message.strip()[:240] or "operation failed"
+    return {"type": type(exc).__name__, "message": message}
 
 
 def export_seed_catalog(
@@ -947,35 +1148,37 @@ def ensure_artifact_set_catalog(
     missing_only: bool = False,
     list_fetcher: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    with connect_db(db_path) as conn:
-        init_db(conn)
+    seed_summary: dict[str, Any] | None = None
+    with closing(connect_db(db_path)) as conn:
+        with conn:
+            init_db(conn)
 
-        if catalog_is_empty(conn):
-            seed_summary = seed_artifact_set_catalog_from_file(conn)
+            if catalog_is_empty(conn):
+                seed_summary = seed_artifact_set_catalog_from_file(
+                    conn,
+                    seed_path=SEED_CATALOG_PATH,
+                )
+
             en_us_names = _ensure_en_us_names_from_catalog(conn)
             backfill_artifact_set_uids(conn)
-            conn.commit()
 
-            if seed_summary.get("seeded"):
-                conn.close()
-                return {
-                    "source": "seed",
-                    "en_us_names_from_catalog": en_us_names,
-                    **seed_summary,
-                }
+    if seed_summary and seed_summary.get("seeded") and not allow_network:
+        return {
+            "source": "seed",
+            "en_us_names_from_catalog": en_us_names,
+            **seed_summary,
+        }
 
-        en_us_names = _ensure_en_us_names_from_catalog(conn)
-        backfill_artifact_set_uids(conn)
-        conn.commit()
-
-    conn.close()
     if allow_network:
         summary = update_artifact_set_catalog(
             db_path=db_path,
             missing_only=missing_only,
             list_fetcher=list_fetcher,
         )
-        return {"source": "network", **summary}
+        result = {"source": "network", **summary}
+        if seed_summary and seed_summary.get("seeded"):
+            result["seed"] = seed_summary
+        return result
 
     return {"source": "existing", "en_us_names_from_catalog": en_us_names}
 
@@ -990,7 +1193,7 @@ def ensure_artifact_set_names(
     lang = normalize_language(lang)
     catalog_summary = ensure_artifact_set_catalog(db_path=db_path, allow_network=False)
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         en_us_names = _ensure_en_us_names_from_catalog(conn)
         existing_row = conn.execute(
@@ -1039,7 +1242,7 @@ def ensure_artifact_set_names(
     matched = 0
     skipped = 0
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         entry_rows = conn.execute(
             """
@@ -1374,6 +1577,9 @@ async def ensure_hoyolab_set_mapping(
     real_ids: list[int] | list[dict[str, Any]],
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    allow_unmapped: bool = False,
+    english_details: dict[str, Any] | None = None,
+    account_context: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     localized_sets = _collect_relic_sets(character_details)
     set_ids = sorted(localized_sets)
@@ -1384,12 +1590,13 @@ async def ensure_hoyolab_set_mapping(
         "mapped": 0,
         "legacy_entry_id_mappings_cleared": 0,
         "en_names": {},
+        "unmapped": [],
     }
 
     ensure_artifact_set_catalog(db_path=db_path, allow_network=False)
     ensure_artifact_set_names(CANONICAL_LANGUAGE, db_path=db_path, allow_network=False)
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         cleared = _clear_legacy_entry_id_mappings(conn)
         known = _known_hoyolab_set_ids(conn, set_ids)
@@ -1405,14 +1612,26 @@ async def ensure_hoyolab_set_mapping(
 
     from .character_detail import fetch_character_details_batch
 
-    english_details = await fetch_character_details_batch(
-        export_page,
-        real_ids,
-        language=CANONICAL_LANGUAGE,
-    )
+    if (english_details is None and character_details.get("detectedLanguage")
+            and normalize_language(character_details["detectedLanguage"]) == CANONICAL_LANGUAGE):
+        english_details = character_details
+    if english_details is None and export_page is not None:
+        english_details = await fetch_character_details_batch(
+            export_page, real_ids, language=CANONICAL_LANGUAGE,
+            **(account_context or {}),
+        )
+    if english_details is None:
+        summary["unmapped"] = [
+            {"hoyolab_set_id": set_id, "display_name": _first_name(localized_sets.get(set_id)),
+             "reason": "English mapping source is not available yet"}
+            for set_id in unknown_ids
+        ]
+        if not allow_unmapped:
+            raise RuntimeError("English artifact mapping source is unavailable")
+        return summary
     english_sets = _collect_relic_sets(english_details)
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         name_index, duplicate_names = _load_en_name_index(conn)
         now = utc_now()
@@ -1498,24 +1717,26 @@ async def ensure_hoyolab_set_mapping(
     if remaining:
         details_by_id = {item["hoyolab_set_id"]: item for item in unmatched}
         missing_details = [
-            details_by_id.get(
-                set_id,
-                {
-                    "hoyolab_set_id": set_id,
-                    "en_name": _first_name(english_sets.get(set_id)),
-                    "reason": "not mapped",
-                },
-            )
+            {
+                **details_by_id.get(set_id, {}),
+                "hoyolab_set_id": set_id,
+                "display_name": _first_name(localized_sets.get(set_id))
+                or _first_name(english_sets.get(set_id)),
+                "en_name": _first_name(english_sets.get(set_id)),
+                "reason": details_by_id.get(set_id, {}).get("reason", "not mapped"),
+            }
             for set_id in remaining
         ]
+        summary["unmapped"] = missing_details
         pretty = "; ".join(
             f"{item['hoyolab_set_id']}: {item.get('en_name') or '<missing>'} ({item.get('reason')})"
             for item in missing_details
         )
-        raise RuntimeError(
-            "Could not map HoYoLAB artifact set ids through EN HoYoLAB details and "
-            f"canonical HoYoWiki names: {pretty}"
-        )
+        if not allow_unmapped:
+            raise RuntimeError(
+                "Could not map HoYoLAB artifact set ids through EN HoYoLAB details and "
+                f"canonical HoYoWiki names: {pretty}"
+            )
 
     return summary
 
@@ -1539,9 +1760,9 @@ def resolve_hoyolab_set_uid(
     ).fetchone()
 
     if row is None:
-        raise RuntimeError(
-            "Artifact set mapping was not prepared: "
-            f"hoyolab_set_id={hoyolab_set_id}, display_name={display_name!r}"
+        raise UnmappedArtifactSetError(
+            hoyolab_set_id=hoyolab_set_id,
+            display_name=display_name,
         )
 
     set_uid = str(row["set_uid"])

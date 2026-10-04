@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -12,6 +13,7 @@ from pathlib import Path, PurePosixPath
 from typing import Iterator
 
 from .artifact_db import ARTIFACT_DB_PATH
+from .import_store import latest_committed_import
 from .paths import (
     HOYOLAB_ARTIFACT_ASSETS_DIR,
     HOYOLAB_ASSETS_DIR,
@@ -21,6 +23,7 @@ from .paths import (
     HOYOLAB_WEAPON_ASSETS_DIR,
     HOYOLAB_SHARED_ASSETS_DIR,
     PROJECT_ROOT,
+    ACCOUNT_ROOT,
     clear_hoyolab_current_data,
     ensure_hoyolab_dirs,
 )
@@ -30,7 +33,7 @@ PROFILE_FORMAT = "genshin-teams-tracker-offline-profile"
 PROFILE_VERSION = 1
 PROFILE_MANIFEST_NAME = "offline_profile_manifest.json"
 PROFILE_EXPORT_STATE_FILE = HOYOLAB_DATA_DIR / "offline_export_state.json"
-RUNS_HISTORY_PATH = PROJECT_ROOT / "runs_history.json"
+RUNS_HISTORY_PATH = ACCOUNT_ROOT / "runs_history.json"
 
 PROFILE_DATA_FILES = (
     HOYOLAB_DATA_DIR / "account_language.json",
@@ -38,12 +41,14 @@ PROFILE_DATA_FILES = (
     HOYOLAB_DATA_DIR / "account_weapons.json",
     HOYOLAB_DATA_DIR / "crop_manifest.json",
     HOYOLAB_DATA_DIR / "account_character_details.json",
+    HOYOLAB_DATA_DIR / "account_summary.json",
 )
 PROFILE_ASSET_DIRS = (
     HOYOLAB_CHARACTER_ASSETS_DIR,
     HOYOLAB_WEAPON_ASSETS_DIR,
     HOYOLAB_SHARED_ASSETS_DIR,
     HOYOLAB_ARTIFACT_ASSETS_DIR,
+    HOYOLAB_ASSETS_DIR / "account",
 )
 RESTORABLE_FILES = {
     "data/hoyolab/account_language.json",
@@ -51,6 +56,7 @@ RESTORABLE_FILES = {
     "data/hoyolab/account_weapons.json",
     "data/hoyolab/crop_manifest.json",
     "data/hoyolab/account_character_details.json",
+    "data/hoyolab/account_summary.json",
     "data/artifacts.db",
 }
 RESTORABLE_PREFIXES = (
@@ -58,6 +64,7 @@ RESTORABLE_PREFIXES = (
     "assets/hoyolab/weapons/",
     "assets/hoyolab/shared/",
     "assets/hoyolab/artifacts/",
+    "assets/hoyolab/account/",
 )
 
 
@@ -75,7 +82,7 @@ def _artifact_db_sidecars() -> list[Path]:
 
 def _safe_project_relative(path: Path) -> str:
     resolved = path.resolve()
-    root = PROJECT_ROOT.resolve()
+    root = ACCOUNT_ROOT.resolve()
     try:
         relative = resolved.relative_to(root)
     except ValueError as exc:
@@ -108,8 +115,9 @@ def _backup_sqlite_db(source: Path, destination: Path) -> Path | None:
                 dst.close()
         finally:
             src.close()
-    except sqlite3.DatabaseError:
-        shutil.copy2(source, destination)
+    except sqlite3.DatabaseError as exc:
+        # Copying a live/corrupt DB file can silently omit WAL transactions.
+        raise RuntimeError("Could not create a consistent account snapshot") from exc
 
     return destination
 
@@ -118,9 +126,12 @@ def _iter_current_profile_files(
     *,
     artifact_db_snapshot: Path | None = None,
 ) -> Iterator[tuple[Path, str]]:
+    projections = _snapshot_projection_files(artifact_db_snapshot)
     for path in PROFILE_DATA_FILES:
-        if path.exists():
-            yield path, _safe_project_relative(path)
+        archive_name = _safe_project_relative(path)
+        source_path = projections.get(archive_name, path)
+        if source_path.exists():
+            yield source_path, archive_name
 
     for folder in PROFILE_ASSET_DIRS:
         for path in _iter_asset_files(folder):
@@ -128,6 +139,43 @@ def _iter_current_profile_files(
 
     if ARTIFACT_DB_PATH.exists():
         yield artifact_db_snapshot or ARTIFACT_DB_PATH, "data/artifacts.db"
+
+
+def _snapshot_projection_files(snapshot: Path | None) -> dict[str, Path]:
+    """Derive exported JSON from the same SQLite backup as the exported DB.
+
+    A failed projection write during import must never mix a new database with
+    stale account JSON. Files live only inside the caller's temporary snapshot.
+    Legacy databases keep their existing allowlisted JSON.
+    """
+    if snapshot is None:
+        return {}
+    current = latest_committed_import(snapshot)
+    if current is None:
+        return {}
+    source = current["source"]
+    data = {
+        "account_characters.json": source["account_characters"],
+        "account_weapons.json": source["account_weapons"],
+        "account_character_details.json": source["account_character_details"],
+        "account_language.json": {
+            "contentLanguage": source["content_language"],
+            "accountUid": current["account_uid"], "server": current["server"],
+            "attemptId": current["attempt_id"], "observedAt": current["observed_at"],
+            "source": "committed_hoyolab_snapshot",
+        },
+    }
+    manifest = (current["enrichment"].get("assets") or {}).get("result", {}).get("manifest")
+    if manifest:
+        data["crop_manifest.json"] = manifest
+    result = {}
+    folder = snapshot.parent / "profile-projections"
+    folder.mkdir(exist_ok=True)
+    for name, value in data.items():
+        path = folder / name
+        path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+        result["data/hoyolab/" + name] = path
+    return result
 
 
 def _file_digest(path: Path) -> str:
@@ -276,9 +324,18 @@ def export_offline_profile(zip_path: str | Path) -> dict[str, object]:
 
 
 def _safe_archive_name(name: str) -> str:
-    normalized = name.replace("\\", "/")
-    path = PurePosixPath(normalized)
-    if path.is_absolute() or any(part in {"", ".."} for part in path.parts):
+    # Validate the original spelling: PurePosixPath silently folds repeated
+    # separators and dot segments, which would hide ambiguous ZIP members.
+    parts = name.split("/")
+    if (not name or "\\" in name
+            or any(part in {"", ".", ".."} or part[-1:] in {" ", "."}
+                   or any(ord(char) < 32 or char in '<>:"|?*' for char in part)
+                   or re.fullmatch(r"(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?",
+                                   part, flags=re.IGNORECASE)
+                   for part in parts)):
+        raise RuntimeError(f"Unsafe offline profile entry: {name}")
+    path = PurePosixPath(name)
+    if path.is_absolute():
         raise RuntimeError(f"Unsafe offline profile entry: {name}")
     return path.as_posix()
 
@@ -290,8 +347,8 @@ def _is_restorable_entry(name: str) -> bool:
 
 
 def _project_target_for_archive_name(name: str) -> Path:
-    target = (PROJECT_ROOT / name).resolve()
-    root = PROJECT_ROOT.resolve()
+    target = (ACCOUNT_ROOT / name).resolve()
+    root = ACCOUNT_ROOT.resolve()
     try:
         target.relative_to(root)
     except ValueError as exc:
@@ -307,7 +364,7 @@ def _delete_artifact_db() -> None:
             pass
 
 
-def import_offline_profile(zip_path: str | Path) -> dict[str, object]:
+def import_offline_profile(zip_path: str | Path, *, target_root: Path | None = None) -> dict[str, object]:
     input_path = Path(zip_path)
     if not input_path.exists():
         raise FileNotFoundError(input_path)
@@ -315,38 +372,60 @@ def import_offline_profile(zip_path: str | Path) -> dict[str, object]:
     restored_files = []
 
     with zipfile.ZipFile(input_path, "r") as archive:
+        archive_entries: list[tuple[zipfile.ZipInfo, str]] = []
+        seen_names: set[str] = set()
         for info in archive.infolist():
             if info.is_dir():
+                if target_root is not None:
+                    raise RuntimeError("Managed offline profiles cannot contain directory entries")
                 continue
 
             name = _safe_archive_name(info.filename)
+            if target_root is not None and name in seen_names:
+                raise RuntimeError(f"Duplicate offline profile entry: {name}")
+            seen_names.add(name)
             if name == PROFILE_MANIFEST_NAME:
                 continue
             if not _is_restorable_entry(name):
                 raise RuntimeError(f"Unexpected offline profile entry: {name}")
+            archive_entries.append((info, name))
 
-        clear_hoyolab_current_data()
-        _delete_artifact_db()
-        ensure_hoyolab_dirs()
+        if target_root is not None:
+            if PROFILE_MANIFEST_NAME not in seen_names:
+                raise RuntimeError("Offline profile manifest is missing")
+            try:
+                manifest = json.loads(archive.read(PROFILE_MANIFEST_NAME))
+            except (UnicodeError, json.JSONDecodeError) as exc:
+                raise RuntimeError("Offline profile manifest is invalid") from exc
+            if (not isinstance(manifest, dict)
+                    or manifest.get("format") != PROFILE_FORMAT
+                    or manifest.get("version") != PROFILE_VERSION
+                    or manifest.get("includedFiles") != [name for _, name in archive_entries]):
+                raise RuntimeError("Offline profile manifest does not match archive contents")
 
-        for info in archive.infolist():
-            if info.is_dir():
-                continue
+        if target_root is None:
+            clear_hoyolab_current_data()
+            _delete_artifact_db()
+            ensure_hoyolab_dirs()
+        else:
+            target_root = Path(target_root).resolve()
+            if not target_root.is_dir() or any(target_root.iterdir()):
+                raise RuntimeError("An offline account must be restored into an empty profile")
 
-            name = _safe_archive_name(info.filename)
-            if name == PROFILE_MANIFEST_NAME:
-                continue
-            if not _is_restorable_entry(name):
-                continue
-
-            target = _project_target_for_archive_name(name)
+        for info, name in archive_entries:
+            target = _project_target_for_archive_name(name) if target_root is None else (target_root / name).resolve()
+            if target_root is not None and not target.is_relative_to(target_root):
+                raise RuntimeError("Offline profile entry escapes the selected account")
             target.parent.mkdir(parents=True, exist_ok=True)
             with archive.open(info, "r") as source, target.open("wb") as destination:
                 shutil.copyfileobj(source, destination)
             restored_files.append(name)
 
-    ensure_hoyolab_dirs()
-    signature = mark_current_profile_exported(input_path)
+    if target_root is None:
+        ensure_hoyolab_dirs()
+        signature = mark_current_profile_exported(input_path)
+    else:
+        signature = None
 
     return {
         "path": input_path,

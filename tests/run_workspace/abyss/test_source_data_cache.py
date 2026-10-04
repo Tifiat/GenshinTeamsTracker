@@ -6,8 +6,12 @@ import threading
 import time
 import tempfile
 import unittest
+from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.error import HTTPError
 from unittest.mock import patch
+from PIL import Image
 
 from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from run_workspace.abyss.source_data_cache import (
@@ -22,6 +26,8 @@ from run_workspace.abyss.source_data_cache import (
 )
 
 from tests.run_workspace.abyss.test_source_data_update import current_style_reports
+from tests.run_workspace.abyss.test_source_data import composition_report, fandom_row
+from run_workspace.abyss.monster_icon_catalog import parse_nanoka_monster_icon_catalog
 
 
 def _current_style_source_data():
@@ -37,10 +43,102 @@ def _current_style_source_data():
 class AbyssSourceDataCacheTest(unittest.TestCase):
     def test_wikia_icons_use_source_referrer(self) -> None:
         url = "https://static.wikia.nocookie.net/gensin-impact/images/a/icon.png"
-        with patch("run_workspace.abyss.source_data_cache.urlopen", return_value=io.BytesIO(b"icon")) as opener:
-            self.assertEqual(_fetch_url_bytes(url), b"icon")
+        encoded = io.BytesIO()
+        Image.new("RGBA", (2, 2)).save(encoded, format="PNG")
+        payload = encoded.getvalue()
+        with patch("run_workspace.abyss.source_data_cache.urlopen", return_value=io.BytesIO(payload)) as opener:
+            self.assertEqual(_fetch_url_bytes(url), payload)
         request = opener.call_args.args[0]
         self.assertEqual(request.get_header("Referer"), "https://genshin-impact.fandom.com/")
+
+    def test_browser_challenge_is_reported_without_retry(self) -> None:
+        failure = HTTPError("https://static.wikia.nocookie.net/icon.png", 403,
+                            "Forbidden", {"Cf-Mitigated": "challenge"}, None)
+        with patch("run_workspace.abyss.source_data_cache.urlopen", side_effect=failure) as fetch:
+            with self.assertRaisesRegex(AbyssSourceDataCacheError, "Cloudflare challenge"):
+                _fetch_url_bytes(failure.url)
+        fetch.assert_called_once()
+
+    def test_html_response_is_not_saved_as_an_icon(self) -> None:
+        with patch("run_workspace.abyss.source_data_cache.urlopen",
+                   return_value=io.BytesIO(b"<html>Enable JavaScript</html>")):
+            with self.assertRaises(AbyssSourceDataCacheError):
+                _fetch_url_bytes("https://static.wikia.nocookie.net/icon.png")
+
+    def test_empty_tower_catalog_repairs_icons_without_changing_hp(self) -> None:
+        data = load_abyss_floor12_source_data(
+            "2026-09-16", "123",
+            composition_report=composition_report("2026-09-16", [
+                fandom_row("Fisher of Hidden Depths", chamber=1, side=1, wave=1),
+            ]),
+            nanoka_report={"towers": [{"enemy_rows": []}]},
+        )
+        catalog = parse_nanoka_monster_icon_catalog({
+            "22140101": {"en": "Fisher of Hidden Depths", "icon": "UI_MonsterIcon_Lloigor_Sub"},
+        })
+        calls = []
+        def image_fetcher(url):
+            calls.append(url)
+            if "wikia" in url:
+                raise HTTPError(url, 403, "Forbidden", {}, None)
+            return b"nanoka-image"
+        with tempfile.TemporaryDirectory() as tmp, ThreadPoolExecutor(max_workers=1) as pool, patch(
+            "run_workspace.abyss.source_data_cache.fetch_nanoka_monster_icon_catalog",
+            return_value=catalog,
+        ) as catalog_fetch:
+            result = cache_abyss_floor_monster_icons(
+                data, cache_dir=tmp, icon_fetcher=image_fetcher, executor=pool,
+            )
+            save_abyss_floor_source_data(result.data, cache_dir=tmp)
+            loaded = load_cached_abyss_floor_source_data("2026-09-16", cache_dir=tmp)
+            second = cache_abyss_floor_monster_icons(
+                loaded, cache_dir=tmp, icon_fetcher=image_fetcher,
+            )
+        self.assertEqual(result.saved, 1)
+        self.assertEqual(result.failed, 0)
+        self.assertEqual(second.cache_hits, 1)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("UI_MonsterIcon_Lloigor_Sub.webp", calls[0])
+        catalog_fetch.assert_called_once()
+        before, after = data.enemy_rows[0], result.data.enemy_rows[0]
+        for field in ("nanoka_hp", "nanoka_monster_id", "hp_source", "match_method", "enemy_count"):
+            self.assertEqual(getattr(before, field), getattr(after, field))
+
+    def test_unavailable_catalog_and_fandom_keep_source_data_usable(self) -> None:
+        data = _current_style_source_data()
+        data = replace(data, enemy_rows=tuple(replace(row, nanoka_icon_url=None)
+                                             for row in data.enemy_rows))
+        with tempfile.TemporaryDirectory() as tmp, patch(
+            "run_workspace.abyss.source_data_cache.fetch_nanoka_monster_icon_catalog",
+            side_effect=OSError("catalog offline"),
+        ) as catalog_fetch:
+            result = cache_abyss_floor_monster_icons(
+                data, cache_dir=tmp,
+                icon_fetcher=lambda _url: (_ for _ in ()).throw(OSError("403")),
+            )
+            path = save_abyss_floor_source_data(result.data, cache_dir=tmp)
+            self.assertTrue(path.is_file())
+        catalog_fetch.assert_called_once()
+        self.assertEqual(result.failed, len(data.enemy_rows))
+        self.assertEqual(result.data.matched_count, data.matched_count)
+        self.assertIn("nanoka_icon_catalog_unavailable", result.data.global_warnings)
+
+    def test_existing_fandom_cache_is_reused_without_catalog_or_download(self) -> None:
+        data = _current_style_source_data()
+        data = replace(data, enemy_rows=tuple(replace(row, nanoka_icon_url=None)
+                                             for row in data.enemy_rows))
+        with tempfile.TemporaryDirectory() as tmp, patch(
+            "run_workspace.abyss.source_data_cache.fetch_nanoka_monster_icon_catalog",
+            return_value={},
+        ) as catalog_fetch:
+            cache_abyss_floor_monster_icons(data, cache_dir=tmp, icon_fetcher=lambda _: b"saved")
+            catalog_fetch.reset_mock()
+            result = cache_abyss_floor_monster_icons(
+                data, cache_dir=tmp,
+                icon_fetcher=lambda _: self.fail("Existing icons must not be downloaded again"),
+            )
+        catalog_fetch.assert_not_called()
+        self.assertEqual(result.cache_hits, len(data.enemy_rows))
 
     def test_default_cache_path_is_project_root_anchored(self) -> None:
         path = cached_abyss_floor_source_data_path("2026-05-16", floor=12)
@@ -150,6 +248,12 @@ class AbyssSourceDataCacheTest(unittest.TestCase):
     def test_cache_monster_icons_prefers_nanoka_icon_urls(self) -> None:
         data = _current_style_source_data()
         fetched_urls: list[str] = []
+        progress: list[tuple[str, int, int]] = []
+
+        def record_progress(phase: str, completed: int, total: int) -> None:
+            progress.append((phase, completed, total))
+            if completed == 1:
+                raise RuntimeError("progress observers must be non-fatal")
 
         def fetcher(url: str) -> bytes:
             fetched_urls.append(url)
@@ -160,6 +264,7 @@ class AbyssSourceDataCacheTest(unittest.TestCase):
                 data,
                 cache_dir=tmp,
                 icon_fetcher=fetcher,
+                progress_callback=record_progress,
             )
             first_row = result.data.enemy_rows[0]
 
@@ -167,6 +272,8 @@ class AbyssSourceDataCacheTest(unittest.TestCase):
         self.assertEqual(result.saved, 10)
         self.assertEqual(result.failed, 0)
         self.assertEqual(result.downloaded, 10)
+        self.assertIn(("icons", 0, 10), progress)
+        self.assertIn(("icons", 10, 10), progress)
         self.assertTrue(all("static.nanoka.cc" in url for url in fetched_urls))
         self.assertIsNotNone(first_row.cached_icon_path)
         assert first_row.cached_icon_path is not None

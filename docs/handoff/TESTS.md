@@ -8,6 +8,11 @@ remain in dated receipts; documentation maintenance does not rerun product tests
 
 ## Layout
 
+The focused tooltip entry is `python tools/check_tooltips.py` (offscreen,
+read-only current-account witness; optional `--db` selects an existing catalog).
+[Tooltip contracts](TOOLTIP_CONTRACTS.md) owns semantic families, missing-data
+behavior and the rule to update regressions with every reported tooltip fix.
+
 Mirror the primary project owner under `tests/`:
 
 - `tests/hoyolab_export/account/` - account storage, equipment, import pipeline,

@@ -162,6 +162,12 @@ class FandomEnemyHpFallbackTest(unittest.TestCase):
             ),
         )
         calls: list[str] = []
+        progress: list[tuple[str, int, int]] = []
+
+        def record_progress(*event: str | int) -> None:
+            progress.append(event)  # type: ignore[arg-type]
+            if len(event) > 1 and event[1] == 1:
+                raise RuntimeError("progress observers must be non-fatal")
 
         def fetcher(url: str) -> EnemyPage:
             calls.append(url)
@@ -173,6 +179,7 @@ class FandomEnemyHpFallbackTest(unittest.TestCase):
             mode=HP_FALLBACK_MODE_AUTO,
             enemy_page_fetcher=fetcher,
             enemy_page_workers=5,
+            progress_callback=record_progress,
         )
 
         self.assertEqual(result.attempted, 3)
@@ -180,6 +187,8 @@ class FandomEnemyHpFallbackTest(unittest.TestCase):
         self.assertEqual(result.page_fetches, 2)
         self.assertEqual(result.page_cache_hits, 1)
         self.assertEqual(len(calls), 2)
+        self.assertIn(("hp", 0, 2), progress)
+        self.assertIn(("hp", 2, 2), progress)
         self.assertTrue(all(row.nanoka_hp == 7500 for row in result.data.enemy_rows))
 
     def test_specific_heading_wins_over_generic_stats(self) -> None:

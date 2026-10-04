@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from localization import tr
 from ui.utils.icon_utils import auto_contrast_svg_icon
+from ui.utils.tooltips import install_custom_tooltip
 
 from .store import ArtifactSetOption, CustomSetOption
 
@@ -298,7 +299,7 @@ class SetsFilterPopup(QWidget):
     def _icon_button(self, icon_name: str, tooltip: str) -> QPushButton:
         button = QPushButton()
         button.setIcon(self._ui_icon(icon_name))
-        button.setToolTip(tooltip)
+        button.setProperty("_custom_tooltip_controller", install_custom_tooltip(button, tooltip))
         button.setFixedWidth(30)
         return button
 

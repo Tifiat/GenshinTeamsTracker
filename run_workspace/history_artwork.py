@@ -6,10 +6,10 @@ from pathlib import Path
 import os
 import tempfile
 
-from run_workspace.app_settings import PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 
-ARTWORK_ROOT = PROJECT_ROOT / "data" / "history" / "presentation"
+ARTWORK_ROOT = ACCOUNT_ROOT / "data" / "history" / "presentation"
 
 
 class HistoryArtworkStore:

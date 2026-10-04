@@ -4,7 +4,11 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from .artifact_build_snapshot import ArtifactBuildSnapshot, build_artifact_build_snapshot
+from .artifact_build_snapshot import (
+    WARNING_ARTIFACT_SET_CANONICAL_MAPPING_MISSING,
+    ArtifactBuildSnapshot,
+    build_artifact_build_snapshot,
+)
 from .catalog_mapping import normalize_catalog_name
 from .catalog_sanity import (
     DEFAULT_SPECIAL_TRAVELER_NAMES,
@@ -284,6 +288,7 @@ def build_character_stat_snapshot(
             WARNING_INTERPOLATION_NOT_IMPLEMENTED,
             WARNING_ASCENSION_PHASE_UNKNOWN,
             WARNING_ARTIFACT_SUMMARY_MISSING,
+            WARNING_ARTIFACT_SET_CANONICAL_MAPPING_MISSING,
         )
     ):
         status = SNAPSHOT_STATUS_PARTIAL

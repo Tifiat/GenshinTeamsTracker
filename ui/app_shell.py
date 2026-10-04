@@ -48,6 +48,7 @@ from hoyolab_export.display_stat_effects import (
     list_weapon_display_stat_effects,
 )
 from hoyolab_export.paths import PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT, account_asset_path
 from hoyolab_export.team_card_data import (
     BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT,
     build_current_equipment_artifact_snapshot,
@@ -221,7 +222,7 @@ from ui.utils.ui_palette import (
 )
 
 
-HISTORY_SNAPSHOT_ROOT = PROJECT_ROOT / "data" / "history" / "snapshots"
+HISTORY_SNAPSHOT_ROOT = ACCOUNT_ROOT / "data" / "history" / "snapshots"
 LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
 LEFT_WORKSPACE_ARTIFACTS = "artifacts"
 LEFT_WORKSPACE_GCSIM = "gcsim"
@@ -597,7 +598,7 @@ class AppShellController:
             saved_path = HistorySnapshotBundleStore(history_root).write_bundle_grouped(
                 bundle,
                 copy_assets=True,
-                asset_source_roots=(PROJECT_ROOT,),
+                asset_source_roots=(ACCOUNT_ROOT, PROJECT_ROOT),
             )
             return RunSaveResult(
                 success=True,
@@ -1739,6 +1740,9 @@ class AppShell(QWidget):
         self.right_dock.account_page.account_data_changed.connect(
             self._on_account_data_changed
         )
+        self.right_dock.account_page.profile_operation_requested.connect(
+            self._on_profile_operation_requested
+        )
         self.right_dock.account_page.language_changed.connect(self.retranslate_ui)
         self.right_dock.account_page.fact_dps_multi_target_changed.connect(
             self._on_fact_dps_multi_target_changed
@@ -1868,6 +1872,19 @@ class AppShell(QWidget):
         self._sync_artifact_browser_operation_target()
         self._sync_gcsim_browser_context()
         self._sync_virtual_gcsim_controls()
+
+    def _on_profile_operation_requested(self, operation: str, profile_id: str) -> None:
+        worker = getattr(self, "_gcsim_browser_run_thread", None)
+        if worker is not None and worker.isRunning():
+            QMessageBox.information(self, tr("app_shell.account.title"), tr("accounts.busy"))
+            return
+        try:
+            from run_workspace.profile_control import request_profile_operation
+            request_profile_operation(operation, profile_id)
+        except Exception as exc:
+            QMessageBox.warning(self, tr("app_shell.account.title"), str(exc))
+            return
+        QApplication.instance().quit()
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("app_shell.title"))
@@ -2131,7 +2148,7 @@ class AppShell(QWidget):
             )
             return
 
-        run_dir = PROJECT_ROOT / "data" / "gcsim" / "runs" / "gcsim-browser-prepare"
+        run_dir = ACCOUNT_ROOT / "data" / "gcsim" / "runs" / "gcsim-browser-prepare"
         rotation_shell_path = run_dir / "rotation_shell.txt"
         try:
             binding = _active_run_binding(_selected_gcsim_engine_id())
@@ -4939,7 +4956,7 @@ def _existing_project_file_path(value: Any) -> str:
         return ""
     path = Path(raw)
     if not path.is_absolute():
-        path = PROJECT_ROOT / path
+        path = account_asset_path(path)
     if not path.exists():
         return ""
     try:
@@ -5050,7 +5067,7 @@ def _weapon_equipment_fingerprint(weapon: dict[str, Any]) -> str:
 
 
 def _account_content_language() -> str:
-    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    path = ACCOUNT_ROOT / "data" / "hoyolab" / "account_language.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -5192,7 +5209,17 @@ def _dedupe(values: list[str]) -> list[str]:
 def launch_app_shell() -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     window = AppShell()
+    from run_workspace.account_profiles import active_profile
+    profile = active_profile()
+    if profile is None or not profile["imported"]:
+        window.right_dock.show_account_page()
     window.show()
+    import os
+    operation_error = os.environ.pop("GTT_PROFILE_ACTION_ERROR", "")
+    if operation_error:
+        QTimer.singleShot(0, lambda: QMessageBox.warning(
+            window, tr("app_shell.account.title"), operation_error,
+        ))
     return app.exec()
 
 

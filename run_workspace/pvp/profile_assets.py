@@ -13,7 +13,7 @@ from typing import Any, Mapping
 from PIL import Image
 
 from hoyolab_export.asset_paths import character_variant_path
-from hoyolab_export.paths import PROJECT_ROOT
+from run_workspace.profile_context import account_asset_path
 
 
 ASSET_MANIFEST_NAME = "assets.json"
@@ -168,5 +168,4 @@ def _check_image_size(size: tuple[int, int]) -> None:
 def _source_path(value: object) -> Path | None:
     if not value:
         return None
-    path = Path(str(value))
-    return path if path.is_absolute() else PROJECT_ROOT / path
+    return account_asset_path(str(value))

@@ -36,7 +36,7 @@ class HoYoLABLoginHintOverlay(QDialog):
             """
         )
 
-        self.body_label = QLabel(tr("hoyolab.login_hint_body"))
+        self.body_label = QLabel(tr("accounts.login_hint"))
         self.body_label.setAlignment(Qt.AlignLeft)
         self.body_label.setWordWrap(True)
         self.body_label.setStyleSheet(
@@ -90,5 +90,5 @@ class HoYoLABLoginHintOverlay(QDialog):
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("common.hoyolab"))
         self.title_label.setText(tr("hoyolab.login_hint_title"))
-        self.body_label.setText(tr("hoyolab.login_hint_body"))
+        self.body_label.setText(tr("accounts.login_hint"))
         self.position_on_screen()

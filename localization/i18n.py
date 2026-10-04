@@ -4,11 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from run_workspace.app_settings import get_app_setting, set_app_setting
+from run_workspace.settings_defaults import settings_default
 
 
 LOCALES_DIR = Path(__file__).resolve().parent / "locales"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_LANGUAGE = "ru"
+DEFAULT_LANGUAGE = str(settings_default("ui_language"))
 LANGUAGE_OPTIONS = [
     ("ru", "🇷🇺 Русский"),
     ("en", "🇺🇸 English"),

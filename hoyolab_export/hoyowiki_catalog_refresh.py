@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Iterable, TypeVar
@@ -42,6 +44,7 @@ from .weapon_stats_catalog import (
 
 
 CHARACTER_LIST_MENU_ID = "2"
+_CATALOG_REFRESH_WORKERS = 4
 TRAVELER_HANDLING_NOTE = (
     "Traveler variants from HoYoWiki are catalog entries. Account Traveler mapping "
     "is special/deferred and must not be solved by aliasing to one variant."
@@ -284,6 +287,7 @@ def refresh_weapon_stats_catalog_entries(
     failures: list[CatalogRefreshFailure] = []
     preserved_existing_after_failure = 0
 
+    entries_to_fetch: list[str] = []
     for entry_page_id in requested_ids:
         existing = existing_by_id.get(entry_page_id)
         if (
@@ -293,6 +297,10 @@ def refresh_weapon_stats_catalog_entries(
         ):
             skipped_existing += 1
             continue
+
+        entries_to_fetch.append(entry_page_id)
+
+    def fetch_one(entry_page_id: str) -> tuple[str, WeaponStatsEntry | None, Exception | None]:
         try:
             page = detail_fetcher(entry_page_id, lang)
             entry = parse_weapon_stats_page(
@@ -300,14 +308,26 @@ def refresh_weapon_stats_catalog_entries(
                 entry_page_id=entry_page_id,
                 language=lang,
             )
+            return entry_page_id, entry, None
+        except Exception as exc:
+            return entry_page_id, None, exc
+
+    with ThreadPoolExecutor(max_workers=_CATALOG_REFRESH_WORKERS) as executor:
+        fetch_results = list(executor.map(fetch_one, entries_to_fetch))
+
+    for entry_page_id, entry, error in fetch_results:
+        if error is None and entry is not None:
             merged_by_id[entry_page_id] = entry
             fetched += 1
-        except Exception as exc:
+            continue
+
+        existing = existing_by_id.get(entry_page_id)
+        if error is not None:
             failures.append(
                 CatalogRefreshFailure(
                     entry_page_id=entry_page_id,
                     name=existing.name if existing else "",
-                    error=str(exc),
+                    error=_safe_catalog_refresh_error(error),
                 )
             )
             if existing is not None:
@@ -519,6 +539,15 @@ def _display_path(path: Path) -> str:
         return path.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
     except Exception:
         return path.name
+
+
+def _safe_catalog_refresh_error(exc: Exception) -> str:
+    message = str(exc)
+    message = re.sub(r"https?://[^\s'\"]+", "<url>", message)
+    message = re.sub(r"[A-Za-z]:\\[^\s'\"]+", "<path>", message)
+    message = re.sub(r"/(?:[^\s'\"]+/)+[^\s'\"]*", "<path>", message)
+    message = message.strip()[:240] or "operation failed"
+    return f"{type(exc).__name__}: {message}"
 
 
 def _write_stdout(text: str) -> None:

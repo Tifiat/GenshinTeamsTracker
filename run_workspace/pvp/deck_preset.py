@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from hoyolab_export.paths import PROJECT_ROOT
+from run_workspace.profile_context import ACCOUNT_ROOT
 
 from .deck import (
     DRAFT_DECK_KIND,
@@ -34,7 +34,7 @@ from .weapon_identity import (
 
 PVP_DECK_PRESET_SCHEMA_VERSION = 1
 PVP_DECK_PRESET_KIND = "gtt.pvp_deck_preset"
-DEFAULT_PVP_DECK_PRESET_DIR = PROJECT_ROOT / "data" / "pvp" / "decks"
+DEFAULT_PVP_DECK_PRESET_DIR = ACCOUNT_ROOT / "data" / "pvp" / "decks"
 
 
 class DeckPresetError(ValueError):
@@ -202,7 +202,7 @@ def resolve_deck_preset_dir(
     path = Path(directory)
     if path.is_absolute():
         return path
-    return PROJECT_ROOT / path
+    return ACCOUNT_ROOT / path
 
 
 def deck_preset_to_json_text(preset: PvpDeckPreset, *, indent: int = 2) -> str:

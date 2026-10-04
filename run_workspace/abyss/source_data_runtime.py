@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -27,6 +28,9 @@ class CachedAbyssPeriodRef:
     end_date: str | None = None
     raw_period: str = ""
     source_path: str = ""
+    source: str = ""
+    fallback: bool | None = None
+    warnings: tuple[str, ...] = ()
 
 
 def read_cached_hoyolab_abyss_period(
@@ -43,14 +47,24 @@ def read_cached_hoyolab_abyss_period(
         return None
     if not isinstance(payload, Mapping):
         return None
-    start_date = _date_text(payload.get("startDate") or payload.get("start_date"))
+    start_date = _date_text(_first_present(payload, "startDate", "start_date"))
     if not start_date:
         return None
+    end_value = _first_present(payload, "endDate", "end_date")
+    raw_period = _first_present(payload, "rawPeriod", "raw_period", default="")
+    source_path = _first_present(payload, "sourcePath", "source_path", default="")
+    source = payload.get("source", "")
+    fallback = payload.get("fallback")
+    raw_warnings = payload.get("warnings", ())
+    warnings = _warning_texts(raw_warnings)
     return CachedAbyssPeriodRef(
         start_date=start_date,
-        end_date=_date_text(payload.get("endDate") or payload.get("end_date")),
-        raw_period=str(payload.get("rawPeriod") or payload.get("raw_period") or ""),
-        source_path=str(payload.get("sourcePath") or payload.get("source_path") or ""),
+        end_date=_date_text(end_value) if end_value is not None else None,
+        raw_period=raw_period if type(raw_period) is str else "",
+        source_path=source_path if type(source_path) is str else "",
+        source=source if type(source) is str else "",
+        fallback=fallback if type(fallback) is bool else None,
+        warnings=warnings,
     )
 
 
@@ -76,7 +90,32 @@ def load_current_cached_abyss_floor_source_data(
 
 
 def _date_text(value: Any) -> str:
-    if not isinstance(value, str):
+    if type(value) is not str or not _DATE_PATTERN.fullmatch(value):
         return ""
-    match = _DATE_PATTERN.search(value)
-    return match.group(0) if match else ""
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return ""
+    return value
+
+
+def _first_present(
+    payload: Mapping[str, Any],
+    primary_key: str,
+    alternate_key: str,
+    *,
+    default: Any = None,
+) -> Any:
+    if primary_key in payload:
+        return payload[primary_key]
+    if alternate_key in payload:
+        return payload[alternate_key]
+    return default
+
+
+def _warning_texts(value: Any) -> tuple[str, ...]:
+    if isinstance(value, list) and all(type(item) is str for item in value):
+        return tuple(value)
+    if value == ():
+        return ()
+    return ("invalid_warnings_metadata",)

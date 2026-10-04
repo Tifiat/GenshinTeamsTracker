@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-07-17.
+Last updated: 2026-10-04 (scoped services and local period admission only).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -67,19 +67,17 @@ Draft board v0:
   available. The UI converts remaining clock to elapsed seconds before result
   finalization through `set_match_timers(...)`; backend `ChamberTimer` identity
   and lower-elapsed-total winner semantics remain unchanged.
-- Decks exposes a development `.gttpvp` export action, and Play exposes per-seat
-  profile import/local provider selection. Imported packages stay in a managed
-  temporary provider and are never restored into the main application database.
-  This is not yet a finalized/share-safe profile format: export copies the full
-  DB before filtering only a subset of account rows, bitmap assets are absent,
-  SQLite/deck/asset integrity is not fully validated, and Draft still uses one
-  host portrait map. The authoritative gap/target is
-  `PVP_PROFILE_PACKAGE.md`.
+- Decks/Play expose v3 `.gttpvp` exchange with an allowlisted data slice,
+  portable neutral assets and validation before provider adoption. Each seat
+  retains independent stats/inventory and fresh match equipment, while portraits
+  are shared by game id. The current acceptance, privacy scope, cleanup and
+  remaining real-account/user-smoke gates are owned by `PVP_PROFILE_PACKAGE.md`.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
-- Abyss-period match admission is still a backend gap. Future local matches
-  must reject/refresh mismatched seat periods, while future online create/join
-  must validate clients against a server-authoritative current period.
+- Local match/run admission rejects missing/stale/mismatched profile periods
+  against captured direct HoYoLAB authority. Scoped GCSIM dispatch, controlled
+  verification and precise-date limitations live in `PVP_BUILD_SERVICES.md`.
+  Future online create/join still needs server-advertised period authority.
 - The UI roadmap and stage direction are owned by
   `PVP_UI_ROADMAP.md`; this file should remain backend/status focused.
 
@@ -138,15 +136,12 @@ Draft board v0:
   `character_ids` and observed weapon-stack refs without localized names or
   local paths, delegates weapon identity/conversion to `weapon_identity.py`,
   then converts to `DraftDeck` for backend validation.
-- `run_workspace/pvp/profile_package.py`: backend-only PvP profile package and
-  provider foundation. `.gttpvp` packages are versioned ZIP files containing
-  `manifest.json`, `decks.json`, and a filtered `account_slice.sqlite`.
-  Providers expose source data only. Local providers can expose the current app
-  DB for source reads; imported providers expose a managed temporary DB path.
-  PvP weapon/artifact equipment choices are a separate per-seat runtime state,
-  not writes into either source DB. The current package does not embed
-  portrait/weapon bitmap files; cross-machine asset portability remains a
-  follow-up instead of falling back to path identity.
+- `run_workspace/pvp/profile_package.py`: versioned archive/provider boundary;
+  `profile_schema.py`: narrow portable schema, reference validation and separate
+  runtime-reader adaptation; `profile_assets.py`: neutral bitmap encoding and
+  content-hash asset maps. Exact scope/status is in `PVP_PROFILE_PACKAGE.md`.
+  Local source reads use the current app DB; imported providers use managed
+  temporary data. PvP equipment choices remain per-seat runtime state.
 - `run_workspace/pvp/account_deck_copy.py`: small backend helper for creating an
   independent Player 2 copy of an account-derived deck. Stable backend modules
   should import this helper, not the CLI smoke module.
@@ -227,7 +222,8 @@ Focused PvP backend tests live under `tests/run_workspace/pvp/`, including the
 weapon observed-stack identity helper tests in `test_weapon_identity.py`, Free
 Draft board/read-model projection, validator, compact JSON smoke shape, and
 committed UI-contract sample tests in `test_free_draft_board.py`.
-PvP profile/package/provider coverage lives in `test_profile_package.py`.
+PvP profile/package/provider regression coverage is routed by
+`PVP_PROFILE_PACKAGE.md`; fixture checks and real-user acceptance are separate.
 
 Recommended local checks:
 
@@ -252,10 +248,11 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
-- finalized two-seat provider with independent seat visual-asset maps;
-- portable/privacy-allowlisted `.gttpvp` export and full package validation;
-- scoped PvP artifact equipment context and executable scoped PvP GCSIM routing
-  against the local/imported provider boundary;
+- real-account/user-path acceptance of the two-seat portable profile boundary
+  and isolated second-account exchange; see `PVP_PROFILE_PACKAGE.md`;
+- real-engine/user acceptance of scoped PvP GCSIM and exact reset-hour admission;
+  implemented local period gates, dispatch and lifecycle limits are owned by
+  `PVP_BUILD_SERVICES.md`;
 - online/P2P/relay transport;
 - PvP History persistence;
 - result PNG/export UI;

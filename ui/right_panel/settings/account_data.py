@@ -54,6 +54,7 @@ from run_workspace.gcsim.settings import (
 from ui.utils.toggle_switch import ToggleSwitch
 from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import UI_BORDER_DEFAULT, UI_TEXT_MUTED
+from ui.right_panel.settings.display import DisplaySettingsBlock
 from hoyolab_export.import_settings import change_equipment_on_import, set_change_equipment_on_import
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
 from hoyolab_export.import_store import (
@@ -287,6 +288,9 @@ class AccountDataPage(QWidget):
         language_layout.addWidget(self.language_label)
         language_layout.addWidget(self.language_combo, 1)
         content_layout.addWidget(language_frame)
+
+        self.display_settings = DisplaySettingsBlock(settings_file=self._settings_file)
+        content_layout.addWidget(self.display_settings)
 
         dps_frame = QFrame()
         dps_frame.setObjectName("InfoBlock")
@@ -1383,6 +1387,7 @@ class AccountDataPage(QWidget):
         self.action_import_profile.setText(tr("profile.import"))
         self.action_switch_profile.setText(tr("profile.switch"))
         self.language_label.setText(tr("language.selector"))
+        self.display_settings.retranslate_ui()
         self.dps_label.setText(tr("settings.dps.title"))
         self.fact_dps_multi_target_label.setText(
             tr("settings.dps.multi_target_hp")

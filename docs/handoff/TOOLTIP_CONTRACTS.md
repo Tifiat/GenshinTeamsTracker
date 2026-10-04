@@ -1,7 +1,7 @@
 # Tooltip regression contract
 
 <!-- handoff-current: tooltip-regressions -->
-2026-10-04, Worker5. Each registered tooltip family has semantic
+2026-10-04. Worker5's source is integrated on local master. Each registered tooltip family has semantic
 fixtures and the UI binding inventory rejects unregistered new entry points.
 The suite exercises actual controllers, chamber-cell refresh, History popup
 painting, local-image loading, locale completeness and set description freshness.
@@ -9,7 +9,7 @@ Empty translated HTML no longer hides the English bonus; reinstallation updates
 one popup and clearing a payload removes its old text. Remaining native action
 hints were moved to the shared custom surface.
 
-`tools/check_tooltips.py` passed all 67 checks, including the existing active
+In Worker5, `tools/check_tooltips.py` passed all 67 checks, including the existing active
 account's Emblem of Severed Fate 2p/4p text on both surfaces. Existing
 account-page/import lifecycle/settings checks also
 passed in a 50-case combined run (overlaps the tooltip suite; do not sum counts).
@@ -17,6 +17,11 @@ These are offscreen/controlled checks plus a read-only local-catalog witness.
 The user's visible AppShell hover acceptance remains separate and no app was
 restarted for this change. Local commit is now authorized separately from that
 acceptance; [transfer scope](WORKER5_TRANSFER_PACKAGE.md) records its boundaries.
+The [target receipt](integration_receipts/2026-10-04_ready_workers.md) separates
+controlled main tests from that earlier real-catalog witness. Main now covers
+PvP run-admission block/update/clear through the same shared custom surface,
+with its own semantic regression and binding registration. No fresh main
+real-account witness or visible hover acceptance is claimed.
 <!-- /handoff-current -->
 
 ## Required workflow
@@ -62,7 +67,7 @@ The executable family index covers artifact bonuses/slots; account characters
 and weapon stacks/passives; equipment warnings; resonance, Moonsign and Hexerei
 bonus variants/member descriptions; factual enemy HP/DPS and GCSIM status;
 History painted character cards, enemies, bonus overflow and compact summaries;
-PvP draft ownership/postdraft equipment; optimizer save/replacement help; virtual
+PvP draft ownership/postdraft equipment/run admission; optimizer save/replacement help; virtual
 editor hints; filters, actions, profile deletion and account/legacy import state.
 Shared presentation tests cover plain/rich text, escaping, one controller per
 widget, active-text refresh, clear/hide and grid hover identity. Supplemental

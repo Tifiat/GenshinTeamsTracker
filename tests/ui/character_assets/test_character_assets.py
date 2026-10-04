@@ -4,7 +4,7 @@ import tempfile
 import unittest
 import os
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from PIL import Image
 from PySide6.QtWidgets import QApplication, QPushButton, QWidget
@@ -115,45 +115,78 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
             self.assertEqual(converted["metadata"]["owner_badges"], [{"label": "C6"}])
             self.assertEqual(item["path"], browser)
 
-    def test_foreign_profile_does_not_borrow_current_account_variants(self) -> None:
+    def test_foreign_profile_keeps_packaged_portrait_when_no_neutral_variant_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             portrait = Path(tmp) / "guest.png"
             portrait.write_bytes(b"png")
             record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", portrait_path=str(portrait))
             with patch("ui.character_assets.character_variant_path", return_value=None) as lookup:
                 item = account_character_asset_item(record)
-            lookup.assert_called_once_with("1001", "crop")
+            self.assertEqual(lookup.call_args_list, [call("1001", "crop"), call("1001", "portrait")])
             self.assertNotIn("portrait_pvp_path", item["metadata"])
 
-    def test_packaged_profile_reuses_variant_only_for_matching_bitmap(self) -> None:
+    def test_foreign_profile_reuses_neutral_variant_by_game_id(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
             browser = folder / "browser.png"
+            guest = folder / "guest.png"
             pvp = folder / "pvp.png"
             browser.write_bytes(b"browser")
+            guest.write_bytes(b"guest")
             pvp.write_bytes(b"pvp")
-            record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", portrait_path=str(browser))
+            record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", constellation=6, portrait_path=str(guest))
             with patch("ui.character_assets.character_variant_path", side_effect=lambda _id, variant: {
-                "crop": browser, "pvp": pvp,
+                "crop": browser, "portrait": pvp,
             }.get(variant)):
                 item = account_character_asset_item(record)
             self.assertEqual(item["metadata"]["portrait_pvp_path"], str(pvp))
+            self.assertNotIn("portrait_history_path", item["metadata"])
+            converted = pvp_character_asset_item(item)
+            self.assertEqual(converted["path"], pvp)
+            self.assertEqual(converted["metadata"]["character"]["constellation"], 6)
+
+    def test_pvp_does_not_reuse_baked_browser_when_transparent_layer_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            browser = Path(tmp) / "baked.png"
+            browser.write_bytes(b"browser-with-background-and-constellation")
+            item = {"path": browser, "metadata": {"source": "account_sqlite",
+                "character": {"id": "1001", "constellation": 6,
+                    "portrait_path": str(browser), "side_icon_path": str(browser), "icon_path": str(browser)}}}
+            converted = pvp_character_asset_item(item)
+            self.assertFalse(converted["path"].is_file())
+            self.assertEqual(converted["metadata"]["character"]["portrait_path"], "")
+            self.assertEqual(converted["metadata"]["character"]["side_icon_path"], "")
+            self.assertEqual(converted["metadata"]["character"]["icon_path"], "")
+            self.assertEqual(converted["metadata"]["character"]["constellation"], 6)
 
     def test_history_uses_raw_portrait_and_weapon_only_for_matching_import(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            paths = {key: root / f"{key}.png" for key in ("browser", "portrait", "weapon", "raw_weapon", "guest")}
+            paths = {key: root / f"{key}.png" for key in (
+                "browser", "portrait", "history", "weapon", "raw_weapon", "guest",
+            )}
+            for key in ("weapon", "raw_weapon"):
+                paths[key] = root / "assets" / "hoyolab" / "weapons" / f"{key}.png"
             for path in paths.values():
+                path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(b"fixture")
             character = AccountCharacterRuntimeRecord(character_id="1001", name="Hero", portrait_path=str(paths["browser"]))
             with patch("ui.character_assets.character_variant_path", side_effect=lambda _id, variant: {
-                "crop": paths["browser"], "portrait": paths["portrait"],
+                "crop": paths["browser"], "portrait": paths["portrait"], "history": paths["history"],
             }.get(variant)):
                 item = account_character_asset_item(character)
             self.assertEqual(item["path"], paths["browser"])
             self.assertEqual(item["metadata"]["character"]["portrait_history_path"], str(paths["portrait"]))
-            manifest = {"weaponAssets": [{"weapon": {"id": 21}, "crop": "weapon.png", "icon": "raw_weapon.png"}]}
-            with patch.object(asset_paths, "PROJECT_ROOT", root), patch.object(asset_paths, "current_manifest", return_value=manifest):
+            manifest = {"weaponAssets": [{
+                "weapon": {"id": 21},
+                "crop": paths["weapon"].relative_to(root).as_posix(),
+                "icon": paths["raw_weapon"].relative_to(root).as_posix(),
+            }]}
+            with (
+                patch.object(asset_paths, "ACCOUNT_ROOT", root),
+                patch("run_workspace.profile_context.ACCOUNT_ROOT", root),
+                patch.object(asset_paths, "current_manifest", return_value=manifest),
+            ):
                 weapon = AccountWeaponObservedStack(id=1, weapon_fingerprint="weapon", weapon_id="21", name="Weapon", rarity=4,
                                                    icon_path=str(paths["weapon"]))
                 self.assertEqual(weapon.to_team_builder_weapon_ref()["icon_transparent_path"], str(paths["raw_weapon"]))

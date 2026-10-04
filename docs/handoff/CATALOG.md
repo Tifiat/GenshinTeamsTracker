@@ -3,8 +3,8 @@
 This file lists the available handoff documents for discovery and structural
 coverage. It is not startup reading. Use `README.md` to choose one area and
 read only that area's current status and relevant contract section. Read
-`TODO.md` when selecting the current stage and `WORK_BACKLOG.md` when a deferred
-area is selected.
+`TODO.md` as the shared-queue router when selecting the current stage and
+`WORK_BACKLOG.md` as the shared-backlog router when a deferred area is selected.
 
 ## Authority
 
@@ -27,11 +27,13 @@ in every file.
 | --- | --- |
 | [README.md](README.md) | Short area router and reading policy |
 | [HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md) | Durable-fact closeout, compaction and consistency checks |
+| [COORDINATION.md](COORDINATION.md) | Shared queue, per-worker ownership and checkout-local technical evidence |
+| [integration_receipts/2026-10-04_ready_workers.md](integration_receipts/2026-10-04_ready_workers.md) | Local ready-branch integration sources, combined checks and acceptance limits |
+| [integration_receipts/2026-10-04_worker5_reverse_sync.md](integration_receipts/2026-10-04_worker5_reverse_sync.md) | Worker5 policy preservation, staged master merge, conflict decisions and isolated checks |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |
-| [COORDINATION.md](COORDINATION.md) | Shared queue routing, Worker5 ownership, validation and missing-hub behavior |
-| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Router to the shared deferred backlog; active priority routes through TODO |
+| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Router to shared deferred scopes; active priority routes through TODO |
 | [WORKER5_TRANSFER_PACKAGE.md](WORKER5_TRANSFER_PACKAGE.md) | Worker5 source inventories, transfer dependencies, byte fingerprints and acceptance boundaries |
 
 ## Account, Data And Artifacts
@@ -53,6 +55,7 @@ in every file.
 | Document | Role |
 | --- | --- |
 | [APP_SHELL_WORKSPACE_PLAN.md](APP_SHELL_WORKSPACE_PLAN.md) | Current workspace/dock ownership and remaining launch migration |
+| [DISPLAY_SCALING.md](DISPLAY_SCALING.md) | Windows system-scaling Settings switch, startup/font/adaptive contract and pre-MVP user acceptance |
 | [MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md](MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md) | Right-panel package ownership and legacy boundary |
 | [RUN_WORKSPACE_SNAPSHOT_CONTRACT.md](RUN_WORKSPACE_SNAPSHOT_CONTRACT.md) | Live typed session, immutable saves and launch-readiness review |
 | [HISTORY_BROWSER.md](HISTORY_BROWSER.md) | Shared read-only snapshot contract, implemented cards/export and scoped UI verification |
@@ -97,6 +100,7 @@ in every file.
 | [PVP_BACKEND_STATUS.md](PVP_BACKEND_STATUS.md) | Implemented modules, smoke paths and backend gaps |
 | [PVP_UI_ROADMAP.md](PVP_UI_ROADMAP.md) | Current Decks/Play/Draft/build/timer UI and later stages |
 | [PVP_PROFILE_PACKAGE.md](PVP_PROFILE_PACKAGE.md) | Immediate independent-provider then portable-profile sequence |
+| [PVP_BUILD_SERVICES.md](PVP_BUILD_SERVICES.md) | Scoped artifact/GCSIM services, local period admission, lifecycle and acceptance |
 | [PVP_REFERENCE_SITE_AUDIT.md](PVP_REFERENCE_SITE_AUDIT.md) | Dated Abyss Draft/Gentor product-reference research |
 | [PVP_RULESETS_AUDIT.md](PVP_RULESETS_AUDIT.md) | Historical tournament source research |
 | [PVP_RULESET_SOURCE_MATRIX.md](PVP_RULESET_SOURCE_MATRIX.md) | Source/applicability map; import work paused pending usable sources |

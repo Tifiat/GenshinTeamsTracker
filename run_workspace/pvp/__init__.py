@@ -224,6 +224,7 @@ from .session_bundle import (
     write_session_bundle,
 )
 from .profile_package import (
+    PVP_PROFILE_ASSETS_NAME,
     PVP_PROFILE_DB_NAME,
     PVP_PROFILE_DECKS_KIND,
     PVP_PROFILE_DECKS_NAME,
@@ -310,6 +311,7 @@ __all__ = [
     "PVP_PROFILE_FORMAT",
     "PVP_PROFILE_MANIFEST_NAME",
     "PVP_PROFILE_VERSION",
+    "PVP_PROFILE_ASSETS_NAME",
     "PVP_SESSION_BUNDLE_KIND",
     "PVP_SESSION_BUNDLE_SCHEMA_VERSION",
     "REPORT_STATUS_NOT_READY",

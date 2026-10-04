@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -81,8 +82,9 @@ def utc_now() -> str:
 
 
 def init_account_equipment_storage(conn: sqlite3.Connection) -> None:
-    conn.executescript(
-        """
+    # executescript commits an open transaction. Equipment batches and their
+    # applied-preset marker must instead commit or roll back together.
+    schema = """
         CREATE TABLE IF NOT EXISTS account_character_equipped_artifacts (
             character_id INTEGER NOT NULL,
             slot_key TEXT NOT NULL,
@@ -123,8 +125,136 @@ def init_account_equipment_storage(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_account_character_equipped_weapons_fingerprint
             ON account_character_equipped_weapons(weapon_fingerprint);
+
+        CREATE TABLE IF NOT EXISTS account_character_applied_build_presets (
+            character_id INTEGER PRIMARY KEY,
+            build_id INTEGER NOT NULL,
+            artifact_slots_json TEXT NOT NULL,
+            applied_at TEXT NOT NULL,
+            FOREIGN KEY (character_id) REFERENCES account_characters(character_id)
+                ON DELETE CASCADE,
+            FOREIGN KEY (build_id) REFERENCES artifact_builds(id)
+                ON DELETE CASCADE
+        );
+        """
+    for statement in schema.split(";"):
+        if statement.strip():
+            conn.execute(statement)
+    conn.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS applied_build_preset_artifact_insert
+        AFTER INSERT ON account_character_equipped_artifacts
+        BEGIN
+            DELETE FROM account_character_applied_build_presets
+            WHERE character_id = NEW.character_id;
+        END
         """
     )
+    conn.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS applied_build_preset_artifact_delete
+        AFTER DELETE ON account_character_equipped_artifacts
+        BEGIN
+            DELETE FROM account_character_applied_build_presets
+            WHERE character_id = OLD.character_id;
+        END
+        """
+    )
+    conn.execute(
+        """
+        CREATE TRIGGER IF NOT EXISTS applied_build_preset_artifact_update
+        AFTER UPDATE OF character_id, slot_key, artifact_id
+        ON account_character_equipped_artifacts
+        WHEN OLD.character_id != NEW.character_id
+            OR OLD.slot_key != NEW.slot_key OR OLD.artifact_id != NEW.artifact_id
+        BEGIN
+            DELETE FROM account_character_applied_build_presets
+            WHERE character_id IN (OLD.character_id, NEW.character_id);
+        END
+        """
+    )
+
+
+def _character_artifact_slots(conn: sqlite3.Connection, character_id: int) -> dict[str, int]:
+    return {
+        str(row["slot_key"]): int(row["artifact_id"])
+        for row in conn.execute(
+            "SELECT slot_key, artifact_id FROM account_character_equipped_artifacts "
+            "WHERE character_id = ?", (character_id,),
+        )
+    }
+
+
+def _preset_artifact_slots(conn: sqlite3.Connection, build_id: int) -> dict[str, int]:
+    return {
+        artifact_slot_key_from_pos(row["pos"]): int(row["artifact_id"])
+        for row in conn.execute(
+            "SELECT pos, artifact_id FROM artifact_build_slots WHERE build_id = ?",
+            (build_id,),
+        )
+    }
+
+
+def remember_applied_build_preset(
+    conn: sqlite3.Connection, character_id: int, build_id: int,
+    *, initialize: bool = True,
+) -> None:
+    """Record an explicit preset apply in the same transaction as equipment."""
+    if initialize:
+        init_account_equipment_storage(conn)
+    character_id = _validate_character(conn, character_id)
+    build_id = int(build_id)
+    if conn.execute("SELECT id FROM artifact_builds WHERE id = ?", (build_id,)).fetchone() is None:
+        raise EquipmentNotFoundError(f"Build preset not found: {build_id}")
+    slots = _character_artifact_slots(conn, character_id)
+    if slots != _preset_artifact_slots(conn, build_id):
+        raise EquipmentError("Current artifacts do not match the applied preset")
+    conn.execute(
+        """
+        INSERT INTO account_character_applied_build_presets
+            (character_id, build_id, artifact_slots_json, applied_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(character_id) DO UPDATE SET
+            build_id = excluded.build_id,
+            artifact_slots_json = excluded.artifact_slots_json,
+            applied_at = excluded.applied_at
+        """,
+        (character_id, build_id, json.dumps(slots, sort_keys=True), utc_now()),
+    )
+
+
+def get_applied_build_preset(
+    conn: sqlite3.Connection,
+    character_id: int,
+    *,
+    initialize: bool = True,
+) -> dict | None:
+    """Return the live preset name only while the applied slots still match."""
+    if initialize:
+        init_account_equipment_storage(conn)
+    row = conn.execute(
+        """
+        SELECT marker.build_id, marker.artifact_slots_json, builds.name
+        FROM account_character_applied_build_presets AS marker
+        JOIN artifact_builds AS builds ON builds.id = marker.build_id
+        WHERE marker.character_id = ?
+        """,
+        (int(character_id),),
+    ).fetchone()
+    if row is None:
+        return None
+    try:
+        slots = json.loads(row["artifact_slots_json"])
+    except (TypeError, ValueError):
+        slots = None
+    if (slots != _character_artifact_slots(conn, int(character_id))
+            or slots != _preset_artifact_slots(conn, int(row["build_id"]))):
+        conn.execute(
+            "DELETE FROM account_character_applied_build_presets WHERE character_id = ?",
+            (int(character_id),),
+        )
+        return None
+    return {"build_id": int(row["build_id"]), "name": str(row["name"])}
 
 
 def artifact_slot_key_from_pos(pos: int | str) -> str:
@@ -158,8 +288,10 @@ def equip_artifact(
     source: str = "manual",
     source_import_batch_id: str | None = None,
     observed_at: str | None = None,
+    initialize: bool = True,
 ) -> EquipmentChangeResult:
-    init_account_equipment_storage(conn)
+    if initialize:
+        init_account_equipment_storage(conn)
     character_id_int = _validate_character(conn, character_id)
     artifact_id_int, slot_key = _artifact_slot(conn, artifact_id)
     source = _validate_source(source)
@@ -246,9 +378,11 @@ def unequip_artifact_slot(
     source: str = "manual",
     source_import_batch_id: str | None = None,
     observed_at: str | None = None,
+    initialize: bool = True,
 ) -> EquipmentChangeResult:
     del source_import_batch_id, observed_at
-    init_account_equipment_storage(conn)
+    if initialize:
+        init_account_equipment_storage(conn)
     character_id_int = _validate_character(conn, character_id)
     slot_key_normalized = normalize_artifact_slot_key(slot_key)
     source = _validate_source(source)
@@ -284,9 +418,11 @@ def unequip_artifact(
     source: str = "manual",
     source_import_batch_id: str | None = None,
     observed_at: str | None = None,
+    initialize: bool = True,
 ) -> EquipmentChangeResult:
     del source_import_batch_id, observed_at
-    init_account_equipment_storage(conn)
+    if initialize:
+        init_account_equipment_storage(conn)
     source = _validate_source(source)
     artifact_id_int = _validate_artifact(conn, artifact_id)
     owner = _artifact_owner_row(conn, artifact_id_int)
@@ -661,14 +797,14 @@ def apply_hoyolab_equipment_snapshot(
         for character_id, slot, artifact_id in artifact_targets:
             conn.execute(
                 "DELETE FROM account_character_equipped_artifacts "
-                "WHERE artifact_id = ? OR (character_id = ? AND slot_key = ?)",
-                (artifact_id, character_id, slot),
+                "WHERE (artifact_id = ? OR (character_id = ? AND slot_key = ?)) "
+                "AND NOT (artifact_id = ? AND character_id = ? AND slot_key = ?)",
+                (artifact_id, character_id, slot, artifact_id, character_id, slot),
             )
         for character_id in weapons:
             conn.execute("DELETE FROM account_character_equipped_weapons WHERE character_id = ?", (character_id,))
         for fingerprint, count in required.items():
-            # Public read helpers initialize schema via executescript, which
-            # commits and would destroy this savepoint. Read inside the batch.
+            # Read the current owners inside this validated import batch.
             owners = [int(row[0]) for row in conn.execute(
                 "SELECT character_id FROM account_character_equipped_weapons WHERE weapon_fingerprint = ?",
                 (fingerprint,),
@@ -719,8 +855,10 @@ def apply_hoyolab_weapon_equipment_observation(
 def get_equipped_artifact_owner(
     conn: sqlite3.Connection,
     artifact_id: int | str,
+    *, initialize: bool = True,
 ) -> int | None:
-    init_account_equipment_storage(conn)
+    if initialize:
+        init_account_equipment_storage(conn)
     row = _artifact_owner_row(conn, int(artifact_id))
     return int(row["character_id"]) if row is not None else None
 
@@ -742,8 +880,11 @@ def list_equipped_artifacts(
 def list_equipped_artifacts_for_character(
     conn: sqlite3.Connection,
     character_id: int | str,
+    *,
+    initialize: bool = True,
 ) -> tuple[EquippedArtifactRecord, ...]:
-    init_account_equipment_storage(conn)
+    if initialize:
+        init_account_equipment_storage(conn)
     rows = conn.execute(
         """
         SELECT *

@@ -162,6 +162,9 @@ Display scale contract:
 - This is a final application requirement. `app_shell_smoke` may be the first
   wired entrypoint, but the production AppShell launcher must run the same
   scaling bootstrap before `QApplication` is created.
+- Settings exposes "Use system scaling", default OFF on Windows, separately
+  from this physical-width adaptation. Restart, font-DPI handling, environment
+  precedence and pre-MVP acceptance belong to [display scaling](DISPLAY_SCALING.md).
 
 This should be a new application shell, not the old main window with the old
 right column patched in place.
@@ -374,8 +377,9 @@ Current default:
 Future operation modes:
 
 - Account/Data owns HoYoLAB import/update, offline profile actions, language
-  selection, and the DPS settings subzone. Current DPS setting: persistent
-  Abyss Fact DPS multi-target HP toggle, default off/solo-target.
+  selection, the [display settings](DISPLAY_SCALING.md), and the DPS settings
+  subzone. Current DPS setting: persistent Abyss Fact DPS multi-target HP toggle,
+  default off/solo-target.
 - Account/Data and similar global pages belong to `ui/right_panel/settings/`;
   opening them must preserve the current live-run, PvP, or History state.
 - Real PvP draft/deck/opponent controls wired to the Free Draft board/read-model
@@ -528,8 +532,9 @@ Current development entrypoint:
 ```
 
 `main.py` still launches the legacy app until the production switch is explicitly
-approved. When that switch happens, `main.py` must run the same startup adaptive
-scaling bootstrap as `ui.app_shell_smoke` before constructing `QApplication`.
+approved. When that switch happens, `main.py` must run the same startup display
+scaling bootstrap (`configure_startup_display_scaling`) as `ui.app_shell_smoke`
+before constructing `QApplication`.
 
 Current interaction rules:
 

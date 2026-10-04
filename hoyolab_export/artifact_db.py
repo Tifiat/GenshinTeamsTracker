@@ -1489,15 +1489,30 @@ def get_artifact_build_targets(
     conn: sqlite3.Connection,
     build_id: int,
 ) -> list[dict[str, Any]]:
+    return _artifact_build_targets_by_build_id(conn, [int(build_id)])[int(build_id)]
+
+
+def _artifact_build_targets_by_build_id(
+    conn: sqlite3.Connection,
+    build_ids: list[int],
+) -> dict[int, list[dict[str, Any]]]:
+    targets_by_build_id: dict[int, list[dict[str, Any]]] = {
+        build_id: [] for build_id in build_ids
+    }
+    if not build_ids:
+        return targets_by_build_id
+    placeholders = ",".join("?" for _ in build_ids)
     rows = conn.execute(
-        """
+        f"""
         SELECT
+            build_id,
             target_type,
             character_id,
             character_name
         FROM artifact_build_targets
-        WHERE build_id = ?
+        WHERE build_id IN ({placeholders})
         ORDER BY
+            build_id,
             CASE target_type
                 WHEN 'universal' THEN 0
                 ELSE 1
@@ -1505,11 +1520,11 @@ def get_artifact_build_targets(
             character_name COLLATE NOCASE,
             character_id
         """,
-        (int(build_id),),
+        build_ids,
     ).fetchall()
 
-    targets = [
-        {
+    for row in rows:
+        targets_by_build_id[int(row["build_id"])].append({
             "target_type": row["target_type"],
             "character_id": (
                 int(row["character_id"])
@@ -1520,12 +1535,11 @@ def get_artifact_build_targets(
                 row["target_type"],
                 row["character_name"],
             ),
-        }
-        for row in rows
-    ]
+        })
     virtual_rows = conn.execute(
-        """
+        f"""
         SELECT
+            virtual.build_id,
             virtual.gcsim_character_key,
             virtual.character_name,
             account.character_id AS account_character_id,
@@ -1534,17 +1548,23 @@ def get_artifact_build_targets(
         LEFT JOIN account_characters AS account
           ON account.gcsim_character_key = virtual.gcsim_character_key
          AND account.gcsim_character_key_status = 'ready'
-        WHERE virtual.build_id = ?
-        ORDER BY virtual.character_name COLLATE NOCASE, virtual.gcsim_character_key
+        WHERE virtual.build_id IN ({placeholders})
+        ORDER BY virtual.build_id, virtual.character_name COLLATE NOCASE, virtual.gcsim_character_key
         """,
-        (int(build_id),),
+        build_ids,
     ).fetchall()
-    existing_character_ids = {
-        target.get("character_id")
-        for target in targets
-        if target.get("target_type") == "character"
+    character_ids_by_build_id = {
+        build_id: {
+            target.get("character_id")
+            for target in targets
+            if target.get("target_type") == "character"
+        }
+        for build_id, targets in targets_by_build_id.items()
     }
     for row in virtual_rows:
+        build_id = int(row["build_id"])
+        targets = targets_by_build_id[build_id]
+        existing_character_ids = character_ids_by_build_id[build_id]
         if row["account_character_id"] is not None:
             character_id = int(row["account_character_id"])
             if character_id in existing_character_ids:
@@ -1566,7 +1586,7 @@ def get_artifact_build_targets(
                     "character_name": row["character_name"] or row["gcsim_character_key"],
                 }
             )
-    return targets
+    return targets_by_build_id
 
 
 def artifact_build_targets_gcsim_character(
@@ -1758,10 +1778,7 @@ def list_build_presets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
                 _artifact_build_slot_dict(slot)
             )
 
-    targets_by_build_id = {
-        int(row["id"]): get_artifact_build_targets(conn, int(row["id"]))
-        for row in rows
-    }
+    targets_by_build_id = _artifact_build_targets_by_build_id(conn, build_ids)
 
     return [
         {

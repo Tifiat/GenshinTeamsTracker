@@ -4,7 +4,10 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.check_handoffs import ROOT_BUDGETS, SCOPED_BUDGETS, check_repository
+from tools.check_handoffs import (
+    ROOT_BUDGETS, SCOPED_BUDGETS, check_repository,
+    linked_coordination_root, resolve_local,
+)
 
 
 class HandoffChecksTest(unittest.TestCase):
@@ -191,6 +194,28 @@ class HandoffChecksTest(unittest.TestCase):
     def test_short_router_must_link_optional_catalog(self):
         self.write("docs/handoff/README.md", "# Router without catalog\n")
         self.assertEqual({"missing-routing"}, self.codes())
+
+    def test_declared_hub_links_are_limited_to_coordination_routers(self):
+        hub = self.root.parent / "coordination"
+        todo = self.root / "TODO.md"
+        target = "../coordination/TODO.md"
+        self.assertEqual(hub / "TODO.md", resolve_local(self.root, todo, target, hub))
+        with self.assertRaises(ValueError):
+            resolve_local(self.root, self.root / "CODEX.md", target, hub)
+        with self.assertRaises(ValueError):
+            resolve_local(self.root, todo, "../unrelated/TODO.md", hub)
+        with self.assertRaises(ValueError):
+            resolve_local(self.root, todo, target)
+
+    def test_missing_or_malformed_coordination_cannot_bypass_closeout(self):
+        self.write("coordination.json", "[]")
+        self.assertIsNone(linked_coordination_root(self.root))
+        self.assertIn("coordination-invalid-link", self.codes())
+        self.write("coordination.json", json.dumps({
+            "schema": "gtt_coordination_link_v1", "hub": "../missing-hub",
+        }))
+        self.assertEqual(self.root.parent / "missing-hub", linked_coordination_root(self.root))
+        self.assertIn("coordination-missing-hub", self.codes())
 
 
 if __name__ == "__main__":

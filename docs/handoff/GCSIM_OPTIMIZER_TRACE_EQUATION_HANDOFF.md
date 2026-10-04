@@ -226,6 +226,16 @@ and contiguous operand storage must preserve arithmetic and gradient accumulatio
 order. Prepared single-wearer legality may reuse the other fifteen validated IDs;
 the changed five still satisfy physical uniqueness, slots and exact bonus tiers.
 These are computation reuse, not new item pruning or a global search guarantee.
+
+Local single/pair refinement may prepare physical-family compatibility once for
+its fixed team/base/pools. Fold outsiders together only when distinct selected
+requirements force at least four of five pieces; single2p/no-bonus keep real
+family identities to forbid accidental bonus tiers. Preserve every permissible
+ID and original visit order, including a pair which repairs a failed single.
+Surviving leaves still use the existing validator/formula; no stat-strength or
+response-bound inference is permitted. Preparation is cooperative with Finish/
+Cancel; incompatible metadata falls back to original enumeration. This table is
+run-local, never reused across anchors or teams. GP-3 owns its installation gates.
 The checkpoint owns installed acceptance; implementation alone does not accept UI.
 
 The2026-09-28 exact-reuse combination keeps the original proposal/refinement

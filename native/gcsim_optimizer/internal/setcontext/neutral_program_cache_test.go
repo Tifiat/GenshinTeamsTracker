@@ -46,23 +46,23 @@ func TestNeutralSymbolicKeyMatchesIncrementalHashProtocol(t *testing.T) {
 func TestNeutralConstantProgramKeyRequiresFullVectorIdentity(t *testing.T) {
 	keys := []string{"owner0/time1", "owner1/time2"}
 	vector := map[string]*formula.InputExpression{keys[0]: {Operation: "constant", Value: 0}, keys[1]: {Operation: "constant", Value: 1}}
-	key, ok := constantEffectKey(keys, vector)
+	key, ok := projectedConstantEffectKey(keys, keys, vector)
 	if !ok {
 		t.Fatal("valid vector rejected")
 	}
 	for _, value := range []float64{2, math.SmallestNonzeroFloat64, math.Copysign(0, -1)} {
 		vector[keys[0]].Value = value
-		next, ok := constantEffectKey(keys, vector)
+		next, ok := projectedConstantEffectKey(keys, keys, vector)
 		if !ok || next == key {
 			t.Fatal("different effect vectors merged", value)
 		}
 	}
 	vector[keys[0]].Operation = "artifact"
-	if _, ok := constantEffectKey(keys, vector); ok {
+	if _, ok := projectedConstantEffectKey(keys, keys, vector); ok {
 		t.Fatal("point-dependent expression cached")
 	}
 	delete(vector, keys[0])
-	if _, ok := constantEffectKey(keys, vector); ok {
+	if _, ok := projectedConstantEffectKey(keys, keys, vector); ok {
 		t.Fatal("missing input cached")
 	}
 }
@@ -116,7 +116,7 @@ func TestNeutralProgramCacheIsBoundedAndEvictionKeepsLiveViews(t *testing.T) {
 		t.Fatal(err)
 	}
 	live := first.WithOwnScratch()
-	keyDigest, _ := constantEffectKey(prepared.EffectKeys(), effects)
+	keyDigest, _ := projectedConstantEffectKey(prepared.EffectKeys(), prepared.EffectKeys(), effects)
 	key := taggedProgramCacheKey("constant", keyDigest)
 	m.retainProgram(key, first)
 	if len(m.programOrder) != 1 || m.programNodes != first.NodeCount() {

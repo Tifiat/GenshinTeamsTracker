@@ -136,6 +136,8 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_run_panels_by_seat: dict[str, PvpPostDraftRunPanel] = {}
         self.postdraft_toggle_buttons_by_seat: dict[str, QPushButton] = {}
         self.postdraft_ready_buttons_by_seat: dict[str, QPushButton] = {}
+        self.postdraft_artifact_buttons_by_seat: dict[str, QPushButton] = {}
+        self.postdraft_gcsim_buttons_by_seat: dict[str, QPushButton] = {}
         self._last_match_stage = ""
         self._pending_match_stage = ""
         self._pending_match_seats: set[str] = set()
@@ -468,6 +470,10 @@ class PvpDraftRightPanel(QWidget):
         self._refresh_log_toggle_text()
         self.clear_button.setText(tr("app_shell.pvp.draft.abandon"))
         self.play_button.setText(tr("app_shell.pvp.draft.back_to_play"))
+        for button in self.postdraft_artifact_buttons_by_seat.values():
+            button.setText(tr("app_shell.workspace.artifacts"))
+        for button in self.postdraft_gcsim_buttons_by_seat.values():
+            button.setText("GCSIM")
         self.refresh()
 
     def refresh_player_colors(self) -> None:
@@ -546,6 +552,8 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_run_panels_by_seat.clear()
         self.postdraft_toggle_buttons_by_seat.clear()
         self.postdraft_ready_buttons_by_seat.clear()
+        self.postdraft_artifact_buttons_by_seat.clear()
+        self.postdraft_gcsim_buttons_by_seat.clear()
         self._last_collapsed_by_seat.clear()
         self._last_match_stage = ""
 
@@ -635,7 +643,17 @@ class PvpDraftRightPanel(QWidget):
                 lambda _checked=False, s=seat: self.workspace.ready_build_seat(s)
             )
             self.postdraft_ready_buttons_by_seat[seat] = ready_button
-            zone_layout.addWidget(ready_button)
+            actions = QHBoxLayout()
+            artifact_button = QPushButton(tr("app_shell.workspace.artifacts"), zone)
+            artifact_button.clicked.connect(lambda _checked=False, s=seat: self.workspace.open_build_artifacts(s))
+            self.postdraft_artifact_buttons_by_seat[seat] = artifact_button
+            actions.addWidget(artifact_button)
+            gcsim_button = QPushButton("GCSIM", zone)
+            gcsim_button.clicked.connect(lambda _checked=False, s=seat: self.workspace.open_build_gcsim(s))
+            self.postdraft_gcsim_buttons_by_seat[seat] = gcsim_button
+            actions.addWidget(gcsim_button)
+            actions.addWidget(ready_button)
+            zone_layout.addLayout(actions)
             self.match_layout.addWidget(zone, 0 if collapsed else 1)
             # Visibility is applied only after every widget has a stable
             # parent. Showing panel/Ready while parentless promoted each one
@@ -645,6 +663,8 @@ class PvpDraftRightPanel(QWidget):
                 not collapsed
                 and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
             )
+            artifact_button.setVisible(not collapsed and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS})
+            gcsim_button.setVisible(not collapsed and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS})
             zone.setVisible(True)
         self._update_match_panel(stage)
         self._last_match_stage = stage
@@ -759,6 +779,12 @@ class PvpDraftRightPanel(QWidget):
                     and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
                 )
             zone_index = self.match_layout.indexOf(zone)
+            artifact_button = self.postdraft_artifact_buttons_by_seat.get(seat)
+            if artifact_button is not None:
+                artifact_button.setVisible(not collapsed and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS})
+            gcsim_button = self.postdraft_gcsim_buttons_by_seat.get(seat)
+            if gcsim_button is not None:
+                gcsim_button.setVisible(not collapsed and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS})
             if zone_index >= 0:
                 self.match_layout.setStretch(zone_index, 0 if collapsed else 1)
             zone.setVisible(True)

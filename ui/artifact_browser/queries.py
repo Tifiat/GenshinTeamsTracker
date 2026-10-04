@@ -28,7 +28,6 @@ from hoyolab_export.artifact_db import (
     replace_artifact_build_targets,
     update_build_preset as db_update_build_preset,
 )
-from hoyolab_export.account_equipment import init_account_equipment_storage
 from hoyolab_export.artiscan_importer import import_artiscan_file
 from hoyolab_export.paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 from run_workspace.perf import log_perf, perf_ms, perf_now
@@ -57,6 +56,28 @@ def current_hoyolab_content_language() -> str:
     return normalize_artifact_set_lang(data.get("contentLanguage"))
 
 
+def _open_query_connection(
+    db_path: str | Path,
+    *,
+    read_only: bool,
+    initialize: bool = True,
+) -> sqlite3.Connection:
+    """Open a complete existing profile without modifying it when requested."""
+    if read_only:
+        conn = sqlite3.connect(f"{Path(db_path).resolve().as_uri()}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    conn = connect_db(db_path)
+    try:
+        if initialize:
+            init_db(conn)
+    except BaseException:
+        conn.close()
+        raise
+    return conn
+
+
 def _has_description_text(description: str) -> bool:
     # An empty translated HTML paragraph must not erase the English fallback.
     return bool(html.unescape(re.sub(r"<[^>]*>", "", description)).strip())
@@ -67,20 +88,21 @@ def list_set_bonus_description_map(
     preferred_lang: str | None = None,
     fallback_lang: str = "en-us",
     db_path: str | Path = ARTIFACT_DB_PATH,
+    read_only: bool = False,
 ) -> dict[tuple[str, int], str]:
     if not artifact_db_exists(db_path):
         return {}
 
     fallback = normalize_artifact_set_lang(fallback_lang)
-    preferred = normalize_artifact_set_lang(preferred_lang or current_hoyolab_content_language())
+    preferred = normalize_artifact_set_lang(
+        preferred_lang or ("en-us" if read_only else current_hoyolab_content_language())
+    )
     languages = [fallback]
     if preferred != fallback:
         languages.append(preferred)
 
     result: dict[tuple[str, int], str] = {}
-    uri = Path(db_path).resolve().as_uri() + "?mode=ro"
-    with closing(sqlite3.connect(uri, uri=True)) as conn:
-        conn.row_factory = sqlite3.Row
+    with closing(_open_query_connection(db_path, read_only=True)) as conn:
         for language in languages:
             for row in db_list_artifact_set_bonus_descriptions(conn, lang=language):
                 description = str(row.get("description") or "").strip()
@@ -93,6 +115,8 @@ def list_set_bonus_description_map(
 def load_artifact_browser_store_data(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    preferred_lang: str | None = None,
+    read_only: bool = False,
 ) -> dict[str, Any]:
     if not artifact_db_exists(db_path):
         return {
@@ -103,7 +127,9 @@ def load_artifact_browser_store_data(
             "content_language": "en-us",
         }
 
-    preferred_lang = current_hoyolab_content_language()
+    preferred_lang = preferred_lang or (
+        "en-us" if read_only else current_hoyolab_content_language()
+    )
     fallback_lang = "en-us"
     fallback = normalize_artifact_set_lang(fallback_lang)
     preferred = normalize_artifact_set_lang(preferred_lang)
@@ -111,10 +137,10 @@ def load_artifact_browser_store_data(
     if preferred != fallback:
         languages.append(preferred)
 
-    with closing(connect_db(db_path)) as conn:
-        init_start = perf_now()
-        init_db(conn)
-        init_account_equipment_storage(conn)
+    init_start = perf_now()
+    with closing(_open_query_connection(
+        db_path, read_only=read_only,
+    )) as conn:
         init_ms = perf_ms(init_start)
         artifacts_start = perf_now()
         artifacts = _fetch_artifacts(conn, preferred_lang=preferred)
@@ -159,20 +185,24 @@ def _resolve_icon_path(local_path: str | None) -> Path | None:
 
     path = Path(local_path)
     path = account_asset_path(path)
-    return path if path.exists() and path.is_file() else None
+    return path if path.is_file() else None
 
 
 def list_all_artifacts(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    preferred_lang: str | None = None,
+    read_only: bool = False,
 ) -> list[ArtifactItem]:
     if not artifact_db_exists(db_path):
         return []
 
-    preferred_lang = current_hoyolab_content_language()
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
-        init_account_equipment_storage(conn)
+    preferred_lang = preferred_lang or (
+        "en-us" if read_only else current_hoyolab_content_language()
+    )
+    with closing(_open_query_connection(
+        db_path, read_only=read_only,
+    )) as conn:
         return _fetch_artifacts(conn, preferred_lang=preferred_lang)
 
 
@@ -190,12 +220,12 @@ def import_artiscan_json_files(
 def count_json_imported_artifacts(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    read_only: bool = False,
 ) -> int:
     if not artifact_db_exists(db_path):
         return 0
 
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    with closing(_open_query_connection(db_path, read_only=read_only)) as conn:
         return db_count_json_imported_artifacts(conn, source="artiscan")
 
 
@@ -247,6 +277,8 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
             artifacts.main_property_type,
             artifacts.main_property_name,
             artifacts.main_property_value,
+            artifacts.json_imported,
+            artifacts.import_source,
             set_icons.icon_url AS set_icon_url,
             set_icons.local_path AS set_icon_local_path,
             set_flower_icons.local_path AS set_flower_icon_local_path,
@@ -343,6 +375,8 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
                 owner_icon_path=cached_icon_path(row["owner_side_icon_path"]),
                 tags=tags_by_artifact.get(artifact_id, []),
                 substats=substats_by_artifact.get(artifact_id, []),
+                json_imported=row["json_imported"] == 1,
+                import_source=str(row["import_source"] or ""),
             )
         )
 
@@ -355,25 +389,23 @@ def _load_substats(
     *,
     preferred_lang: str | None = None,
 ) -> dict[int, list[ArtifactSubstat]]:
+    # This reader serves the full inventory; avoid one bind per artifact.
     if not artifact_ids:
         return {}
 
-    placeholders = ",".join("?" for _ in artifact_ids)
-
     rows = conn.execute(
-        f"""
+        """
         SELECT
-            artifact_id,
+            artifact_substats.artifact_id,
             slot_index,
             property_type,
             property_name,
             value,
             times
         FROM artifact_substats
-        WHERE artifact_id IN ({placeholders})
-        ORDER BY artifact_id, slot_index
+        JOIN artifacts ON artifacts.id = artifact_substats.artifact_id
+        ORDER BY artifact_substats.artifact_id, slot_index
         """,
-        artifact_ids,
     ).fetchall()
 
     result: dict[int, list[ArtifactSubstat]] = {
@@ -394,6 +426,8 @@ def _load_substats(
 
     for row in rows:
         artifact_id = int(row["artifact_id"])
+        if artifact_id not in result:
+            continue
         result[artifact_id].append(
             ArtifactSubstat(
                 slot_index=int(row["slot_index"]),
@@ -411,13 +445,12 @@ def _load_substats(
 
 
 def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]:
+    # Keep one indexed batch even beyond SQLite's bind-variable limit.
     if not artifact_ids:
         return {}
 
-    placeholders = ",".join("?" for _ in artifact_ids)
-
     rows = conn.execute(
-        f"""
+        """
         SELECT
             links.artifact_id,
             tags.id AS tag_id,
@@ -425,10 +458,9 @@ def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]
         FROM artifact_tag_links AS links
         JOIN artifact_tags AS tags
             ON tags.id = links.tag_id
-        WHERE links.artifact_id IN ({placeholders})
+        JOIN artifacts ON artifacts.id = links.artifact_id
         ORDER BY tags.sort_order, tags.name COLLATE NOCASE
         """,
-        artifact_ids,
     ).fetchall()
 
     result: dict[int, list[ArtifactTagRef]] = {
@@ -437,7 +469,10 @@ def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]
     }
 
     for row in rows:
-        result[int(row["artifact_id"])].append(
+        artifact_id = int(row["artifact_id"])
+        if artifact_id not in result:
+            continue
+        result[artifact_id].append(
             ArtifactTagRef(
                 id=int(row["tag_id"]),
                 name=row["tag_name"],
@@ -449,12 +484,12 @@ def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]
 def list_custom_sets(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    read_only: bool = False,
 ) -> list[dict[str, Any]]:
     if not artifact_db_exists(db_path):
         return []
 
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    with closing(_open_query_connection(db_path, read_only=read_only)) as conn:
         return _fetch_custom_sets(conn)
 
 
@@ -540,12 +575,12 @@ def get_custom_set_artifact_ids(
     tag_id: int,
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    read_only: bool = False,
 ) -> set[int]:
     if not artifact_db_exists(db_path):
         return set()
 
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    with closing(_open_query_connection(db_path, read_only=read_only)) as conn:
         rows = conn.execute(
             """
             SELECT artifact_id
@@ -593,12 +628,16 @@ def replace_custom_set_artifacts(
 def list_build_presets(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    initialize: bool = True,
+    read_only: bool = False,
 ) -> list[dict[str, Any]]:
+    """Read presets; a browser whose store initialized this DB can skip DDL."""
     if not artifact_db_exists(db_path):
         return []
 
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    with closing(_open_query_connection(
+        db_path, read_only=read_only, initialize=initialize,
+    )) as conn:
         return db_list_build_presets(conn)
 
 
@@ -606,12 +645,12 @@ def list_build_presets_for_gcsim_character(
     gcsim_character_key: str,
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    read_only: bool = False,
 ) -> list[dict[str, Any]]:
     if not artifact_db_exists(db_path):
         return []
 
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    with closing(_open_query_connection(db_path, read_only=read_only)) as conn:
         return db_list_build_presets_for_gcsim_character(
             conn,
             gcsim_character_key,
@@ -622,12 +661,15 @@ def get_build_preset(
     build_id: int,
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    initialize: bool = True,
+    read_only: bool = False,
 ) -> dict[str, Any] | None:
     if not artifact_db_exists(db_path):
         return None
 
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    with closing(_open_query_connection(
+        db_path, read_only=read_only, initialize=initialize,
+    )) as conn:
         return db_get_build_preset(conn, build_id)
 
 
@@ -674,12 +716,15 @@ def calculate_build_summary(
     slots: dict[int, int] | None = None,
     artifact_ids: list[int] | None = None,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    initialize: bool = True,
+    read_only: bool = False,
 ) -> dict[str, Any] | None:
     if not artifact_db_exists(db_path):
         return None
 
-    with closing(connect_db(db_path)) as conn:
-        init_db(conn)
+    with closing(_open_query_connection(
+        db_path, read_only=read_only, initialize=initialize,
+    )) as conn:
         return db_calculate_raw_build_summary(
             conn,
             build_id=build_id,

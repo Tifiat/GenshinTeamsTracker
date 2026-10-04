@@ -42,8 +42,8 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
             source = AbyssFloorSourceData(
                 floor=12,
                 period=AbyssPeriod(
-                    start_date="2026-06-16",
-                    end_date="2026-07-16",
+                    start_date="2026-10-01",
+                    end_date="2026-11-01",
                     source="test",
                 ),
                 source_urls={},
@@ -90,7 +90,7 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
                 source_data=source,
             )
 
-            self.assertIn("2026-06-16", widget.period_label.text())
+            self.assertIn("2026-10-01", widget.period_label.text())
             side = widget._side_widgets[(1, 1)]
             enemy_labels = side.findChildren(QLabel, "pvp_timer_enemy_name")
             self.assertEqual([label.text() for label in enemy_labels], ["x2 Test Automaton"])
@@ -304,8 +304,8 @@ def _timer_source_data() -> AbyssFloorSourceData:
     return AbyssFloorSourceData(
         floor=12,
         period=AbyssPeriod(
-            start_date="2026-06-16",
-            end_date="2026-07-16",
+            start_date="2026-10-01",
+            end_date="2026-11-01",
             source="test",
         ),
         source_urls={},

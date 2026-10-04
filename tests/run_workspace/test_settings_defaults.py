@@ -19,6 +19,7 @@ class SettingsDefaultsTest(unittest.TestCase):
         defaults = default_settings()
 
         self.assertEqual(defaults["ui_language"], "ru")
+        self.assertFalse(defaults["ui_use_system_scaling"])
         self.assertTrue(defaults["hoyolab_change_equipment_on_import"])
         self.assertFalse(defaults["hoyolab_login_hint_dismissed"])
         self.assertFalse(defaults["gcsim_optimizer_fast_mode"])
@@ -45,6 +46,7 @@ class SettingsDefaultsTest(unittest.TestCase):
         )
 
     def test_default_consumers_use_the_central_registry(self) -> None:
+        from run_workspace.display_settings import USE_SYSTEM_SCALING_DEFAULT
         from hoyolab_export.account_equipment import (
             AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT,
         )
@@ -59,6 +61,7 @@ class SettingsDefaultsTest(unittest.TestCase):
         )
 
         self.assertEqual(DEFAULT_LANGUAGE, settings_default("ui_language"))
+        self.assertEqual(USE_SYSTEM_SCALING_DEFAULT, settings_default("ui_use_system_scaling"))
         self.assertEqual(
             AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT,
             settings_default("hoyolab_change_equipment_on_import"),
@@ -156,6 +159,19 @@ class SettingsDefaultsTest(unittest.TestCase):
                 app_settings.get_app_setting("obsolete_dont_show_again", True, settings_file=settings_file),
                 True,
             )
+
+    def test_system_scaling_first_read_persisted_choice_and_reset_share_defaults(self) -> None:
+        from run_workspace.display_settings import set_use_system_scaling, use_system_scaling
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_file = Path(tmp) / "settings.json"
+            self.assertFalse(use_system_scaling(settings_file=settings_file))
+            self.assertFalse(settings_file.exists())
+            set_use_system_scaling(True, settings_file=settings_file)
+            self.assertTrue(use_system_scaling(settings_file=settings_file))
+            self.assertTrue(app_settings.read_app_settings(settings_file)["ui_use_system_scaling"])
+            defaults = app_settings.reset_app_settings(settings_file)
+            self.assertFalse(defaults["ui_use_system_scaling"])
+            self.assertFalse(use_system_scaling(settings_file=settings_file))
 
     def test_failed_atomic_reset_preserves_previous_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

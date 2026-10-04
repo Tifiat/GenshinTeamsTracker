@@ -10,7 +10,7 @@
     },
     {
       "old": "\t\tbase := r.best.Assignment[actor]\n\t\tfor a := 0; a < 5; a++ {\n\t\t\tfor _, x := range pools[a] {",
-      "new": "\t\tbase := r.best.Assignment[actor]\n\t\tgate := hypothesisPrepareGate(r, base, pools)\n\t\tfor a := 0; a < 5; a++ {\n\t\t\tfor position, x := range pools[a] {"
+      "new": "\t\tbase := r.best.Assignment[actor]\n\t\tgate, e := hypothesisPrepareGate(r, base, pools)\n\t\tif e != nil { return r.finish(e) }\n\t\tfor a := 0; a < 5; a++ {\n\t\t\tfor position, x := range pools[a] {"
     },
     {
       "old": "\t\t\t\ttrial[a] = x\n\t\t\t\tif e = r.point(trial, false, false); e != nil {\n\t\t\t\t\treturn r.finish(e)\n\t\t\t\t}",

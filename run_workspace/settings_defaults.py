@@ -14,6 +14,7 @@ from typing import Any
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "ui_language": "ru",
+    "ui_use_system_scaling": False,
     "hoyolab_change_equipment_on_import": True,
     "hoyolab_login_hint_dismissed": False,
     "abyss_fact_dps_multi_target_enabled": False,

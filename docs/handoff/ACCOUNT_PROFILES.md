@@ -1,11 +1,11 @@
 # Saved accounts and application defaults
 
 <!-- handoff-current: account-profiles -->
-Reviewed 2026-10-04. Worker5 implementation contains an account registry,
+Reviewed 2026-10-04. Local master contains Worker5's account registry,
 isolated storage roots, optional in-game profile metadata, an AppShell account
 selector, separate Login/Import actions, per-account deletion and full reset.
 Profile changes restart the UI process so module defaults and memory caches
-cannot retain the previous account. The combined account/lifecycle/settings/Qt
+cannot retain the previous account. Worker5's combined account/lifecycle/settings/Qt
 suite ran 270 tests: 269 passed, one host symlink test skipped; deterministic
 link/reparse protection checks passed. Native AppShell checks verified clean
 startup, Login hint, separate Import, equipment ON, create/switch drafts,
@@ -20,8 +20,10 @@ explicit Import instruction as the login dialog. The combined adapted
 login/profile/tooltip suite passed 37 controlled tests; visible acceptance of
 these last edits is reserved for the user's manual smoke check.
 Multiple real-account imports and actual game-avatar rendering remain
-unverified. The user's later synchronization instruction authorizes a local
-commit and orchestrator-owned transfer without closing those acceptance gates.
+unverified. The user-authorized local transfer is saved with controlled target
+checks; [integration evidence](integration_receipts/2026-10-04_ready_workers.md)
+also records the main legacy migration caused by an old startup test and its
+isolation repair. This is not a real multiaccount-import acceptance.
 Push remains unauthorized. [Transfer scope](WORKER5_TRANSFER_PACKAGE.md) owns
 the package/dependency boundary; the older isolated importer candidate is separate.
 <!-- /handoff-current -->

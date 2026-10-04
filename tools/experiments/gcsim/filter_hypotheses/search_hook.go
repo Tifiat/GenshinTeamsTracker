@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"math"
 	"os"
+	"runtime"
 	"time"
 
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
@@ -37,24 +38,29 @@ func hypothesisRecord(anchor domain.Assignment, actor int, ids [5]int64, dps flo
 	hypothesisCounters.Scored++
 }
 
-func hypothesisPrepareGate(r *candidateRun, base [5]int64, pools [5][]int64) *domain.HypothesisNeighborhoodGatePlan {
+func hypothesisPrepareGate(r *candidateRun, base [5]int64, pools [5][]int64) (*domain.HypothesisNeighborhoodGatePlan, error) {
 	if !hypothesisNeighborhoodEnabled {
-		return nil
+		return nil, nil
 	}
 	started := time.Now()
 	defer func() { hypothesisCounters.PrepareNanoseconds += time.Since(started).Nanoseconds() }()
-	plan, err := r.localValidator.PrepareHypothesisNeighborhoodGate(base, pools)
+	plan, err := r.localValidator.PrepareHypothesisNeighborhoodGate(r.ctx, base, pools)
 	if err != nil {
+		if cancel := r.ctx.Err(); cancel != nil {
+			return nil, cancel
+		}
 		hypothesisCounters.Fallbacks++
-		return nil // malformed/unknown domains retain the entire original route
+		return nil, nil // malformed/unknown domains retain the entire original route
 	}
 	hypothesisCounters.Plans++
-	hypothesisCounters.RepresentativeChecks += int64(plan.Checks)
-	return plan
+	hypothesisCounters.RepresentativeChecks += int64(plan.ValidationChecks)
+	return plan, nil
 }
 
 // Sequential standalone research CLI only; not a shared/parallel product API.
 func HypothesisNeighborhoodSnapshot() any {
+	var memory runtime.MemStats
+	runtime.ReadMemStats(&memory)
 	return map[string]any{
 		"enabled": hypothesisNeighborhoodEnabled, "scored": hypothesisCounters.Scored,
 		"point_calls":          hypothesisCounters.PointCalls,
@@ -62,6 +68,8 @@ func HypothesisNeighborhoodSnapshot() any {
 		"plans":                hypothesisCounters.Plans, "fallbacks": hypothesisCounters.Fallbacks,
 		"representative_checks": hypothesisCounters.RepresentativeChecks,
 		"single_skipped":        hypothesisCounters.SingleSkipped, "pair_skipped": hypothesisCounters.PairSkipped,
-		"prepare_seconds": float64(hypothesisCounters.PrepareNanoseconds) / float64(time.Second),
+		"prepare_seconds":  float64(hypothesisCounters.PrepareNanoseconds) / float64(time.Second),
+		"heap_alloc_bytes": memory.HeapAlloc, "heap_sys_bytes": memory.HeapSys,
+		"total_alloc_bytes": memory.TotalAlloc, "gc_count": memory.NumGC,
 	}
 }

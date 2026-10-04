@@ -4,7 +4,7 @@ package search
 // candidates; neither a small observed spread nor local stationarity proves an
 // upper bound. Five screening exclusions and five paired exclusions are the
 // initial, explicitly heuristic policy. Tiny domains are evaluated exhaustively.
-// Selected keeps its existing route until the single-team product gate.
+// Infinite-energy Selected and neutral All Sets share this candidate route.
 import (
 	"context"
 	"fmt"
@@ -140,6 +140,21 @@ func (r *candidateRun) point(ids [5]int64, sample, pair bool) error {
 		r.rows = r.engine.mergeFinalists(r.engine.config.FinalistLimit, r.rows...)
 	}
 	return nil
+}
+
+// Physical package eligibility depends on families, not item stats. Prepare
+// it once per fixed neighborhood; every surviving leaf still uses point's
+// validator. Unsupported pool metadata falls back, while Finish/Cancel must
+// propagate to the caller with already scored rows intact.
+func (r *candidateRun) prepareNeighborhood(base [5]int64, pools [5][]int64) (*domain.NeighborhoodPlan, error) {
+	plan, err := r.localValidator.PrepareNeighborhood(r.ctx, base, pools)
+	if err != nil {
+		if cancel := r.ctx.Err(); cancel != nil {
+			return nil, cancel
+		}
+		return nil, nil
+	}
+	return plan, nil
 }
 
 func (r *candidateRun) priorities(ids [5]int64) (map[int64]float64, error) {
@@ -331,15 +346,27 @@ func (engine *Engine) RefineCandidates(ctx context.Context, anchor domain.Assign
 		}
 		// Inspect pairs even when every single replacement was worse.
 		base := r.best.Assignment[actor]
+		gate, e := r.prepareNeighborhood(base, pools)
+		if e != nil {
+			return r.finish(e)
+		}
 		for a := 0; a < 5; a++ {
-			for _, x := range pools[a] {
+			for position, x := range pools[a] {
 				trial := base
 				trial[a] = x
-				if e = r.point(trial, false, false); e != nil {
+				if gate == nil || gate.Single[a][position] {
+					if e = r.point(trial, false, false); e != nil {
+						return r.finish(e)
+					}
+				} else if e = r.ctx.Err(); e != nil {
 					return r.finish(e)
 				}
 				for b := a + 1; b < 5; b++ {
-					for _, y := range pools[b] {
+					remaining := pools[b]
+					if gate != nil {
+						remaining = gate.Pairs[a][b][position]
+					}
+					for _, y := range remaining {
 						if r.report.Step.Expanded >= allowance {
 							break
 						}

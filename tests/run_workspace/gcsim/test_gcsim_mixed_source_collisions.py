@@ -70,13 +70,52 @@ class MixedSourceCollisionTests(unittest.TestCase):
         self.assertTrue(result.ready)
         assert result.database_input is not None
         self.assertEqual([row.artifact_id for row in result.database_input.artifacts], [1, 2])
-        self.assertEqual(result.database_input.eligible_5_star_artifact_ids, ())
-        self.assertTrue(all(
-            any(issue.code == "artifact_mixed_source_copy_ambiguous" for issue in row.issues)
-            for row in result.database_input.artifacts
-        ))
+        self.assertEqual(result.database_input.eligible_5_star_artifact_ids, (2,))
+        self.assertIn("artifact_mixed_source_copy_ambiguous", [
+            issue.code for issue in result.database_input.artifact_by_id(1).issues
+        ])
+        self.assertTrue(result.database_input.artifact_by_id(2).calculation_valid)
         with closing(connect_db(self.db)) as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM artifacts").fetchone()[0], 2)
+
+    def test_ambiguous_group_keeps_one_deterministic_canonical_copy_without_db_write(self) -> None:
+        self._artifact(1, set_id=None, source="artiscan", content_fingerprint="same-rolls")
+        for artifact_id in (3, 2):
+            self._artifact(artifact_id, set_id=2150451, source="hoyolab", content_fingerprint="same-rolls")
+        before = self.db.read_bytes()
+        first = load_gcsim_optimizer_artifact_database_input(self.db, engine_context=_engine_context())
+        second = load_gcsim_optimizer_artifact_database_input(self.db, engine_context=_engine_context())
+        assert first.database_input is not None and second.database_input is not None
+        self.assertEqual(first.database_input.eligible_5_star_artifact_ids, (2,))
+        self.assertEqual(second.database_input.eligible_5_star_artifact_ids, (2,))
+        self.assertEqual(first.database_input.artifact_database_input_sha256,
+                         second.database_input.artifact_database_input_sha256)
+        self.assertEqual(self.db.read_bytes(), before)
+
+    def test_invalid_lower_canonical_id_does_not_hide_valid_copy(self) -> None:
+        self._artifact(1, set_id=None, source="artiscan", content_fingerprint="same-rolls")
+        for artifact_id in (2, 3):
+            self._artifact(artifact_id, set_id=2150451, source="hoyolab", content_fingerprint="same-rolls")
+        with closing(connect_db(self.db)) as conn:
+            conn.execute("UPDATE artifacts SET main_property_value = 'invalid' WHERE id = 2")
+            conn.commit()
+        result = load_gcsim_optimizer_artifact_database_input(self.db, engine_context=_engine_context())
+        assert result.database_input is not None
+        self.assertEqual(result.database_input.eligible_5_star_artifact_ids, (3,))
+        self.assertFalse(result.database_input.artifact_by_id(2).calculation_valid)
+
+    def test_observation_proof_changes_digest_and_copy_admission(self) -> None:
+        self._artifact(1, set_id=None, source="artiscan", content_fingerprint="same-rolls")
+        self._artifact(2, set_id=2150451, source="hoyolab", content_fingerprint="same-rolls")
+        before = load_gcsim_optimizer_artifact_database_input(self.db, engine_context=_engine_context())
+        self._observe(1, 1001)
+        self._observe(2, 1002)
+        after = load_gcsim_optimizer_artifact_database_input(self.db, engine_context=_engine_context())
+        assert before.database_input is not None and after.database_input is not None
+        self.assertEqual(before.database_input.eligible_5_star_artifact_ids, (2,))
+        self.assertEqual(after.database_input.eligible_5_star_artifact_ids, (1, 2))
+        self.assertNotEqual(before.database_input.artifact_database_input_sha256,
+                            after.database_input.artifact_database_input_sha256)
 
     def test_simultaneously_observed_hoyolab_twins_remain_eligible(self) -> None:
         self._artifact(1, set_id=2150451, source="hoyolab", content_fingerprint="same-rolls")

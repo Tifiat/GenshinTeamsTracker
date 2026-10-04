@@ -65,8 +65,17 @@ class ArtifactBrowserStore:
         )
 
     @classmethod
-    def load_from_db(cls, db_path=None) -> "ArtifactBrowserStore":
-        data = load_artifact_browser_store_data(db_path=db_path) if db_path is not None else load_artifact_browser_store_data()
+    def load_from_db(
+        cls,
+        db_path=None,
+        *,
+        preferred_lang: str | None = None,
+        read_only: bool = False,
+    ) -> "ArtifactBrowserStore":
+        options = {"preferred_lang": preferred_lang, "read_only": read_only}
+        if db_path is not None:
+            options["db_path"] = db_path
+        data = load_artifact_browser_store_data(**options)
         return cls(
             database_exists=bool(data["database_exists"]),
             artifacts=list(data["artifacts"]),
@@ -81,6 +90,12 @@ class ArtifactBrowserStore:
 
     def artifact(self, artifact_id: int) -> ArtifactItem:
         return self.artifacts_by_id[artifact_id]
+
+    def has_clearable_json_imports(self) -> bool:
+        return any(
+            artifact.json_imported and artifact.import_source == "artiscan"
+            for artifact in self.artifacts_by_id.values()
+        )
 
     def set_bonus_description(self, set_uid: str, piece_count: int) -> str | None:
         description = self.set_bonus_descriptions.get((str(set_uid or ""), int(piece_count)))

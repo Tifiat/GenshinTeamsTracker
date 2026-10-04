@@ -223,9 +223,10 @@ class PvpPlayRightPanel(QWidget):
                 self.player_2_status_label.setText(player_2_status.text)
                 self.start_button.setEnabled(
                     not active and player_1_status.ready and player_2_status.ready
+                    and self.workspace.period_admission().ready
                 )
             self._refresh_active_summary()
-            status = self.workspace.last_play_status()
+            status = self.workspace.last_play_status() or self.workspace.period_admission_text()
             self.status_label.setText(status)
             self.status_label.setVisible(bool(status))
         finally:

@@ -3,14 +3,15 @@
 The loader opens the existing unified SQLite database in URI ``mode=ro``,
 performs one short read transaction, fetches every artifact and substat row,
 then closes SQLite before validation. A mixed-source canonical fingerprint
-collision is quarantined unless distinct pieces were observed together by
-HoYoLAB; no artifact row or saved assignment is changed.
+collision admits one validated canonical HoYoLAB representative unless distinct
+pieces were observed together; aliases are quarantined without changing any
+artifact row or saved assignment.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import math
@@ -678,13 +679,9 @@ def _validate_artifact_rows(
         artifacts_by_id[artifact_id] = row
         frozen_by_id[artifact_id] = frozen
 
-    ambiguous_ids = {
-        artifact_id
-        for group in _ambiguous_mixed_source_collision_groups(
-            artifacts_by_id.values(), observation_rows
-        )
-        for artifact_id in group
-    }
+    ambiguous_groups = _ambiguous_mixed_source_collision_groups(
+        artifacts_by_id.values(), observation_rows
+    )
 
     substats_by_artifact: dict[
         int,
@@ -706,16 +703,9 @@ def _validate_artifact_rows(
         substats_by_artifact[artifact_id].append((frozen, row))
 
     records: list[GcsimOptimizerArtifactRecord] = []
-    aggregate_issues: list[GcsimOptimizerIssue] = []
     for artifact_id in sorted(artifacts_by_id):
         row = artifacts_by_id[artifact_id]
         issues: list[GcsimOptimizerIssue] = []
-        if artifact_id in ambiguous_ids:
-            issues.append(_artifact_issue(
-                artifact_id,
-                "artifact_mixed_source_copy_ambiguous",
-                "A scanner and HoYoLAB row share canonical content without proof of separate copies.",
-            ))
         set_uid = _trimmed_text(row.get("set_uid"))
         if not set_uid:
             issues.append(
@@ -885,8 +875,44 @@ def _validate_artifact_rows(
             raw_columns=frozen_by_id[artifact_id],
         )
         records.append(record)
-        aggregate_issues.extend(issues)
-    return tuple(records), tuple(aggregate_issues)
+
+    # Identity ambiguity limits multiplicity, not the usefulness of a proven
+    # canonical piece. Select after validation so an invalid lower ID cannot
+    # hide a valid copy. Never admit all aliases as independent allocation IDs.
+    records_by_id = {record.artifact_id: record for record in records}
+    for group in ambiguous_groups:
+        candidates = [
+            records_by_id[artifact_id]
+            for artifact_id in group
+            if records_by_id[artifact_id].calculation_valid
+            and artifacts_by_id[artifact_id].get("set_id") is not None
+            and _trimmed_text(artifacts_by_id[artifact_id].get("import_source")).casefold() == "hoyolab"
+        ]
+        representative = min(
+            candidates,
+            key=lambda record: (
+                not record.default_eligible,
+                record.set_mapping_status != OPTIMIZER_ARTIFACT_SET_MAPPING_READY,
+                record.artifact_id,
+            ),
+            default=None,
+        )
+        for artifact_id in group:
+            if representative is not None and artifact_id == representative.artifact_id:
+                continue
+            record = records_by_id[artifact_id]
+            issue = _artifact_issue(
+                artifact_id,
+                "artifact_mixed_source_copy_ambiguous",
+                "Matching scanner/HoYoLAB records have no proof of separate copies; "
+                "only one validated canonical representative is eligible.",
+            )
+            records_by_id[artifact_id] = replace(
+                record, calculation_valid=False, default_eligible=False,
+                issues=record.issues + (issue,),
+            )
+    records = [records_by_id[record.artifact_id] for record in records]
+    return tuple(records), tuple(issue for record in records for issue in record.issues)
 
 
 def _artifact_issue(

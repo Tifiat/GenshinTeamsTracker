@@ -51,11 +51,12 @@ conversation is usually Russian.
   refs are shared, so coordinate merges/branch moves. Dependency environments
   may be reused read-only; dependency changes require a separate environment.
 - Shared task coordination is linked by `coordination.json` and
-  `docs/handoff/COORDINATION.md`. Read the common queue and Worker5 status at
+  `docs/handoff/COORDINATION.md`. Read the common queue and your own status at
   task selection, scope changes and closeout. Worker1 owns shared queue files;
   each worker writes only its own status. Keep technical docs/evidence with code.
-  A missing hub is reported, not replaced by another live queue. Other workers'
-  checkouts remain write-protected by policy; each owner applies its migration.
+  No shared docs junction or automatic cross-worker acceptance. A missing hub
+  is reported, not replaced by another live queue. Other workers' checkouts
+  remain write-protected by policy; migrations are applied by their own chat.
 - A scheduled continuation exists only after the automation tool returns a
   persisted active ID. A suggested card is not an active schedule.
 - `tools/future/` is for explicitly requested or genuinely reusable manual

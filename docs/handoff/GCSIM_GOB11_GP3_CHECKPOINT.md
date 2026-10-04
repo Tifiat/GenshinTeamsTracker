@@ -3,11 +3,12 @@
 ## Status and authority
 
 <!-- handoff-current: gcsim-optimizer -->
-Reviewed 2026-10-03 during baseline/worker preparation, user-log/UI review and
-isolated filter pilots; no fresh end-to-end search/verification.
-Exact-reuse consumer e0bf5d64 remains installed; engine unchanged. Source9251adea
-is the dated 2026-09-28 build aggregate, including tests, not the current refactored
-source identity. Trace section2 owns behavior. The
+Reviewed 2026-10-04 after bounded Chasca response and guarded cleanup.
+Consumer76f8a52c remains installed; engine unchanged. Native10c3f490 is the
+dated H4 build aggregate including tests, not the later cleanup's source hash.
+Source9251adea remains the dated 2026-09-28 aggregate. The
+[H4 receipt](../optimizer-evidence/2026-10-03-filter-hypotheses/whole-search/README.md)
+owns identities/scopes. Trace section2 owns behavior. The
 [experiment ledger](../optimizer-evidence/2026-09-28-player-hypotheses/README.md)
 owns measurements and rejected alternatives; the
 [refactor audit](GCSIM_OPTIMIZER_REFACTOR_AUDIT_20261003.md) owns cleanup findings.
@@ -18,7 +19,7 @@ owns measurements and rejected alternatives; the
 - Patch SHA256: `154ba582eb6af53f1a2e96f8eb4e808e268a047308b0198a30cbcd88b6b56198`
 - Active artifact SHA256: `7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c`
 - Acceptance status: `exact_reuse_installed_backend_pass`
-- Next block: `optimizer_polish_gated_retirement`
+- Next block: `optimizer_polish_response_attribution`
 
 Pages group bonus combinations with independent single-item DPS deltas.
 Recommended caps normal5/10, fast10/40; defaults3/2 and5/20; opt-in50/100.
@@ -26,40 +27,39 @@ Found rows control allocations; output limits do not widen core search. Fast
 skips final verification, not capture. Search cycles/work are bounded, not an
 exhaustive/global-optimum proof; no product wall-clock timeout.
 
-The [2026-09-28 matrix/install receipt](../optimizer-evidence/2026-09-28-player-hypotheses/matrix/README.md)
-retains13 non-Gaming cases,637 exact rows and its dated Selected/Navia gates.
-Preserve rejected variants and accepted Bloom noise; never inject an equipped
-control. No new numerical matrix, response oracle or physical UI gate.
+The [dated matrix/install receipt](../optimizer-evidence/2026-09-28-player-hypotheses/matrix/README.md)
+retains13 non-Gaming cases,637 exact rows and Selected/Chasca plus All/Navia gates. Preserve
+rejected variants/accepted Bloom noise; never inject an equipped control.
 
-Prior physical Selected/All evidence remains in the
+H4 early legality remains installed: both complete search pairs have identical
+35 ordered rows; fresh Selected7/All35 adapter parity passes. Search gains are
+modest, Selected speed not established. No formula/stat pruning changed.
+
+The [closeout receipt](../optimizer-evidence/2026-10-04-optimizer-closeout/README.md)
+owns123 distinct Python/offscreen checks and four native vet/unit packages PASS,
+the preserved pre-capture harness failure, and the repaired10-member control.
+Numerical response is NOT accepted: original-panel top1 estimate150008.566
+versus fresh151488.295 DPS; independent plume/goblet order is retained, but all
+fresh cases differ from the original topology. Neutral fixed-package scores
+equal Selected scores; this is not full All Sets search or ordinary n500
+verification. Arithmetic versus changed-schedule attribution is unresolved;
+opaque coverage remains. Both managed jobs are gone, installed files preserved.
+
+Removed only the private constant-key forwarding alias; live cache arithmetic
+is unchanged. Older wrapper/source-codec cleanup and its failed checks remain
+in the audit. Compatibility/source oracles, research reproducers and both
+energy routes/Theory remain. No universally clean optimizer is claimed.
+
+Prior physical evidence stays in the
 [replacement/Finish receipt](GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md#2026-09-27-single-item-replacement-output-and-early-finish).
-Revised limits, readable expanding result cards and fast-mode help pass programmatic checks;
-physical reload and actual preset Save remain unverified. The
-[Chasca log/UI receipt](../optimizer-evidence/2026-10-03-chasca-run-review/README.md)
-separates search from ordinary verification and retains its comparison limits.
-The [isolated filter/settings receipt](../optimizer-evidence/2026-10-03-filter-hypotheses/README.md)
-reproduces13 saved scores; bounds/dominance do not help, early legality improves
-only a small kernel. Nothing promoted; complete-coordinator parity remains gated.
+Latest readable cards/expansion/custom fast help pass15 offscreen checks;
+physical reload/preset Save remain unverified.
 
-Dead result/n1000/ordinary wrappers removed; rechecked live helpers remain.
-Mode-explicit Python inputs/processes and strict source codecs separated;
-cache warming skips legacy discovery. Both All Sets energy routes and Theory
-full discovery remain. No search arithmetic changed.
-
-Cleanup gates: vet/15 native packages and119 Python/offscreen tests PASS.
-Storage/worker gates:61 then82 tests (3 platform skips each); the failed SQLite
-attempt stays in audit section9. Native34 disabled/platform gates do not certify
-response. No binary promotion, full search/matrix or physical UI.
-
-The mixed-state baseline is committed on `master`; `codex/optimizer-polish`
-owns Selected/All Sets here and `codex/optimizer-theory` uses Desktop
-`worker2 GTT`. The latter has independent DB/engine copies and local defaults;
-four old unpinned runs reclaimed, protected evidence kept. Source retention
-and old-pin budget are fixed. Next: gated polish/legacy retirement here and
-Theory in its separate chat; no new chat was created by this checkpoint.
-Fresh checkout plus runtime passed structural tests, not numerical/button
-acceptance. Installed post-refactor parity, Theory and changed-item response
-remain outside acceptance; neither mode is declared fully clean.
+`master` is the committed baseline; this checkout remains
+`codex/optimizer-polish`. Theory uses independent Desktop `worker2 GTT` on
+`codex/optimizer-theory`; no transfer/push. Next: bounded schedule/provenance
+attribution before broader response gates; guarded legacy retirement and real
+UI acceptance remain open. Energy is joint with Theory, not developed here.
 <!-- /handoff-current -->
 
 ### Multi-scale provenance audit (2026-09-18)

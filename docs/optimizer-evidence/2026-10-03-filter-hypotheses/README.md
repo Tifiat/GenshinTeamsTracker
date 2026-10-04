@@ -1,10 +1,13 @@
 # Isolated filter hypotheses and saved output counts — 2026-10-03
 
 Owner: [GP-3 checkpoint](../../handoff/GCSIM_GOB11_GP3_CHECKPOINT.md).
-Research only: no installed optimizer/engine/settings changes, full search,
-new ordinary finalist simulation, matrix batch, app restart or Computer Use.
+The initial isolated stage made no installed optimizer/engine/settings changes,
+full search, new ordinary finalist simulation, matrix batch, app restart or Computer Use.
 Low-context Sol helpers implemented the kernels; Luna executed serialized
 managed pilots. The parent reviewed their evidence and scope.
+The later [complete-search H4 extension](whole-search/README.md) records two
+coordinator pairs, fresh real-adapter gates and conditional installation;
+its installed scope does not retroactively expand these isolated measurements.
 
 ## Input and comparison boundary
 
@@ -90,7 +93,9 @@ legal leaves (eight legal family pairs). It saves about **0.075 seconds** across
 the sampled kernels. These are fixed two-slot domains, not the full production
 refinement pools. Production already restricts pools per set/category, so this
 2.6x number must not be applied to the 119-second whole search. H4 merits a
-same-input complete-coordinator overlay gate before any promotion.
+same-input complete-coordinator overlay gate before any promotion. The later
+[H4 gate](whole-search/README.md) passes that requirement and measures a much
+smaller whole-search gain, with preserved candidate order.
 
 H3: **236/236 complete replay outputs equal**, 1.885439s -> 1.781761s, a sampled
 gain of **0.103678s** (5.5%). The 1,322,898 query evaluations are unchanged;
@@ -109,9 +114,10 @@ classification alone.
 
 One-time actual capture: 14.493s / 14.625s. These costs, source replay and build
 time are not gains or losses in the kernel comparison. No combination speedup
-or new end-to-end acceptance has been measured. None of these prototypes has
-been installed. Current acceptance and previously rejected player heuristics
-remain with their existing owners.
+or new end-to-end acceptance was measured in this isolated phase. Only the
+later H4 physical filter is installed after its separate full-search/adapter
+gates; H1/H2/H3 remain unpromoted. Current acceptance and previously rejected
+player heuristics remain with their existing owners.
 
 ## Why the request was 5x7 rather than the default
 
@@ -151,11 +157,15 @@ JSON receipts, 256 KiB each**; exhausted budgets stop rather than overwriting
 failed evidence. This is a finite dated collection, not an accumulating log.
 Receipt path/escape, preservation and budget tests (3) and managed cleanup/
 preservation tests (8) PASS. No automatic deletion of historical receipts.
-One 11,994-byte research-module import cache remains under this probe's
+At the end of the October 3 phase, one 11,994-byte research-module import cache remained under this probe's
 `__pycache__`: its narrowly validated shell cleanup was denied by the tool
 policy, and no alternate deletion route was attempted. Subsequent runner/test
 imports disable new research bytecode; this residue is separate from the
 successfully cleaned managed jobs and does not block their lifecycle.
+On October 4 the authorized closeout removed only that exact, validated `.pyc`
+file. Source files, all permanent receipts and the original denied attempt were
+preserved; no managed-root or account cleanup was performed. Python can
+regenerate bytecode, so this deletion removes no unique evidence.
 
 - [synthetic.json](synthetic.json): initial arithmetic oracle PASS; initial
   accidental punctuation argument was rejected before running and left no data.

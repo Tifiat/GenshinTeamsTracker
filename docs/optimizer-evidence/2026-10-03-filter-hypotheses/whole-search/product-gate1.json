@@ -1,0 +1,147 @@
+{
+  "scope": "fresh active-engine captures and real All Sets/Selected adapters; formula-only; no account/UI/ordinary validation",
+  "status": "installed_adapter_parity_pass",
+  "native_source_sha256": "10c3f490eab2f778528d49ea18f8e4f86529b988f4c97428d85eb640c890ab97",
+  "previous_optimizer_sha256": "e0bf5d64d6d6341fc434bf81f095e67e3e6a3d3ac43abf4fd7475a293bad6cf4",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "modes": {
+    "selected": {
+      "saved_request": "selected-20260928-122336-1a5e659e",
+      "saved_request_sha256": "11532ecbe8925315e3f675c5b5680c72a7d32c2e1083a95d45af6e00927ab2ef",
+      "input_changes": {
+        "fast_mode": [
+          false,
+          true
+        ],
+        "other_fields_equal": true
+      },
+      "controlled_request_sha256": "95caad8a1a0a685dd7f311c2f16ddbe9333a7d661a146e1989387cf3404a65a6",
+      "prepare_seconds": 3.4840000000003783,
+      "counts": {
+        "builds_per_group": 7,
+        "fast_mode": true,
+        "set_group_limit": 1
+      },
+      "installed": {
+        "rows": 7,
+        "row_sha256": "3f47ae97c13a3ddae357fdd32c0139a9e452d55fb66d9eacc701820dd1b39240",
+        "top_dps": "150008.56560406514",
+        "elapsed_seconds": 9.078000000001339,
+        "search_seconds": 4.172977700000001,
+        "warnings": [
+          "formula_only_unverified",
+          "opaque_formula_boundaries_present",
+          "selected_bounded_search"
+        ],
+        "command": [
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\native\\gcsim_optimizer\\gtt-optimizer.exe",
+          "verify-fgbs",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-installed\\request.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-installed\\compact.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-installed\\verification",
+          "all",
+          "--finish-file",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-installed\\finish-requested"
+        ]
+      },
+      "candidate": {
+        "rows": 7,
+        "row_sha256": "3f47ae97c13a3ddae357fdd32c0139a9e452d55fb66d9eacc701820dd1b39240",
+        "top_dps": "150008.56560406514",
+        "elapsed_seconds": 9.390999999999622,
+        "search_seconds": 4.562029000000001,
+        "warnings": [
+          "formula_only_unverified",
+          "opaque_formula_boundaries_present",
+          "selected_bounded_search"
+        ],
+        "command": [
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\gtt-optimizer.exe",
+          "verify-fgbs",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-candidate\\request.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-candidate\\compact.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-candidate\\verification",
+          "all",
+          "--finish-file",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\selected-candidate\\finish-requested"
+        ]
+      },
+      "exact_rows": true,
+      "same_warnings": true
+    },
+    "all_sets": {
+      "saved_request": "all_sets-20261003-201232-82e3ec5d",
+      "saved_request_sha256": "43db6218200f074fe182eaf66821f9b42e68f9fe39c07799f94e03fd3e65a6bf",
+      "input_changes": {
+        "fast_mode": [
+          false,
+          true
+        ],
+        "other_fields_equal": true
+      },
+      "controlled_request_sha256": "eecf0c6e4b21573eb687a2944a7efded650dfc206b7efe75c142a79930ad3cc0",
+      "prepare_seconds": 9.907000000002881,
+      "counts": {
+        "builds_per_group": 7,
+        "fast_mode": true,
+        "set_group_limit": 5
+      },
+      "installed": {
+        "rows": 35,
+        "row_sha256": "990f6a17828cffbde46f3b2af908c783db5f3225398670e6f039a67772a229a8",
+        "top_dps": "158822.6228197032",
+        "elapsed_seconds": 147.76599999999962,
+        "search_seconds": 144.5296731,
+        "warnings": [
+          "all_sets_bounded_search",
+          "all_sets_inventory_budget_limited",
+          "all_sets_search_budget_limited",
+          "formula_only_unverified",
+          "opaque_formula_boundaries_present"
+        ],
+        "command": [
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\native\\gcsim_optimizer\\gtt-optimizer.exe",
+          "optimize-all-sets",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-installed\\request.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-installed\\set-sources.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-installed\\verification",
+          "--finish-file",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-installed\\finish-requested"
+        ]
+      },
+      "candidate": {
+        "rows": 35,
+        "row_sha256": "990f6a17828cffbde46f3b2af908c783db5f3225398670e6f039a67772a229a8",
+        "top_dps": "158822.6228197032",
+        "elapsed_seconds": 142.6720000000023,
+        "search_seconds": 139.3380053,
+        "warnings": [
+          "all_sets_bounded_search",
+          "all_sets_inventory_budget_limited",
+          "all_sets_search_budget_limited",
+          "formula_only_unverified",
+          "opaque_formula_boundaries_present"
+        ],
+        "command": [
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\gtt-optimizer.exe",
+          "optimize-all-sets",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-candidate\\request.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-candidate\\set-sources.json",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-candidate\\verification",
+          "--finish-file",
+          "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-jhvmzoo8\\all_sets-candidate\\finish-requested"
+        ]
+      },
+      "exact_rows": true,
+      "same_warnings": true,
+      "same_research_rows": true
+    }
+  },
+  "native_checks": "vet and all package tests pass",
+  "candidate_optimizer_sha256": "76f8a52ca75146e320090775d02b61903e59dedaa74dc8f2cb006d662afa943c",
+  "protected_inputs_unchanged": true,
+  "installed_optimizer_sha256": "76f8a52ca75146e320090775d02b61903e59dedaa74dc8f2cb006d662afa943c",
+  "default_path_preflight_pass": true,
+  "installed": true
+}

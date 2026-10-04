@@ -38,6 +38,9 @@ AppShell acceptance and the full-import/multiaccount gate remain open. The
 later local-commit authorization does not close those gates; see the
 [transfer scope](WORKER5_TRANSFER_PACKAGE.md). No new app/import/network run
 was made while packaging the existing verified source.
+The scoped source is now on local master; its controlled compatibility checks
+are in the [target receipt](integration_receipts/2026-10-04_ready_workers.md).
+No new live HTTP/browser icon recovery or full import was run in main.
 <!-- /handoff-current -->
 
 ## 2026-10-04 browser recovery receipt

@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -143,7 +145,7 @@ func TestHypothesisNeighborhoodGateMatchesExhaustivePhysicalLegality(t *testing.
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			validator, base, pools, ids, _ := hypothesisGateFixture(t, tc.selected, tc.base)
-			plan, err := validator.PrepareHypothesisNeighborhoodGate(base, pools)
+			plan, err := validator.PrepareHypothesisNeighborhoodGate(context.Background(), base, pools)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -202,7 +204,7 @@ func TestHypothesisNeighborhoodGateRejectsIncompatibleInputs(t *testing.T) {
 		[slotCount]string{"A1", "A1", "A1", "A1", "C"})
 	badBase := base
 	badBase[0] = 99999999
-	if _, err := validator.PrepareHypothesisNeighborhoodGate(badBase, pools); err == nil || !strings.Contains(err.Error(), "base") {
+	if _, err := validator.PrepareHypothesisNeighborhoodGate(context.Background(), badBase, pools); err == nil || !strings.Contains(err.Error(), "base") {
 		t.Fatalf("invalid base accepted: %v", err)
 	}
 	for _, tc := range []struct {
@@ -217,13 +219,81 @@ func TestHypothesisNeighborhoodGateRejectsIncompatibleInputs(t *testing.T) {
 			badPools := pools
 			badPools[0] = append([]int64(nil), pools[0]...)
 			badPools[0][0] = tc.id
-			if _, err := validator.PrepareHypothesisNeighborhoodGate(base, badPools); err == nil || !strings.Contains(err.Error(), tc.message) {
+			if _, err := validator.PrepareHypothesisNeighborhoodGate(context.Background(), base, badPools); err == nil || !strings.Contains(err.Error(), tc.message) {
 				t.Fatalf("incompatible pool accepted: %v", err)
 			}
 		})
 	}
 	var missing *LocalAssignmentValidator
-	if _, err := missing.PrepareHypothesisNeighborhoodGate(base, pools); err == nil {
+	if _, err := missing.PrepareHypothesisNeighborhoodGate(context.Background(), base, pools); err == nil {
 		t.Fatal("missing validator accepted")
+	}
+}
+
+// Err call count makes cancellation deterministic without goroutines or clocks.
+// The embedded context still owns Done/Err consistency after cancellation.
+type hypothesisGateCountingContext struct {
+	context.Context
+	cancel   context.CancelFunc
+	cancelAt int
+	calls    int
+}
+
+func hypothesisGateNewCountingContext(cancelAt int) *hypothesisGateCountingContext {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &hypothesisGateCountingContext{Context: ctx, cancel: cancel, cancelAt: cancelAt}
+}
+
+func (ctx *hypothesisGateCountingContext) Err() error {
+	ctx.calls++
+	if ctx.cancelAt > 0 && ctx.calls >= ctx.cancelAt {
+		ctx.cancel()
+	}
+	return ctx.Context.Err()
+}
+
+func TestHypothesisNeighborhoodGatePreCanceledReturnsNoPlan(t *testing.T) {
+	validator, base, pools, _, _ := hypothesisGateFixture(t,
+		[]contracts.SetRequirement{{SetUID: "A", Count: 4}},
+		[slotCount]string{"A1", "A1", "A1", "A1", "C"})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	base[0] = 99999999 // cancellation must win before base validation
+	plan, err := validator.PrepareHypothesisNeighborhoodGate(ctx, base, pools)
+	if plan != nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("pre-canceled preparation returned plan=%v err=%v", plan, err)
+	}
+}
+
+func TestHypothesisNeighborhoodGateCancelsDuringPreparation(t *testing.T) {
+	validator, base, pools, _, _ := hypothesisGateFixture(t,
+		[]contracts.SetRequirement{{SetUID: "A", Count: 4}},
+		[slotCount]string{"A1", "A1", "A1", "A1", "C"})
+	metadataCount := 0
+	for _, pool := range pools {
+		metadataCount += len(pool)
+	}
+	probe := hypothesisGateNewCountingContext(0)
+	complete, err := validator.PrepareHypothesisNeighborhoodGate(probe, base, pools)
+	probe.cancel()
+	if err != nil || complete == nil {
+		t.Fatalf("counting baseline failed: %v", err)
+	}
+	for _, tc := range []struct {
+		name, phase string
+		cancelAt    int
+	}{
+		{"metadata", "metadata", 3}, // pre-check, base-check, first pool entry
+		{"representative", "representative", 2 + metadataCount + 1},
+		{"pair expansion", "pair expansion", probe.calls - 1}, // last row's pool-b scan, before final check
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := hypothesisGateNewCountingContext(tc.cancelAt)
+			defer ctx.cancel()
+			plan, err := validator.PrepareHypothesisNeighborhoodGate(ctx, base, pools)
+			if plan != nil || !errors.Is(err, context.Canceled) || ctx.calls != tc.cancelAt {
+				t.Fatalf("%s cancellation returned plan=%v err=%v calls=%d want=%d", tc.phase, plan, err, ctx.calls, tc.cancelAt)
+			}
+		})
 	}
 }

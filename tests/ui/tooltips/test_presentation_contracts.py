@@ -42,6 +42,7 @@ from ui.gcsim_browser.optimizer_result import (
     OptimizerResultPage,
 )
 from ui.gcsim_browser.virtual_slot_editor import VirtualGcsimCardEditor
+from ui.gcsim_browser.window import GcsimBrowserWorkspace
 from ui.main_window import App
 from ui.pvp_browser.window import PvpDecksWorkspace
 from ui.right_panel.common.run_summary import CompactSlotSummaryWidget
@@ -282,6 +283,38 @@ class TooltipPresentationContracts(unittest.TestCase):
         self.assertEqual(len(action_buttons), 1)
         self.assertEqual(_controller(action_buttons[0]).text(), tr("artifact.custom.create"))
         self.assertEqual(action_buttons[0].toolTip(), "")
+
+    def test_pvp_run_admission_hints_update_and_clear_without_changing_run_guards(self) -> None:
+        browser = GcsimBrowserWorkspace()
+        self.addCleanup(browser.close)
+        buttons = (browser.run_selected_button, browser.run_all_button)
+        reason = "The selected Abyss period is no longer available."
+        browser.set_run_admission(False, message=reason)
+        controllers = tuple(_controller(button) for button in buttons)
+        for button, controller in zip(buttons, controllers):
+            self.assertFalse(button.isEnabled())
+            self.assertEqual(controller.text(), reason)
+            self.assertEqual(button.toolTip(), "")
+
+        browser.set_run_admission(False, message="The account is not ready.")
+        for button, controller in zip(buttons, controllers):
+            self.assertIs(_controller(button), controller)
+            self.assertEqual(controller.text(), "The account is not ready.")
+
+        browser.set_actions_busy(True)
+        browser.set_run_admission(True)
+        for button, controller in zip(buttons, controllers):
+            self.assertIs(_controller(button), controller)
+            self.assertEqual(controller.text(), "")
+            self.assertFalse(button.isEnabled())
+        browser.set_actions_busy(False)
+        self.assertTrue(all(button.isEnabled() for button in buttons))
+
+        preparation = GcsimBrowserWorkspace(preparation_only=True)
+        self.addCleanup(preparation.close)
+        preparation.set_run_admission(True)
+        self.assertFalse(preparation.run_selected_button.isEnabled())
+        self.assertFalse(preparation.run_all_button.isEnabled())
 
     def test_account_help_and_busy_hint_use_custom_controllers(self) -> None:
         with (

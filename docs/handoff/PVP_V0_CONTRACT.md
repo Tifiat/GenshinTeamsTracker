@@ -319,8 +319,10 @@ Ownership styling must not follow the active turn. A Player-1-only card uses a
 Player 1 frame and left constellation badge; a Player-2-only card uses a Player
 2 frame and right badge; a shared card splits the outer frame Player 1 on the
 left / Player 2 on the right and places both constellation badges on their
-corresponding sides. Seat-specific image selection for shared Pick/Ban actions
-is defined in `PVP_PROFILE_PACKAGE.md`.
+corresponding sides. The same neutral portrait per character id is reused across
+seats, pool scopes, Pick/Ban actions and result zones; no seat/action-dependent
+bitmap variants are required. Portable asset/fallback rules are defined in
+`PVP_PROFILE_PACKAGE.md`.
 
 ## Deck Validation
 
@@ -564,11 +566,9 @@ PvP profile/provider model:
 - imported or future remote players use a scoped provider backed by a managed
   temporary SQLite database for source data plus a fresh scoped runtime
   equipment state for the match;
-- `.gttpvp` is the intended versioned PvP profile container. The current
-  internal v1 ZIP (`manifest.json`, `decks.json`, `account_slice.sqlite`) is a
-  development prototype, not a stable/share-safe public contract;
-- the finalized exporter must construct an explicit minimal allowlisted data
-  slice and package-relative asset manifest instead of copying the full app DB;
+- `.gttpvp` v3 constructs an explicit allowlisted data slice and package-relative
+  neutral asset manifest. Inventory scope and real-account acceptance status are
+  owned by `PVP_PROFILE_PACKAGE.md`; internal v1 archives require re-export;
 - package import must validate the archive, hashes, SQLite schema/integrity,
   deck references, and assets before materializing a managed temporary
   provider. It must not restore into the main app database;
@@ -672,9 +672,9 @@ When implementation starts, add tests before or alongside UI:
   data only in the manual smoke command.
 - session bundle JSON roundtrip and verifier replay checks for tampered actions,
   hashes, missing decks, and unknown draft systems.
-- two seat providers with the same character id but different constellation and
-  image data, deterministic Player-scope/shared Pick/shared Ban image selection,
-  and ownership styling that does not change with the active seat.
+- two seat providers with the same character id but different constellation,
+  level and equipment data, one shared neutral portrait across pool scopes and
+  Pick/Ban/result zones, and ownership styling independent of the active seat.
 - portable profile package privacy/schema allowlisting, asset portability,
   cross-reference/hash validation, cleanup, and proof that import never mutates
   the main DB or local deck directory.
@@ -761,17 +761,18 @@ Stage G: local hot-seat UI.
 - Team/weapon assignment.
 - Timer/result summary.
 - Status: implemented as a playable local hot-seat loop through read-only
-  result summary. Artifact equipment, scoped GCSIM, History, and result export
-  remain later stages.
+  result summary. Scoped artifact equipment, GCSIM dispatch and local period
+  admission are available; controlled acceptance/lifecycle limits live in
+  `PVP_BUILD_SERVICES.md`. History and result export remain later stages.
 
 Stage H: deck builder/exporter UI.
 
 - Build a deck from the existing imported account characters/weapons.
 - Validate under Free Draft and later rulesets.
 - Export deck/profile data.
-- Status: Decks preset UI and a development `.gttpvp` button/provider exist.
-  Finalized two-seat schema plus portable/privacy-safe profile export/import are
-  still the next stage; see `PVP_PROFILE_PACKAGE.md`.
+- Status: Decks preset UI and v3 portable profile/provider implementation exist.
+  Fixture evidence and pending real-account/user acceptance are recorded in
+  `PVP_PROFILE_PACKAGE.md`.
 
 Stage I: iterate toward offline PvP MVP.
 

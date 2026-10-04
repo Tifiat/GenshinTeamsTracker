@@ -6,6 +6,44 @@ Artiscan import conventions. Equipment write semantics and operation-target
 priority are owned by [ARTIFACT_BROWSER_EQUIPMENT_UX.md](ARTIFACT_BROWSER_EQUIPMENT_UX.md).
 Open work belongs in `TODO.md`; consolidation is not a new UI/test acceptance.
 
+<!-- handoff-current: artifact-first-open-performance -->
+2026-10-04, worker3: first-open work uses the host's pending equipment target
+and virtual roster during construction, rather than rebuilding an empty browser
+and applying them afterward. Preset targets are read in two batches, preserving
+ordering, virtual-to-account projection, per-build deduplication and legacy
+target-count semantics. Transparent icon trimming preserves exact threshold
+and DPR behavior using alpha bytes instead of per-pixel QColor calls.
+
+The store initializes the database once per load. Browser-owned preset,
+summary, current-equipment and applied-preset reads explicitly skip redundant
+schema setup afterward; they still read fresh data. Standalone reader defaults
+retain initialization. JSON action availability is derived from import flags
+in the loaded artifact store and updates on import/reload, avoiding repeated
+schema/count checks against the default database. No new persistent cache,
+delayed hydration or loader stage was introduced.
+
+The continuation batches conflict-owner reads, skips repeated schema setup in
+initialized browser equipment actions and preset previews, and reuses the slots
+read by a panel refresh for highlights and bonus icons. Applying a preset keeps
+the existing list rows unless pending-delete controls require a rebuild. Showing
+a completed row replaces redundant explicit shows of its descendants. Full
+inventory substat/tag reads use indexed parent joins without one SQL bind per
+artifact, while restricting results to the parent IDs from that load.
+
+Controlled offscreen first-open measurements and focused regression gates pass;
+the [first-open receipt](performance_measurements/2026-10-03_artifact_first_open_worker3.md)
+and [scaling/action receipt](performance_measurements/2026-10-04_artifact_scaling_actions_worker3.md)
+own timings, counts and limitations. The continuation confirms less equipment
+action work and bounded query counts; it does not establish an additional
+first-open speedup. Long target-switch row rebuilding remains a measured cost.
+Computer Use is prohibited by the user;
+real first-click latency and visual acceptance remain user smoke gates. Check
+fresh-start opening with and without a selected right-panel character, current
+equipment/selected-preset highlighting, switching and editing, and unchanged
+icons/layout at the usual scale once the user's import fix is ready. Future
+loader work must use these measurements rather than June's costs.
+<!-- /handoff-current -->
+
 ## Storage And Identity
 
 SQLite DB: `data/artifacts.db`.

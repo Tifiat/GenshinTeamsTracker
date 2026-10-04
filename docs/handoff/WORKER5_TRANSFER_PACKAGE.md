@@ -8,16 +8,20 @@ transferring Worker5. The human message was verified read-only in thread
 `01a10523-9367-72f0-b0d4-b31dfdf32dd8`. It authorizes a local commit of the
 verified import/profile/icon/tooltip source and orchestrator-owned transfer.
 Visible tooltip/account acceptance and real multiaccount imports stay open;
-push remains unauthorized. The pre-stage HEAD is
-`3df2629f34b6d46cd54a5a805fc896d8cc5d2928`; the resulting full commit ID and
-timestamp belong to Worker5's status and the Git commit record.
+push remains unauthorized. The completed source commit is
+`a085d3526e22a8862243ab40f3532b9be877ea72` (2026-10-04T07:35:54+03:00), parent
+`3df2629f34b6d46cd54a5a805fc896d8cc5d2928`. The pre-stage observations below
+are historical. The [main integration receipt](integration_receipts/2026-10-04_ready_workers.md)
+owns scoped transfer, compatibility repairs, startup-fixture incident and gates;
+the shared Git journal owns the final target hash. Peer dirty policy files and
+the older isolated importer candidate are excluded.
 
 The combined stage includes profiles, so its tooltip tests retain their profile
 dependencies. Packets A/B/C below preserve the earlier decomposition for review,
 not a claim that the final suite works without profiles. Whole-branch integration
 would carry unrelated earlier History/optimizer changes and is excluded. No
 network, import or app launch is authorized for packaging. Current-target
-integration and compatibility checks remain Worker1's responsibility.
+integration and compatibility checks are recorded by Worker1 in that receipt.
 <!-- /handoff-current -->
 
 ## Pre-stage source identity and existing commits
@@ -52,6 +56,7 @@ The checked target lacks these prerequisite hunks from that exact commit:
 | --- | --- |
 | `hoyolab_export/artifact_set_catalog.py` | `UnmappedArtifactSetError`; `ensure_hoyolab_set_mapping(..., allow_unmapped=False)` and its `unmapped` result; `resolve_hoyolab_set_uid` raises the specific error for missing canonical mapping; `ensure_artifact_set_catalog` closes the seed transaction before refresh and continues requested refresh after seeding |
 | `ui/right_panel/settings/account_data.py` | `HOYOLAB_IMPORT_WARNING_KEYS`, warning-list initialization/reset, `[IMPORT_WARNING]` parsing via `_record_hoyolab_import_warning`, `_hoyolab_import_warning_details`, and success-path warning display; the combined stage narrows the map to artifact/account/equipment failures |
+| `hoyolab_export/run_import.py` | JSON warning serialization and the `[IMPORT_WARNING]` producer loop retained by the final CLI; the consumer alone is insufficient |
 | `localization/locales/en.json`, `localization/locales/ru.json`, `localization/locales/pt-br.json` | `hoyolab.import_warning.title`, `.artifacts`, `.account`, `.equipment`, `.set_names`; preserve each language's values |
 | `tests/hoyolab_export/artifacts/test_artifact_set_catalog.py` | The hotfix's seed-refresh/closed-connection and mapping fixtures/regressions; current changes to two existing test bodies assume those fixtures already exist |
 

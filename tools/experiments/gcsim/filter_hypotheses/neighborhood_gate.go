@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 // HypothesisNeighborhoodGatePlan is a research-only physical-legality lookup
 // for one fixed valid wearer base. Single[slot][poolIndex] records a one-slot
@@ -32,13 +35,24 @@ type hypothesisNeighborhoodRepresentative struct {
 // metadata once. Every family eligibility decision uses the existing physical
 // validator, including exact package tiers. A malformed/incompatible pool
 // returns an error so a research caller can fall back to ordinary enumeration.
-// Single failures never skip pair checks: a second replacement can repair a
-// required 4p or 2+2 count.
+// Cancellation returns only ctx.Err, never a partially populated plan. Single
+// failures never skip pair checks: a second replacement can repair a required
+// 4p or 2+2 count.
 func (validator *LocalAssignmentValidator) PrepareHypothesisNeighborhoodGate(
-	base [slotCount]int64, pools [slotCount][]int64,
+	ctx context.Context, base [slotCount]int64, pools [slotCount][]int64,
 ) (*HypothesisNeighborhoodGatePlan, error) {
-	if err := validator.Validate(base); err != nil {
-		return nil, fmt.Errorf("invalid neighborhood base: %w", err)
+	if ctx == nil {
+		return nil, fmt.Errorf("neighborhood context is nil")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	baseErr := validator.Validate(base)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if baseErr != nil {
+		return nil, fmt.Errorf("invalid neighborhood base: %w", baseErr)
 	}
 	plan := &HypothesisNeighborhoodGatePlan{ValidationChecks: 1}
 	selectedUIDs := make(map[string]struct{}, len(validator.selectedSets))
@@ -68,6 +82,9 @@ func (validator *LocalAssignmentValidator) PrepareHypothesisNeighborhoodGate(
 		plan.Single[slot] = make([]bool, len(ids))
 		familyIndex := make(map[hypothesisNeighborhoodClass]int)
 		for poolIndex, id := range ids {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			plan.PoolMetadataChecks++
 			artifactIndex, exists := validator.index.artifactIndexByID[id]
 			if !exists || artifactIndex < 0 || artifactIndex >= len(validator.index.Artifacts) {
@@ -96,12 +113,18 @@ func (validator *LocalAssignmentValidator) PrepareHypothesisNeighborhoodGate(
 	for slot, families := range representatives {
 		allowed := make([]bool, len(families))
 		for familyIndex, family := range families {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			trial := base
 			trial[slot] = family.id
 			plan.ValidationChecks++
 			allowed[familyIndex] = validator.Validate(trial) == nil
 		}
 		for poolIndex, familyIndex := range familyByPool[slot] {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			plan.Single[slot][poolIndex] = allowed[familyIndex]
 		}
 	}
@@ -111,6 +134,9 @@ func (validator *LocalAssignmentValidator) PrepareHypothesisNeighborhoodGate(
 			for familyA, itemA := range representatives[a] {
 				allowed[familyA] = make([]bool, len(representatives[b]))
 				for familyB, itemB := range representatives[b] {
+					if err := ctx.Err(); err != nil {
+						return nil, err
+					}
 					trial := base
 					trial[a], trial[b] = itemA.id, itemB.id
 					plan.ValidationChecks++
@@ -119,13 +145,24 @@ func (validator *LocalAssignmentValidator) PrepareHypothesisNeighborhoodGate(
 			}
 			plan.Pairs[a][b] = make([][]int64, len(pools[a]))
 			for poolA, familyA := range familyByPool[a] {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
 				for poolB, idB := range pools[b] {
+					if poolB&63 == 0 {
+						if err := ctx.Err(); err != nil {
+							return nil, err
+						}
+					}
 					if allowed[familyA][familyByPool[b][poolB]] {
 						plan.Pairs[a][b][poolA] = append(plan.Pairs[a][b][poolA], idB)
 					}
 				}
 			}
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	return plan, nil
 }

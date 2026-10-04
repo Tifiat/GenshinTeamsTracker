@@ -1,0 +1,14 @@
+{
+  "created_utc": "2026-10-04T00:44:56+00:00",
+  "ephemeral_cleanup": {
+    "job_bytes_before_cleanup": 79926578,
+    "owner": "tools.managed_optimizer_experiment.managed_scratch"
+  },
+  "error": "Managed-copy config predicate test failed (1): # genshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer [genshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer.test]\ncmd\\gtt-optimizer\\closeout_response_experiment_test.go:470:25: undefined: compactStrings\nFAIL\tgenshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer [build failed]\nFAIL",
+  "error_type": "CloseoutError",
+  "frozen_request_sha256": "11532ecbe8925315e3f675c5b5680c72a7d32c2e1083a95d45af6e00927ab2ef",
+  "schema_kind": "gtt_optimizer_closeout_response_receipt_v1",
+  "schema_version": 1,
+  "scope": "one Chasca Selected fixed-package changed-item response gate",
+  "status": "failed"
+}

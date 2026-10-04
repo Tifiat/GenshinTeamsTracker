@@ -1,7 +1,7 @@
 # HoYoLAB Import Failure Boundaries
 
 <!-- handoff-current: hoyolab-import -->
-2026-10-04. Worker5 is replacing the earlier partial-import hotfix with
+2026-10-04. Local master carries Worker5's replacement of the partial-import hotfix with
 source-first, account-bound publication. A validated source snapshot is durable
 before one SQLite transaction publishes artifacts, account observations,
 optional equipment and its receipt. Valid unknown sets retain source IDs and
@@ -24,10 +24,11 @@ preserved. The loader counts actual parallel work, and HP/icon requests overlap
 within the existing request bound. The [icon-recovery checkpoint](ABYSS_ENEMY_DATA.md)
 records the later Nanoka and ordinary-browser repair of all eight cached icons,
 including its initial partial failure and bounded retry behavior. A native UI check showed the enabled default;
-that window was subsequently closed. Real loader review, a repeated live import
-and main-branch integration remain pending. The later user instruction to finish
-synchronization authorizes the local source commit and orchestrator-owned
-transfer while physical acceptance remains open; push remains unauthorized.
+that Worker5 window was subsequently closed. Real loader review and a repeated
+live import remain pending. The reviewed source packet is locally integrated;
+the [target receipt](integration_receipts/2026-10-04_ready_workers.md) records
+compatibility tests and the unintended startup-fixture migration. Physical and
+authenticated-account acceptance remain open; push remains unauthorized.
 Existing History/optimizer and policy edits are outside this package; required
 import-identity/defaults/path seams are listed in the
 [transfer inventory](WORKER5_TRANSFER_PACKAGE.md).

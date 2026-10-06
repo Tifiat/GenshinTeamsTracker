@@ -60,6 +60,12 @@ performed during the 2026-09-16 documentation reconciliation.
 
 - Measured cost: `ui.app_shell` import `10900.5 ms` cumulative on the weak
   1366px HP Notebook at `c371ef4`.
+- Current guarded remeasurement: the 6 October 2026 synthetic-profile probe
+  recorded `ui.app_shell` import `2758.5 ms`, child readiness `3975.0 ms`, and
+  supervisor-to-ready `4734.2 ms` on the current local Windows workstation;
+  see [the dated receipt](performance_measurements/2026-10-06_guarded_startup_profile.md).
+  It is a one-run diagnostic on a different commit/device, not a comparison or
+  a claimed speedup over the HP notebook evidence.
 - Why it lags: importing AppShell pulls in large UI/backend dependency chains,
   including PySide modules, AppShell workspaces, PvP, GCSIM, account pages,
   right-panel view-models, and shared grid utilities.

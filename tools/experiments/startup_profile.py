@@ -24,6 +24,7 @@ SOURCE_ROOT = Path(__file__).resolve().parents[2]
 PRODUCT_TOP = frozenset({"main.py", "ui", "run_workspace", "hoyolab_export", "localization", "assets", "data"})
 BLOCKED_PARTS = frozenset({".git", ".venv", "__pycache__", "profile", "hoyolab", "debug", "docs", "tests", "tools"})
 MARKER = "GTT_STARTUP_PROFILE:"
+_CLEANUP_RETRY_DELAYS = (0.05, 0.1, 0.2, 0.4, 0.8, 1.6, 2.0, 2.0)
 
 
 def selected_tracked_paths(lines: list[str]) -> list[Path]:
@@ -185,7 +186,20 @@ def _safe_cleanup(root: Path, parent: Path) -> None:
         for name in dirs + files:
             if _is_link(Path(directory) / name):
                 raise RuntimeError("Refusing cleanup of linked snapshot node")
-    shutil.rmtree(root)
+    # A just-exited Qt/SQLite child can leave a transient Windows handle while
+    # its process teardown completes. Retry only this already-validated root;
+    # do not conceal a persistent failure or broaden the cleanup target.
+    for attempt, delay in enumerate(_CLEANUP_RETRY_DELAYS, start=1):
+        try:
+            shutil.rmtree(root)
+            return
+        except PermissionError as exc:
+            # WinError 32 is the sharing violation reported while a just-exited
+            # child still releases its SQLite handle. Permission problems of any
+            # other kind must remain visible immediately.
+            if getattr(exc, "winerror", None) != 32 or attempt == len(_CLEANUP_RETRY_DELAYS):
+                raise
+            time.sleep(delay)
 
 
 @contextmanager

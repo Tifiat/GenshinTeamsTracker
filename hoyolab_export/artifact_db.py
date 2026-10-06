@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -2202,7 +2203,10 @@ def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
 
 def init_artifact_db(db_path: str | Path = ARTIFACT_DB_PATH) -> Path:
     db_path = Path(db_path)
-    with connect_db(db_path) as conn:
+    # sqlite3.Connection's own context manager commits but intentionally does
+    # not close. This initializer owns its connection and must release the
+    # Windows database handle before returning.
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
     return db_path
 

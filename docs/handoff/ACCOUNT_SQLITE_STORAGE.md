@@ -24,6 +24,10 @@ Schema initialization lives in:
 - `hoyolab_export/account_storage.py`
 - `hoyolab_export/account_equipment.py`
 
+`init_artifact_db()` owns its short-lived initialization connection and closes it
+before returning. Callers that need an open database after initialization must
+open their own connection with `connect_db()` and close it at their boundary.
+
 Normal HoYoLAB import publishes these tables with source artifacts, binding
 and a durable receipt in one transaction, before optional JSON/image work:
 

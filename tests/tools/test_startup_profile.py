@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).resolve().parents[2] / "tools/experiments/startup_profile.py"
@@ -57,6 +58,63 @@ class StartupProfileTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 probe._safe_cleanup(source, parent)
             self.assertTrue(source.exists())
+
+    def test_cleanup_retries_transient_windows_handle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            snapshot = parent / "gtt-startup-retry"
+            snapshot.mkdir()
+            (snapshot / "artifacts.db").write_text("fixture", encoding="utf-8")
+            real_rmtree = probe.shutil.rmtree
+            attempts = 0
+
+            def transient_lock(path, *args, **kwargs):
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    error = PermissionError("transient handle")
+                    error.winerror = 32
+                    raise error
+                return real_rmtree(path, *args, **kwargs)
+
+            with mock.patch.object(probe.shutil, "rmtree", side_effect=transient_lock), \
+                    mock.patch.object(probe.time, "sleep") as sleep:
+                probe._safe_cleanup(snapshot, parent)
+            self.assertEqual(attempts, 2)
+            sleep.assert_called_once_with(probe._CLEANUP_RETRY_DELAYS[0])
+            self.assertFalse(snapshot.exists())
+
+    def test_cleanup_does_not_hide_nonsharing_permission_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            snapshot = parent / "gtt-startup-denied"
+            snapshot.mkdir()
+            (snapshot / "artifacts.db").write_text("fixture", encoding="utf-8")
+            denied = PermissionError("access denied")
+            with mock.patch.object(probe.shutil, "rmtree", side_effect=denied) as rmtree, \
+                    mock.patch.object(probe.time, "sleep") as sleep:
+                with self.assertRaises(PermissionError) as raised:
+                    probe._safe_cleanup(snapshot, parent)
+            self.assertIs(raised.exception, denied)
+            rmtree.assert_called_once_with(snapshot)
+            sleep.assert_not_called()
+
+    def test_cleanup_propagates_persistent_windows_sharing_violation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            parent = Path(directory)
+            snapshot = parent / "gtt-startup-persistent-lock"
+            snapshot.mkdir()
+            (snapshot / "artifacts.db").write_text("fixture", encoding="utf-8")
+            locked = PermissionError("persistent handle")
+            locked.winerror = 32
+            with mock.patch.object(probe.shutil, "rmtree", side_effect=locked) as rmtree, \
+                    mock.patch.object(probe.time, "sleep") as sleep:
+                with self.assertRaises(PermissionError) as raised:
+                    probe._safe_cleanup(snapshot, parent)
+            self.assertIs(raised.exception, locked)
+            self.assertEqual(rmtree.call_count, len(probe._CLEANUP_RETRY_DELAYS))
+            self.assertEqual(sleep.call_args_list,
+                             [mock.call(delay) for delay in probe._CLEANUP_RETRY_DELAYS[:-1]])
 
     def test_incomplete_marker_never_passes(self):
         report = probe.summarize_run("shell", "baseline", 0, 12.0,

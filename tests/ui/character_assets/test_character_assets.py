@@ -13,6 +13,7 @@ from hoyolab_export.account_storage import (
     AccountCharacterRuntimeRecord,
     AccountWeaponObservedStack,
 )
+from hoyolab_export import asset_paths
 from localization import get_language, set_language
 from ui.character_assets import (
     STANDARD_FILTER_EXCLUDE,
@@ -157,6 +158,42 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
             self.assertEqual(converted["metadata"]["character"]["side_icon_path"], "")
             self.assertEqual(converted["metadata"]["character"]["icon_path"], "")
             self.assertEqual(converted["metadata"]["character"]["constellation"], 6)
+
+    def test_history_uses_raw_portrait_and_weapon_only_for_matching_import(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = {key: root / f"{key}.png" for key in (
+                "browser", "portrait", "history", "weapon", "raw_weapon", "guest",
+            )}
+            for key in ("weapon", "raw_weapon"):
+                paths[key] = root / "assets" / "hoyolab" / "weapons" / f"{key}.png"
+            for path in paths.values():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"fixture")
+            character = AccountCharacterRuntimeRecord(character_id="1001", name="Hero", portrait_path=str(paths["browser"]))
+            with patch("ui.character_assets.character_variant_path", side_effect=lambda _id, variant: {
+                "crop": paths["browser"], "portrait": paths["portrait"], "history": paths["history"],
+            }.get(variant)):
+                item = account_character_asset_item(character)
+            self.assertEqual(item["path"], paths["browser"])
+            self.assertEqual(item["metadata"]["character"]["portrait_history_path"], str(paths["portrait"]))
+            manifest = {"weaponAssets": [{
+                "weapon": {"id": 21},
+                "crop": paths["weapon"].relative_to(root).as_posix(),
+                "icon": paths["raw_weapon"].relative_to(root).as_posix(),
+            }]}
+            with (
+                patch.object(asset_paths, "ACCOUNT_ROOT", root),
+                patch("run_workspace.profile_context.ACCOUNT_ROOT", root),
+                patch.object(asset_paths, "current_manifest", return_value=manifest),
+            ):
+                weapon = AccountWeaponObservedStack(id=1, weapon_fingerprint="weapon", weapon_id="21", name="Weapon", rarity=4,
+                                                   icon_path=str(paths["weapon"]))
+                self.assertEqual(weapon.to_team_builder_weapon_ref()["icon_transparent_path"], str(paths["raw_weapon"]))
+                guest = AccountWeaponObservedStack(id=2, weapon_fingerprint="guest", weapon_id="21", name="Guest", rarity=4,
+                                                  icon_path=str(paths["guest"]))
+                self.assertEqual(guest.to_team_builder_weapon_ref()["icon_transparent_path"], "")
+
 
     def test_existing_filter_button_updates_to_imported_element(self) -> None:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

@@ -158,17 +158,30 @@ class CardLayout:
         return self.column_width < 200 and any(len(s.set_icon_paths) > 1 for s in team.slots)
 
     def character_header(self, team):
-        tiles = max((1+min(2, len(s.set_icon_paths)) for s in team.slots), default=1)
-        rows = ceil(tiles/self.equipment_columns)
-        return ceil(max(self.portrait_size, 24+rows*(self.equipment_size+4)-4)+24)
+        bottom = max((dy+size for slot in team.slots
+                      for _, dy, size in self.equipment_tiles(len(slot.set_icon_paths))), default=self.weapon_size)
+        return ceil(max(self.portrait_size+4, 28+bottom)+24)
 
     @property
     def equipment_size(self):
         return min(self.portrait_size-24, max(34., (self.column_width-self.portrait_size-26)/2))
 
     @property
-    def equipment_columns(self):
-        return max(1, int((self.column_width-self.portrait_size-18)/(self.equipment_size+4)))
+    def weapon_size(self):
+        return min(76., self.column_width-self.portrait_size-22,
+                   max(self.equipment_size, self.portrait_size*.92))
+
+    def equipment_tiles(self, set_count):
+        available = self.column_width-self.portrait_size-22
+        x, y, row_height = 0., 0., 0.
+        tiles = []
+        for size in (self.weapon_size, *(self.equipment_size for _ in range(min(2, set_count)))):
+            if x and x+size > available:
+                x, y, row_height = 0., y+row_height+4, 0.
+            tiles.append((x, y, size))
+            x += size+4
+            row_height = max(row_height, size)
+        return tuple(tiles)
 
     def stats_height(self, team):
         count = max((len(col) for slot in team.slots for col in stat_columns(slot)), default=4)
@@ -313,16 +326,16 @@ def summary_height(run, width=CARD_WIDTH):
 
 def prepare_images(run, dpr, artwork_paths=None):
     paths = set()
-    portraits = set()
+    trimmed_paths = set()
     bonus_paths = set()
     for team in visible_teams(run):
         bonus_paths.update(b.icon_path for b in team.bonuses if b.icon_path)
         for slot in team.slots:
             paths.update((slot.portrait_path, slot.expanded_portrait_path, slot.side_icon_path, slot.weapon_icon_path, *slot.set_icon_paths))
-            portraits.add(slot.portrait_path)
+            trimmed_paths.update((slot.portrait_path, slot.expanded_portrait_path, slot.weapon_icon_path))
             paths.update(b.icon_path for b in slot.bonuses)
     paths.update(enemy.icon_path for side in run.sides for enemy in side.enemies)
-    images = {path: load_hidpi_pixmap(path, 112, dpr=dpr, trim_alpha=path in portraits, surface="history_card").pixmap
+    images = {path: load_hidpi_pixmap(path, 112, dpr=dpr, trim_alpha=path in trimmed_paths, surface="history_card").pixmap
               for path in paths if path}
     # Normalize bonus content in compact and expanded identity panels alike.
     images.update({("bonus", path): load_hidpi_pixmap(path, 112, dpr=dpr, trim_alpha=True,
@@ -330,7 +343,7 @@ def prepare_images(run, dpr, artwork_paths=None):
     for team in visible_teams(run):
         custom = (artwork_paths or {}).get(team.team_index)
         lead = next((slot for slot in team_slots(team) if slot.character_name), None)
-        path = custom or ((lead.portrait_path or lead.side_icon_path) if lead else "")
+        path = custom or ((lead.expanded_portrait_path or lead.portrait_path or lead.side_icon_path) if lead else "")
         if path:
             images[("artwork", team.team_index)] = load_hidpi_pixmap(
                 path, 420, dpr=dpr, trim_alpha=True, surface="history_artwork").pixmap
@@ -377,7 +390,7 @@ class CardPainter:
         label = QFontMetricsF(font).elidedText(str(text), Qt.TextElideMode.ElideRight, max(1., width))
         self.p.drawText(QRectF(x, y, width, size + 7), align | Qt.AlignmentFlag.AlignVCenter, label)
 
-    def icon(self, path, x, y, size, fallback=""):
+    def icon(self, path, x, y, size, fallback="", *, bottom_aligned=False):
         pixmap = self.images.get(path)
         if pixmap is None or pixmap.isNull():
             if fallback:
@@ -385,7 +398,8 @@ class CardPainter:
             return
         ratio = min(size / pixmap.width(), size / pixmap.height())
         w, h = pixmap.width() * ratio, pixmap.height() * ratio
-        self.p.drawPixmap(QRectF(x+(size-w)/2, y+(size-h)/2, w, h), pixmap, QRectF(pixmap.rect()))
+        top = y+size-h if bottom_aligned else y+(size-h)/2
+        self.p.drawPixmap(QRectF(x+(size-w)/2, top, w, h), pixmap, QRectF(pixmap.rect()))
 
     def line(self, x, y, x2, y2, color=UI_HISTORY_BORDER, alpha=130):
         self.p.setPen(QPen(tint(color, alpha), 1))
@@ -403,7 +417,7 @@ class CardPainter:
         gradient.setColorAt(1, tint(UI_HISTORY_BG_BOTTOM, 250))
         self.rounded(rect, gradient, tint(accent, 118 if strong else 62), 7*self.u)
 
-    def portrait(self, slot, x, y, size, *, soft_crop=False, expanded_variant=False):
+    def portrait(self, slot, x, y, size, *, soft_crop=False, expanded_variant=False, bottom_aligned=False):
         path = slot.expanded_portrait_path if expanded_variant and slot.expanded_portrait_path else (slot.side_icon_path if self.character_view == "profile" else slot.portrait_path)
         if not expanded_variant and self.character_view == "profile" and slot.side_icon_path:
             # ArtifactCardDelegate uses the original calibrated side-icon canvas,
@@ -417,9 +431,10 @@ class CardPainter:
             clip.addRoundedRect(QRectF(x, y, size, size), 7, 7)
             self.p.save()
             self.p.setClipPath(clip)
+        zoom = 2 if soft_crop and not expanded_variant else 0
         self.icon(path or slot.portrait_path or slot.side_icon_path,
-                  x-2 if soft_crop else x, y-2 if soft_crop else y,
-                  size+4 if soft_crop else size, slot.character_name[:1] or "—")
+                  x-zoom, y-zoom, size+2*zoom, slot.character_name[:1] or "—",
+                  bottom_aligned=expanded_variant or bottom_aligned)
         if soft_crop:
             self.p.restore()
 
@@ -510,25 +525,29 @@ class CardPainter:
         text_reserve = min(72., max(44., w*.34))
         icon_budget = max(56., w-text_reserve-7)
         face = min(35., rect.height()-1, max(26., icon_budget*.34))
-        equipment = min(27., max(18., (icon_budget-face)/max(1, len(paths))-1))
-        strip_width = face+len(paths)*(equipment+1)
+        set_count = len(paths)-1
+        equipment = min(26., max(17., (icon_budget-face-34-len(paths))/max(1, set_count)))
+        weapon = min(34., max(22., icon_budget-face-set_count*equipment-len(paths)))
+        strip_width = face+weapon+set_count*equipment+len(paths)
         if strip_width > icon_budget:
-            face = max(24., face-(strip_width-icon_budget)*.45)
-            equipment = max(17., (icon_budget-face)/max(1, len(paths))-1)
-        iy = y+(rect.height()-face)/2
-        self.portrait(slot, x+2, iy, face)
+            face = max(24., face-(strip_width-icon_budget))
+        baseline = y+rect.height()-2
+        iy = baseline-face-(1 if self.character_view == "profile" and slot.side_icon_path else 0)
+        self.portrait(slot, x+2, iy, face, bottom_aligned=True)
         labels = ("" if slot.weapon_refinement is None else f"R{slot.weapon_refinement}",
                   *(str(n) for n in slot.set_counts[:2]))
+        ix = x+3+face
         for i, path in enumerate(paths):
-            ix = x+3+face+i*(equipment+1)
-            ey = iy+2
-            self.icon(path, ix, ey, equipment)
+            size = weapon if i == 0 else equipment
+            ey = baseline-size
+            self.icon(path, ix, ey, size, bottom_aligned=True)
             if i < len(labels) and labels[i]:
                 lw = self.measure(labels[i], 11)+5
-                self.rounded(QRectF(ix+equipment-lw, ey+equipment-14, lw, 14), tint(UI_HISTORY_BG_BOTTOM, 225), radius=3)
-                self.text(ix+equipment-lw, ey+equipment-17, lw, labels[i], 11, align=Qt.AlignmentFlag.AlignCenter)
+                self.rounded(QRectF(ix+size-lw, baseline-14, lw, 14), tint(UI_HISTORY_BG_BOTTOM, 225), radius=3)
+                self.text(ix+size-lw, baseline-17, lw, labels[i], 11, align=Qt.AlignmentFlag.AlignCenter)
+            ix += size+1
         constellation = "" if slot.constellation is None else f"C{slot.constellation}"
-        tx = x+7+face+len(paths)*(equipment+1)
+        tx = ix+4
         available = x+w-4-tx
         level = tr("history.card.level").format(value=slot.character_level or "—")
         name = slot.character_name or tr("app_shell.history.slot.empty")
@@ -791,20 +810,20 @@ class CardPainter:
         self.rounded(QRectF(x+3, y+3, w-6, self.layout.character_header(team)-4), glow, radius=5)
         if self.hovered is slot:
             self.rounded(rect.adjusted(3, 2, -3, -2), tint(element, 17), radius=5)
-        self.portrait(slot, x+6, y+4, face, soft_crop=True, expanded_variant=expanded)
+        self.portrait(slot, x+6, y+28+self.layout.weapon_size-face, face,
+                      soft_crop=True, expanded_variant=expanded, bottom_aligned=True)
         name = slot.character_name or tr("app_shell.history.slot.empty")
         level = tr("history.card.level").format(value=slot.character_level or "—")
         constellation = "" if slot.constellation is None else f"C{slot.constellation}"
         tx = x+face+14
         self.character_name(tx, y+1, x+w-6-tx, name, constellation, element)
-        size = self.layout.equipment_size
         paths = (slot.weapon_icon_path, *slot.set_icon_paths[:2])
         labels = ("—" if slot.weapon_refinement is None else f"R{slot.weapon_refinement}",
                   *(str(n) for n in slot.set_counts[:2]))
-        for i, path in enumerate(paths):
-            sx = x+face+14+(i%self.layout.equipment_columns)*(size+4)
-            sy = y+28+(i//self.layout.equipment_columns)*(size+4)
-            self.icon(path, sx, sy, size)
+        for i, (path, (dx, dy, size)) in enumerate(zip(paths, self.layout.equipment_tiles(len(slot.set_icon_paths)))):
+            sx = x+face+14+dx
+            sy = y+28+dy
+            self.icon(path, sx, sy, size, bottom_aligned=True)
             if i < len(labels):
                 lw = self.measure(labels[i], 12)+7
                 self.rounded(QRectF(sx+size-lw, sy+size-17, lw, 17), tint(UI_HISTORY_BG_BOTTOM, 230), radius=3)

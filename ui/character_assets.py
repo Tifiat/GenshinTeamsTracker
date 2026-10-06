@@ -308,12 +308,15 @@ def account_character_asset_item(
         "source_metadata": dict(record.source_metadata or {}),
         "warnings": list(record.warnings),
     }
-    # PvP reuses transparent source portraits by game id. History variants can
-    # contain account-specific overlays, so only reuse a matching browser crop.
+    # PvP reuses transparent source portraits by game id. History freezes the
+    # raw portrait only for the account matching the browser crop.
     manifest_browser = character_variant_path(record.character_id, "crop")
     matching_variants = manifest_browser is not None and manifest_browser.resolve() == path.resolve()
     pvp_path = character_variant_path(record.character_id, "portrait")
-    history_path = character_variant_path(record.character_id, "history") if matching_variants else None
+    history_path = (
+        character_variant_path(record.character_id, "portrait")
+        or character_variant_path(record.character_id, "history")
+    ) if matching_variants else None
     if pvp_path is not None:
         metadata["portrait_pvp_path"] = str(pvp_path)
     if history_path is not None:

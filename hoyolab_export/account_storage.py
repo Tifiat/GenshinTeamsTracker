@@ -395,7 +395,10 @@ class AccountWeaponObservedStack:
         }
 
     def to_team_builder_weapon_ref(self) -> dict[str, Any]:
+        from .asset_paths import weapon_transparent_icon_path
+
         source_metadata = dict(self.source_metadata or {})
+        transparent_icon = weapon_transparent_icon_path(self.weapon_id, self.icon_path) if self.icon_path else None
         return {
             "id": self.weapon_id,
             "name": self.name,
@@ -418,6 +421,7 @@ class AccountWeaponObservedStack:
             "description": self.description,
             "icon_url": self.icon_url,
             "icon_path": self.icon_path,
+            "icon_transparent_path": str(transparent_icon) if transparent_icon is not None else "",
             "warnings": list(self.warnings),
             "source_metadata": source_metadata,
         }

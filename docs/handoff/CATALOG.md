@@ -29,7 +29,6 @@ in every file.
 | [HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md) | Durable-fact closeout, compaction and consistency checks |
 | [COORDINATION.md](COORDINATION.md) | Shared queue, per-worker ownership and checkout-local technical evidence |
 | [integration_receipts/2026-10-04_ready_workers.md](integration_receipts/2026-10-04_ready_workers.md) | Local ready-branch integration sources, combined checks and acceptance limits |
-| [integration_receipts/2026-10-04_worker5_reverse_sync.md](integration_receipts/2026-10-04_worker5_reverse_sync.md) | Worker5 policy preservation, staged master merge, conflict decisions and isolated checks |
 | [integration_receipts/2026-10-06_worker5_history_regression.md](integration_receipts/2026-10-06_worker5_history_regression.md) | Scoped History payload and guarded transparent asset-to-team-data-to-snapshot regression |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import logging
 import os
 from pathlib import Path
 import stat
@@ -39,6 +40,11 @@ ACCOUNT_RELATIVE_PATHS = (
 )
 _MIGRATION_JOURNAL = ".legacy-migration.json"
 _JOURNAL_SCHEMA_VERSION = 1
+_LOGGER = logging.getLogger(__name__)
+_DERIVED_RELATIVE_PATHS = frozenset({
+    "data/gcsim/runs", "data/gcsim/farming-runs", "data/gcsim/optimizer-runs",
+    "data/gcsim/optimizer-go-runs", "data/cache/gcsim_optimizer",
+})
 
 
 class LegacyProfileDataError(AccountProfileError):
@@ -194,6 +200,43 @@ def has_legacy_account_data(*, project_root: str | Path = PROJECT_ROOT) -> bool:
     return any(_has_content(_owned_path(root, relative)) for relative in ACCOUNT_RELATIVE_PATHS)
 
 
+def startup_legacy_migration_needed(
+    profile_id: str, *, project_root: str | Path = PROJECT_ROOT,
+) -> bool:
+    """Keep orphan derived outputs separate from an already populated profile.
+
+    A journal always owns recovery. Real legacy account state still triggers
+    the collision checks; this does not merge, delete or adopt either copy.
+    The broad legacy-data predicate remains unchanged for explicit full reset.
+    """
+    root = _checked_project_root(project_root)
+    target_root = _registered_profile_root(profile_id, root)
+    if _exists(_journal_path(target_root)):
+        return True
+    legacy = tuple(relative for relative in ACCOUNT_RELATIVE_PATHS
+                   if _has_content(_owned_path(root, relative)))
+    if not legacy:
+        return False
+    if any(relative not in _DERIVED_RELATIVE_PATHS for relative in legacy):
+        return True
+    for relative in ACCOUNT_RELATIVE_PATHS:
+        if relative in _DERIVED_RELATIVE_PATHS:
+            continue
+        destination = _owned_path(target_root, relative)
+        _check_ancestors(root, destination)
+        if _has_content(destination):
+            for source_relative in legacy:
+                source = _owned_path(root, source_relative)
+                _check_ancestors(root, source)
+                _check_tree(source)
+            _LOGGER.warning(
+                "Legacy simulation outputs remain outside the selected account profile; "
+                "they are preserved separately, not migrated or deleted: %s", ", ".join(legacy),
+            )
+            return False
+    return True
+
+
 def migrate_legacy_account_data(
     profile_id: str, *, project_root: str | Path = PROJECT_ROOT,
 ) -> dict[str, Any]:
@@ -277,5 +320,6 @@ def clear_legacy_account_data(*, project_root: str | Path = PROJECT_ROOT) -> dic
 
 __all__ = [
     "ACCOUNT_RELATIVE_PATHS", "LegacyProfileDataError", "has_legacy_account_data",
+    "startup_legacy_migration_needed",
     "migrate_legacy_account_data", "clear_legacy_account_data",
 ]

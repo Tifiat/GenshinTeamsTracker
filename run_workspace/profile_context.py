@@ -35,7 +35,7 @@ def _bound_identity(database: Path) -> tuple[str, str] | None:
 
 def bootstrap_profile() -> Path:
     """Select the managed root at an application/CLI boundary, never on test import."""
-    from .profile_legacy import has_legacy_account_data, migrate_legacy_account_data
+    from .profile_legacy import startup_legacy_migration_needed, migrate_legacy_account_data
 
     selected = active_profile(project_root=PROJECT_ROOT)
     inherited_id = os.environ.get(PROFILE_ENV)
@@ -51,10 +51,7 @@ def bootstrap_profile() -> Path:
     root = profile_root(selected["id"], project_root=PROJECT_ROOT)
     if not root.is_dir():
         raise RuntimeError("The selected account profile directory is missing")
-    migration_pending = (
-        has_legacy_account_data(project_root=PROJECT_ROOT)
-        or (root / ".legacy-migration.json").exists()
-    )
+    migration_pending = startup_legacy_migration_needed(selected["id"], project_root=PROJECT_ROOT)
     if migration_pending:
         if selected["imported"]:
             raise RuntimeError(

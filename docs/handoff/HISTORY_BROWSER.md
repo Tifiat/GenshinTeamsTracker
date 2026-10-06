@@ -43,11 +43,16 @@ twice and capture showed the foreground game. Clicks, visual acceptance and
 upload/reset/export/restart remain open. See
 [evidence](../design/history/README.md) and [WORK_BACKLOG](WORK_BACKLOG.md).
 
-2026-10-04: user-authorized ordinary AppShell startup from Worker5 used
-`ui.app_shell_smoke` and the main dependency interpreter read-only. A responding
-native window was confirmed. Worker5 runtime/account import and subsequent
-click-path acceptance remain separate from startup evidence.
+2026-10-06: the reviewed transparent-assets/card follow-up is locally accepted
+on master as a scoped transfer from Worker5 5512bad/04a9925, preserving profile
+and PvP guards. The [target checks](integration_receipts/2026-10-06_worker5_history_regression.md#main-target-review--2026-10-06)
+cover 22 isolated asset/snapshot/card/PvP cases; physical acceptance stays open.
 <!-- /handoff-current -->
+
+2026-10-04 startup evidence: user-authorized ordinary AppShell startup from
+Worker5 used `ui.app_shell_smoke` and the main dependency interpreter read-only.
+A responding native window was confirmed. Worker5 runtime/account import and
+subsequent click-path acceptance remain separate from that startup evidence.
 
 ## Ownership And Boundaries
 

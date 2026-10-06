@@ -26,6 +26,13 @@ also records the main legacy migration caused by an old startup test and its
 isolation repair. This is not a real multiaccount-import acceptance.
 Push remains unauthorized. [Transfer scope](WORKER5_TRANSFER_PACKAGE.md) owns
 the package/dependency boundary; the older isolated importer candidate is separate.
+2026-10-06: the user-requested startup hotfix prevents recreated legacy GCSIM
+outputs from triggering migration
+into a populated selected profile. [Target evidence](integration_receipts/startup_legacy_outputs_20261006.json)
+records 21 focused controls (20 pass, one host symlink skip), both real launcher
+paths and repeated supervised AppShell startup with normal window close/exit0.
+Registry, account DB and legacy-run hashes remain identical. No import, optimizer
+run or Computer Use; broader multiaccount/button acceptance remains separate.
 <!-- /handoff-current -->
 
 ## Ownership and switching
@@ -54,6 +61,14 @@ constant while widgets or background workers can retain the previous context.
 first upgrade. The move journal permits recovery after interruption. Sources
 and targets are preflighted for containment and links/junctions; ambiguous
 source+destination collisions fail closed. Migration creates no export/backup.
+`startup_legacy_migration_needed` distinguishes derived-only simulation/cache
+outputs from primary account payload. With an already populated selected
+profile, orphan outputs remain separately preserved and produce a diagnostic
+log, not a move/delete or fatal Python warning. A pending journal always retains
+recovery, primary legacy data/DB sidecars retain collision/binding checks, and
+an empty first upgrade retains migration. The broad legacy predicate and
+explicit clear/migrate APIs are unchanged. No account identity is inferred
+from orphan run files or account rows.
 
 ## Metadata and login
 
@@ -100,3 +115,13 @@ files are single-use, deleted after application and on normal exit. Migration
 journals are deleted when the move completes. All runtime files stay ignored.
 Deletion refuses links/junctions and propagates errors instead of claiming a
 successful clean state after partial failure.
+
+For an explicitly requested cleanup of orphan **project-root** `data/gcsim/runs`,
+`tools/cleanup_legacy_gcsim_runs.ps1` previews by default; `-Apply` sends only
+that fixed directory to the Windows Recycle Bin, with no permanent-delete
+fallback or extra backup/log. It never clears profile outputs or other caches.
+Apply holds the supervisor, operation and registry leases, rechecks containment
+and links, and refuses a missing selected profile DB, root legacy DB/sidecars
+or any physical profile's pending migration journal. Temporary-tree tests in
+`tests/tools/test_cleanup_legacy_gcsim_runs.py` use a mocked recycle boundary;
+they do not delete live output or certify an actual Windows Recycle Bin action.

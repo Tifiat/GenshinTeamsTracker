@@ -1,0 +1,77 @@
+{
+  "schema": "gtt_main_startup_hotfix_acceptance_v1",
+  "date": "2026-10-06",
+  "status": "main_working_copy_fix_real_launch_and_repeat_pass_not_committed",
+  "authority": "Direct user follow-up: application still does not start; why not fixed; recurrence for users",
+  "base_commit": "9b2a167180033625914dfb4ceeed9b651f26f351",
+  "git_refs_changed": false,
+  "optimizer_research_transferred": false,
+  "cause": {
+    "exception": "LegacyProfileDataError: Target profile already contains account data",
+    "legacy_primary_database_present": false,
+    "legacy_nonempty_paths": ["data/gcsim/runs"],
+    "selected_profile_contains_account_database": true,
+    "migration_journal_present": false,
+    "run_origin": "not inferred; preserved separately"
+  },
+  "change": {
+    "startup_predicate_only": true,
+    "derived_only_orphans_with_populated_selected_profile": "diagnostic logging; no migration, merge or deletion",
+    "recovery_journal": "still authoritative",
+    "primary_account_and_database_sidecars": "existing fail-closed collision/binding behavior",
+    "empty_first_upgrade": "existing migration behavior",
+    "broad_legacy_and_explicit_clear_migrate_APIs": "unchanged",
+    "diagnostic_is_fatal_under_Werror": false
+  },
+  "focused_tests": {
+    "distinct_controls": 21,
+    "passed": 20,
+    "skipped": 1,
+    "skip": "host cannot create symlinks; deterministic reparse protection passes",
+    "new_startup_controls": 10,
+    "existing_legacy_controls": 7,
+    "existing_bootstrap_controls": 4,
+    "all_five_derived_output_kinds_and_repeat_startup": "pass",
+    "real_profile_mutation_in_fixture_tests": false
+  },
+  "launcher_checks": {
+    "working_directory": "C:/Users/user/Desktop/GenshinTeamsTracker",
+    "interpreter": ".venv/Scripts/python.exe",
+    "commands": ["python -B main.py", "python -B -m ui.app_shell_smoke"],
+    "probe": "opt-in PYTHONPATH sitecustomize: original Qt init delegated, stock event loop, visible expected window then normal close",
+    "bootstrap_and_window_constructors_mocked": false,
+    "supervised_AppShell_child_path_exercised": true,
+    "normal_close_results": [
+      {"entry": "main.py", "pid": 33204, "window_class": "App", "visible_expected_windows": 1, "exit_code": 0},
+      {"entry": "ui.app_shell_smoke", "pid": 15596, "window_class": "AppShell", "visible_expected_windows": 1, "exit_code": 0},
+      {"entry": "ui.app_shell_smoke_repeat", "pid": 15156, "window_class": "AppShell", "visible_expected_windows": 1, "exit_code": 0}
+    ],
+    "initial_probe_boundary": {
+      "main_first_window_ready": true,
+      "main_first_exit_code": 0,
+      "AppShell_first_window_ready": true,
+      "AppShell_first_exit_code": 1,
+      "initial_hook": "replaced Qt exec and forced event-loop exit; not accepted as normal-shutdown evidence",
+      "attribution": "unknown; harness switched to stock exec and normal window close without any product UI change"
+    },
+    "Computer_Use": false,
+    "buttons_import_or_optimizer_exercised": false,
+    "test_app_processes_left_running": false
+  },
+  "live_preservation": {
+    "registry_sha256_before_after": "adbefae9c6fd33116fa63d33069f50f6531ef9bfe3c42ec224841e4ed7d8ad94",
+    "account_database_sha256_before_after": "2bc75a9e4e8be834da69bbc14069c66f22a92fbab8bb3edb43066735695d3c68",
+    "legacy_run_tree_sha256_before_after": "f243300b4c7327c65950fb4afeb782558dbc519a02c73c61e926773442f59ab2",
+    "legacy_run_file_count_before_after": 1,
+    "legacy_database_created": false,
+    "profile_identifiers_or_row_values_saved": false,
+    "no_data_moved_or_deleted": true
+  },
+  "source_sha256": {
+    "run_workspace/profile_legacy.py": "cd44be1a4b45b3f1adea7a56209c8856bf8850402312fe20bdc9f780dfe0960b",
+    "run_workspace/profile_context.py": "a590dbb02f91b83b303c00a320b75d4c2eaf530cb35cd910275e711e3270aec6",
+    "tests/run_workspace/test_profile_startup_legacy.py": "40b8df30d541882049a94db7a62fda25661230e7650bf27bc1495e1b8aba5ed2"
+  },
+  "remaining": ["owner review/commit and worker synchronization", "existing broader multiaccount and interactive acceptance"],
+  "push": false
+}

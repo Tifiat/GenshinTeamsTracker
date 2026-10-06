@@ -29,10 +29,13 @@ width failure and Chasca numerical acceptance remain open. Startup orphan-output
 correction and the future website-backed PvP direction are saved separately.
 Runtime synchronization uses accepted fingerprinted bundles, existing store
 transactions, compatibility checks and retained consumer rollback; no account
-data is copied. After the common version, slow startup is measured through
-actual launchers in guarded disposable copies with synthetic profiles, not
-ordinary account operations. Computer Use, live cleanup and push are outside
-this task; Worker2's later adoption needs its own preservation/compatibility gate.
+data is copied. The 6 October guarded startup probe measured legacy readiness
+at about 1.39 seconds and AppShell at about 4 seconds in disposable synthetic
+profiles; `ui.app_shell` import dominated the AppShell path. The
+[dated measurement](performance_measurements/2026-10-06_guarded_startup_profile.md)
+is diagnosis, not physical UI acceptance or a cross-device promise. Computer
+Use, live cleanup and push are outside this task; Worker2's later adoption
+needs its own preservation/compatibility gate.
 
 The hub is a separate Obsidian vault. Its compact Git journal retains Mermaid
 gitGraph and newest-first Worker1–5 lists, with full events linked in archives.

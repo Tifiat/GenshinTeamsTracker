@@ -62,6 +62,7 @@ in every file.
 | [History visual workspace](../design/history/README.md) | Original Akasha references, approved starting concept, user wording and real app/PNG samples for refinement |
 | [PRELOADER_BACKLOG.md](PRELOADER_BACKLOG.md) | Deferred loader work; remeasure dated costs before implementation |
 | [performance_measurements/](performance_measurements/) | Historical device/commit-specific measurements, not current guarantees |
+| [performance_measurements/2026-10-06_guarded_startup_profile.md](performance_measurements/2026-10-06_guarded_startup_profile.md) | Guarded synthetic-profile timing of the actual legacy and AppShell launchers |
 | [TESTS.md](TESTS.md) | Test ownership, focused commands and validation rules |
 | [TOOLTIP_CONTRACTS.md](TOOLTIP_CONTRACTS.md) | Tooltip semantic families, first-available catalog witness and required regression workflow |
 

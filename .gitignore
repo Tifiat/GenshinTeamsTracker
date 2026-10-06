@@ -37,6 +37,8 @@ assets/hd/weapons/
 /data/history/
 /.codex_tmp/
 /native/gcsim_optimizer/gtt-optimizer.exe
+/native/gcsim_optimizer/gtt-optimizer.exe.runtime-sync.rollback
+/native/gcsim_optimizer/gtt-optimizer.exe.runtime-sync.rollback.json
 /gtt-wave-scenario.json
 /app-shell-*.png
 /data/profiles/

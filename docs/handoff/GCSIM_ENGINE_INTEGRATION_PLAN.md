@@ -100,6 +100,37 @@ before claiming complete update safety (see TODO).
 Historical shipped-artifact fallback notes below describe explicit recovery/dev
 paths, not an automatic AppShell runtime choice.
 
+### Accepted local bundle synchronization — 2026-10-06
+
+`python -m run_workspace.gcsim.runtime_bundle_sync` is the manual, preview-first
+route for the explicitly authorized completed-worker synchronization. It takes
+an accepted reference checkout and required active/rollback artifact and consumer
+SHA256 values; it writes only the invoking module's own checkout with `--apply`.
+It verifies plain contained paths, exact engine IDs, prepared-tree/manifest and
+canonical source-body bindings before copying the two selected installations.
+No account, settings, authentication or other `data` subtree is transferred.
+Reference self-check is read-only. Same-ID or unknown rollback-slot collisions
+fail closed; this is not a latest download, rebuild or experimental patch install.
+
+Engine copies reuse the store's staging/promotion boundary and retain original
+build provenance. Both application-bundle compatibility probes use the actual
+candidate consumer before active-pointer changes. Own-checkout supervisor and
+operation locks prevent replacement while the app is active. Active/rollback
+activation uses the existing atomic store API; failed promotion restores the
+prior pointer/consumer. Temporary files have wired cleanup and isolated controls.
+
+An old consumer is retained in one hash-receipted sibling rollback slot,
+`gtt-optimizer.exe.runtime-sync.rollback` and its `.json`. The bounded slot and
+active binary are runtime artifacts, ignored by Git; no backup generations
+accumulate. `--rollback-consumer --apply` checks compatibility and swaps those
+two known identities. Retain rollback until explicitly accepted or replaced by
+a separately reviewed release; unknown occupied slots are never deleted.
+`--accept-consumer --apply` is the explicit deletion gate for only a
+receipt-verified rollback slot while the current accepted consumer hash matches.
+It is not run automatically during synchronization.
+The helper's synthetic mini-bundle tests mock executable checks; actual target
+bundle probes and observed fingerprints belong to each integration receipt.
+
 Historical verification on 2026-07-17 (not rerun in this reconciliation):
 
 - all 233 `tests/run_workspace/gcsim/` tests passed;

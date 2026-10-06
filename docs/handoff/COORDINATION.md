@@ -1,30 +1,38 @@
 # Shared worker coordination
 
 <!-- handoff-current: worker-coordination -->
-Reviewed 2026-10-04. The sibling `GTT coordination` hub owns the single active
+Reviewed 2026-10-06. The sibling `GTT coordination` hub owns the single active
 queue and registry for five checkouts. Worker1's existing main/master checkout
 is coordinated by the new orchestrator chat named in the registry; the previous
 optimizer chat is a read-only consultant. Each worker applies changes only in
 its own checkout and owns its short shared status. No duplicate checkout entry,
 shared technical-doc junction or second editable queue is used.
 
-The user authorized reverse local synchronization of completed Workers1/3/4/5
-from accepted master `ad0ea8c`; Worker2 and unfinished Theory/energy are excluded.
-Owners first preserve dirty work; the user explicitly approved verified archives
-for Worker3/4 overlays. They apply agreed local operations sequentially. The hub's
-[technical event log](../../../GTT%20coordination/archive/GIT_EVENTS_20261004_REVERSE_SYNC.md)
-owns before/after hashes, archive provenance and actual results. A plan or source
-commit alone is not completed synchronization or product acceptance.
+The user authorized reviewed local integration and one accepted product/runtime
+version in main and completed Workers3/4/5. Worker2 and detached schedule-repair
+overlays are excluded. Owners preserve changes and apply agreed branch/runtime
+operations sequentially. The hub's
+[current event log](../../../GTT%20coordination/archive/GIT_EVENTS_20261006_INTEGRATION.md)
+owns source/target hashes, exact transfer scope and actual results; the
+[4 October archive](../../../GTT%20coordination/archive/GIT_EVENTS_20261004_REVERSE_SYNC.md)
+retains original preservation and reverse-sync evidence. Git ancestry alone
+does not establish equal working product code or ignored runtime binaries.
 
 Master includes Worker1's saved stage, merged browser/display and PvP packages,
-and only the scoped Worker5 import/profiles/icons/tooltips transfer. Older History
-lineage is excluded. The [integration receipt](integration_receipts/2026-10-04_ready_workers.md)
+and scoped Worker5 import/profiles/icons/tooltips and reviewed transparent History
+follow-up. Worker-specific routing and unfinished optimizer/Theory remain
+excluded from target transfers. The [prior integration receipt](integration_receipts/2026-10-04_ready_workers.md)
 owns target compatibility, overlapping test scopes, the old startup-fixture
 escape/main-account migration and its guarded repair. Retain migrated data;
 no before-hash exists. Manual multiaccount/import/hover/display, the old timer
-width failure and Chasca numerical acceptance remain open. No app, real import
-or numerical engine run belongs to this synchronization. Push requires separate
-approval; Worker2's later role change remains unapplied.
+width failure and Chasca numerical acceptance remain open. Startup orphan-output
+correction and the future website-backed PvP direction are saved separately.
+Runtime synchronization uses accepted fingerprinted bundles, existing store
+transactions, compatibility checks and retained consumer rollback; no account
+data is copied. After the common version, slow startup is measured through
+actual launchers in guarded disposable copies with synthetic profiles, not
+ordinary account operations. Computer Use, live cleanup and push are outside
+this task; Worker2's later adoption needs its own preservation/compatibility gate.
 
 The hub is a separate Obsidian vault. Its compact Git journal retains Mermaid
 gitGraph and newest-first Worker1–5 lists, with full events linked in archives.

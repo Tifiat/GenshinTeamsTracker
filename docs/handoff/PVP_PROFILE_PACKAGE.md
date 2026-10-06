@@ -5,6 +5,35 @@ portable PvP profile package. The PvP product flow remains in
 `PVP_V0_CONTRACT.md`; this file owns the package boundary, independent seat data
 and shared neutral visual assets.
 
+## Target transport direction — user decision 2026-10-06
+
+The future website will also provide the PvP server. This supersedes an
+unspecified future transport, not the implemented offline/hot-seat provider.
+No server, wire protocol or new online acceptance is claimed by this decision.
+
+- Form the match exchange package after both opponents have selected their
+  decks. Keep the existing privacy/inventory boundary below; this decision does
+  not authorize sending authentication, ordinary account ownership or history.
+- The receiving client validates opponent data and materializes it only in a
+  managed match-temporary area, never in the normal account database. The
+  website/server does not write directly into another computer's filesystem.
+- Resolve every required image by stable game ID and asset kind. Prefer a
+  usable local image; transfer/materialize only missing required images. The
+  future exchange must discover which assets the recipient lacks before
+  sending their bytes. An archive may still contain complete portable media,
+  but loading it must reuse local images and extract only missing ones for
+  presentation; archive/schema/hash validation is not skipped.
+- Online opponents, archived-profile opponents and self-play share this asset
+  resolution rule. Self-play requires no remote exchange package. Seat data and
+  equipment stay independent even when both use the same local image.
+- Match-temporary material is owned by that match/provider and cleaned after
+  close/cancel once its users release it. Do not create a permanent duplicate
+  account or an unbounded received-image/archive cache.
+
+This is a saved target contract for later PvP work, not permission to implement
+networking during the current branch integration. Existing v3 offline exports
+remain portable; recipient-aware network transfer is not implemented yet.
+
 ## Agreed Implementation Order
 
 1. Finish the two-seat provider/schema so Player 1 and Player 2 can expose

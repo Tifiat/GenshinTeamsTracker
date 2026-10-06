@@ -9,6 +9,11 @@ user decisions on 2026-06-11 and the reference site audit in
 This contract is for a full offline/hot-seat PvP loop. It is still a prototype
 foundation, not the final polished MVP UI.
 
+2026-10-06: the user selected a future website-backed PvP server and a common
+local-first, missing-images-only match asset flow for online, archived-profile
+and self-play sources. [The package contract](PVP_PROFILE_PACKAGE.md#target-transport-direction--user-decision-2026-10-06)
+owns this target decision and its boundary from implemented offline v0.
+
 ## Product Definition
 
 PvP in GenshinTeamsTracker is tournament-style deck/draft/ruleset play.

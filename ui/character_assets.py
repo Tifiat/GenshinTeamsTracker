@@ -17,7 +17,10 @@ from hoyolab_export.account_storage import (
     list_account_characters,
     list_account_weapon_observed_stacks,
 )
-from hoyolab_export.account_equipment import list_equipped_weapon_owners
+from hoyolab_export.account_equipment import (
+    list_equipped_weapon_owners,
+    list_equipped_weapons,
+)
 from hoyolab_export.artifact_stats import (
     ATK_PERCENT,
     CRIT_DAMAGE,
@@ -37,7 +40,11 @@ from hoyolab_export.artifact_stats import (
     property_name,
 )
 from hoyolab_export.crop_manifest import IGNORED_CHARACTER_IDS, IGNORED_WEAPON_RARITIES
-from hoyolab_export.asset_paths import character_variant_path, element_icon_path
+from hoyolab_export.asset_paths import (
+    asset_lookup_batch,
+    character_variant_path,
+    element_icon_path,
+)
 from hoyolab_export.paths import PROJECT_ROOT
 from hoyolab_export.character_trait_catalog import (
     TRAIT_HEXEREI,
@@ -218,7 +225,7 @@ def load_account_character_asset_items(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> list[dict]:
-    with closing(connect_db(db_path)) as conn:
+    with asset_lookup_batch(), closing(connect_db(db_path)) as conn:
         return [
             item
             for item in (
@@ -233,11 +240,18 @@ def load_account_weapon_stack_asset_items(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> list[dict]:
-    with closing(connect_db(db_path)) as conn:
+    with asset_lookup_batch(), closing(connect_db(db_path)) as conn:
         characters_by_id = {
             str(record.character_id): record
             for record in list_account_characters(conn)
         }
+        # One equipment read for the whole inventory. The per-stack helper also
+        # checks the schema, so calling it for every row repeats that work.
+        owners_by_fingerprint: dict[str, list[int]] = {}
+        for equipped in list_equipped_weapons(conn):
+            owners_by_fingerprint.setdefault(equipped.weapon_fingerprint, []).append(
+                equipped.character_id
+            )
         return [
             item
             for item in (
@@ -245,7 +259,7 @@ def load_account_weapon_stack_asset_items(
                     record,
                     owner_badges=_weapon_owner_badges(
                         characters_by_id,
-                        list_equipped_weapon_owners(conn, record.weapon_fingerprint),
+                        tuple(owners_by_fingerprint.get(record.weapon_fingerprint, ())),
                     ),
                 )
                 for record in list_account_weapon_observed_stacks(conn)

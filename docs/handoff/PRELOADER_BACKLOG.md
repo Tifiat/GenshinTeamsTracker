@@ -21,6 +21,18 @@ algorithmic shortcut that should be fixed directly.
 - Keep measurement details in `docs/handoff/performance_measurements/`; keep
 this file as the curated loader queue.
 
+## Current AppShell Asset-Read Direct Fix
+
+Worker3's 7 October pre-loader patch removes repeated manifest/path checks
+within one synchronous account asset-list read and reads weapon owners once
+per inventory. All batch state ends at the adapter return; refreshes remain
+fresh and no persistent cache or delayed work is added. The
+[dated receipt](performance_measurements/2026-10-07_asset_startup_worker3.md)
+owns comparable synthetic measurements, payload parity, focused tests and cost.
+The populated-main and actual PyCharm/monitor acceptance gates remain open;
+synthetic timing is not a claim about the main profile. Shared integration
+state belongs to Worker3's hub status.
+
 ## Current Artifact Browser Direct Fixes
 
 The 2026-10-03 first-open optimization and pending user smoke gate are owned by

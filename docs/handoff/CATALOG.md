@@ -63,6 +63,7 @@ in every file.
 | [PRELOADER_BACKLOG.md](PRELOADER_BACKLOG.md) | Deferred loader work; remeasure dated costs before implementation |
 | [performance_measurements/](performance_measurements/) | Historical device/commit-specific measurements, not current guarantees |
 | [performance_measurements/2026-10-06_guarded_startup_profile.md](performance_measurements/2026-10-06_guarded_startup_profile.md) | Guarded synthetic-profile timing of the actual legacy and AppShell launchers |
+| [performance_measurements/2026-10-07_main_startup_and_merge_audit.md](performance_measurements/2026-10-07_main_startup_and_merge_audit.md) | Accepted-copy code/runtime parity, populated startup timings and remaining profile-path/cache gaps |
 | [TESTS.md](TESTS.md) | Test ownership, focused commands and validation rules |
 | [TOOLTIP_CONTRACTS.md](TOOLTIP_CONTRACTS.md) | Tooltip semantic families, first-available catalog witness and required regression workflow |
 

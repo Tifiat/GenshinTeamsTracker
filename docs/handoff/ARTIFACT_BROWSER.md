@@ -195,6 +195,11 @@ Build presets:
 - Target preview icons and final strips use in-memory cache plus persistent PNG caches under:
   - `data/cache/ui/target_preview_icons/`;
   - `data/cache/ui/target_preview_strips/`.
+  The [7 October audit](performance_measurements/2026-10-07_main_startup_and_merge_audit.md)
+  records the remaining lifecycle gap: these account-derived previews live
+  outside managed profile roots and have no linked profile-delete/reset cleaner
+  or finite retention. Source-image identity in keys avoids a demonstrated
+  profile collision, but does not implement cache removal.
 - Build edit mode uses the same tint/highlight/bottom save-cancel infrastructure as custom sets.
 - Build preset inline rename focus is fixed: entering preset edit mode focuses the name input and selects its text, so typing/backspace works immediately without an extra click.
 - Clicking an artifact while editing assigns/replaces the slot for that artifact position.

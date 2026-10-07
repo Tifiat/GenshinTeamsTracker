@@ -66,6 +66,11 @@ performed during the 2026-09-16 documentation reconciliation.
   see [the dated receipt](performance_measurements/2026-10-06_guarded_startup_profile.md).
   It is a one-run diagnostic on a different commit/device, not a comparison or
   a claimed speedup over the HP notebook evidence.
+- Populated-profile follow-up: the [7 October audit](performance_measurements/2026-10-07_main_startup_and_merge_audit.md)
+  reproduced 10+ second readiness in disposable copies of the main inventory,
+  images and History. Construction of hidden History/PvP workspaces and repeated
+  filesystem/image work also dominate this case; the empty-profile import-only
+  diagnosis must not be treated as a populated-user startup guarantee.
 - Why it lags: importing AppShell pulls in large UI/backend dependency chains,
   including PySide modules, AppShell workspaces, PvP, GCSIM, account pages,
   right-panel view-models, and shared grid utilities.

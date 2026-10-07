@@ -35,6 +35,11 @@ Registry, account DB and legacy-run hashes remain identical. No import, optimize
 run or Computer Use; broader multiaccount/button acceptance remains separate.
 <!-- /handoff-current -->
 
+The [7 October integration audit](performance_measurements/2026-10-07_main_startup_and_merge_audit.md)
+reproduced an absolute-image-path guard omission in UI asset adapters. The
+common resolver enforces/remaps managed profile paths, but these absolute
+branches skip it. The issue remains open; no real foreign profile was accessed.
+
 ## Ownership and switching
 
 `run_workspace/account_profiles.py` owns `data/profiles/registry.json`, its

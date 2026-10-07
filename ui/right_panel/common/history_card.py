@@ -12,8 +12,10 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 from localization import tr
 from run_workspace.history_browser_catalog import HistoryRunVisual, HistorySlotVisual
+from ui.right_panel.common.metrics import SLOT_BUILD_BONUS_FEATHER
 from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.owner_icon_badge import DEFAULT_OWNER_BADGE_SIZE_RATIO
+from ui.utils.pixmap_utils import make_diagonal_split_pixmap
 from ui.utils.tooltips import CUSTOM_TOOLTIP_DELAY_MS, CustomTooltipPopup, anchored_tooltip_rect
 from ui.utils.ui_palette import (
     UI_BG_APP, UI_BG_PANEL_RAISED, UI_TEXT_PRIMARY, UI_TEXT_MUTED,
@@ -105,6 +107,17 @@ def display_period(run):
 def room_enemies(run, team, chamber):
     return next((side.enemies for side in run.sides
                  if side.side == team.team_index + 1 and side.chamber == chamber), ())
+
+
+def _card_set_tiles(slot, images=None):
+    """Collapse only the card's 2+2 artwork; frozen facts and hover stay separate."""
+    paths = slot.set_icon_paths[:2]
+    if len(paths) == 2 and slot.set_counts[:2] == (2, 2):
+        key = ("set_pair", *paths)
+        if images is None or key in images:
+            return ((key, "2"),)
+    return tuple((path, str(slot.set_counts[i]) if i < len(slot.set_counts) else "")
+                 for i, path in enumerate(paths))
 
 
 @dataclass(frozen=True)
@@ -337,6 +350,15 @@ def prepare_images(run, dpr, artwork_paths=None):
     paths.update(enemy.icon_path for side in run.sides for enemy in side.enemies)
     images = {path: load_hidpi_pixmap(path, 112, dpr=dpr, trim_alpha=path in trimmed_paths, surface="history_card").pixmap
               for path in paths if path}
+    for team in visible_teams(run):
+        for slot in team.slots:
+            for key, _ in _card_set_tiles(slot):
+                if not isinstance(key, tuple) or key in images:
+                    continue
+                first, second = (images.get(path) for path in key[1:])
+                if first is not None and not first.isNull() and second is not None and not second.isNull():
+                    images[key] = make_diagonal_split_pixmap(
+                        first, second, size=112, feather=SLOT_BUILD_BONUS_FEATHER)
     # Normalize bonus content in compact and expanded identity panels alike.
     images.update({("bonus", path): load_hidpi_pixmap(path, 112, dpr=dpr, trim_alpha=True,
                    trim_alpha_threshold=64, surface="history_bonus").pixmap for path in bonus_paths})
@@ -518,10 +540,11 @@ class CardPainter:
         self.rounded(rect.adjusted(1, 1, -1, -1), glow, radius=3)
         if self.hovered is slot:
             self.rounded(rect.adjusted(1, 1, -1, -1), tint(element, 20), radius=3)
-        paths = (slot.weapon_icon_path, *slot.set_icon_paths[:2])
+        set_tiles = _card_set_tiles(slot, self.images)
+        paths = (slot.weapon_icon_path, *(key for key, _ in set_tiles))
         # Reserve readable text before sizing the icon strip. This prevents
         # names collapsing into single letters when the history pane gets
-        # narrower, while preserving weapon and both 2+2 set icons.
+        # narrower, while preserving weapon and both halves of a 2+2 icon.
         text_reserve = min(72., max(44., w*.34))
         icon_budget = max(56., w-text_reserve-7)
         face = min(35., rect.height()-1, max(26., icon_budget*.34))
@@ -535,7 +558,7 @@ class CardPainter:
         iy = baseline-face-(1 if self.character_view == "profile" and slot.side_icon_path else 0)
         self.portrait(slot, x+2, iy, face, bottom_aligned=True)
         labels = ("" if slot.weapon_refinement is None else f"R{slot.weapon_refinement}",
-                  *(str(n) for n in slot.set_counts[:2]))
+                  *(label for _, label in set_tiles))
         ix = x+3+face
         for i, path in enumerate(paths):
             size = weapon if i == 0 else equipment
@@ -817,14 +840,15 @@ class CardPainter:
         constellation = "" if slot.constellation is None else f"C{slot.constellation}"
         tx = x+face+14
         self.character_name(tx, y+1, x+w-6-tx, name, constellation, element)
-        paths = (slot.weapon_icon_path, *slot.set_icon_paths[:2])
+        set_tiles = _card_set_tiles(slot, self.images)
+        paths = (slot.weapon_icon_path, *(key for key, _ in set_tiles))
         labels = ("—" if slot.weapon_refinement is None else f"R{slot.weapon_refinement}",
-                  *(str(n) for n in slot.set_counts[:2]))
-        for i, (path, (dx, dy, size)) in enumerate(zip(paths, self.layout.equipment_tiles(len(slot.set_icon_paths)))):
+                  *(label for _, label in set_tiles))
+        for i, (path, (dx, dy, size)) in enumerate(zip(paths, self.layout.equipment_tiles(len(set_tiles)))):
             sx = x+face+14+dx
             sy = y+28+dy
             self.icon(path, sx, sy, size, bottom_aligned=True)
-            if i < len(labels):
+            if i < len(labels) and labels[i]:
                 lw = self.measure(labels[i], 12)+7
                 self.rounded(QRectF(sx+size-lw, sy+size-17, lw, 17), tint(UI_HISTORY_BG_BOTTOM, 230), radius=3)
                 self.text(sx+size-lw, sy+size-20, lw, labels[i], 12, bold=True,

@@ -28,6 +28,7 @@ FAMILIES = {
     "GCSIM result and stale reasons": ("test_content_contracts", "test_gcsim_html_surfaces_stale_state_and_escapes_paths"),
     "Fact/GCSIM cell refresh": ("test_content_contracts", "test_chamber_cells_attach_and_refresh_fact_and_gcsim_tooltips"),
     "History character card": ("test_content_contracts", "test_history_compact_slot_hover_uses_saved_identity"),
+    "History separate 2+2 tooltip sets": ("test_content_contracts", "test_history_two_plus_two_hover_keeps_two_saved_icons_and_text_order"),
     "History enemies": ("test_content_contracts", "test_history_enemy_hover_uses_saved_wave_count_and_hp"),
     "History bonuses and overflow": ("test_content_contracts", "test_history_bonus_hovers_show_source_and_overflow_content"),
     "PvP draft ownership": ("test_content_contracts", "test_pvp_draft_card_tooltip_shows_per_seat_ownership"),

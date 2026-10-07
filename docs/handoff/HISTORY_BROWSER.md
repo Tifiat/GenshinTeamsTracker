@@ -47,12 +47,36 @@ upload/reset/export/restart remain open. See
 on master as a scoped transfer from Worker5 5512bad/04a9925, preserving profile
 and PvP guards. The [target checks](integration_receipts/2026-10-06_worker5_history_regression.md#main-target-review--2026-10-06)
 cover 22 isolated asset/snapshot/card/PvP cases; physical acceptance stays open.
+Local 2+2 artwork correction below awaits separate master review.
 <!-- /handoff-current -->
 
 2026-10-04 startup evidence: user-authorized ordinary AppShell startup from
 Worker5 used `ui.app_shell_smoke` and the main dependency interpreter read-only.
 A responding native window was confirmed. Worker5 runtime/account import and
 subsequent click-path acceptance remain separate from that startup evidence.
+
+### Local 2+2 card correction — 2026-10-07
+
+Worker5's branch uses the shared `make_diagonal_split_pixmap` for one prepared
+2+2 card tile, keeping both frozen sources available to the unchanged tooltip.
+`test_history_set_icons.py` checks actual colored diagonal pixels and one count
+in collapsed/expanded cards at 520/864/960/1600px and PNG at 1200/1600px.
+It also checks single 2p/4p, missing halves, no sets, separate fallback counts,
+and unchanged source bytes/frozen facts. The registered History tooltip test
+checks two original icon rows, saved labels/order, character, weapon and stats.
+
+Twelve focused checks passed; the tooltip command passed 69 checks (overlapping
+coverage, not additive), with the expected uncovered-catalog warning on an
+explicitly missing temporary DB. Settings, profile and artwork roots were
+temporary. Corrected runners recorded zero process/network/live-data audit
+violations. Initial focused failures were test sample coordinates/hidden owner
+setup; the initial suite guard rejected temporary SQLite URIs and unredirected
+registry requests before access. Corrected temporary routing passed without
+production changes for those runner failures. Fixtures/PNGs are owned by
+`TemporaryDirectory` and cleaned at exit.
+
+Physical AppShell collapse/expand/hover and native PNG dialog acceptance remain
+open; Computer Use and real account/import/engine operations were excluded.
 
 ## Ownership And Boundaries
 
@@ -220,6 +244,12 @@ teams, selection, timers, results, and settings unchanged.
   `anchored_tooltip_rect` boundary; never anchor enemies to the whole card.
   Other `CustomTooltipPopup` callers keep their existing default placement.
   Scroll, collapse, hide, resize and export dismiss pending/visible popups.
+- A saved 2+2 build uses one diagonal set tile and one `2` count in collapsed,
+  expanded and PNG cards when both frozen icons are available. Preparation
+  reuses the shared diagonal pixmap helper, outside the paint path. Both source
+  sets remain intact in the visual/snapshot; character hover retains two
+  separate icons and labels in saved order. A missing half retains the old
+  separate tile/count positions. Single 2p and 4p display is unchanged.
 
 ### DPS Dummy
 

@@ -13,9 +13,11 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
+import tempfile
 import unittest
 from unittest.mock import patch
 
+from PySide6.QtGui import QColor, QImage
 from PySide6.QtWidgets import QApplication, QLabel
 
 from hoyolab_export.account_storage import AccountCharacterRuntimeRecord, AccountWeaponObservedStack
@@ -321,6 +323,53 @@ class ContentContracts(unittest.TestCase):
         for expected in ("Mona", "The Widsith", "Emblem of Severed Fate 4pc", "CR", "70%"):
             self.assertIn(expected, painted_text)
         card.close()
+
+    def test_history_two_plus_two_hover_keeps_two_saved_icons_and_text_order(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="gtt-history-hover-") as tmp:
+            paths = tuple(str(Path(tmp) / name) for name in ("emblem.png", "deepwood.png"))
+            for path, color in zip(paths, ("#ff0000", "#0000ff")):
+                image = QImage(32, 32, QImage.Format.Format_ARGB32)
+                image.fill(QColor(color))
+                self.assertTrue(image.save(path))
+            visual = _run_visual(_bundle(), Path(tmp) / "snapshot.json")
+            slot = replace(visual.teams[0].slots[1], set_icon_paths=paths, set_counts=(2, 2),
+                           set_labels=("Emblem of Severed Fate 2pc", "Deepwood Memories 2pc"))
+            visual = replace(visual, teams=(replace(visual.teams[0], slots=(slot,)),))
+            card = HistoryCardWidget(visual)
+            self.addCleanup(card.deleteLater)
+            self.addCleanup(card.close)
+            card.resize(960, 1)
+            card.show()
+            self.app.processEvents()
+            for expanded in (False, True):
+                with self.subTest(expanded=expanded):
+                    card.set_expanded(expanded)
+                    card.grab()
+                    card._hover = next(value for _, value in card._hits if value is slot)
+                    card._show_hover()
+                    painted_text, painted_icons = [], []
+                    original_text, original_icon = CardPainter.text, CardPainter.icon
+                    def text(draw, x, y, w, value, *args, **kwargs):
+                        painted_text.append(str(value))
+                        return original_text(draw, x, y, w, value, *args, **kwargs)
+                    def icon(draw, path, x, y, size, *args, **kwargs):
+                        painted_icons.append((path, x, y, size))
+                        return original_icon(draw, path, x, y, size, *args, **kwargs)
+                    with patch.object(CardPainter, "text", text), patch.object(CardPainter, "icon", icon):
+                        image = card._character_popup.grab().toImage()
+                    sets = [item for item in painted_icons if item[0] in paths]
+                    self.assertEqual([item[0] for item in sets], list(paths))
+                    self.assertEqual([(item[1], item[3]) for item in sets], [(17, 25), (17, 25)])
+                    self.assertEqual(sets[1][2]-sets[0][2], 29)
+                    for (_, x, y, size), color in zip(sets, ("#ff0000", "#0000ff")):
+                        self.assertEqual(image.pixelColor(round(x+size/2), round(y+size/2)).name(), color)
+                    for expected in ("Mona", "The Widsith", "CR", "70%"):
+                        self.assertIn(expected, painted_text)
+                    self.assertEqual([text for text in painted_text if text.endswith("2pc")],
+                                     ["Emblem of Severed Fate 2pc", "Deepwood Memories 2pc"])
+                    self.assertIs(card._character_popup.slot, slot)
+                    self.assertEqual(slot.set_icon_paths, paths)
+                    self.assertEqual(slot.set_counts, (2, 2))
 
     def test_history_bonus_hovers_show_source_and_overflow_content(self) -> None:
         visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))

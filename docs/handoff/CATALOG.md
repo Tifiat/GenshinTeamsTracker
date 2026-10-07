@@ -65,6 +65,7 @@ in every file.
 | [performance_measurements/](performance_measurements/) | Historical device/commit-specific measurements, not current guarantees |
 | [performance_measurements/2026-10-06_guarded_startup_profile.md](performance_measurements/2026-10-06_guarded_startup_profile.md) | Guarded synthetic-profile timing of the actual legacy and AppShell launchers |
 | [performance_measurements/2026-10-07_main_startup_and_merge_audit.md](performance_measurements/2026-10-07_main_startup_and_merge_audit.md) | Accepted-copy code/runtime parity, populated startup timings and remaining profile-path/cache gaps |
+| [performance_measurements/2026-10-07_populated_startup_package_review.md](performance_measurements/2026-10-07_populated_startup_package_review.md) | Independent Worker3 package review, guarded populated three-pair A/B and preservation boundary; not installed |
 | [TESTS.md](TESTS.md) | Test ownership, focused commands and validation rules |
 | [TOOLTIP_CONTRACTS.md](TOOLTIP_CONTRACTS.md) | Tooltip semantic families, first-available catalog witness and required regression workflow |
 

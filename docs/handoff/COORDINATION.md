@@ -46,6 +46,12 @@ verify the enlargement button. No live render is claimed.
 
 ## Local routing
 
+The registered Worker1 orchestrator follows [ORCHESTRATOR_RULES.md](ORCHESTRATOR_RULES.md).
+The 7 October user directive authorizes task routing, appropriate new worker
+chats and monitored stop/clarification. Product investigation stays with
+execution chats. Canonical workers remain in the registry; current execution
+chats are named only in shared TODO.
+
 Read the [hub rules](../../../GTT%20coordination/README.md),
 [shared TODO](../../../GTT%20coordination/TODO.md) and your own status file from
 the registry at task selection, scope changes and closeout. Read only the chosen

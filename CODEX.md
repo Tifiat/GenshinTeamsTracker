@@ -56,6 +56,9 @@ conversation is usually Russian.
   No shared docs junction or automatic cross-worker acceptance. A missing hub
   is reported, not replaced by another live queue. Other workers' checkouts
   remain write-protected by policy; migrations are applied by their own chat.
+- The registered Worker1 orchestrator follows
+  `docs/handoff/ORCHESTRATOR_RULES.md`: frame and route tasks, monitor compact
+  reports and clarify blockers; delegate product code investigation and fixes.
 - A scheduled continuation exists only after the automation tool returns a
   persisted active ID. A suggested card is not an active schedule.
 - `tools/future/` is for explicitly requested or genuinely reusable manual

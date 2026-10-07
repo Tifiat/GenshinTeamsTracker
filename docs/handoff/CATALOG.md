@@ -28,6 +28,7 @@ in every file.
 | [README.md](README.md) | Short area router and reading policy |
 | [HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md) | Durable-fact closeout, compaction and consistency checks |
 | [COORDINATION.md](COORDINATION.md) | Shared queue, per-worker ownership and checkout-local technical evidence |
+| [ORCHESTRATOR_RULES.md](ORCHESTRATOR_RULES.md) | User-authorized task dispatch, bounded execution reports, monitoring and loop-stop/clarification |
 | [integration_receipts/2026-10-04_ready_workers.md](integration_receipts/2026-10-04_ready_workers.md) | Local ready-branch integration sources, combined checks and acceptance limits |
 | [integration_receipts/2026-10-06_worker5_history_regression.md](integration_receipts/2026-10-06_worker5_history_regression.md) | Scoped History payload and guarded transparent asset-to-team-data-to-snapshot regression |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |

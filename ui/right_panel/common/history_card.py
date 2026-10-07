@@ -112,7 +112,9 @@ def room_enemies(run, team, chamber):
 def _card_set_tiles(slot, images=None):
     """Collapse only the card's 2+2 artwork; frozen facts and hover stay separate."""
     paths = slot.set_icon_paths[:2]
-    if len(paths) == 2 and slot.set_counts[:2] == (2, 2):
+    counts = slot.set_counts[:2]
+    # Supplied snapshots can retain physical 3+2 counts for two active 2p bonuses.
+    if len(paths) == 2 and len(counts) == 2 and all(2 <= count < 4 for count in counts):
         key = ("set_pair", *paths)
         if images is None or key in images:
             return ((key, "2"),)

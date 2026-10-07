@@ -15,7 +15,14 @@ from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QApplication
 
 from run_workspace.history_browser_catalog import _run_visual
-from run_workspace.history_snapshot import HistorySetBonusSnapshot
+from run_workspace.history_snapshot import HistorySetBonusSnapshot, HistorySnapshotBundleStore
+from run_workspace.history_snapshot_builder import build_history_snapshot_bundle
+from run_workspace.right_panel_prototype_view_model import (
+    MODE_ABYSS, RightPanelBuildMiniSetViewModel, RightPanelDetailRowViewModel,
+    RightPanelSelectedDetailsViewModel,
+)
+from run_workspace.session import RunSessionController
+from tests.run_workspace.history.test_history_snapshot_builder import _context, _right_panel_model, _slot_vm, _teams_vm
 from tests.run_workspace.history.test_history_snapshot_right_panel import _bundle
 from ui.right_panel.common.history_card import CardLayout, CardPainter, HistoryCardWidget, render_history_card_png
 
@@ -29,6 +36,37 @@ def _color_bounds(image, color, region=None):
         return None
     xs, ys = zip(*points)
     return QRect(min(xs), min(ys), max(xs)-min(xs)+1, max(ys)-min(ys)+1)
+
+
+def _saved_supplied_set_run(root, counts, paths, *, supplied_via="summary"):
+    """Exercise public build -> frozen asset copy -> store read -> visual adapter."""
+    names = ("Emblem of Severed Fate", "Deepwood Memories")
+    raw_sets = tuple({"set_uid": uid, "set_name": name, "piece_count": count,
+                      "owned_count": count, "icon_path": path}
+                     for uid, name, count, path in zip(("emblem", "deepwood"), names, counts, paths))
+    details = {
+        "account_character": {"id": "10000041", "name": "Mona", "level": 90, "element": "Hydro"},
+        "account_weapon": {"id": "14402", "name": "The Widsith", "level": 90, "refinement": 5},
+        "selected_build": {"build_name": "Saved pair"},
+        "stat_snapshot": {"artifact": {"summary": {
+            "active_set_bonuses": raw_sets if supplied_via == "summary" else (),
+        }}},
+    }
+    session = RunSessionController.empty()
+    session.team_state = session.team_state.set_character(0, 0, {"id": "10000041", "name": "Mona"}).attach_character_details_data(0, 0, details)
+    slot_vm = replace(_slot_vm(0, 0, character_title="Mona"), build_label="Saved pair",
+                      build_mini_sets=tuple(RightPanelBuildMiniSetViewModel(**item) for item in raw_sets)
+                      if supplied_via == "mini_sets" else ())
+    model = _right_panel_model(mode=MODE_ABYSS, teams=_teams_vm(overrides={(0, 0): slot_vm}),
+                              selected_details=RightPanelSelectedDetailsViewModel(
+                                  has_selection=True, team_index=0, slot_index=0,
+                                  character_name="Mona", weapon_name="The Widsith",
+                                  stat_rows=(RightPanelDetailRowViewModel("CR", "70%", icon_label="CR"),)))
+    context = _context(bundle_id=f"physical-{counts[0]}-{counts[1]}-{supplied_via}", account={})
+    bundle = build_history_snapshot_bundle(session.state, model, context)
+    store = HistorySnapshotBundleStore(root / context.bundle_id)
+    path = store.write_bundle_grouped(bundle, copy_assets=True, asset_source_roots=(root,))
+    return _run_visual(store.read_bundle(bundle.bundle_id), path), store, path
 
 
 class HistorySetIconsTest(unittest.TestCase):
@@ -124,6 +162,54 @@ class HistorySetIconsTest(unittest.TestCase):
                 image, region, _ = self._card_image(self.visual, True, width)
                 self._assert_diagonal_tile(image, region, CardLayout(width).equipment_size)
                 self.assertEqual(self.painted_text.count("2"), 1)
+        self._assert_frozen_sources()
+
+    def test_supplied_physical_three_plus_two_survives_save_as_one_card_icon(self):
+        self._assert_saved_physical_pair((3, 2))
+
+    def test_supplied_physical_two_plus_three_survives_save_as_one_card_icon(self):
+        self._assert_saved_physical_pair((2, 3))
+
+    def test_saved_physical_pairs_with_missing_icon_keep_original_counts(self):
+        for counts in ((3, 2), (2, 3)):
+            with self.subTest(counts=counts):
+                visual, _, snapshot = _saved_supplied_set_run(
+                    self.root, counts, tuple(str(path) for path in self.sources))
+                before = snapshot.read_bytes()
+                Path(visual.teams[0].slots[0].set_icon_paths[1]).unlink()
+                for expanded in (False, True):
+                    image, region, _ = self._card_image(visual, expanded, 960)
+                    self.assertIsNotNone(_color_bounds(image, "#ff0000", region))
+                    self.assertIsNone(_color_bounds(image, "#0000ff", region))
+                    self.assertEqual(self.painted_text.count("2"), 1)
+                    self.assertEqual(self.painted_text.count("3"), 1)
+                self.assertEqual(visual.teams[0].slots[0].set_counts, counts)
+                self.assertEqual(snapshot.read_bytes(), before)
+
+    def _assert_saved_physical_pair(self, counts):
+        for route in ("summary", "mini_sets"):
+            with self.subTest(supplied_via=route):
+                visual, store, snapshot = _saved_supplied_set_run(
+                    self.root, counts, tuple(str(path) for path in self.sources), supplied_via=route)
+                before = snapshot.read_bytes()
+                slot = visual.teams[0].slots[0]
+                self.assertEqual(slot.set_counts, counts)
+                expected_labels = tuple(f"{name} {count}pc" for name, count in zip(
+                    ("Emblem of Severed Fate", "Deepwood Memories"), counts))
+                self.assertEqual(slot.set_labels, expected_labels)
+                for expanded in (False, True):
+                    image, region, _ = self._card_image(visual, expanded, 960)
+                    self._assert_diagonal_tile(image, region, 26 if not expanded else CardLayout(960).equipment_size)
+                    self.assertEqual(self.painted_text.count("2"), 1)
+                    self.assertEqual(self.painted_text.count("3"), 0)
+                # At the same logical width, PNG shares the card's slot allocation.
+                _, region, _ = self._card_image(visual, True, 1200)
+                destination = self.root / f"export-{counts[0]}-{counts[1]}-{route}.png"
+                render_history_card_png(visual, destination, width=1200)
+                self._assert_diagonal_tile(QImage(str(destination)), region, CardLayout(1200).equipment_size)
+                self.assertEqual(snapshot.read_bytes(), before)
+                self.assertEqual(tuple(b.piece_count for b in store.read_bundle(visual.bundle_id).teams[0].slots[0].artifact_build.active_set_bonuses), counts)
+                self.assertEqual(slot.set_labels, expected_labels)
         self._assert_frozen_sources()
 
     def test_png_export_keeps_diagonal_halves_at_native_and_scaled_widths(self):

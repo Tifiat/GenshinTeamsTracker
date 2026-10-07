@@ -65,7 +65,7 @@ It also checks single 2p/4p, missing halves, no sets, separate fallback counts,
 and unchanged source bytes/frozen facts. The registered History tooltip test
 checks two original icon rows, saved labels/order, character, weapon and stats.
 
-Twelve focused checks passed; the tooltip command passed 69 checks (overlapping
+Initial `76acdb9`: twelve focused checks passed; the tooltip command passed 69 checks (overlapping
 coverage, not additive), with the expected uncovered-catalog warning on an
 explicitly missing temporary DB. Settings, profile and artwork roots were
 temporary. Corrected runners recorded zero process/network/live-data audit
@@ -74,6 +74,18 @@ setup; the initial suite guard rejected temporary SQLite URIs and unredirected
 registry requests before access. Corrected temporary routing passed without
 production changes for those runner failures. Fixtures/PNGs are owned by
 `TemporaryDirectory` and cleaned at exit.
+
+First review correction: `76acdb9` missed physical `(3,2)` and `(2,3)` counts
+preserved by supplied-data snapshots. Card composition now recognizes two
+active 2p bonuses when both counts are at least 2 and below 4; stored counts
+and tooltip labels remain verbatim. Ten isolated target checks pass, including
+both summary and mini-set VM inputs through public builder, frozen asset copy,
+store write/read and visual adapter. New cases check collapsed/expanded/PNG
+pixels, one card count, original tooltip rows/numbers/order, missing-image
+fallback and unchanged snapshot bytes. The 69-case suite was not rerun.
+The final runner again recorded zero isolation violations. PNG-region equality
+outside set artwork, DPR and alpha checks confirmed by the independent reviewer
+on `76acdb9` remain prior scoped evidence; they were not newly rerun here.
 
 Physical AppShell collapse/expand/hover and native PNG dialog acceptance remain
 open; Computer Use and real account/import/engine operations were excluded.
@@ -244,8 +256,9 @@ teams, selection, timers, results, and settings unchanged.
   `anchored_tooltip_rect` boundary; never anchor enemies to the whole card.
   Other `CustomTooltipPopup` callers keep their existing default placement.
   Scroll, collapse, hide, resize and export dismiss pending/visible popups.
-- A saved 2+2 build uses one diagonal set tile and one `2` count in collapsed,
-  expanded and PNG cards when both frozen icons are available. Preparation
+- Two active 2p bonuses (physical 2+2, 3+2 or 2+3) use one diagonal set tile
+  and one `2` count in collapsed, expanded and PNG cards when both frozen icons
+  are available. Preparation
   reuses the shared diagonal pixmap helper, outside the paint path. Both source
   sets remain intact in the visual/snapshot; character hover retains two
   separate icons and labels in saved order. A missing half retains the old

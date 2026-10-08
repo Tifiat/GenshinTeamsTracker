@@ -67,7 +67,7 @@ a concrete failing scenario. The working path already covers:
 The remaining GCSIM work is primarily product UI, orchestration, and release
 engineering, not missing config/run backend fundamentals:
 
-- finish the Browser presentation, [readable rotation shared document and option-cache design](READABLE_ROTATION_EDITOR.md),
+- finish the Browser presentation, [integrate the isolated readable rotation core and options service](READABLE_ROTATION_EDITOR.md),
   result detail navigation, readiness wording, and settings polish;
 - replace the stale `History persistence: disabled` runtime wording. Abyss
   Browser results are not auto-saved per simulation, but current session results

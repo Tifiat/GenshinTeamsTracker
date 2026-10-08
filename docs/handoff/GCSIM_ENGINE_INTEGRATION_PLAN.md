@@ -67,8 +67,8 @@ a concrete failing scenario. The working path already covers:
 The remaining GCSIM work is primarily product UI, orchestration, and release
 engineering, not missing config/run backend fundamentals:
 
-- finish the Browser presentation, readable/no-code rotation UX, result detail
-  navigation, readiness wording, and settings polish;
+- finish the Browser presentation, [readable rotation prototype](READABLE_ROTATION_EDITOR.md),
+  result detail navigation, readiness wording, and settings polish;
 - replace the stale `History persistence: disabled` runtime wording. Abyss
   Browser results are not auto-saved per simulation, but current session results
   are included when the user invokes normal Run Save;
@@ -945,12 +945,15 @@ Current implementation sequence:
 1. GCSIM Browser UI pass inside `ui/gcsim_browser/`: replace placeholders,
    improve team/target/readiness/result presentation, and correct stale History
    wording without refactoring AppShell ownership.
-2. Rotation product pass: retain raw code, add readable parsing/presets, and
-   investigate published gcsim.app config discovery by exact stable
-   four-character roster. Collect/cache/parse every matching rotation and let
-   the user choose; source/API, attribution, freshness, parser safety, and
-   duplicates require their own task. Then decide whether a constrained no-code
-   builder is worth maintaining.
+2. Rotation product pass: the 8 October user directive first assigns official
+   documentation coverage, command/condition/active-character structure and an
+   isolated Code-to-Readable prototype, then a separate panel-layout/design
+   stage. [READABLE_ROTATION_EDITOR.md](READABLE_ROTATION_EDITOR.md) owns the
+   current requirements and sketch; later conflicting requests update it in
+   place. Raw code and unsupported constructs are retained. Published gcsim.app
+   config discovery by exact stable four-character roster remains a separate
+   later task, with source/API, attribution, freshness, parser safety and
+   duplicate handling; it is not a prerequisite for this prototype.
 3. Run orchestration pass: progress, cancellation, run-artifact/debug retention
    controls, and measured optional bounded parallelism.
 4. DPS Dummy state pass: attach successful results to typed DPS Dummy session

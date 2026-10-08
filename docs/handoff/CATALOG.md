@@ -57,6 +57,7 @@ in every file.
 | Document | Role |
 | --- | --- |
 | [APP_SHELL_WORKSPACE_PLAN.md](APP_SHELL_WORKSPACE_PLAN.md) | Current workspace/dock ownership and remaining launch migration |
+| [READABLE_ROTATION_EDITOR.md](READABLE_ROTATION_EDITOR.md) | User's initial Code-to-Readable sketch, command/guard/localization requirements and structure-before-layout prototype scope |
 | [DISPLAY_SCALING.md](DISPLAY_SCALING.md) | Windows system-scaling Settings switch, startup/font/adaptive contract and pre-MVP user acceptance |
 | [MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md](MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md) | Right-panel package ownership and legacy boundary |
 | [RUN_WORKSPACE_SNAPSHOT_CONTRACT.md](RUN_WORKSPACE_SNAPSHOT_CONTRACT.md) | Live typed session, immutable saves and launch-readiness review |

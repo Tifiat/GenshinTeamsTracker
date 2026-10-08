@@ -261,8 +261,8 @@ class RotationReadableTests(unittest.TestCase):
 
     def test_favonius_is_owning_character_cooldown_not_new_proc(self):
         text = self.read('active furina; while !.furina.status.favonius-cd { furina attack; }').text()
-        self.assertIn("Перезарядка эффекта Фавония (Фурина), осталось кадров", text)
-        self.assertIn("проверка перед каждой итерацией", text)
+        self.assertIn("таймер перезарядки Фавония равен нулю (Фурина)", text)
+        self.assertIn("Повторять, пока", text)
         self.assertNotIn("обязательно", text)
 
     def test_builtin_shadowing_and_override_are_not_translated_as_wait_or_combat(self):

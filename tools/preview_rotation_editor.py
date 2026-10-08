@@ -22,6 +22,22 @@ from run_workspace.gcsim.rotation_editor.options import EngineIdentity, load_loc
 from run_workspace.gcsim.rotation_editor.readable import render
 from run_workspace.gcsim.rotation_editor.source import load_source_dialect
 from run_workspace.gcsim.rotation_editor.validation import validate_setup
+from run_workspace.gcsim.rotation_editor.conditions import Condition, make_if, make_while
+from run_workspace.gcsim.rotation_editor.model import action, node
+from run_workspace.gcsim.rotation_editor.variants import VariantChoice, plan_variant
+
+
+def example_document(dialect):
+    """Public model demonstration, constructed by the same future button API."""
+    document = parse("active furina;", dialect)
+    condition = Condition("all", children=(Condition("energy_full", "furina"),
+        Condition("any", children=(Condition("hp_percent", "furina", operator="<", value="50"), Condition("mode", "chasca", "nightsoul")))))
+    items = [document.root.get("items")[0], make_if(document, condition, node("block", items=(action("furina", "burst"),)))]
+    no_favonius_cd = Condition("not", children=(Condition("effect", "furina", "favonius-cd"),))
+    items.append(make_while(document, no_favonius_cd, node("block", items=(action("furina", "attack"),))))
+    for choice in (VariantChoice("bennett.skill_hold", 2), VariantChoice("chasca.nightsoul_aim", 6), VariantChoice("furina.pneuma_skill")):
+        items.extend(plan_variant(document, choice).block.get("items"))
+    return document.replace(document.root.node_id, document.root.changed(items=tuple(items)))
 
 
 def main() -> int:
@@ -32,12 +48,15 @@ def main() -> int:
     cli.add_argument("--audited-v245", action="store_true", help="Explicitly opt into the audited v2.45 field descriptions")
     cli.add_argument("--canonical", action="store_true")
     cli.add_argument("--details", action="store_true", help="Also show simulation setup details")
+    cli.add_argument("--examples", action="store_true", help="Build public condition/variant examples in memory (requires --audited-v245)")
     cli.add_argument("--character", help="Also show selected character action/parameter/condition metadata")
     args = cli.parse_args()
+    if args.examples and (not args.audited_v245 or args.file.resolve() != FIXTURE.resolve()):
+        cli.error("--examples requires --audited-v245 and cannot be combined with a custom --file")
     dialect = load_source_dialect(args.engine_root, identity="gcsim-v2.45.0-gcsl" if args.audited_v245 else "gcsl-syntax-v1")
     if args.file.stat().st_size > 2 * 1024 * 1024:
         cli.error("Rotation exceeds the 2 MiB preview limit")
-    document = parse(args.file.read_text(encoding="utf-8"), dialect)
+    document = example_document(dialect) if args.examples else parse(args.file.read_text(encoding="utf-8"), dialect)
     locale = json.loads((ROOT / "localization/locales" / f"{args.language}.json").read_text(encoding="utf-8"))
     names = json.loads(FIXTURE.with_name("rotation_editor_names.json").read_text(encoding="utf-8"))[args.language] if args.file.resolve() == FIXTURE.resolve() else {}
     readable = render(document, lambda key, **fields: locale[key].format(**fields), resolve_name=names.get)

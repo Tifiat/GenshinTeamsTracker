@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Callable, Mapping
 
 from .model import Diagnostic, Document, Node, Span
+from .conditions import describe as describe_condition, recognize as recognize_condition
 from .semantics import BUILTINS, Cycle, Schedule, analyze
 from .writer import Writer
 
@@ -197,6 +198,10 @@ class Renderer:
             return expr(n.get("name")) + expr(n.get("parameters"))
         return self.writer.emit(n)
 
+    def condition_text(self, value: Node, bound: frozenset[str]) -> str:
+        choice = recognize_condition(self.document, value)
+        return describe_condition(choice, self.tr, self.name) if choice is not None else self.expression(value, bound)
+
     def action_text(self, actor: str, n: Node, bound: frozenset[str]) -> str:
         action = n.get("name").get("value")
         text = self.tr("rotation.action." + action)
@@ -298,7 +303,7 @@ class Renderer:
                         label, kind = self.schedule_text(schedule), "schedule"
                     else:
                         children = tuple(branches)
-                        label, kind = self.tr("rotation.if", condition=self.expression(n.get("condition"), bound)), "if"
+                        label, kind = self.tr("rotation.if", condition=self.condition_text(n.get("condition"), bound)), "if"
                     if owner:
                         def without_same_window(items: tuple[ReadableNode, ...]) -> tuple[ReadableNode, ...]:
                             from dataclasses import replace
@@ -323,8 +328,9 @@ class Renderer:
                         children = (self.view(body, self.expression(body, loop_bound)),)
                     else:
                         children, _ = self.sequence(body.get("items", ()), loop_state, loop_bound)
-                    condition = self.expression(n.get("condition"), loop_bound) if n.get("condition") else self.tr("rotation.true")
-                    label = self.cycle_text(cycle) if cycle else self.tr("rotation.custom_loop") if n.kind == "for" else self.tr("rotation.loop", condition=condition)
+                    condition = self.condition_text(n.get("condition"), loop_bound) if n.get("condition") else self.tr("rotation.true")
+                    special_for = n.kind == "for" and (n.get("initial") is not None or n.get("post") is not None)
+                    label = self.cycle_text(cycle) if cycle else self.tr("rotation.custom_loop") if special_for else self.tr("rotation.loop", condition=condition)
                     output.append(self.view(n, label, children, kind="cycle" if cycle else n.kind))
                     state = loop_state
                 elif n.kind == "switch":

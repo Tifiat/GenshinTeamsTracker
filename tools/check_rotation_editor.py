@@ -21,6 +21,9 @@ sys.path.insert(0, str(ROOT))
 from run_workspace.gcsim.rotation_editor import node, parse, write
 from run_workspace.gcsim.rotation_editor.semantics import ScheduleChoice, analyze, make_cycle, make_schedule, number, schedule_condition, set_cycle_count
 from tests.run_workspace.gcsim.test_rotation_editor import DIALECT, PUBLIC_CASES
+from tests.run_workspace.gcsim.test_rotation_conditions import CONDITION_CASES, with_condition
+from tests.run_workspace.gcsim.test_rotation_variants import VARIANT_CASES, plan_document
+from run_workspace.gcsim.rotation_editor.conditions import compile_condition, recognize
 
 
 def user_block_pairs() -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
@@ -66,6 +69,55 @@ def user_block_pairs() -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
     return generated, predicates
 
 
+def condition_variant_pairs() -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    generated, truths = [], []
+    for choice in VARIANT_CASES:
+        document, _ = plan_document(choice)
+        code = write(document)
+        generated.append((code, write(parse(code, DIALECT), preserve=False)))
+    for source, choice in CONDITION_CASES:
+        document = with_condition(source)
+        block = document.root.get('items')[1]
+        changed = document.replace(block.get('condition').node_id, compile_condition(document, choice))
+        code = write(changed)
+        generated.append((code, write(parse(code, DIALECT), preserve=False)))
+    cases = (
+        ('.furina.energy >= .furina.energymax', {'furina.energy': '59', 'furina.energymax': '60'}, False),
+        ('.furina.energy >= .furina.energymax', {'furina.energy': '60', 'furina.energymax': '60'}, True),
+        ('.furina.hpratio < .5', {'furina.hpratio': '.49'}, True),
+        ('.furina.hpratio < .5', {'furina.hpratio': '.5'}, False),
+        ('!.furina.status.favonius-cd', {'furina.status.favonius-cd': '0'}, True),
+        ('!.furina.status.favonius-cd', {'furina.status.favonius-cd': '1'}, False),
+        ('.furina.onfield == 0', {'furina.onfield': '1'}, False),
+        ('.furina.onfield == 0', {'furina.onfield': '0'}, True),
+        ('.furina.burst.ready >= 1', {'furina.burst.ready': '1'}, True),
+        ('.furina.burst.ready >= 1', {'furina.burst.ready': '0'}, False),
+        ('.chasca.cons < 6', {'chasca.cons': '5'}, True),
+        ('.chasca.cons < 6', {'chasca.cons': '6'}, False),
+        ('(.furina.onfield || .chasca.nightsoul.state) && .furina.energy >= 60',
+         {'furina.onfield': '0', 'chasca.nightsoul.state': '1', 'furina.energy': '60'}, True),
+        ('(.furina.onfield || .chasca.nightsoul.state) && .furina.energy >= 60',
+         {'furina.onfield': '1', 'chasca.nightsoul.state': '0', 'furina.energy': '59'}, False),
+        ('(.furina.onfield || .chasca.nightsoul.state) && .furina.energy >= 60',
+         {'furina.onfield': '0', 'chasca.nightsoul.state': '0', 'furina.energy': '60'}, False),
+        ('!.furina.ousia', {'furina.ousia': '0'}, True),
+        ('!.furina.ousia', {'furina.ousia': '1'}, False),
+    )
+    for source, fields, expected in cases:
+        document = with_condition(source)
+        original = document.root.get('items')[1].get('condition')
+        choice = recognize(document, original)
+        assert choice is not None, source
+        for condition in (original, compile_condition(document, choice)):
+            truth = node('unary', operator='!', value=node('unary', operator='!', value=condition))
+            literal_doc = document.replace(document.root.node_id, node('document', items=(node('let', name=node('name', value='result'), annotation=None, value=truth),)))
+            for field in tuple(literal_doc.root.walk()):
+                if field.kind == 'field':
+                    literal_doc = literal_doc.replace(field.node_id, node('number', value=fields['.'.join(field.get('path'))]))
+            truths.append((write(literal_doc, preserve=False), f'let result={int(expected)}+0;'))
+    return generated, truths
+
+
 def main() -> int:
     args = argparse.ArgumentParser(description=__doc__)
     args.add_argument("--engine-root", type=Path, required=True)
@@ -79,8 +131,11 @@ def main() -> int:
     sources.append((ROOT / "run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt").read_text(encoding="utf-8"))
     pairs = [(source, write(parse(source, DIALECT), preserve=False)) for source in sources]
     generated_pairs, predicates = user_block_pairs()
+    advanced, condition_truths = condition_variant_pairs()
     pairs.extend(generated_pairs)
     pairs.extend(predicates)
+    pairs.extend(advanced)
+    pairs.extend(condition_truths)
     payload = "".join(json.dumps({"source": text}) + "\n" for pair in pairs for text in pair)
     environment = dict(os.environ, GOPROXY="off", GOSUMDB="off", GOTOOLCHAIN="local", GOFLAGS="-mod=readonly", GOWORK="off")
     result = subprocess.run([go, "run", str(ROOT / "tools/gcsim_rotation_parse_oracle.go")], cwd=selected,
@@ -104,6 +159,7 @@ def main() -> int:
         print(json.dumps(failures, ensure_ascii=False, indent=2))
         return 1
     print(f"PASS: {len(sources)} public source pairs, {len(generated_pairs)} generated block pairs and {len(predicates)} schedule truth checks match upstream parsed trees and configuration.")
+    print(f"PASS: {len(advanced)} condition/variant code pairs and {len(condition_truths)} condition truth checks match the same upstream parser.")
     print("Parser-only comparison: per-character runtime registration, execution and UI are not exercised.")
     return 0
 

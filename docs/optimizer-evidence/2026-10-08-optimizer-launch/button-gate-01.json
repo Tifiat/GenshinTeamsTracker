@@ -1,0 +1,180 @@
+{
+  "schema": "gtt_optimizer_button_launch_gate_v1",
+  "status": "button_gate_failure_preserved",
+  "scope": "one_managed_real_button_gate_old_main_native_plus_cwd_hotfix",
+  "main_writes_authorized": false,
+  "engine_rebuilds": 0,
+  "engine_installs": 0,
+  "engine_call_budget": 16,
+  "started_utc": "2026-10-08T07:23:33+00:00",
+  "receipt_policy": "immutable_compact_preserve_failure; no_retry",
+  "detached_head": "13cb3f71484c0c379b8b9e50f8854caac1ef0e4a",
+  "main_snapshot_before": {
+    "head": "1d5e86945c573da22a3a261bb2d8ae7d8081220e",
+    "native_worktree_status": "clean",
+    "native_source": {
+      "sha256": "38f74fd03d8c6a7d760deaef8dcb1e4daa7073173954a011e5e7ef62b93aa027",
+      "files": 256,
+      "bytes": 1555377
+    },
+    "installed_optimizer_binary_sha256": "76f8a52ca75146e320090775d02b61903e59dedaa74dc8f2cb006d662afa943c",
+    "active_engine": {
+      "engine_id": "gcsim-v2.45.0-20260927011932",
+      "pointer_sha256": "388e28fe2c88122be8690d46fcb603d4228c0f3307d1f1110c1e39f6293f8efb",
+      "artifact_relative_path": "build/gtt-gcsim.exe",
+      "artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+      "engine_tree_sha256": "3d2441f2970978a352a77809ff91d9518c4d1649bc46bbe93445d25ccaa4a074",
+      "binding_sha256": "8d143c742ac9501df45be2a6832cadb1ac337ccb2253069f51fe9a67978e4c4d",
+      "trusted": true
+    },
+    "bundled_rule_cache": {
+      "sha256": "8f742d8851fe08afea3706b5e6de28d8501b45cbdd8d9f26b4ac2f40c2cc29a8",
+      "files": 98,
+      "bytes": 329917
+    }
+  },
+  "python_executable": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Scripts\\python.exe",
+  "detached_hotfix_helper_sha256": "c0f272487113757f56adfd15c320e4cd01ea643ce035a0b2aa3b0f2555823478",
+  "receipt_relative_path": "docs/optimizer-evidence/2026-10-08-optimizer-launch/button-gate-01.json",
+  "managed_job_name": "job-ssvveo6d",
+  "main_native_copy_before_hotfix": {
+    "sha256": "38f74fd03d8c6a7d760deaef8dcb1e4daa7073173954a011e5e7ef62b93aa027",
+    "files": 256,
+    "bytes": 1555377
+  },
+  "hotfix": {
+    "helper_sha256": "c0f272487113757f56adfd15c320e4cd01ea643ce035a0b2aa3b0f2555823478",
+    "helper_bytes": 1406,
+    "compact_assignment_replacements": 1,
+    "ordinary_assignment_replacements": 1
+  },
+  "candidate_native_source": {
+    "sha256": "9d3d99321466ca17b02c32fb4d86b88b8b78b7a30b34a2cb9a3a2ba953d1f816",
+    "files": 257,
+    "bytes": 1557028
+  },
+  "candidate_source_unchanged_before_build": true,
+  "native_build": {
+    "argv": [
+      "go",
+      "build",
+      "-o",
+      "C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-ssvveo6d\\bin\\gtt-optimizer.exe",
+      "./cmd/gtt-optimizer"
+    ],
+    "command_sha256": "2aa68adf3b8be554fdde178a22e213114555c4994a42703bb82ed1fda1bf7e34",
+    "cwd_kind": "managed_native_copy",
+    "exit_code": 0,
+    "timed_out": false,
+    "engine_call_budget_exceeded": false,
+    "wall_seconds": 34.562,
+    "stdout_bytes": 0,
+    "stderr_bytes": 0,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "candidate_source_after_build": {
+    "sha256": "9d3d99321466ca17b02c32fb4d86b88b8b78b7a30b34a2cb9a3a2ba953d1f816",
+    "files": 257,
+    "bytes": 1557028
+  },
+  "candidate_source_unchanged_during_build": true,
+  "candidate_binary_sha256": "b62cc814d95ee8f38fa3106501126b34ef09807403ec620962a1237ec2ca652e",
+  "button_test": {
+    "argv": [
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Scripts\\python.exe",
+      "-B",
+      "-m",
+      "unittest",
+      "-v",
+      "tests.ui.gcsim_browser.test_optimizer_button_backend"
+    ],
+    "command_sha256": "15614c67b7c11bf89769c347ac5d18d4d6f94be1b47614671f52625e7f54c67f",
+    "cwd_kind": "detached_checkout",
+    "exit_code": 1,
+    "timed_out": false,
+    "engine_call_budget_exceeded": false,
+    "wall_seconds": 16.063,
+    "stdout_bytes": 0,
+    "stderr_bytes": 4282,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_sha256": "07c76fb8faab7db8342fc4c39dd435d7c578788b01d3c2a529e4cd93b2f00427",
+    "stdout_failure_excerpt": "",
+    "stderr_failure_excerpt": "test_ready_modes_launch_and_match_frozen_fixture (tests.ui.gcsim_browser.test_optimizer_button_backend.OptimizerButtonBackendTests.test_ready_modes_launch_and_match_frozen_fixture) ... C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\run_workspace\\gcsim\\optimizer_go_session.py:121: ResourceWarning: unclosed file <_io.TextIOWrapper name=5 encoding='utf-8'>\r\n  result = self._run_go_optimizer(\r\nResourceWarning: Enable tracemalloc to get the object allocation traceback\r\n\r\n  test_ready_modes_launch_and_match_frozen_fixture (tests.ui.gcsim_browser.test_optimizer_button_backend.OptimizerButtonBackendTests.test_ready_modes_launch_and_match_frozen_fixture) (mode='all_sets', fast=True) ... FAIL\r\n  test_ready_modes_launch_and_match_frozen_fixture (tests.ui.gcsim_browser.test_optimizer_button_backend.OptimizerButtonBackendTests.test_ready_modes_launch_and_match_frozen_fixture) (mode='selected', fast=False) ... FAIL\r\n  test_ready_modes_launch_and_match_frozen_fixture (tests.ui.gcsim_browser.test_optimizer_button_backend.OptimizerButtonBackendTests.test_ready_modes_launch_and_match_frozen_fixture) (mode='all_sets', fast=False) ... FAIL\r\n\r\n======================================================================\r\nFAIL: test_ready_modes_launch_and_match_frozen_fixture (tests.ui.gcsim_browser.test_optimizer_button_backend.OptimizerButtonBackendTests.test_ready_modes_launch_and_match_frozen_fixture) (mode='all_sets', fast=True)\r\n----------------------------------------------------------------------\r\nTraceback (most recent call last):\r\n  File \"C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\tests\\ui\\gcsim_browser\\test_optimizer_button_backend.py\", line 125, in test_ready_modes_launch_an\n...[receipt excerpt]...\naceback (most recent call last):\r\n  File \"C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\tests\\ui\\gcsim_browser\\test_optimizer_button_backend.py\", line 125, in test_ready_modes_launch_and_match_frozen_fixture\r\n    payload = harness.click_and_wait(mode, rotation, fast)\r\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\tests\\ui\\gcsim_browser\\test_optimizer_button_backend.py\", line 76, in click_and_wait\r\n    raise AssertionError(f\"{mode} button is disabled\")\r\nAssertionError: selected button is disabled\r\n\r\n======================================================================\r\nFAIL: test_ready_modes_launch_and_match_frozen_fixture (tests.ui.gcsim_browser.test_optimizer_button_backend.OptimizerButtonBackendTests.test_ready_modes_launch_and_match_frozen_fixture) (mode='all_sets', fast=False)\r\n----------------------------------------------------------------------\r\nTraceback (most recent call last):\r\n  File \"C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\tests\\ui\\gcsim_browser\\test_optimizer_button_backend.py\", line 125, in test_ready_modes_launch_and_match_frozen_fixture\r\n    payload = harness.click_and_wait(mode, rotation, fast)\r\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n  File \"C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\tests\\ui\\gcsim_browser\\test_optimizer_button_backend.py\", line 76, in click_and_wait\r\n    raise AssertionError(f\"{mode} button is disabled\")\r\nAssertionError: all_sets button is disabled\r\n\r\n----------------------------------------------------------------------\r\nRan 1 test in 12.178s\r\n\r\nFAILED (failures=3)\r\n"
+  },
+  "engine_call_inventory_before_cleanup": {
+    "attempted": 0,
+    "completed": 0,
+    "calls": []
+  },
+  "progress_inventory_before_cleanup": [
+    {
+      "run": "profile-layout-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/saved-runs-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/selected-20261008-102442-69fd5b9a",
+      "progress_events": 6,
+      "stages": {
+        "compiling_formula": 1,
+        "completed": 1,
+        "searching": 1,
+        "validating_finalists": 2,
+        "validating_request": 1
+      },
+      "last_stage": "completed",
+      "bytes": 1640
+    }
+  ],
+  "button_measurements": {
+    "present": true,
+    "file_sha256": "a095b84a7960aaf76a77fb6299665d7474f75a3e8957e8875768c20a593d4eea",
+    "button_modes_completed": 1,
+    "expected_mode_matrix_complete": false,
+    "modes": [
+      {
+        "mode": "selected",
+        "fast_mode": true,
+        "formula_dps": "1644.8658064907572",
+        "measured_dps": null,
+        "winner_sha256": "4be715497b1c8d34ccb0895379de08bb931bd5437e2253138bae0c58fb658e4c",
+        "engine_id": null,
+        "artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+        "fixture_sha256": "65fbb27fffe87acb25bed574a74a7547ae66b6bda25d02d99312c15de8966ba7"
+      }
+    ]
+  },
+  "stage_failure": "button_test_failed_or_timed_out",
+  "managed_job_cleaned": true,
+  "managed_job_path_absent": true,
+  "detached_hotfix_helper_unchanged": true,
+  "main_snapshot_after": {
+    "head": "1d5e86945c573da22a3a261bb2d8ae7d8081220e",
+    "native_worktree_status": "clean",
+    "native_source": {
+      "sha256": "38f74fd03d8c6a7d760deaef8dcb1e4daa7073173954a011e5e7ef62b93aa027",
+      "files": 256,
+      "bytes": 1555377
+    },
+    "installed_optimizer_binary_sha256": "76f8a52ca75146e320090775d02b61903e59dedaa74dc8f2cb006d662afa943c",
+    "active_engine": {
+      "engine_id": "gcsim-v2.45.0-20260927011932",
+      "pointer_sha256": "388e28fe2c88122be8690d46fcb603d4228c0f3307d1f1110c1e39f6293f8efb",
+      "artifact_relative_path": "build/gtt-gcsim.exe",
+      "artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+      "engine_tree_sha256": "3d2441f2970978a352a77809ff91d9518c4d1649bc46bbe93445d25ccaa4a074",
+      "binding_sha256": "8d143c742ac9501df45be2a6832cadb1ac337ccb2253069f51fe9a67978e4c4d",
+      "trusted": true
+    },
+    "bundled_rule_cache": {
+      "sha256": "8f742d8851fe08afea3706b5e6de28d8501b45cbdd8d9f26b4ac2f40c2cc29a8",
+      "files": 98,
+      "bytes": 329917
+    }
+  },
+  "main_native_source_unchanged": true,
+  "main_optimizer_binary_unchanged": true,
+  "active_engine_pointer_unchanged": true,
+  "active_engine_binary_unchanged": true,
+  "bundled_rule_cache_unchanged": true,
+  "main_snapshot_unchanged": true,
+  "engine_calls_attempted": 0,
+  "engine_calls_completed": 0,
+  "finished_utc": "2026-10-08T07:24:58+00:00"
+}

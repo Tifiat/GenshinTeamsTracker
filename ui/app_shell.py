@@ -2383,6 +2383,23 @@ class AppShell(QWidget):
     def _on_gcsim_optimizer_theory_requested(self, team_index: int, rotation_shell_text: str) -> None:
         self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, mode="theory")
 
+    def _gcsim_optimizer_runtime_paths(self) -> dict[str, str]:
+        """Resolve launch paths separately from selection and worker execution.
+
+        The application uses its normal worker/profile roots. Automated real-
+        backend tests may supply isolated roots without replacing the worker,
+        session, input preparation, processes or results.
+        """
+        from run_workspace.gcsim.optimizer_go_requests import (
+            DEFAULT_OPTIMIZER_BINARY, DEFAULT_SELECTED_RUN_ROOT,
+        )
+        from run_workspace.gcsim.engine_store import DEFAULT_GCSIM_ENGINE_STORE_DIR
+        return {
+            "optimizer_binary_path": str(DEFAULT_OPTIMIZER_BINARY),
+            "run_root": str(DEFAULT_SELECTED_RUN_ROOT),
+            "engine_store_dir": str(DEFAULT_GCSIM_ENGINE_STORE_DIR),
+        }
+
     def _on_gcsim_optimizer_requested(self, team_index: int, rotation_shell_text: str, *, mode: str) -> None:
         if self._gcsim_browser_run_thread is not None:
             self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
@@ -2426,6 +2443,8 @@ class AppShell(QWidget):
                 "fast_mode": optimizer_settings.fast_mode,
                 "expanded_limits": optimizer_settings.expanded_limits,
             }
+        path_provider = getattr(self, "_gcsim_optimizer_runtime_paths", None)
+        runtime_paths = path_provider() if callable(path_provider) else {}
         request = request_type(
             db_path=str(self.controller.equipment_db_path),
             selected_team=selected_team,
@@ -2436,6 +2455,7 @@ class AppShell(QWidget):
                 self.controller.gcsim_boosted_energy_enabled
             ),
             **optimizer_request_settings,
+            **runtime_paths,
         )
         worker = GcsimBrowserSelectedOptimizerWorker(request)
         thread = QThread(self)

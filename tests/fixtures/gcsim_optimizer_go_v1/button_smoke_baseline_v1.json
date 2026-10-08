@@ -1,0 +1,41 @@
+{
+  "schema": "gtt_optimizer_button_baseline_v1",
+  "reviewed_evidence": "docs/optimizer-evidence/2026-10-08-optimizer-launch/button-gate-02.json",
+  "runtime_evidence": "docs/optimizer-evidence/2026-10-08-optimizer-launch/button-gate-04.json",
+  "runtime_policy": "per-case button click to result/thread completion on the reference Windows machine; >5000ms increase requires idle confirmation and isolated recheck, not automatic baseline replacement",
+  "scope": "immutable public fixture, two ready modes, 1 group and 1 build, infinite energy; not account-wide quality acceptance",
+  "fixture_sha256": "65fbb27fffe87acb25bed574a74a7547ae66b6bda25d02d99312c15de8966ba7",
+  "engine": {
+    "engine_id": "gcsim-v2.45.0-20260927011932",
+    "artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "binding_sha256": "305735c429c7e081907925da48b90c88121f46af917e473e75a299778f781d5f"
+  },
+  "cases": {
+    "selected_fast": {
+      "formula_dps": "1644.8658064907572",
+      "elapsed_ms": 5875
+    },
+    "all_sets_fast": {
+      "formula_dps": "1644.865806490757",
+      "elapsed_ms": 16391
+    },
+    "selected_verified": {
+      "formula_dps": "1644.8658064907572",
+      "elapsed_ms": 7672,
+      "measured": {
+        "dps": "1639.999482048844",
+        "standard_error": "6.720215062835001",
+        "iterations": 500
+      }
+    },
+    "all_sets_verified": {
+      "formula_dps": "1644.865806490757",
+      "elapsed_ms": 18797,
+      "measured": {
+        "dps": "1641.3616219238577",
+        "standard_error": "6.7009132811366765",
+        "iterations": 500
+      }
+    }
+  }
+}

@@ -104,7 +104,10 @@ func (bound BoundEngine) RunOrdinary(ctx context.Context, configText, runDirecto
 	configDigest := sha256.Sum256([]byte(configText))
 	output.ConfigSHA256 = hex.EncodeToString(configDigest[:])
 	command := exec.CommandContext(ctx, bound.binaryPath, "-c", configPath, "-out", resultPath)
-	command.Dir = resolvedRunDirectory
+	command.Dir, err = childProcessDirectory(resolvedRunDirectory)
+	if err != nil {
+		return output, fmt.Errorf("ordinary simulation process directory: %w", err)
+	}
 	command.Env = append(os.Environ(), "GOMAXPROCS="+strconv.Itoa(workers))
 	started := time.Now()
 	combined, err := command.CombinedOutput()

@@ -75,7 +75,10 @@ func (bound BoundEngine) runCompact(ctx context.Context, configText, runDirector
 		return out, err
 	}
 	cmd := exec.CommandContext(ctx, bound.binaryPath, "-c", configPath, "-out", resultPath, "-gtt-trace-equation", requestPath)
-	cmd.Dir = dir
+	cmd.Dir, err = childProcessDirectory(dir)
+	if err != nil {
+		return out, fmt.Errorf("compact capture process directory: %w", err)
+	}
 	cmd.Env = append(os.Environ(), "GOMAXPROCS=1")
 	hideCaptureWindow(cmd)
 	started := time.Now()

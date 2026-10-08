@@ -69,6 +69,17 @@ relevant sections, not their entire histories.
   action names or add a second setting. Report unavailable inventory feasibility
   explicitly.
 
+## Real-backend button regression gate
+
+Changes to optimizer launch paths, button wiring or the native consumer require
+the explicit managed real-backend button gate, not only mocked wiring tests.
+The public fixture exercises Selected/All Sets in fast and verified modes with
+the selected installed engine and checks a reviewed numerical baseline; Theory
+is excluded until accepted. The gate, baseline-review policy and launch-failure
+receipts are linked from the current checkpoint. Offscreen buttons are not
+physical app-window acceptance, and changed results never update the baseline
+silently.
+
 ## Parallel development boundary
 
 The user-approved split keeps a reviewed checkpoint on `master`;

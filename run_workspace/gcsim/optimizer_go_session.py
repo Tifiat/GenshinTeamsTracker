@@ -23,6 +23,7 @@ from .optimizer_go_contracts import (
 )
 from .optimizer_go_inputs import prepare_optimizer_inputs
 from .optimizer_go_requests import GcsimOptimizerGoError, GcsimOptimizerGoRequest, GCSIM_OPTIMIZER_ADAPTER_TIMINGS_KIND
+from .optimizer_process_paths import optimizer_process_workdir
 from .optimizer_run_retention import prune_go_optimizer_runs_best_effort, run_directory_lease
 
 ProgressCallback = Callable[[dict[str, Any]], None]
@@ -222,7 +223,7 @@ class GcsimOptimizerGoSession:
         with output_path.open("w", encoding="utf-8", newline="\n") as output:
             process = subprocess.Popen(
                 command,
-                cwd=str(PROJECT_ROOT),
+                cwd=optimizer_process_workdir(PROJECT_ROOT),
                 stdout=output,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -315,7 +316,7 @@ class GcsimOptimizerGoSession:
         ) as stderr:
             process = subprocess.Popen(
                 command,
-                cwd=str(PROJECT_ROOT),
+                cwd=optimizer_process_workdir(PROJECT_ROOT),
                 stdout=stdout,
                 stderr=stderr,
                 text=True,
@@ -360,7 +361,7 @@ class GcsimOptimizerGoSession:
         ) as stderr:
             process = subprocess.Popen(
                 command,
-                cwd=str(cwd),
+                cwd=optimizer_process_workdir(cwd),
                 stdout=stdout,
                 stderr=stderr,
                 text=True,

@@ -2,6 +2,10 @@
 
 ## Status and authority
 
+Independent Windows child-process launch fix and the reviewed public
+button-regression gate: [launch evidence](../optimizer-evidence/2026-10-08-optimizer-launch/README.md).
+This scope does not authorize a patch-stack change or replace broader acceptance.
+
 <!-- handoff-current: gcsim-optimizer -->
 Reviewed 2026-10-04 after bounded Chasca response and guarded cleanup.
 Consumer76f8a52c remains installed; engine unchanged. Native10c3f490 is the

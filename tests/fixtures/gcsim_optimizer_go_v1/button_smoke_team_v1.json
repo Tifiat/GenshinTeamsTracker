@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gcsim_optimizer_button_smoke_team_v1",
+  "scope": "public synthetic fixture; no account or live inventory data",
+  "source_reference": "tests/fixtures/gcsim_optimizer_go_v1/gaming_melt_schedule.txt",
+  "characters": [
+    {
+      "display_name": "Gaming",
+      "gcsim_key": "gaming",
+      "weapon_key": "serpentspine",
+      "character_level": 90,
+      "constellation": 6,
+      "talents": {"normal": 9, "skill": 9, "burst": 9},
+      "weapon_level": 90,
+      "weapon_promote_level": 6,
+      "weapon_refinement": 5
+    },
+    {
+      "display_name": "Citlali",
+      "gcsim_key": "citlali",
+      "weapon_key": "thrillingtalesofdragonslayers",
+      "character_level": 90,
+      "constellation": 0,
+      "talents": {"normal": 9, "skill": 9, "burst": 9},
+      "weapon_level": 90,
+      "weapon_promote_level": 6,
+      "weapon_refinement": 5
+    },
+    {
+      "display_name": "Diona",
+      "gcsim_key": "diona",
+      "weapon_key": "favoniuswarbow",
+      "character_level": 90,
+      "constellation": 6,
+      "talents": {"normal": 9, "skill": 9, "burst": 9},
+      "weapon_level": 90,
+      "weapon_promote_level": 6,
+      "weapon_refinement": 5
+    },
+    {
+      "display_name": "Bennett",
+      "gcsim_key": "bennett",
+      "weapon_key": "thealleyflash",
+      "character_level": 90,
+      "constellation": 6,
+      "talents": {"normal": 9, "skill": 9, "burst": 9},
+      "weapon_level": 90,
+      "weapon_promote_level": 6,
+      "weapon_refinement": 5
+    }
+  ],
+  "artifact_inventory": {
+    "synthetic_ids": {"first": 1, "last": 20},
+    "rarity": 5,
+    "level": 20,
+    "set": {
+      "english_name": "Wanderer's Troupe",
+      "gcsim_key": "wandererstroupe",
+      "selected_piece_count": 4
+    },
+    "main_stats_by_position": {
+      "1": {"stat_key": "hp_flat", "property_name": "HP", "value": "4780"},
+      "2": {"stat_key": "atk_flat", "property_name": "ATK", "value": "311"},
+      "3": {"stat_key": "atk_percent", "property_name": "ATK%", "value": "46.6%"},
+      "4": {"stat_key": "pyro_dmg_bonus", "property_name": "Pyro DMG", "value": "46.6%"},
+      "5": {"stat_key": "crit_rate", "property_name": "CRIT Rate", "value": "31.1%"}
+    },
+    "substats_by_position": {
+      "1": [
+        {"stat_key": "crit_rate", "property_name": "CRIT Rate", "value": "3.1%"},
+        {"stat_key": "crit_damage", "property_name": "CRIT DMG", "value": "6.2%"}
+      ],
+      "2": [
+        {"stat_key": "crit_rate", "property_name": "CRIT Rate", "value": "3.1%"},
+        {"stat_key": "crit_damage", "property_name": "CRIT DMG", "value": "6.2%"}
+      ],
+      "3": [
+        {"stat_key": "crit_rate", "property_name": "CRIT Rate", "value": "3.1%"},
+        {"stat_key": "crit_damage", "property_name": "CRIT DMG", "value": "6.2%"}
+      ],
+      "4": [
+        {"stat_key": "crit_rate", "property_name": "CRIT Rate", "value": "3.1%"},
+        {"stat_key": "crit_damage", "property_name": "CRIT DMG", "value": "6.2%"}
+      ],
+      "5": [
+        {"stat_key": "atk_percent", "property_name": "ATK%", "value": "4.7%"},
+        {"stat_key": "crit_damage", "property_name": "CRIT DMG", "value": "6.2%"}
+      ]
+    }
+  },
+  "rotation": "options iteration=1;\ntarget lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;\nactive gaming;\ngaming attack;\ncitlali attack;\ndiona attack;\nbennett attack;\ngaming attack;\nbennett attack;\n"
+}

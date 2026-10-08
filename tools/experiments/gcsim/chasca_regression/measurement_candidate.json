@@ -1,0 +1,314 @@
+{
+  "actual_engine_calls": "requires_independent_process_watch",
+  "baseline_policy": "measure_only; no golden write or automatic baseline update",
+  "cases": [
+    {
+      "elapsed_seconds": 123.265,
+      "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+      "formula_dps": "139125.97888868145",
+      "measured_dps": "140462.9041798014",
+      "mode": "all_sets",
+      "request_sha256": "12ea74742d56ddf14df92963d2c536126718d398dc1d29c4e4c4d23ef0f404a6",
+      "set_groups": 3,
+      "total_rows_per_group": 3,
+      "warnings": [
+        "all_sets_bounded_search",
+        "all_sets_inventory_budget_limited",
+        "all_sets_search_budget_limited",
+        "formula_rank_not_measurement_authority",
+        "opaque_formula_boundaries_present"
+      ],
+      "winner_artifact_ids": [
+        353,
+        360,
+        338,
+        369,
+        375,
+        403,
+        407,
+        411,
+        69,
+        422,
+        501,
+        509,
+        512,
+        592,
+        523,
+        451,
+        457,
+        465,
+        343,
+        471
+      ]
+    },
+    {
+      "elapsed_seconds": 25.563,
+      "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+      "formula_dps": "137465.0538867352",
+      "measured_dps": "139086.52032394247",
+      "mode": "selected",
+      "request_sha256": "528628b34c09493437a341489ecd408b03874b94951545f5859acca5074e2b72",
+      "set_groups": 1,
+      "total_rows_per_group": 3,
+      "warnings": [
+        "formula_rank_not_measurement_authority",
+        "measured_top_confidence_overlap",
+        "opaque_formula_boundaries_present",
+        "selected_bounded_search"
+      ],
+      "winner_artifact_ids": [
+        355,
+        360,
+        363,
+        94,
+        375,
+        403,
+        407,
+        411,
+        69,
+        422,
+        205,
+        207,
+        387,
+        220,
+        222,
+        451,
+        457,
+        465,
+        343,
+        471
+      ]
+    }
+  ],
+  "engine_call_cap": 20,
+  "expected_engine_calls": 16,
+  "fixture": {
+    "artifact_count": 600,
+    "content_fingerprints_sha256": "27a9da734aceb3aa7bb0203a1cbf4c82e9414fbea2e50b3f9623e933682ec501",
+    "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "engine_binding_sha256": "8d143c742ac9501df45be2a6832cadb1ac337ccb2253069f51fe9a67978e4c4d",
+    "engine_id": "gcsim-v2.45.0-20260927011932",
+    "rotation_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+    "schema_kind": "public_chasca_full_account_probe_v1",
+    "seed": 20261008,
+    "selected": [
+      {
+        "baseline_artifact_ids": [
+          401,
+          406,
+          411,
+          416,
+          421
+        ],
+        "character": "chasca",
+        "character_level": 90,
+        "constellation": 1,
+        "refinement": 1,
+        "selected_set_key": "obsidiancodex",
+        "selected_set_name": "Obsidian Codex",
+        "selected_set_uid": "obsidiancodex",
+        "talents": [
+          1,
+          10,
+          9
+        ],
+        "weapon": "astralvulturescrimsonplumage",
+        "weapon_level": 90
+      },
+      {
+        "baseline_artifact_ids": [
+          202,
+          207,
+          212,
+          217,
+          222
+        ],
+        "character": "furina",
+        "character_level": 90,
+        "constellation": 2,
+        "refinement": 5,
+        "selected_set_key": "goldentroupe",
+        "selected_set_name": "Golden Troupe",
+        "selected_set_uid": "goldentroupe",
+        "talents": [
+          2,
+          10,
+          10
+        ],
+        "weapon": "wolffang",
+        "weapon_level": 90
+      },
+      {
+        "baseline_artifact_ids": [
+          353,
+          358,
+          364,
+          370,
+          373
+        ],
+        "character": "bennett",
+        "character_level": 90,
+        "constellation": 6,
+        "refinement": 3,
+        "selected_set_key": "noblesseoblige",
+        "selected_set_name": "Noblesse Oblige",
+        "selected_set_uid": "noblesseoblige",
+        "talents": [
+          3,
+          5,
+          10
+        ],
+        "weapon": "sapwoodblade",
+        "weapon_level": 90
+      },
+      {
+        "baseline_artifact_ids": [
+          454,
+          459,
+          461,
+          468,
+          472
+        ],
+        "character": "ororon",
+        "character_level": 90,
+        "constellation": 6,
+        "refinement": 5,
+        "selected_set_key": "scrolloftheheroofcindercity",
+        "selected_set_name": "Scroll of the Hero of Cinder City",
+        "selected_set_uid": "scrolloftheheroofcindercity",
+        "talents": [
+          1,
+          1,
+          9
+        ],
+        "weapon": "thestringless",
+        "weapon_level": 90
+      }
+    ],
+    "set_uids": [
+      {
+        "key": "archaicpetra",
+        "max_rarity": 5,
+        "uid": "archaicpetra"
+      },
+      {
+        "key": "blizzardstrayer",
+        "max_rarity": 5,
+        "uid": "blizzardstrayer"
+      },
+      {
+        "key": "deepwoodmemories",
+        "max_rarity": 5,
+        "uid": "deepwoodmemories"
+      },
+      {
+        "key": "emblemofseveredfate",
+        "max_rarity": 5,
+        "uid": "emblemofseveredfate"
+      },
+      {
+        "key": "flowerofparadiselost",
+        "max_rarity": 5,
+        "uid": "flowerofparadiselost"
+      },
+      {
+        "key": "fragmentofharmonicwhimsy",
+        "max_rarity": 5,
+        "uid": "fragmentofharmonicwhimsy"
+      },
+      {
+        "key": "gildeddreams",
+        "max_rarity": 5,
+        "uid": "gildeddreams"
+      },
+      {
+        "key": "gladiatorsfinale",
+        "max_rarity": 5,
+        "uid": "gladiatorsfinale"
+      },
+      {
+        "key": "goldentroupe",
+        "max_rarity": 5,
+        "uid": "goldentroupe"
+      },
+      {
+        "key": "heartofdepth",
+        "max_rarity": 5,
+        "uid": "heartofdepth"
+      },
+      {
+        "key": "huskofopulentdreams",
+        "max_rarity": 5,
+        "uid": "huskofopulentdreams"
+      },
+      {
+        "key": "maidenbeloved",
+        "max_rarity": 5,
+        "uid": "maidenbeloved"
+      },
+      {
+        "key": "marechausseehunter",
+        "max_rarity": 5,
+        "uid": "marechausseehunter"
+      },
+      {
+        "key": "nighttimewhispersintheechoingwoods",
+        "max_rarity": 5,
+        "uid": "nighttimewhispersintheechoingwoods"
+      },
+      {
+        "key": "noblesseoblige",
+        "max_rarity": 5,
+        "uid": "noblesseoblige"
+      },
+      {
+        "key": "nymphsdream",
+        "max_rarity": 5,
+        "uid": "nymphsdream"
+      },
+      {
+        "key": "obsidiancodex",
+        "max_rarity": 5,
+        "uid": "obsidiancodex"
+      },
+      {
+        "key": "paleflame",
+        "max_rarity": 5,
+        "uid": "paleflame"
+      },
+      {
+        "key": "scrolloftheheroofcindercity",
+        "max_rarity": 5,
+        "uid": "scrolloftheheroofcindercity"
+      },
+      {
+        "key": "shimenawasreminiscence",
+        "max_rarity": 5,
+        "uid": "shimenawasreminiscence"
+      },
+      {
+        "key": "tenacityofthemillelith",
+        "max_rarity": 5,
+        "uid": "tenacityofthemillelith"
+      },
+      {
+        "key": "viridescentvenerer",
+        "max_rarity": 5,
+        "uid": "viridescentvenerer"
+      },
+      {
+        "key": "vourukashasglow",
+        "max_rarity": 5,
+        "uid": "vourukashasglow"
+      },
+      {
+        "key": "wandererstroupe",
+        "max_rarity": 5,
+        "uid": "wandererstroupe"
+      }
+    ],
+    "spec_sha256": "8dbc0f998209274bab6503e7dcb03cbffa5aa21838710f1d643cf6bb1e208cde"
+  },
+  "main_native_binary_sha256": "dd84139e21ea24af5a08c0e0ba4eb4ce8410459f31dfdb8513bd77045fed4f13",
+  "status": "unreviewed_measurement_candidate"
+}

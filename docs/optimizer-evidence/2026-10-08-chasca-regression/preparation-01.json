@@ -1,0 +1,21 @@
+{
+  "engine_calls": 0,
+  "failure": {
+    "code": "",
+    "message": "cannot import name 'GCSIM_OPTIMIZER_GO_SCHEMA_VERSION' from 'run_workspace.gcsim.optimizer_go_requests' ([main-checkout]\\run_workspace\\gcsim\\optimizer_go_requests.py)",
+    "type": "ImportError"
+  },
+  "finished_utc": "2026-10-08T09:43:10+00:00",
+  "main_writes_authorized": false,
+  "managed_job_cleaned": true,
+  "managed_job_name": "job-e5dtkje5",
+  "managed_job_path_absent": true,
+  "native_builds": 0,
+  "native_validation_preflights": 0,
+  "receipt_policy": "immutable_compact_success_or_failure; no_retry",
+  "schema": "gtt_chasca_preparation_probe_v1",
+  "scope": "offline_fixture_and_input_preparation_only",
+  "started_utc": "2026-10-08T09:43:09+00:00",
+  "status": "preparation_failed",
+  "ui_or_qt_started": false
+}

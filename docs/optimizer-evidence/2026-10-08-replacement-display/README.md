@@ -46,6 +46,22 @@ do not support a repeated engine/source-parsing explanation. Nested rule,
 binding, replay and proposal counters must not be added to total wall time.
 The bounded search is not an exhaustive/global-optimum certificate.
 
+Current-main source review selects `RunNeutral` in `cmd/gtt-optimizer/all_sets.go`,
+not the legacy `allsets/coordinator.go` capture/refine route. One neutral model
+and one two-seed capture panel serve the broad package/item search; result
+group counts do not multiply searches. Model resolve dispatch/program caches
+and schedule-context caching are connected. The source and recorded counters
+show no per-group capture/compile or old128/500/1000 verification ladder.
+Selected recorded39,258 evaluations within its160,000 work limit and stopped
+at stable coordinates. All's two-cycle stop is explicitly bounded/incomplete.
+
+One narrow output-side redundancy remains: the archive retains several rows per
+bonus group, whereas `allSetReplacements` keeps one anchor and rescans single-
+item neighbors. Possible overlap with already scored search points is not
+measured. This is outside the117.104s core search and cannot explain that cost;
+only about1.649s of native product wall time remains after search/verification.
+It is not evidence that the selected anchor or physical assignment is wrong.
+
 ## Cube order and attribution
 
 The same physical builds occur in All's bonus group2 and Selected's group1.

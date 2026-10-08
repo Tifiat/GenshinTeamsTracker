@@ -42,6 +42,17 @@ times versus reference and reference+5s limit were:
 | Selected verified | 8.125s | 7.672s | 12.672s |
 | All Sets verified | 18.469s | 18.797s | 23.797s |
 
+The installed gate output retained these actual DPS values. The reviewed
+references are from the fixed public baseline; formula values matched exactly,
+and verified simulations passed the baseline's sampling-error comparison:
+
+| Case | Actual formula / reference | Actual simulated / reference DPS |
+| --- | ---: | ---: |
+| Selected fast | 1644.8658064907572 / 1644.8658064907572 | not run |
+| All Sets fast | 1644.865806490757 / 1644.865806490757 | not run |
+| Selected verified | 1644.8658064907572 / 1644.8658064907572 | 1633.4338284571852 / 1639.999482048844 |
+| All Sets verified | 1644.865806490757 / 1644.865806490757 | 1640.9431042767897 / 1641.3616219238577 |
+
 The gate made eight compact and two ordinary real-engine calls; both harness
 tests passed. Its isolated DB, settings, cache and run job was removed
 (3,560,572 bytes). The user's profiles were outside the runner's owned paths.
@@ -51,5 +62,7 @@ harness, supervisor and baseline tests. Prior source failures and source gates
 
 This is launch and small-fixture regression acceptance only. Physical window
 clicks, full-account Chasca timing, general model response, Theory and the
-untransferred safeguard remain open. The old ~90-second Chasca research run
-used a different 7×7 search and does not compare to this 3×2 button fixture.
+untransferred safeguard remain open. The old 91.355-second Chasca research run
+used a different 7×7 search and does not compare to this 1-group × 1-build
+public button fixture. A Chasca 3×2 application/full-account benchmark remains
+unrecorded.

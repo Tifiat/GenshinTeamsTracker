@@ -20,7 +20,7 @@ Three independent source deltas were cherry-picked once, in order, with `-x`:
 
 The source ancestry includes detached work outside this transfer; only these
 three commit deltas were applied. The safeguard `13cb3f7` is not an ancestor
-of the prepared target. The 26-path union has no consumer, engine, runtime,
+of the prepared target. The 27-path union has no consumer, engine, runtime,
 account or profile path. Git auto-merged the checkpoint while preserving its
 installed GP-3 fields and prior launch receipt. The locale diff changes only
 the intended replacement help and two new replacement labels in each locale.

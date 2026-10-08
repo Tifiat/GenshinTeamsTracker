@@ -36,6 +36,7 @@ UI_ACCENT_TEAM_2 = "#4e91ff"
 UI_ACCENT_PVP_BAN = "#d96570"
 UI_ACCENT_PVP_IMMUNE = "#c9ab5d"
 UI_STATE_SUCCESS = "#56c779"
+UI_STATE_WARNING = "#d6a84c"
 UI_STATE_DANGER = "#b85b5b"
 
 # Specialized reusable UI visuals

@@ -60,6 +60,8 @@ _LANGUAGES = ("ru", "en", "pt-br")
 _ACTION_HELP_KEYS = (
     "gcsim.optimizer.save_tooltip",
     "gcsim.optimizer.replacement_delta_help",
+    "gcsim.optimizer.replacement_near_equal",
+    "gcsim.optimizer.replacement_small_difference",
     "gcsim.optimizer.artifact_missing",
     "gcsim.optimizer.character_missing",
     "settings.gcsim.optimizer.fast_mode.tooltip",
@@ -456,6 +458,33 @@ class TooltipPresentationContracts(unittest.TestCase):
         gain = english["gcsim.optimizer.replacement_delta_help"]
         for concept in ("Team DPS", "this item only", "formula estimate", "GCSIM", "statistical variation"):
             self.assertIn(concept, gain)
+        for concept in (
+            "up to 250 DPS",
+            "over 250 up to 600 DPS",
+            "display heuristic",
+            "not statistical confidence or an error bar",
+        ):
+            self.assertIn(concept, gain)
+        self.assertEqual(
+            tr_for_language("ru", "gcsim.optimizer.replacement_near_equal"),
+            "Практически равно",
+        )
+        self.assertEqual(
+            tr_for_language("ru", "gcsim.optimizer.replacement_small_difference"),
+            "Малая разница: {delta} DPS",
+        )
+        for language in _LANGUAGES:
+            for key in (
+                "gcsim.optimizer.replacement_near_equal",
+                "gcsim.optimizer.replacement_small_difference",
+            ):
+                with self.subTest(language=language, key=key):
+                    value = tr_for_language(language, key)
+                    self.assertTrue(value.strip())
+                    self.assertNotEqual(value, key)
+        self.assertIn("{delta}", tr_for_language(
+            "pt-br", "gcsim.optimizer.replacement_small_difference"
+        ))
         self.assertIn("account database", english["gcsim.optimizer.artifact_missing"])
         self.assertIn("Character target", english["gcsim.optimizer.character_missing"])
         fast = english["settings.gcsim.optimizer.fast_mode.tooltip"]

@@ -10,10 +10,13 @@ from PySide6.QtWidgets import QApplication
 from localization import tr
 from ui.artifact_browser.models import ArtifactItem, ArtifactSubstat
 from ui.gcsim_browser.optimizer_result import (
+    CompactOptimizerArtifactCard,
+    OptimizerItemReplacement,
     OptimizerResultBuildsWidget,
     build_optimizer_result_pages,
 )
 from ui.utils.app_scaling import configure_startup_ui_scale
+from ui.utils.ui_palette import UI_STATE_DANGER, UI_STATE_SUCCESS, UI_STATE_WARNING
 
 configure_startup_ui_scale(platform="linux")
 _APP = QApplication.instance() or QApplication([])
@@ -159,8 +162,76 @@ class GcsimOptimizerResultBasisTests(unittest.TestCase):
             widget._replacement_buttons["furina"].click()
             self.assertFalse(container.isHidden())
             label = container.findChild(QLabel,"OptimizerReplacementDelta")
-            self.assertIn("-10 DPS", label.text())
+            self.assertEqual(
+                label.text(),
+                ("≈ " if basis == "formula" else "")
+                + tr("gcsim.optimizer.replacement_near_equal"),
+            )
+            self.assertNotIn("DPS", label.text())
+            self.assertIn(UI_STATE_SUCCESS, label.styleSheet())
             self.assertEqual("≈" in label.text(), basis == "formula")
+
+    def test_replacement_delta_thresholds_colors_and_minimum_card_fit(self) -> None:
+        from PySide6.QtWidgets import QLabel
+
+        cases = (
+            (0.0, "near", UI_STATE_SUCCESS),
+            (-250.0, "near", UI_STATE_SUCCESS),
+            (-251.0, "caution", UI_STATE_WARNING),
+            (-600.0, "caution", UI_STATE_WARNING),
+            (-601.0, "numeric", UI_STATE_DANGER),
+            (125.0, "numeric", UI_STATE_SUCCESS),
+        )
+        for basis in ("formula", "gcsim"):
+            prefix = "≈ " if basis == "formula" else ""
+            for delta, kind, color in cases:
+                with self.subTest(basis=basis, delta=delta):
+                    replacement = OptimizerItemReplacement(
+                        artifact=_artifact(30, 1),
+                        original_id=11,
+                        dps_delta=delta,
+                        ranking_basis=basis,
+                    )
+                    card = CompactOptimizerArtifactCard(
+                        replacement.artifact,
+                        replacement=replacement,
+                    )
+                    self.addCleanup(card.close)
+                    card.setFixedWidth(170)
+                    card.show()
+                    _APP.processEvents()
+                    label = card.findChild(QLabel, "OptimizerReplacementDelta")
+                    self.assertIsNotNone(label)
+                    self.assertEqual(card.width(), 170)
+                    self.assertEqual(card.height(), 171)
+                    self.assertIn(color, label.styleSheet())
+
+                    if kind == "near":
+                        self.assertEqual(
+                            label.text(),
+                            prefix + tr("gcsim.optimizer.replacement_near_equal"),
+                        )
+                        self.assertNotIn("DPS", label.text())
+                    elif kind == "caution":
+                        formatted_delta = f"{delta:+,.0f}".replace(",", " ")
+                        self.assertEqual(
+                            label.text(),
+                            prefix
+                            + tr("gcsim.optimizer.replacement_small_difference").format(
+                                delta=formatted_delta
+                            ),
+                        )
+                        self.assertTrue(label.wordWrap())
+                        self.assertTrue(card.contentsRect().contains(label.geometry()))
+                        if label.hasHeightForWidth():
+                            self.assertGreaterEqual(
+                                label.height(), label.heightForWidth(label.width())
+                            )
+                    else:
+                        self.assertEqual(
+                            label.text(),
+                            prefix + f"{delta:+,.0f} DPS".replace(",", " "),
+                        )
 
     def test_formula_pages_are_labeled_unverified_and_never_present_as_measured(self) -> None:
         row_count = 3001  # No hidden UI truncation at the historical 210/2500 rows.

@@ -3,13 +3,16 @@
 ## Status and authority
 
 Independent Windows child-process launch fix and the reviewed public
-button-regression gate: [launch evidence](../optimizer-evidence/2026-10-08-optimizer-launch/README.md).
+button-regression gate: [source evidence](../optimizer-evidence/2026-10-08-optimizer-launch/README.md),
+[main installation and button result](integration_receipts/2026-10-08_optimizer_launch_hotfix.md).
 This scope does not authorize a patch-stack change or replace broader acceptance.
 
 <!-- handoff-current: gcsim-optimizer -->
-Reviewed 2026-10-04 after bounded Chasca response and guarded cleanup.
-Consumer76f8a52c remains installed; engine unchanged. Native10c3f490 is the
-dated H4 build aggregate including tests, not the later cleanup's source hash.
+Reviewed 2026-10-08 after the launch-only transfer and installed public gate.
+Consumer dd84139e is installed with 76f8a52c retained in the verified
+runtime-sync rollback slot; active/rollback engines and pointer are unchanged.
+Native10c3f490 is the dated H4 build aggregate including tests, not the later
+cleanup's source hash.
 Source9251adea remains the dated 2026-09-28 aggregate. The
 [H4 receipt](../optimizer-evidence/2026-10-03-filter-hypotheses/whole-search/README.md)
 owns identities/scopes. Trace section2 owns behavior. The

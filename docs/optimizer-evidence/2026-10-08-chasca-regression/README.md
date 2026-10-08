@@ -1,9 +1,19 @@
-# Public Chasca regression candidate — 2026-10-08
+# Public Chasca regression — 2026-10-08
 
-Provisional measurement, not a reviewed golden or installed full-account test.
-The human requested a fixed team/inventory regression and must see the first
-setup and timings before this candidate becomes an automatic baseline. The
-existing installed small button fixture retains its own reviewed baseline.
+On2026-10-08 the human accepted the unchanged synthetic inventory and measured
+reference, and authorized publication plus orchestrator-coordinated Worker2
+uptake. The installed small button fixture retains its separate baseline.
+
+The reusable gate is [check_chasca_optimizer.py](../../../tools/check_chasca_optimizer.py),
+with the [accepted baseline](../../../tests/fixtures/gcsim_optimizer_go_v1/chasca_button_baseline_v1.json).
+It exercises the chosen application's actual button/worker/backend path using
+disposable public data. The accepted reference is123.265s for All Sets and
+25.563s for Selected; over reference+5s requests an idle-machine check and an
+isolated `--case` rerun. It never updates a slower or changed baseline itself.
+Measured results use their reported sampling errors; the formula score of a
+noise-selected winner is recorded but is not required to be bit-identical.
+Publication and target uptake remain separate operations until their actual
+commit/runtime receipts are recorded by the orchestrator.
 
 ## Fixed scope
 
@@ -55,7 +65,32 @@ installed engine/consumer substitution, live settings/DB write, Computer Use,
 automatic baseline refresh or repeated performance run is authorized here.
 The bounded measurement receipt will own actual timings and call/cleanup facts.
 
-## First completed measurement, still unreviewed
+## Accepted regression-gate validation
+
+The new gate's seven offline controls and five source parses pass. The first
+[full gate](accepted-gate-01.json) completed both normal button cases on the
+unchanged installed engine/consumer, with16 matching attempts/results and
+73,382,887 scratch bytes removed. All measured140456.039 DPS and Selected
+139140.628 DPS are compatible with the accepted references. All took129.094s
+(+5.829s); Selected27.703s (+2.140s). The outer check correctly returned
+`TIMING_RECHECK_REQUIRED` for All, not a full PASS. Pre-run CPU was37%; three
+post-run samples were16/10/30%. These observations do not prove an idle machine
+or a code slowdown. The human then confirmed a concurrent Theory run and
+explicitly waived this timing observation and the immediate repeat because
+the installed search was unchanged. Preserve the alert as loaded-machine
+evidence, not a new performance regression or a timing PASS. The accepted
+reference stays unchanged; the next meaningful timing check runs in isolation.
+The new package changes test infrastructure and replacement labels, not search
+or the installed engine. Keep numerical completion, timing alert, and source
+readiness separate.
+
+Git intent2026-10-08: save this accepted baseline, reusable gate, its focused
+checks and bounded actual run evidence on detached source71fe770. The human
+authorized publication and orchestrator-led Worker2 uptake. Only this stage,
+08e502a display changes and71fe770 fixture/evidence are transfer candidates;
+the detached13cb safeguard, profile edits and other research remain excluded.
+
+## First completed measurement (subsequently accepted)
 
 The retained [candidate](../../../tools/experiments/gcsim/chasca_regression/measurement_candidate.json)
 and [recovered receipt](measurement-recovery-01.json) record the single completed
@@ -91,17 +126,19 @@ observations and explicitly post-run-only checks; it does not invent lost
 snapshots or timings. Bounded scalar extraction was corrected and syntax-checked
 without another engine run. The candidate stayed byte-for-byte unchanged.
 
-Next acceptance boundary: show this fixed setup and first timings to the human
-before pinning the full fixture. A future reviewed test uses reference+5seconds
-as a recheck trigger: confirm the machine is idle, then rerun only that case.
-Do not silently refresh slower or changed numerical baselines. This stage adds
-neither a full-account golden nor a production/UI integration or push.
+The human subsequently reviewed and accepted this fixed setup and its first
+timings. Historical candidate/recovery files retain their original provisional
+status and bytes; the separate accepted baseline records the later decision.
+This is a reproducible synthetic test, not a replay of the user's account.
+Their actual runs used597 different artifacts and a rotation containing
+`wait(82);`;157862.913/155552.979 measured DPS and174.532/27.641s are separate
+observations. They cannot establish a speedup or regression against this test.
 
 Helper-only closeout: `run_measurement.py --help` exits0; an AST-isolated test
 retains five allowed scalars and rejects nested values and a257-character
 string. No second measurement or managed allocation was used for that check.
 
-Git intent: save this explicitly experimental public factory/probe, fixed spec,
+Historical Git intent: save this explicitly experimental public factory/probe, fixed spec,
 bounded successful/failed preparation evidence and recovered first measurement
 from detached source08e502a, with the checkpoint link and read-only timing audit.
 The approved automatic own-local-commit rule does not accept a golden, transfer

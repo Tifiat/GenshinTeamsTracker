@@ -1,16 +1,15 @@
-"""Measure the public Chasca fixture through actual AppShell button handlers.
+"""Run the public Chasca fixture through actual AppShell button handlers.
 
-Review-only prototype. Run under this checkout's managed_optimizer_experiment.py
-with a 900-second whole-probe watchdog and an independent <=20 engine-call watch.
-The selected engine/native binary and all application imports come from the
-explicit current main checkout. The managed runner owns/cleans the DB, run
-roots, temporary files and process descendants. This script exports only a
-bounded measurement receipt; it never compares or updates a golden baseline.
+Use the explicit tools/check_chasca_optimizer.py supervisor. The selected
+engine/native binary and all application imports come from --main-root. The
+supervisor owns/cleans the DB, run roots, temporary files and child processes.
+This child exports only a bounded observation into managed scratch.
 """
 
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from decimal import Decimal
 import hashlib
 import importlib.util
@@ -89,7 +88,8 @@ def _click(harness, app, settings_type, case: dict, rotation: str, watchdog: flo
     return harness.payloads[0], round(time.monotonic() - start, 3)
 
 
-def _measure(payload: dict, elapsed_s: float, case: dict, rotation: str, fixture_ids: set[int]) -> dict:
+def _measure(payload: dict, elapsed_s: float, case: dict, rotation: str,
+             fixture_ids: set[int], set_keys: tuple[str, ...]) -> dict:
     if not payload.get("success") or payload.get("status") != "success":
         raise AssertionError(f"{case['mode']} failed: {payload.get('error')}")
     result = payload["result"]
@@ -103,21 +103,43 @@ def _measure(payload: dict, elapsed_s: float, case: dict, rotation: str, fixture
     if not formula_dps.is_finite() or formula_dps <= 0 or not measured:
         raise AssertionError("Normal mode requires finite estimate and GCSIM measurement")
     measured_dps = Decimal(str(measured["dps"]))
-    if not measured_dps.is_finite() or measured_dps <= 0:
-        raise AssertionError("Measured GCSIM DPS must be finite and positive")
+    standard_error = Decimal(str(measured["standard_error"]))
+    iterations = int(measured["iterations"])
+    if (not measured_dps.is_finite() or measured_dps <= 0 or
+            not standard_error.is_finite() or standard_error < 0 or iterations != 500):
+        raise AssertionError("Measured GCSIM DPS, standard error, or n=500 invalid")
     run_dir = Path(payload["run_dir"])
     request = json.loads((run_dir / "request.json").read_bytes())
     if len(request["artifacts"]) != 600 or request["context"]["rotation"]["text"] != rotation:
         raise AssertionError("Backend input changed the synthetic inventory or rotation")
-    if request["result_options"]["fast_mode"] is not False:
-        raise AssertionError("Probe requires normal n=500 final verification")
+    artifacts = request["artifacts"]
+    if {int(row["artifact_id"]) for row in artifacts} != fixture_ids:
+        raise AssertionError("Backend input changed synthetic artifact IDs")
+    distributions = Counter((str(row["set_uid"]), str(row["slot"])) for row in artifacts)
+    if distributions != Counter({(key, slot): 5 for key in set_keys for slot in
+                                  ("flower", "plume", "sands", "goblet", "circlet")}):
+        raise AssertionError("Backend input changed pinned five-star set/slot inventory")
+    if any(int(row["rarity"]) != 5 or int(row["level"]) != 20 for row in artifacts):
+        raise AssertionError("Backend input changed five-star level-20 inventory")
+    options = request["result_options"]
+    if (options["fast_mode"] is not False or
+            int(options["set_group_limit"]) != int(case["set_groups"]) or
+            int(options["builds_per_group"]) != int(case["total_rows_per_group"])):
+        raise AssertionError("Backend result options differ from pinned normal mode")
     if request["engine"]["artifact_sha256"] != "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c":
         raise AssertionError("Backend request changed the selected engine artifact")
     return {
         "mode": case["mode"], "set_groups": case["set_groups"],
         "total_rows_per_group": case["total_rows_per_group"],
         "elapsed_seconds": elapsed_s, "formula_dps": str(formula_dps),
-        "measured_dps": str(measured_dps), "winner_artifact_ids": winner_ids,
+        "measured_dps": str(measured_dps), "standard_error": str(standard_error),
+        "iterations": iterations, "winner_artifact_ids": winner_ids,
+        "input": {"artifact_count": len(request["artifacts"]),
+                  "wearer_count": len(request["wearers"]),
+                  "rotation_sha256": hashlib.sha256(rotation.encode()).hexdigest(),
+                  "set_group_limit": int(options["set_group_limit"]),
+                  "builds_per_group": int(options["builds_per_group"]),
+                  "fast_mode": options["fast_mode"]},
         "request_sha256": hashlib.sha256((run_dir / "request.json").read_bytes()).hexdigest(),
         "engine_artifact_sha256": request["engine"]["artifact_sha256"],
         "warnings": [str(w) for w in result.get("warnings", ())][:20],
@@ -128,33 +150,32 @@ def main() -> int:
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument("--main-root", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument("--case", choices=("selected", "all_sets"))
     args = parser.parse_args()
-    own_dir = Path(__file__).resolve().parent
-    receipt = args.receipt.resolve()
-    if receipt.parent != own_dir or receipt.name != "measurement_candidate.json":
-        raise ValueError("Only this prototype's bounded measurement_candidate.json may be exported")
-    if receipt.exists():
-        raise FileExistsError("Preserve the prior measured receipt; choose a reviewed replacement step")
     owned_job, ButtonHarness, app, settings_type, binary, engine_store = _load_main(args.main_root)
     if not Path(binary).is_file():
         raise FileNotFoundError("Current main native consumer is missing")
     native_sha256 = hashlib.sha256(Path(binary).read_bytes()).hexdigest()
     from fixture import SPEC_PATH, create_fixture
     spec = json.loads(SPEC_PATH.read_bytes())
-    cases = tuple(spec["cases"])
-    if tuple((c["mode"], c["set_groups"], c["total_rows_per_group"]) for c in cases) != (
+    pinned_cases = tuple(spec["cases"])
+    if tuple((c["mode"], c["set_groups"], c["total_rows_per_group"]) for c in pinned_cases) != (
         ("all_sets", 3, 3), ("selected", 1, 3)
     ) or int(spec["normal_iteration"]) != 500 or int(spec["engine_call_cap"]) != 20 or (
         int(spec["managed_watchdog_seconds"]), int(spec["internal_watchdog_seconds"])
     ) != (900, 870):
         raise ValueError("Unexpected measurement scope")
+    cases = tuple(c for c in pinned_cases if args.case is None or c["mode"] == args.case)
     # Two compact preparations per mode + at most nine and three requested
     # ordinary finalist rows = 16 expected calls. A separate process-level
     # watcher must stop the managed run at 20 actual engine invocations.
     expected_calls = 2 * len(cases) + sum(int(c["set_groups"]) * int(c["total_rows_per_group"]) for c in cases)
-    if expected_calls != 16 or expected_calls > int(spec["engine_call_cap"]):
+    if expected_calls not in ({16} if args.case is None else {5, 11}) or expected_calls > int(spec["engine_call_cap"]):
         raise ValueError("Proposed result limits exceed engine-call budget")
     job = owned_job()
+    receipt = args.receipt.resolve()
+    if receipt != job / "chasca-observation.json" or receipt.exists():
+        raise ValueError("Observation must be a new file inside this managed job")
     # No live settings/cache write even when the caller's environment is rich.
     for name, relative in {"APPDATA": "appdata/roaming", "LOCALAPPDATA": "appdata/local",
         "XDG_CONFIG_HOME": "xdg/config", "XDG_CACHE_HOME": "xdg/cache",
@@ -183,13 +204,14 @@ def main() -> int:
                 harness, app, settings_type, case, spec["rotation"],
                 remaining,
             )
-            metrics.append(_measure(payload, elapsed_s, case, spec["rotation"], fixture_ids))
+            metrics.append(_measure(payload, elapsed_s, case, spec["rotation"],
+                                    fixture_ids, tuple(spec["set_keys"])))
     finally:
         harness.close()
         harness.deleteLater()
         app.processEvents()
     output = {
-        "status": "unreviewed_measurement_candidate", "baseline_policy": spec["baseline_policy"],
+        "status": "chasca_regression_observation_v1", "baseline_policy": spec["baseline_policy"],
         "fixture": fixture_receipt, "cases": metrics,
         "main_native_binary_sha256": native_sha256,
         "expected_engine_calls": expected_calls,

@@ -10,8 +10,10 @@ This scope does not authorize a patch-stack change or replace broader acceptance
 Source-only replacement proximity labels and the latest Chasca timing/cube
 audit: [display receipt](../optimizer-evidence/2026-10-08-replacement-display/README.md).
 The [representative public benchmark](../optimizer-evidence/2026-10-08-chasca-regression/README.md)
-is provisional until the human reviews its first full measurement; no new golden
-or main transfer is implied.
+has a human-accepted immutable600-artifact reference and a reusable numerical/
+reference+5s gate. The human authorized publication and coordinated Worker2
+uptake of this independent package; the linked receipt owns validation and
+actual transfer boundaries. It does not accept the detached safeguard below.
 
 <!-- handoff-current: gcsim-optimizer -->
 Reviewed 2026-10-08 after the launch-only transfer and installed public gate.

@@ -57,7 +57,7 @@ in every file.
 | Document | Role |
 | --- | --- |
 | [APP_SHELL_WORKSPACE_PLAN.md](APP_SHELL_WORKSPACE_PLAN.md) | Current workspace/dock ownership and remaining launch migration |
-| [READABLE_ROTATION_EDITOR.md](READABLE_ROTATION_EDITOR.md) | Code-to-Readable requirements, full-dictionary-first scope and deferred builder interaction ideas |
+| [READABLE_ROTATION_EDITOR.md](READABLE_ROTATION_EDITOR.md) | Shared code/readable/builder structure, character windows, versioned option-cache requirements and deferred panel design |
 | [DISPLAY_SCALING.md](DISPLAY_SCALING.md) | Windows system-scaling Settings switch, startup/font/adaptive contract and pre-MVP user acceptance |
 | [MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md](MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md) | Right-panel package ownership and legacy boundary |
 | [RUN_WORKSPACE_SNAPSHOT_CONTRACT.md](RUN_WORKSPACE_SNAPSHOT_CONTRACT.md) | Live typed session, immutable saves and launch-readiness review |

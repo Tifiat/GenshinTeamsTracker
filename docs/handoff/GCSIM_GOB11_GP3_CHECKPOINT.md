@@ -14,6 +14,9 @@ has a human-accepted immutable600-artifact reference and a reusable numerical/
 reference+5s gate. The human authorized publication and coordinated Worker2
 uptake of this independent package; the linked receipt owns validation and
 actual transfer boundaries. It does not accept the detached safeguard below.
+The [isolated transfer receipt](integration_receipts/2026-10-08_minimal_optimizer_publication.md)
+records the prepared main-based commits and target-only checks; publication and
+runtime installation require their own recorded outcomes.
 
 <!-- handoff-current: gcsim-optimizer -->
 Reviewed 2026-10-08 after the launch-only transfer and installed public gate.

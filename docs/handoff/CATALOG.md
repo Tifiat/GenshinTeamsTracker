@@ -32,6 +32,7 @@ in every file.
 | [integration_receipts/2026-10-04_ready_workers.md](integration_receipts/2026-10-04_ready_workers.md) | Local ready-branch integration sources, combined checks and acceptance limits |
 | [integration_receipts/2026-10-06_worker5_history_regression.md](integration_receipts/2026-10-06_worker5_history_regression.md) | Scoped History payload and guarded transparent asset-to-team-data-to-snapshot regression |
 | [integration_receipts/2026-10-08_optimizer_launch_hotfix.md](integration_receipts/2026-10-08_optimizer_launch_hotfix.md) | Main launch-only transfer, native consumer install and public real-button gate |
+| [integration_receipts/2026-10-08_minimal_optimizer_publication.md](integration_receipts/2026-10-08_minimal_optimizer_publication.md) | Isolated main-based optimizer transfer, focused target checks and publication boundary |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |

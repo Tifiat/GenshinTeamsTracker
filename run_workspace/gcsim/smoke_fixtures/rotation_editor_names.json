@@ -1,0 +1,7 @@
+{
+  "source": "public_preview_fixture_only",
+  "scope": "rotation_chasca_ororon_furina_bennett.txt; replace with injected project names during app integration",
+  "ru": {"chasca": "Часка", "ororon": "Оророн", "furina": "Фурина", "bennett": "Беннет"},
+  "en": {"chasca": "Chasca", "ororon": "Ororon", "furina": "Furina", "bennett": "Bennett"},
+  "pt-br": {"chasca": "Chasca", "ororon": "Ororon", "furina": "Furina", "bennett": "Bennett"}
+}

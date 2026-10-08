@@ -34,6 +34,10 @@ class EditorSession:
     def replace(self, node_id: str, replacement: Node) -> Document:
         return self._set(self.current.replace(node_id, replacement))
 
+    def edit_option(self, node_id: str, property_key: str, value: object) -> Document:
+        from .context import apply_context_edit
+        return self._set(apply_context_edit(self.current, node_id, property_key, value))
+
     def commit(self, *, character_options: Mapping[str, CharacterOptions] | None = None,
                expected_identity: EngineIdentity | None = None, require_options: bool = False) -> Document:
         """Reparse generated code and require the same shared structure."""

@@ -10,10 +10,11 @@ from dataclasses import dataclass
 from typing import Callable, Mapping
 
 from .model import Diagnostic, Document, Node, Span
+from .semantics import BUILTINS, Cycle, Schedule, analyze
 from .writer import Writer
 
 
-SYSTEM_FUNCTIONS = frozenset("f rand randnorm print wait sleep delay type execute_action set_target_pos set_player_pos set_default_target set_swap_icd set_particle_delay kill_target is_target_dead pick_up_crystallize set_starting_verdant_dew sin cos asin acos is_even set_on_tick".split())
+SYSTEM_FUNCTIONS = BUILTINS
 Translate = Callable[..., str]
 ActorState = frozenset[str] | None
 
@@ -39,9 +40,11 @@ class ReadableDocument:
     items: tuple[ReadableNode, ...]
     diagnostics: tuple[Diagnostic, ...]
     syntax_complete: bool
+    details: tuple[ReadableNode, ...] = ()
 
-    def text(self) -> str:
-        return "\n".join(line for item in self.items for line in item.lines())
+    def text(self, *, include_details: bool = False) -> str:
+        items = self.items + self.details if include_details else self.items
+        return "\n".join(line for item in items for line in item.lines())
 
 
 class Renderer:
@@ -52,6 +55,7 @@ class Renderer:
         self.resolve_name = resolve_name or (lambda key: None)
         self.field_descriptions = field_descriptions or {}
         self.writer = Writer(document)
+        self.meaning = analyze(document)
         self.assigned = {n.get("name").get("value") for n in document.root.walk() if n.kind == "assign"}
         self.action_override = "execute_action" in self.assigned
 
@@ -60,6 +64,35 @@ class Renderer:
 
     def view(self, n: Node, text: str, children: tuple[ReadableNode, ...] = (), *, kind: str | None = None, actor: str | None = None) -> ReadableNode:
         return ReadableNode(kind or n.kind, text, n.node_id, n.span, children, actor)
+
+    @staticmethod
+    def plural(count: int) -> str:
+        return "one" if count % 10 == 1 and count % 100 != 11 else "few" if count % 10 in {2, 3, 4} and count % 100 not in {12, 13, 14} else "many"
+
+    def cycle_text(self, cycle: Cycle) -> str:
+        if cycle.count is None:
+            return self.tr("rotation.cycle.until_break" if cycle.may_break else "rotation.cycle.forever")
+        if cycle.count == 0:
+            return self.tr("rotation.cycle.zero")
+        prefix = "rotation.cycle" if cycle.parent_cycle_id is None else "rotation.block_repeat"
+        if cycle.may_break:
+            prefix += ".up_to"
+        return self.tr(prefix + "." + self.plural(cycle.count), count=cycle.count)
+
+    def schedule_text(self, schedule: Schedule) -> str:
+        choice = schedule.choice
+        if choice.mode == "selected":
+            text = self.tr("rotation.schedule.selected", numbers=", ".join(str(value) for value in choice.positions))
+        elif choice.every == choice.first == 1:
+            text = self.tr("rotation.schedule.all")
+        elif choice.every == 2 and choice.first in {1, 2}:
+            text = self.tr("rotation.schedule.odd" if choice.first == 1 else "rotation.schedule.even")
+        elif choice.every == choice.first:
+            text = self.tr("rotation.schedule.every", every=choice.every)
+        else:
+            text = self.tr("rotation.schedule.offset", every=choice.every, first=choice.first)
+        nearest = next(self.meaning.ancestor_cycles(schedule.node_id), None)
+        return self.tr("rotation.schedule.outer", schedule=text) if nearest and nearest.node_id != schedule.cycle_id else text
 
     def builtin(self, call: Node, bound: frozenset[str]) -> str | None:
         function = call.get("function")
@@ -89,7 +122,14 @@ class Renderer:
         kind = n.kind
         if kind == "hole":
             return tr("rotation.hole." + n.get("slot"))
-        if kind in {"name", "number", "string"}:
+        if kind == "name":
+            for cycle in self.meaning.ancestor_cycles(n.node_id):
+                if n.get("value") == cycle.counter:
+                    label = self.tr("rotation.ordinal")
+                    offset = cycle.start - 1
+                    return label if offset == 0 else self.tr("rotation.ordinal.offset", ordinal=label, operator="+" if offset > 0 else "−", offset=abs(offset))
+            return n.get("value")
+        if kind in {"number", "string"}:
             return n.get("value")
         if kind == "boolean":
             return tr("rotation." + n.get("value"))
@@ -235,8 +275,10 @@ class Renderer:
                         state = frozenset({actor})
                 continue
             if n.kind in {"if", "while", "for", "switch", "block", "function"}:
-                flush()
+                if n.kind != "if":
+                    flush()
                 if n.kind == "if":
+                    schedule = self.meaning.schedules.get(n.node_id)
                     incoming = None if self.changes_actor(n.get("condition"), bound) else state
                     if n.get("then").kind == "hole":
                         yes, yes_state = (self.view(n.get("then"), self.expression(n.get("then"), bound)),), None
@@ -247,10 +289,27 @@ class Renderer:
                     if n.get("otherwise"):
                         other = n.get("otherwise")
                         no, no_state = self.sequence(other.get("items") if other.kind == "block" else (other,), incoming, bound)
-                        branches.append(self.view(other, self.tr("rotation.else"), no, kind="branch"))
-                    output.append(self.view(n, self.tr("rotation.if", condition=self.expression(n.get("condition"), bound)), tuple(branches)))
+                        branches.append(self.view(other, self.tr("rotation.schedule.otherwise" if schedule else "rotation.else"), no, kind="branch"))
+                    def only_window(items: tuple[ReadableNode, ...], actor: str) -> bool:
+                        return all((item.actor_key is None or item.actor_key == actor) and only_window(item.children, actor) for item in items)
+                    owner = window_actor if window_actor and yes_state == state and no_state == state and incoming == state and only_window(tuple(branches), window_actor) else None
+                    if schedule:
+                        children = yes if n.get("otherwise") is None else tuple(branches)
+                        label, kind = self.schedule_text(schedule), "schedule"
+                    else:
+                        children = tuple(branches)
+                        label, kind = self.tr("rotation.if", condition=self.expression(n.get("condition"), bound)), "if"
+                    if owner:
+                        def without_same_window(items: tuple[ReadableNode, ...]) -> tuple[ReadableNode, ...]:
+                            from dataclasses import replace
+                            return tuple(child for item in items for child in
+                                         (without_same_window(item.children) if item.kind == "window" and item.actor_key == owner else
+                                          (replace(item, children=without_same_window(item.children)),)))
+                        children = without_same_window(children)
+                    append(self.view(n, label, children, kind=kind), n, owner)
                     state = union(yes_state, no_state)
                 elif n.kind in {"while", "for"}:
+                    cycle = self.meaning.cycles.get(n.node_id)
                     # Zero iterations and later iterations are both possible.
                     body = n.get("body")
                     actors = {self.document.dialect.character_aliases[c.get("actor").get("value")] for c in body.walk() if c.kind == "action_line"}
@@ -265,15 +324,8 @@ class Renderer:
                     else:
                         children, _ = self.sequence(body.get("items", ()), loop_state, loop_bound)
                     condition = self.expression(n.get("condition"), loop_bound) if n.get("condition") else self.tr("rotation.true")
-                    if n.kind == "for":
-                        pieces = []
-                        if n.get("initial"):
-                            pieces.append(self.view(n.get("initial"), self.tr("rotation.initialize", value=self.simple(n.get("initial"), bound))))
-                        pieces.append(self.view(body, self.tr("rotation.body"), children))
-                        if n.get("post"):
-                            pieces.append(self.view(n.get("post"), self.tr("rotation.after_iteration", value=self.simple(n.get("post"), loop_bound))))
-                        children = tuple(pieces)
-                    output.append(self.view(n, self.tr("rotation.loop", condition=condition), children))
+                    label = self.cycle_text(cycle) if cycle else self.tr("rotation.custom_loop") if n.kind == "for" else self.tr("rotation.loop", condition=condition)
+                    output.append(self.view(n, label, children, kind="cycle" if cycle else n.kind))
                     state = loop_state
                 elif n.kind == "switch":
                     branches, possible = [], state
@@ -365,7 +417,9 @@ class Renderer:
         items, _ = self.sequence(self.document.root.get("items"), frozenset({initial}) if initial else None)
         if not initial:
             items = (self.view(self.document.root, self.tr("rotation.missing_active"), kind="diagnostic"),) + items
-        return ReadableDocument(items, self.document.diagnostics, self.document.syntax_complete)
+        details = tuple(item for item in items if item.kind == "setup")
+        items = tuple(item for item in items if item.kind != "setup")
+        return ReadableDocument(items, self.document.diagnostics, self.document.syntax_complete, details)
 
 
 def render(document: Document, translate: Translate, **kwargs: object) -> ReadableDocument:

@@ -1,8 +1,9 @@
 """Read-only terminal preview of the isolated rotation editor core.
 
 Uses a public fixture by default. No application startup, settings, profiles,
-network, cache writes or simulation. Names fall back to stable engine keys;
-the application adapter will inject the existing localized name resolver.
+network, cache writes or simulation. The default public example injects its
+four fixture names; other files fall back to stable engine keys. Application
+integration must inject names from prepared project records.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+FIXTURE = ROOT / "run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt"
 sys.path.insert(0, str(ROOT))
 
 from run_workspace.gcsim.rotation_editor import parse, write
@@ -25,10 +27,11 @@ from run_workspace.gcsim.rotation_editor.validation import validate_setup
 def main() -> int:
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--engine-root", type=Path, required=True)
-    cli.add_argument("--file", type=Path, default=ROOT / "run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt")
+    cli.add_argument("--file", type=Path, default=FIXTURE)
     cli.add_argument("--language", choices=("ru", "en", "pt-br"), default="ru")
     cli.add_argument("--audited-v245", action="store_true", help="Explicitly opt into the audited v2.45 field descriptions")
     cli.add_argument("--canonical", action="store_true")
+    cli.add_argument("--details", action="store_true", help="Also show simulation setup details")
     cli.add_argument("--character", help="Also show selected character action/parameter/condition metadata")
     args = cli.parse_args()
     dialect = load_source_dialect(args.engine_root, identity="gcsim-v2.45.0-gcsl" if args.audited_v245 else "gcsl-syntax-v1")
@@ -36,8 +39,9 @@ def main() -> int:
         cli.error("Rotation exceeds the 2 MiB preview limit")
     document = parse(args.file.read_text(encoding="utf-8"), dialect)
     locale = json.loads((ROOT / "localization/locales" / f"{args.language}.json").read_text(encoding="utf-8"))
-    readable = render(document, lambda key, **fields: locale[key].format(**fields))
-    print(readable.text())
+    names = json.loads(FIXTURE.with_name("rotation_editor_names.json").read_text(encoding="utf-8"))[args.language] if args.file.resolve() == FIXTURE.resolve() else {}
+    readable = render(document, lambda key, **fields: locale[key].format(**fields), resolve_name=names.get)
+    print(readable.text(include_details=args.details))
     diagnostics = document.diagnostics + (validate_setup(document) if args.audited_v245 else ())
     if diagnostics:
         print(json.dumps([{"code": item.code, "severity": item.severity, "position": document.position(item.span), "details": dict(item.details)} for item in diagnostics], ensure_ascii=False), file=sys.stderr)

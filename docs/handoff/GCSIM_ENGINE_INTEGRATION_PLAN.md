@@ -67,7 +67,7 @@ a concrete failing scenario. The working path already covers:
 The remaining GCSIM work is primarily product UI, orchestration, and release
 engineering, not missing config/run backend fundamentals:
 
-- finish the Browser presentation, [readable rotation prototype](READABLE_ROTATION_EDITOR.md),
+- finish the Browser presentation, [readable rotation dictionary/translation pass](READABLE_ROTATION_EDITOR.md),
   result detail navigation, readiness wording, and settings polish;
 - replace the stale `History persistence: disabled` runtime wording. Abyss
   Browser results are not auto-saved per simulation, but current session results
@@ -945,10 +945,12 @@ Current implementation sequence:
 1. GCSIM Browser UI pass inside `ui/gcsim_browser/`: replace placeholders,
    improve team/target/readiness/result presentation, and correct stale History
    wording without refactoring AppShell ownership.
-2. Rotation product pass: the 8 October user directive first assigns official
-   documentation coverage, command/condition/active-character structure and an
-   isolated Code-to-Readable prototype, then a separate panel-layout/design
-   stage. [READABLE_ROTATION_EDITOR.md](READABLE_ROTATION_EDITOR.md) owns the
+2. Rotation product pass: the refined 8 October user directive first assigns
+   the complete official command dictionary, version/context boundaries,
+   complexity classification and Code-to-Readable structure for discussion.
+   An isolated prototype follows that discussion; panel layout/design is a
+   separate later stage.
+   [READABLE_ROTATION_EDITOR.md](READABLE_ROTATION_EDITOR.md) owns the
    current requirements and sketch; later conflicting requests update it in
    place. Raw code and unsupported constructs are retained. Published gcsim.app
    config discovery by exact stable four-character roster remains a separate

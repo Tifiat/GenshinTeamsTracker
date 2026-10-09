@@ -66,6 +66,89 @@ class DerivedLegacyStartupTests(unittest.TestCase):
             self.assertEqual(self._bootstrap(), self.target)
         self.assertTrue(orphan.is_file())
 
+    def _empty_legacy_database(self):
+        path = self.root / "data/artifacts.db"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with closing(sqlite3.connect(path)) as conn:
+            conn.execute("CREATE TABLE artifacts(id INTEGER PRIMARY KEY)")
+            conn.commit()
+        return path
+
+    def test_recreated_empty_database_and_sidecars_do_not_block_repeat_launch(self):
+        target = self._database()
+        source = self._empty_legacy_database()
+        wal = self._file(self.root, "data/artifacts.db-wal", b"")
+        shm = self._file(self.root, "data/artifacts.db-shm", bytes(32768))
+        paths = (target, source, wal, shm)
+        before = [p.read_bytes() for p in paths]
+        for _ in range(2):
+            with self.assertLogs(profile_legacy.__name__, level="WARNING"):
+                self.assertEqual(self._bootstrap(), self.target)
+        self.assertEqual([p.read_bytes() for p in paths], before)
+        self.assertFalse((self.target / ".legacy-migration.json").exists())
+        self.assertTrue(profile_legacy.has_legacy_account_data(project_root=self.root))
+
+    def test_empty_database_does_not_block_imported_profile(self):
+        self._database()
+        source = self._empty_legacy_database()
+        update_profile_metadata(self.profile["id"], {"uid": "600000002", "server": "os_euro"},
+                                imported=True, project_root=self.root)
+        before = source.read_bytes()
+        with self.assertLogs(profile_legacy.__name__, level="WARNING"):
+            self.assertEqual(self._bootstrap(), self.target)
+        self.assertEqual(source.read_bytes(), before)
+
+    def test_nonempty_wal_cannot_hide_account_data_behind_empty_database(self):
+        self._database()
+        self._empty_legacy_database()
+        wal = self._file(self.root, "data/artifacts.db-wal", b"uncheckpointed rows")
+        with self.assertRaises(profile_legacy.LegacyProfileDataError):
+            self._bootstrap()
+        self.assertEqual(wal.read_bytes(), b"uncheckpointed rows")
+
+    def test_any_legacy_database_row_retains_collision_error(self):
+        self._database()
+        source = self._empty_legacy_database()
+        with closing(sqlite3.connect(source)) as conn:
+            conn.execute("CREATE TABLE unknown_account_data(value TEXT)")
+            conn.execute("INSERT INTO unknown_account_data VALUES ('keep')")
+            conn.commit()
+        before = source.read_bytes()
+        with self.assertRaisesRegex(profile_legacy.LegacyProfileDataError, "already contains"):
+            self._bootstrap()
+        self.assertEqual(source.read_bytes(), before)
+
+    def test_rollback_journal_prevents_empty_database_exception(self):
+        self._database()
+        self._empty_legacy_database()
+        journal = self._file(self.root, "data/artifacts.db-journal", b"pending transaction")
+        self.assertTrue(profile_legacy.startup_legacy_migration_needed(
+            self.profile["id"], project_root=self.root))
+        with self.assertRaisesRegex(RuntimeError, "Cannot inspect the legacy account binding"):
+            self._bootstrap()
+        self.assertEqual(journal.read_bytes(), b"pending transaction")
+
+    def test_corrupt_legacy_database_retains_collision_error(self):
+        self._database()
+        source = self._file(self.root, "data/artifacts.db", b"not a database")
+        with self.assertRaisesRegex(RuntimeError, "Cannot inspect the legacy account binding"):
+            self._bootstrap()
+        self.assertEqual(source.read_bytes(), b"not a database")
+
+    def test_empty_database_with_primary_state_retains_collision_error(self):
+        self._database()
+        self._empty_legacy_database()
+        self._file(self.root, "state.json")
+        with self.assertRaisesRegex(profile_legacy.LegacyProfileDataError, "already contains"):
+            self._bootstrap()
+
+    def test_empty_database_first_upgrade_still_migrates(self):
+        source = self._empty_legacy_database()
+        before = source.read_bytes()
+        self.assertEqual(self._bootstrap(), self.target)
+        self.assertFalse(source.exists())
+        self.assertEqual((self.target / "data/artifacts.db").read_bytes(), before)
+
     def test_all_derived_output_kinds_remain_separate_on_repeat_launch(self):
         self._database()
         outputs = ("data/gcsim/runs", "data/gcsim/farming-runs", "data/gcsim/optimizer-runs",

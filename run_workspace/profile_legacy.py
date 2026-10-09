@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from contextlib import closing
 import json
 import logging
 import os
 from pathlib import Path
 import stat
+import sqlite3
 import tempfile
 from typing import Any
 
@@ -44,6 +46,9 @@ _LOGGER = logging.getLogger(__name__)
 _DERIVED_RELATIVE_PATHS = frozenset({
     "data/gcsim/runs", "data/gcsim/farming-runs", "data/gcsim/optimizer-runs",
     "data/gcsim/optimizer-go-runs", "data/cache/gcsim_optimizer",
+})
+_DATABASE_RELATIVE_PATHS = frozenset({
+    "data/artifacts.db", "data/artifacts.db-wal", "data/artifacts.db-shm",
 })
 
 
@@ -200,10 +205,53 @@ def has_legacy_account_data(*, project_root: str | Path = PROJECT_ROOT) -> bool:
     return any(_has_content(_owned_path(root, relative)) for relative in ACCOUNT_RELATIVE_PATHS)
 
 
+def _empty_legacy_database(root: Path) -> bool:
+    """Recognize a recreated schema, preserving it and all its sidecars in place.
+
+    Immutable reads never create/write SQLite sidecars. A nonempty WAL cannot
+    be ignored: it might contain account rows absent from the main file.
+    """
+    paths = tuple(_owned_path(root, relative) for relative in sorted(_DATABASE_RELATIVE_PATHS))
+    for path in paths:
+        _check_ancestors(root, path)
+    database = _owned_path(root, "data/artifacts.db")
+    wal = _owned_path(root, "data/artifacts.db-wal")
+    rollback_journal = root / "data/artifacts.db-journal"
+    _check_ancestors(root, rollback_journal)
+    def signature(path: Path):
+        if not _exists(path):
+            return None
+        info = path.stat()
+        # A read may update access time, which is not a content change.
+        return info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns
+    try:
+        if _exists(rollback_journal):
+            return False
+        if not database.is_file() or any(_exists(p) and not p.is_file() for p in paths):
+            return False
+        before = tuple(signature(p) for p in paths)
+        if _exists(wal) and wal.stat().st_size:
+            return False
+        with closing(sqlite3.connect(database.resolve().as_uri() + "?mode=ro&immutable=1",
+                                     uri=True, timeout=0.25)) as conn:
+            if conn.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                return False
+            tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+            if not tables:
+                return False
+            for (name,) in tables:
+                quoted = name.replace('"', '""')
+                if conn.execute(f'SELECT 1 FROM "{quoted}" LIMIT 1').fetchone() is not None:
+                    return False
+        return not _exists(rollback_journal) and before == tuple(signature(p) for p in paths)
+    except (OSError, sqlite3.Error):
+        return False
+
+
 def startup_legacy_migration_needed(
     profile_id: str, *, project_root: str | Path = PROJECT_ROOT,
 ) -> bool:
-    """Keep orphan derived outputs separate from an already populated profile.
+    """Keep orphan outputs/empty schemas separate from an already populated profile.
 
     A journal always owns recovery. Real legacy account state still triggers
     the collision checks; this does not merge, delete or adopt either copy.
@@ -217,7 +265,10 @@ def startup_legacy_migration_needed(
                    if _has_content(_owned_path(root, relative)))
     if not legacy:
         return False
-    if any(relative not in _DERIVED_RELATIVE_PATHS for relative in legacy):
+    primary = set(legacy) - _DERIVED_RELATIVE_PATHS
+    empty_database = (bool(primary) and primary <= _DATABASE_RELATIVE_PATHS
+                      and _empty_legacy_database(root))
+    if primary and not empty_database:
         return True
     for relative in ACCOUNT_RELATIVE_PATHS:
         if relative in _DERIVED_RELATIVE_PATHS:
@@ -230,7 +281,7 @@ def startup_legacy_migration_needed(
                 _check_ancestors(root, source)
                 _check_tree(source)
             _LOGGER.warning(
-                "Legacy simulation outputs remain outside the selected account profile; "
+                "Legacy outputs or empty database remain outside the selected account profile; "
                 "they are preserved separately, not migrated or deleted: %s", ", ".join(legacy),
             )
             return False

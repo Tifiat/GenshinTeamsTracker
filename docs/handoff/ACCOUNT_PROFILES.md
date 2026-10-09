@@ -33,6 +33,12 @@ records 21 focused controls (20 pass, one host symlink skip), both real launcher
 paths and repeated supervised AppShell startup with normal window close/exit0.
 Registry, account DB and legacy-run hashes remain identical. No import, optimizer
 run or Computer Use; broader multiaccount/button acceptance remains separate.
+2026-10-09: native PyCharm traceback reproduced another startup collision:
+a recreated legacy SQLite schema had no rows, but a populated target existed.
+Startup now preserves this empty schema and its sidecars separately. The
+profile suite ran 37 tests (36 passed, one host skip); ordinary supervised AppShell
+opened successfully and was observed through Computer Use. Account metadata,
+import and editor interactions were not changed/tested in that native check.
 <!-- /handoff-current -->
 
 The [7 October integration audit](performance_measurements/2026-10-07_main_startup_and_merge_audit.md)
@@ -74,6 +80,14 @@ recovery, primary legacy data/DB sidecars retain collision/binding checks, and
 an empty first upgrade retains migration. The broad legacy predicate and
 explicit clear/migrate APIs are unchanged. No account identity is inferred
 from orphan run files or account rows.
+
+The startup-only exception also recognizes a schema-only legacy SQLite database
+when the selected profile already contains primary data. Immutable read-only
+inspection requires integrity and no rows in any table, including internal
+tables; database/sidecar identities and modification times must remain stable.
+Nonempty WAL, a rollback journal, unsafe paths, malformed databases or any other
+primary legacy file retain collision checks. All files remain in place, and
+empty first-upgrade migration and explicit reset/migration remain unchanged.
 
 ## Metadata and login
 

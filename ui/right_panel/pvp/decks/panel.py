@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, QTimer, Qt
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QLayout,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -46,6 +47,11 @@ class PvpDecksRightPanel(QWidget):
         self._edit_shortcuts: list[QShortcut] = []
         self._preserved_edit_deck_id = ""
         self._preserved_edit_name = ""
+        self._scroll_deck_id = ""
+        self._restore_scroll_value = 0
+        self._scroll_restore_timer = QTimer(self)
+        self._scroll_restore_timer.setSingleShot(True)
+        self._scroll_restore_timer.timeout.connect(self._restore_scroll_position)
         self.setObjectName("RightPanelPrototypeContent")
         self.setStyleSheet(PVP_DECKS_RIGHT_PANEL_STYLE)
 
@@ -86,7 +92,6 @@ class PvpDecksRightPanel(QWidget):
         self.new_deck_info = QWidget()
         self.new_deck_info_layout = QVBoxLayout(self.new_deck_info)
         self.new_deck_info_layout.setContentsMargins(0, 0, 0, 0)
-        root.addWidget(self.new_deck_info)
 
         self.deck_list_scroll = OverlayVerticalScrollArea()
         self.deck_list_scroll.setWidgetResizable(True)
@@ -95,9 +100,19 @@ class PvpDecksRightPanel(QWidget):
             Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
         list_content = QWidget()
-        self.deck_list_layout = QVBoxLayout(list_content)
+        content_layout = QVBoxLayout(list_content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(8)
+        content_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
+        # New and saved deck details must share the same height-for-width scroll
+        # boundary. Keeping new-deck rules in the fixed header crushes labels.
+        content_layout.addWidget(self.new_deck_info)
+        self.deck_list_content = QWidget()
+        self.deck_list_layout = QVBoxLayout(self.deck_list_content)
         self.deck_list_layout.setContentsMargins(0, 0, 0, 0)
         self.deck_list_layout.setSpacing(5)
+        content_layout.addWidget(self.deck_list_content)
+        content_layout.addStretch(1)
         self.deck_list_scroll.setWidget(list_content)
         root.addWidget(self.deck_list_scroll, 1)
 
@@ -115,6 +130,13 @@ class PvpDecksRightPanel(QWidget):
         self.refresh()
 
     def refresh(self) -> None:
+        active = self.workspace.active_preset()
+        deck_id = active.deck_id if active is not None else ""
+        if deck_id != self._scroll_deck_id:
+            self._restore_scroll_value = 0
+        elif not self._scroll_restore_timer.isActive():
+            self._restore_scroll_value = self.deck_list_scroll.verticalScrollBar().value()
+        self._scroll_deck_id = deck_id
         self._capture_existing_edit_name()
         self._clear_stale_pending_delete()
         self._refresh_create_controls()
@@ -123,6 +145,10 @@ class PvpDecksRightPanel(QWidget):
         self.status_label.setText(status)
         self.status_label.setVisible(bool(status))
         self._sync_edit_shortcuts()
+        self._scroll_restore_timer.start(0)
+
+    def _restore_scroll_position(self) -> None:
+        self.deck_list_scroll.verticalScrollBar().setValue(self._restore_scroll_value)
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.decks.title"))
@@ -386,13 +412,14 @@ class PvpDecksRightPanel(QWidget):
         info = QFrame()
         info.setObjectName("pvp_deck_expanded_info")
         layout = QVBoxLayout(info)
-        layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(4)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         rules_state = self.workspace.rules_ui_state()
         rules_header = QHBoxLayout()
         rules_header.setContentsMargins(0, 0, 0, 0)
         rules_label = self._info_label(tr("app_shell.pvp.decks.rules_label"))
+        rules_label.setObjectName("pvp_rules_heading")
         rules_header.addWidget(rules_label)
         rules_header.addStretch(1)
         layout.addLayout(rules_header)
@@ -486,6 +513,7 @@ class PvpDecksRightPanel(QWidget):
                 weapons=len(preset.weapon_refs),
             )
         )
+        counts_label.setWordWrap(True)
         layout.addWidget(counts_label)
         self.selected_info_labels["counts"] = counts_label
 
@@ -513,13 +541,24 @@ class PvpDecksRightPanel(QWidget):
     def _add_rules_lines(self, layout: QVBoxLayout, heading_key: str, lines) -> None:
         if not lines:
             return
-        layout.addWidget(self._rules_detail_label(tr("app_shell.pvp.decks." + heading_key)))
+        section = QFrame()
+        section.setObjectName("pvp_rules_section")
+        section.setProperty("rulesSection", heading_key)
+        content = QVBoxLayout(section)
+        content.setContentsMargins(9, 8, 9, 8)
+        content.setSpacing(6)
+        heading = self._rules_detail_label(tr("app_shell.pvp.decks." + heading_key))
+        heading.setObjectName("pvp_rules_heading")
+        content.addWidget(heading)
         for line in lines:
-            layout.addWidget(self._rules_detail_label(str(line)))
+            content.addWidget(self._rules_detail_label(str(line)))
+        layout.addWidget(section)
 
     def _info_label(self, text: str) -> QLabel:
         label = QLabel(text)
         label.setObjectName("pvp_deck_info_line")
+        label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        label.setTextFormat(Qt.TextFormat.PlainText)
         return label
 
     def _validation_text(self) -> str:

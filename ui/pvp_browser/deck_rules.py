@@ -128,6 +128,7 @@ def format_report(snapshot, report, deck):
     names = {row["game_id"]: row.get("names", {}).get(language) or row.get("names", {}).get("en") or row["game_id"]
              for row in snapshot["characters"]}
     names.update({row.character_id: row.display_name for row in deck.characters if row.display_name})
+    names.update({row.weapon_id: row.display_name for row in deck.weapons if row.display_name})
     base_costs = [row["base_unit_cost"] * row["count"] if row["base_unit_cost"] is not None and row["count"] else None
                   for row in report["weapon_rows"]]
     summary = [
@@ -185,6 +186,8 @@ def format_report(snapshot, report, deck):
         by_code.setdefault(issue["code"], []).append(issue["details"])
     for key, details in by_code.items():
         text = _t(key)
+        if text == "app_shell.pvp.rules." + key:
+            text = _t("unsupported_rule")
         identities = list(dict.fromkeys(value for detail in details
                                        if (value := detail.get("character_id") or detail.get("weapon_id"))))
         if identities:

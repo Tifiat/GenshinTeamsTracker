@@ -9,11 +9,13 @@ from unittest.mock import patch
 
 from PySide6.QtWidgets import QApplication
 
+from localization import get_language, set_language, tr
 from run_workspace.pvp.abyss_client import AbyssRulesChoice
-from run_workspace.pvp.abyss_rules import AbyssRuleset
+from run_workspace.pvp.abyss_rules import AbyssRuleset, evaluate_deck
 from run_workspace.pvp.deck_preset import load_deck_presets
-from tests.run_workspace.pvp.test_abyss_rules import _source
+from tests.run_workspace.pvp.test_abyss_rules import _character, _deck, _source, _weapon
 from tests.ui.pvp_browser.test_pvp_browser import _character_asset
+from ui.pvp_browser.deck_rules import format_report
 from ui.pvp_browser.window import PvpDecksWorkspace
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 
@@ -121,3 +123,22 @@ class PvpDeckRulesTest(unittest.TestCase):
         self.assertTrue(panel.ruleset_button.isEnabled())
         self.workspace.save_edit()
         self.assertFalse(panel.ruleset_button.isEnabled())
+
+
+class DeckRulesPresentationTest(unittest.TestCase):
+    def test_weapon_issues_use_names_and_unknown_conditions_have_readable_fallback(self):
+        language = get_language()
+        self.addCleanup(set_language, language, persist=False)
+        rules = AbyssRuleset.from_source(*_source())
+        deck = _deck(_character("1001", "PYRO"), weapons=(
+            replace(_weapon("2001"), display_name="Test sword"),
+        ))
+        report = evaluate_deck(deck, rules).to_dict()
+        report["issues"].append({"code": "future_condition", "details": {}})
+        for language in ("ru", "en", "pt-br"):
+            set_language(language, persist=False)
+            lines = format_report(rules.to_dict(), report, deck)["issue_lines"]
+            weapon_line = next(line for line in lines if "Test sword" in line)
+            self.assertNotIn("2001", weapon_line)
+            self.assertIn(tr("app_shell.pvp.rules.unsupported_rule"), lines)
+            self.assertFalse(any("app_shell.pvp.rules." in line for line in lines))

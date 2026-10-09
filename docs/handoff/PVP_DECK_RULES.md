@@ -19,12 +19,18 @@ of tournament legality. Abyss match launch is disabled; Free Draft remains the
 executable match mode. Current Abyss Cup requires Pyro Traveler, whose selection
 is not supported by GTT yet; the UI names the variant and limitation.
 
+The user's 9 October screenshot exposed unreadable new-deck rules: content outside
+the scroll area compressed labels to 4–5px. The repair puts new and saved details
+inside one scroll area, groups costs/requirements/issues, wraps counts and keeps
+scroll position during same-deck updates. Constrained offscreen layout checks and
+rendered previews now pass; this does not accept the native interaction path.
+
 Scoped automated and live-source evidence is below. No Computer Use, application
-launch, real-account import/write or native visual acceptance. The user reported
-an import into Worker4; it was not rerun or inspected by these tests. Next is the
-user-owned Decks smoke and feedback, then confirmed rule matching/Traveler and
-match schedule work. The [source receipt](PVP_ABYSS_SOURCE_AUDIT.md) retains the
-API/document conflicts; organizer prose is not silently merged into live rules.
+launch or real-account import/write. The user's Worker4 import was not inspected.
+Next is user recheck of Decks create/edit at the reported window size, then the
+remaining Decks smoke and confirmed matching/Traveler/match schedule work. The
+[source receipt](PVP_ABYSS_SOURCE_AUDIT.md) retains API/document conflicts;
+organizer prose is not silently merged into live rules.
 <!-- /handoff-current -->
 
 ## Boundaries and implementation
@@ -102,3 +108,41 @@ User smoke in the Worker4 AppShell:
 Native readability, widths, clicks and real imported account behavior remain
 for the user. These checks do not close the existing PvP timer/engine/second-seat
 or online acceptance gates.
+
+## Readability repair receipt — 2026-10-09
+
+The user's screenshot showed overlapping controls and vertically sliced text.
+An isolated unsaved-deck fixture at 650×480 reproduced labels allocated 4–5px
+when text required 14–28px; its scroll range was zero. The original 74 checks
+covered controls/semantics but did not cover this constrained layout.
+
+New-deck details had been added directly to the fixed header. They now share
+the saved-deck scroll boundary through stable parents, with separate cost,
+requirement and issue sections. Wrapped text retains its height for the current
+width, including counts. Same-deck refresh preserves scroll position; a different
+deck resets it, and switching to short Free Draft content reduces the scroll
+range. Weapon issues use available weapon names; an unknown issue code has a
+localized fallback rather than exposing a translation key.
+
+Twenty-three focused tests passed: seven right-panel controls/layout tests, six
+integrated rules/presentation tests and ten existing Decks tests. The constrained
+layout test covers 18 combinations: three languages, new/with-existing/saved-edit
+states, and 354×480 or 650×590 hosts. Assertions check required label heights,
+sibling non-overlap, content width and scroll extent, alongside bottom reachability
+and update/short-content transitions. An initial English saved-deck case exposed
+unwrapped counts widening the content by 10px; wrapping fixed that case.
+
+Three offscreen PNG previews (narrow top/bottom, wide middle) were inspected with
+Segoe UI fixture fonts and the inherited right-panel stylesheet. Text, spacing and
+section boundaries were readable; viewport clipping at scroll edges is expected.
+Windows' offscreen plugin has no system fonts, so the test loads the fixture fonts
+in memory and removes them afterward. The three owned PNGs totaled 97,266 bytes
+and were removed by the temporary-directory context immediately after review.
+No screenshot output or persistent cache is included in the package.
+
+Native user recheck remains: restart the Worker4 AppShell from the user's existing
+launcher, open PvP → Decks → new/edit → Abyss rules at the reported window size;
+scroll through all requirements, toggle a character while scrolled, then choose
+Free Draft. Verify readable rows, accessible lower conditions and stable scrolling.
+Computer Use remains prohibited; no real app window, imported account or data was
+opened by this repair. Native acceptance is still pending this user-owned path.

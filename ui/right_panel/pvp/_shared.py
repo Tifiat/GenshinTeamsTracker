@@ -143,7 +143,20 @@ QLabel#pvp_deck_info_line {{
     border: none;
     padding: 0px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
+}}
+QLabel#pvp_rules_heading {{
+    color: {UI_TEXT_PRIMARY};
+    background: transparent;
+    border: none;
+    padding: 0px;
+    font-size: 13px;
+    font-weight: 700;
+}}
+QFrame#pvp_rules_section {{
+    background: {UI_BG_PANEL_RAISED};
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 6px;
 }}
 QFrame#pvp_draft_result_zone {{
     border: 1px solid {UI_BORDER_PANEL};

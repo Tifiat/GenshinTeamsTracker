@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import unittest
 from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPoint, Signal
+from PySide6.QtGui import QFont, QFontDatabase
+from PySide6.QtWidgets import QApplication, QLabel, QStackedWidget
 
-from localization import tr
+from localization import get_language, set_language, tr
+from ui.right_panel.live_run.panel import right_panel_stylesheet
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 
 
@@ -101,6 +104,34 @@ class _Workspace(QObject):
         return False
 
 
+def _long_rules_state(workspace):
+    """Synthetic, localized long content for layout tests and offscreen review."""
+    state = workspace.rules_ui_state()
+    t = lambda key, **values: tr("app_shell.pvp.rules." + key).format(**values)
+    state.update(
+        source_title="Abyss Cup · Layout fixture",
+        version_text="09.10.2026 00:00 UTC",
+        summary_lines=(
+            t("character_cost", value="987"),
+            t("weapon_base_cost", value="128"),
+            t("weapon_cost", value="?"),
+            t("card_legend"),
+            t("tier_counts", values="T0: 12 · T1: 17 · T2: 4 · T3: 3 · T4: 2"),
+        ),
+        requirement_lines=tuple(
+            t("limit", subject=t(group + "_" + metric), minimum="8", maximum="500")
+            for group in ("agents", "engines") for metric in ("cost", "count")
+        ) + tuple(f"T{tier}: {tier * 15}–{tier * 15 + 14}" for tier in range(5)) + (
+            t("requires", tier=4, parts="T1 " + t("role_dd") + " + T1 " + t("role_support")),
+            t("equals", tier=2, parts="T0 + T0 + T1") + t("threshold", value="30"),
+            t("required", names="Amber, Lisa, Kaeya, Barbara, Xiangling, Noelle, Collei"),
+        ),
+        issue_lines=(t("traveler_unavailable"), t("weapon_assignment_needed"),
+                     t("tier_combination_unverified"), t("unsupported_rule")),
+    )
+    return state
+
+
 class DecksRulesUiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -171,6 +202,130 @@ class DecksRulesUiTests(unittest.TestCase):
             tr("app_shell.pvp.rules.deck_editable"),
         )
         panel.deleteLater()
+
+
+class DecksRulesLayoutTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+        cls.previous_font = cls.app.font()
+        cls.fixture_fonts = []
+        # Windows' offscreen plugin has no system fonts; load only the fixture
+        # fonts so wrapping/render checks exercise text rather than tofu boxes.
+        if not QFontDatabase.families() and os.name == "nt":
+            fonts = Path(os.environ["WINDIR"]) / "Fonts"
+            for name in ("segoeui.ttf", "segoeuib.ttf"):
+                font_id = QFontDatabase.addApplicationFont(str(fonts / name))
+                if font_id >= 0:
+                    cls.fixture_fonts.append(font_id)
+        if "Segoe UI" in QFontDatabase.families():
+            cls.app.setFont(QFont("Segoe UI", 9))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.app.setFont(cls.previous_font)
+        for font_id in cls.fixture_fonts:
+            QFontDatabase.removeApplicationFont(font_id)
+
+    def setUp(self):
+        language = get_language()
+        self.addCleanup(set_language, language, persist=False)
+
+    def settle(self):
+        for _ in range(8):
+            self.app.processEvents()
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    def make_panel(self, *, new=True, saved=False, language="ru"):
+        set_language(language, persist=False)
+        workspace = _Workspace()
+        workspace.is_editing = True
+        workspace.is_new_deck_edit = new
+        workspace.preset.rules_snapshot = {"source": {"title": "Abyss"}}
+        if new:
+            workspace.presets = [SimpleNamespace(
+                deck_id="another", name="Saved deck", character_ids=("b",), weapon_refs=(),
+            )] if saved else []
+        state = _long_rules_state(workspace)
+        workspace.rules_ui_state = lambda: state
+        panel = PvpDecksRightPanel(workspace)
+        host = QStackedWidget()
+        host.setStyleSheet(right_panel_stylesheet())
+        host.addWidget(panel)
+        self.addCleanup(host.deleteLater)
+        self.addCleanup(host.close)
+        return workspace, state, panel, host
+
+    def assert_readable(self, panel):
+        labels = [label for label in panel.findChildren(QLabel)
+                  if label.objectName() in ("pvp_deck_info_line", "pvp_rules_heading")
+                  and label.isVisibleTo(panel)]
+        self.assertGreater(len(labels), 20)
+        for label in labels:
+            required = label.heightForWidth(label.width()) if label.wordWrap() else label.sizeHint().height()
+            self.assertGreaterEqual(label.height(), required, label.text())
+            siblings = [other for other in labels if other.parentWidget() is label.parentWidget()
+                        and other is not label]
+            for other in siblings:
+                self.assertFalse(label.geometry().intersects(other.geometry()), label.text())
+        scroll = panel.deck_list_scroll
+        content = scroll.widget()
+        self.assertLessEqual(content.width(), scroll.viewport().width())
+        self.assertLessEqual(content.height(), max(scroll.viewport().height(), content.heightForWidth(content.width())) + 2)
+        self.assertGreater(scroll.verticalScrollBar().maximum(), 0)
+
+    def test_long_new_and_saved_rules_wrap_in_constrained_hosts(self):
+        for language in ("ru", "en", "pt-br"):
+            for new, saved in ((True, False), (True, True), (False, True)):
+                with self.subTest(language=language, new=new, saved=saved):
+                    _, _, panel, host = self.make_panel(new=new, saved=saved, language=language)
+                    for width, height in ((354, 480), (650, 590)):
+                        host.setFixedSize(width, height)
+                        host.show()
+                        self.settle()
+                        self.assert_readable(panel)
+                        self.assertLessEqual(panel.minimumSizeHint().height(), height)
+                    host.close()
+
+    def test_refresh_preserves_scroll_and_deck_change_resets_it(self):
+        workspace, _, panel, host = self.make_panel()
+        host.setFixedSize(354, 480)
+        host.show()
+        self.settle()
+        scroll = panel.deck_list_scroll.verticalScrollBar()
+        scroll.setValue(scroll.maximum() // 2)
+        previous = scroll.value()
+        workspace.state_changed.emit()
+        workspace.state_changed.emit()
+        self.settle()
+        self.assertEqual(scroll.value(), previous)
+        self.assert_readable(panel)
+        workspace.preset.deck_id = "another-deck"
+        workspace.state_changed.emit()
+        self.settle()
+        self.assertEqual(scroll.value(), 0)
+
+    def test_bottom_is_reachable_and_short_rules_shrink_content(self):
+        workspace, state, panel, host = self.make_panel()
+        host.setFixedSize(354, 480)
+        host.show()
+        self.settle()
+        scroll = panel.deck_list_scroll
+        scroll.verticalScrollBar().setValue(scroll.verticalScrollBar().maximum())
+        self.settle()
+        final = panel.selected_info_labels["validation"]
+        bottom = final.mapTo(scroll.viewport(), QPoint(0, final.height())).y()
+        self.assertLessEqual(bottom, scroll.viewport().height())
+        self.assertGreaterEqual(bottom, scroll.viewport().height() - 32)
+        previous_height = scroll.widget().height()
+        state.update(selected_id="free_draft_v0", source_title="", version_text="",
+                     freshness="free", update_id="", summary_lines=(), requirement_lines=(), issue_lines=())
+        workspace.state_changed.emit()
+        self.settle()
+        self.assertLess(scroll.widget().height(), previous_height)
+        self.assertEqual(scroll.verticalScrollBar().maximum(), 0)
+        self.assertEqual(scroll.verticalScrollBar().value(), 0)
+        self.assertTrue(panel.ruleset_button.isVisibleTo(panel))
 
 
 if __name__ == "__main__":

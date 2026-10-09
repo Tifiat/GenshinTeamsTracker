@@ -6,21 +6,24 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QLayout,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from localization import tr
 from run_workspace.pvp.deck_preset import PvpDeckPreset
-from ui.utils.icon_utils import auto_contrast_svg_icon
+from ui.utils.icon_utils import auto_contrast_svg_icon, tinted_svg_pixmap
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.ui_palette import UI_STATE_DANGER, UI_STATE_SUCCESS
 from ui.right_panel.pvp._shared import (
     PVP_DECKS_RIGHT_PANEL_STYLE,
     PVP_DECK_UI_ICON_BACKGROUND,
@@ -497,9 +500,13 @@ class PvpDecksRightPanel(QWidget):
         self._add_rules_lines(
             layout, "rules_costs_heading", rules_state.get("summary_lines", ())
         )
-        self._add_rules_lines(
-            layout, "rules_requirements_heading", rules_state.get("requirement_lines", ())
-        )
+        requirement_rows = rules_state.get("requirement_rows", ())
+        if requirement_rows:
+            self._add_requirement_rows(layout, requirement_rows)
+        else:
+            self._add_rules_lines(
+                layout, "rules_requirements_heading", rules_state.get("requirement_lines", ())
+            )
         self._add_rules_lines(
             layout, "rules_issues_heading", rules_state.get("issue_lines", ())
         )
@@ -552,6 +559,87 @@ class PvpDecksRightPanel(QWidget):
         content.addWidget(heading)
         for line in lines:
             content.addWidget(self._rules_detail_label(str(line)))
+        layout.addWidget(section)
+
+    def _add_requirement_rows(self, layout: QVBoxLayout, rows) -> None:
+        section = QFrame()
+        section.setObjectName("pvp_rules_section")
+        section.setProperty("rulesSection", "rules_requirements_heading")
+        content = QVBoxLayout(section)
+        content.setContentsMargins(9, 8, 9, 8)
+        content.setSpacing(6)
+        heading = self._rules_detail_label(
+            tr("app_shell.pvp.decks.rules_requirements_heading")
+        )
+        heading.setObjectName("pvp_rules_heading")
+        content.addWidget(heading)
+
+        table = QGridLayout()
+        table.setObjectName("pvp_requirement_table")
+        table.setContentsMargins(0, 0, 0, 0)
+        table.setHorizontalSpacing(6)
+        table.setVerticalSpacing(5)
+        table.setColumnStretch(0, 1)
+        table.setColumnMinimumWidth(1, 62)
+        table.setColumnMinimumWidth(2, 54)
+        for column, key in enumerate(("table_requirement", "table_current", "table_status")):
+            header = self._rules_detail_label(tr("app_shell.pvp.rules." + key))
+            header.setObjectName("pvp_requirement_header")
+            if column == 0:
+                policy = header.sizePolicy()
+                policy.setHorizontalPolicy(QSizePolicy.Policy.Ignored)
+                header.setSizePolicy(policy)
+            if column == 1:
+                header.setFixedWidth(62)
+            if column == 2:
+                header.setFixedWidth(54)
+                header.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+            table.addWidget(header, 0, column)
+
+        status_markers = {"pass", "fail", "unknown", "info"}
+        next_row = 1
+        for entry in rows:
+            label = self._rules_detail_label(str(entry.get("label", "")))
+            label.setObjectName("pvp_requirement_description")
+            if entry.get("depth") == 1:
+                label.setIndent(12)
+            table.addWidget(label, next_row, 0)
+
+            current = self._rules_detail_label(str(entry.get("current", "")))
+            current.setObjectName("pvp_requirement_current")
+            current.setFixedWidth(62)
+            table.addWidget(current, next_row, 1)
+
+            status = str(entry.get("status", "info"))
+            if status not in status_markers:
+                status = "info"
+            marker = QLabel()
+            marker.setObjectName("pvp_requirement_status")
+            marker.setFixedWidth(54)
+            marker.setProperty("requirementStatus", status)
+            marker.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+            marker.setAccessibleName(tr("app_shell.pvp.rules.status_" + status))
+            if status in ("pass", "fail"):
+                icon_name, color = (
+                    ("check", UI_STATE_SUCCESS) if status == "pass"
+                    else ("x", UI_STATE_DANGER)
+                )
+                marker.setPixmap(tinted_svg_pixmap(icon_name, 14, color))
+            else:
+                marker.setText("?" if status == "unknown" else "—")
+            table.addWidget(marker, next_row, 2)
+            next_row += 1
+
+            detail = str(entry.get("detail", "")).strip()
+            if detail:
+                detail_label = self._rules_detail_label(detail)
+                detail_label.setObjectName("pvp_requirement_detail")
+                if entry.get("depth") == 1:
+                    detail_label.setIndent(12)
+                table.addWidget(detail_label, next_row, 0, 1, 2)
+                next_row += 1
+
+        content.addLayout(table)
         layout.addWidget(section)
 
     def _info_label(self, text: str) -> QLabel:

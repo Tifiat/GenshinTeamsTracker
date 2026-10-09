@@ -11,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPoint, Signal
 from PySide6.QtGui import QFont, QFontDatabase
-from PySide6.QtWidgets import QApplication, QLabel, QStackedWidget
+from PySide6.QtWidgets import QApplication, QGridLayout, QLabel, QStackedWidget
 
 from localization import get_language, set_language, tr
 from ui.right_panel.live_run.panel import right_panel_stylesheet
@@ -126,6 +126,18 @@ def _long_rules_state(workspace):
             t("equals", tier=2, parts="T0 + T0 + T1") + t("threshold", value="30"),
             t("required", names="Amber, Lisa, Kaeya, Barbara, Xiangling, Noelle, Collei"),
         ),
+        requirement_rows=(
+            {"label": t("limit", subject=t("agents_cost"), minimum="8", maximum="500"),
+             "current": "0 / 2", "status": "fail",
+             "detail": t("required", names="Amber, Lisa, Kaeya, Barbara, Xiangling, Noelle, Collei")},
+            {"label": t("limit", subject=t("engines_cost"), minimum="8", maximum="500"),
+             "current": "17 / 20", "status": "pass"},
+            {"label": t("requires", tier=4, parts="T1 " + t("role_dd") + " + T1 " + t("role_support")),
+             "current": "1 / 2", "status": "unknown"},
+            {"label": t("role_support") + " · " + t("role_dd"),
+             "current": "0 / 1", "status": "info", "depth": 1,
+             "detail": t("tier_combination_unverified")},
+        ) * 3,
         issue_lines=(t("traveler_unavailable"), t("weapon_assignment_needed"),
                      t("tier_combination_unverified"), t("unsupported_rule")),
     )
@@ -203,6 +215,48 @@ class DecksRulesUiTests(unittest.TestCase):
         )
         panel.deleteLater()
 
+    def test_requirement_table_has_three_columns_and_accessible_statuses(self):
+        workspace = _Workspace()
+        workspace.presets = []
+        workspace.is_editing = True
+        workspace.is_new_deck_edit = True
+        state = workspace.rules_ui_state()
+        state["requirement_rows"] = (
+            {"label": "Minimum characters", "current": "0 / 2", "status": "fail", "detail": "Choose two"},
+            {"label": "Weapon budget", "current": "10 / 12", "status": "pass"},
+            {"label": "Tier combination", "current": "1 / 2", "status": "unknown"},
+            {"label": "Damage role", "current": "—", "status": "info", "depth": 1},
+        )
+        workspace.rules_ui_state = lambda: state
+        panel = PvpDecksRightPanel(workspace)
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        self.app.processEvents()
+        table = panel.findChild(QGridLayout, "pvp_requirement_table")
+        self.assertIsNotNone(table)
+        self.assertEqual(table.columnCount(), 3)
+        headers = [table.itemAtPosition(0, i).widget().text() for i in range(3)]
+        self.assertEqual(headers, [tr("app_shell.pvp.rules." + key) for key in
+                                   ("table_requirement", "table_current", "table_status")])
+        markers = panel.findChildren(QLabel, "pvp_requirement_status")
+        self.assertTrue(all(marker.pixmap() is not None and not marker.pixmap().isNull()
+                            for marker in markers[:2]))
+        self.assertNotEqual(markers[0].pixmap().cacheKey(), markers[1].pixmap().cacheKey())
+        self.assertEqual([marker.text() for marker in markers[2:]], ["?", "—"])
+        self.assertEqual([marker.property("requirementStatus") for marker in markers],
+                         ["fail", "pass", "unknown", "info"])
+        self.assertEqual([marker.accessibleName() for marker in markers],
+                         [tr("app_shell.pvp.rules.status_" + status)
+                          for status in ("fail", "pass", "unknown", "info")])
+        self.assertEqual([marker.width() for marker in markers], [54] * 4)
+        self.assertEqual([label.text() for label in panel.findChildren(QLabel,
+                          "pvp_requirement_detail")], ["Choose two"])
+        self.assertIs(table.itemAtPosition(2, 0), table.itemAtPosition(2, 1))
+        self.assertIsNone(table.itemAtPosition(2, 2))
+        self.assertEqual(table.itemAtPosition(5, 0).widget().indent(), 12)
+        self.assertFalse(any(label.text() == "At least 8 characters"
+                             for label in panel.findChildren(QLabel)))
+        panel.deleteLater()
+
 
 class DecksRulesLayoutTests(unittest.TestCase):
     @classmethod
@@ -258,7 +312,9 @@ class DecksRulesLayoutTests(unittest.TestCase):
 
     def assert_readable(self, panel):
         labels = [label for label in panel.findChildren(QLabel)
-                  if label.objectName() in ("pvp_deck_info_line", "pvp_rules_heading")
+                  if label.objectName() in ("pvp_deck_info_line", "pvp_rules_heading",
+                                            "pvp_requirement_header", "pvp_requirement_description",
+                                            "pvp_requirement_current", "pvp_requirement_detail")
                   and label.isVisibleTo(panel)]
         self.assertGreater(len(labels), 20)
         for label in labels:
@@ -273,6 +329,15 @@ class DecksRulesLayoutTests(unittest.TestCase):
         self.assertLessEqual(content.width(), scroll.viewport().width())
         self.assertLessEqual(content.height(), max(scroll.viewport().height(), content.heightForWidth(content.width())) + 2)
         self.assertGreater(scroll.verticalScrollBar().maximum(), 0)
+        table = panel.findChild(QGridLayout, "pvp_requirement_table")
+        self.assertIsNotNone(table)
+        first = table.itemAtPosition(1, 0).widget()
+        current = table.itemAtPosition(1, 1).widget()
+        status = table.itemAtPosition(1, 2).widget()
+        self.assertLess(first.geometry().right(), current.geometry().left())
+        self.assertLess(current.geometry().right(), status.geometry().left())
+        self.assertGreaterEqual(first.height(), first.heightForWidth(first.width()))
+        self.assertGreaterEqual(current.height(), current.heightForWidth(current.width()))
 
     def test_long_new_and_saved_rules_wrap_in_constrained_hosts(self):
         for language in ("ru", "en", "pt-br"):
@@ -319,7 +384,8 @@ class DecksRulesLayoutTests(unittest.TestCase):
         self.assertGreaterEqual(bottom, scroll.viewport().height() - 32)
         previous_height = scroll.widget().height()
         state.update(selected_id="free_draft_v0", source_title="", version_text="",
-                     freshness="free", update_id="", summary_lines=(), requirement_lines=(), issue_lines=())
+                     freshness="free", update_id="", summary_lines=(), requirement_lines=(),
+                     requirement_rows=(), issue_lines=())
         workspace.state_changed.emit()
         self.settle()
         self.assertLess(scroll.widget().height(), previous_height)

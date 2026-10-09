@@ -13,8 +13,10 @@ adopted explicitly. Cancel preserves the original deck.
 Nine current DEFAULT source families parsed in a fresh in-memory public check;
 the tenth, Abyss Ascend Test, requires unsupported FRENCH_COST and produces a
 specific message without changing the deck. Known price/count/required-character
-checks run; tier allocation/reuse, zero upper bounds and parts of bundle matching
-remain explicitly unverified. These are editable deck drafts, not certification
+checks run. A requirement table now shows live values, per-target/role coverage
+and a shared non-reusing allocation, including alternative T0 groups. Exact site
+allocation parity, zero upper bounds and parts of bundle matching remain
+unverified. These are editable deck drafts, not certification
 of tournament legality. Abyss match launch is disabled; Free Draft remains the
 executable match mode. Current Abyss Cup requires Pyro Traveler, whose selection
 is not supported by GTT yet; the UI names the variant and limitation.
@@ -24,11 +26,15 @@ the scroll area compressed labels to 4–5px. The repair puts new and saved deta
 inside one scroll area, groups costs/requirements/issues, wraps counts and keeps
 scroll position during same-deck updates. Constrained offscreen layout checks and
 rendered previews now pass; this does not accept the native interaction path.
+Allocation runs off the UI thread with one active and one latest pending request;
+stale results cannot replace a newer composition. Unknown/bounded-out checks use
+`?`, not a failure marker. Tier bands describe character cost, not quantity caps.
 
 Scoped automated and live-source evidence is below. No Computer Use, application
 launch or real-account import/write. The user's Worker4 import was not inspected.
-Next is user recheck of Decks create/edit at the reported window size, then the
-remaining Decks smoke and confirmed matching/Traveler/match schedule work. The
+Next is user recheck of the table in Decks create/edit, then source parity and
+match schedule work. Traveler is the first independent task for another chat in
+the common queue; selection responsiveness is recorded for later diagnosis. The
 [source receipt](PVP_ABYSS_SOURCE_AUDIT.md) retains API/document conflicts;
 organizer prose is not silently merged into live rules.
 <!-- /handoff-current -->
@@ -146,3 +152,64 @@ scroll through all requirements, toggle a character while scrolled, then choose
 Free Draft. Verify readable rows, accessible lower conditions and stable scrolling.
 Computer Use remains prohibited; no real app window, imported account or data was
 opened by this repair. Native acceptance is still pending this user-owned path.
+
+## Requirement status and allocation receipt — 2026-10-09
+
+The Requirements section now has description, current value and status columns.
+The same presenter handles all loadable DEFAULT families; Free Draft displays its
+configured minimum character count and absence of cost/tier constraints. Tier
+rows show selected counts beside price bands without treating band endpoints as
+count limits. Requires rows show covered/selected targets and assigned/required
+role slots. Mandatory characters have individual presence rows; limits show the
+current value. Optional equals recipes remain neutral when unused; consumed
+groups list their physical members and total cost. Green check/red cross use
+existing tinted SVG icons; status is also named for accessibility. Uncertain
+budgets, unknown data and incomplete allocation use `?`.
+
+`run_workspace/pvp/tier_allocation.py` searches one shared pool of physical
+characters, maximizing completed target instances then filled partial slots.
+Direct bipartite matching is tried first; equals groups use canonical physical
+combinations, exact decimal threshold comparisons and backtracking. No character
+can support two slots, including across direct/equals alternatives. Full coverage
+has a witness; a negative result requires exhaustive search. State/option budgets,
+missing relevant data, duplicate identities and unsupported nested requirements
+or recursive equivalents produce unknown. Synthetic targets from equals do not
+create new requirements. This evaluates the explicitly requested local non-reuse
+policy, not an unavailable website/server evaluator. The original report's source
+uncertainty remains; persisted snapshots/archive formats are unchanged.
+
+Fresh public catalog retrieval confirmed the nine DEFAULT families' patterns:
+T4/T3 require T1 roles, 322CUP also uses T2→T0, and equals uses 2/3/4 T0→T1.
+The [current API](https://abyss.darte.gg/api/abyss/draft_systems/6ac54cc57032007b0dd5e4f9)
+specifies no role on the resulting T1. The
+[older public guide](https://docs.google.com/document/d/1PfNi7XsWEdcrpyc31_1F75KTnRK9a1Lmd5t2tRkbF3o/export?format=txt)
+explicitly permits an equivalent DD or support with older recipes. Flexible role
+is the stated default inference for this implementation; an optional user choice
+was asked and no answer was recorded before closeout. Older numeric thresholds
+were not imported. API zero-bound semantics and website reuse remain unproven.
+
+The controller retains only the last allocation in memory. One worker job runs
+at a time, with at most the newest pending composition; generation checks discard
+stale replies and switching to Free Draft invalidates the pending result. A
+completed allocation refreshes panel state without refreshing card grids. This
+prevents the new solver from synchronously blocking clicks; it does not claim to
+fix the user's earlier selection-lag report. Bounded synthetic 80-row measurements
+were roughly 1–60ms for direct/scarce/two-member cases and 395ms for one four-member
+case, motivating background execution. No persistent cache or generated data.
+
+Fifty-seven focused tests PASS: 20 allocation, seven existing Abyss model, twelve
+integrated rules/presentation/async, eight right-panel and ten existing Decks tests.
+Coverage includes shared T1 scarcity, alternative group packing, threshold edges,
+order independence, partial roles, duplicate/missing data, bounded search,
+coalesced updates, stale-result discard, Free Draft invalidation and live counts.
+An independent in-memory oracle matched 250 small nonrecursive cases; review found
+an unsupported nested-requires false PASS, now unknown with a regression test.
+
+The first integrated offscreen render exposed missing check/cross font glyphs;
+the shared SVG correction passed re-render. Final narrow/wide views showed a
+two-T4 composition with one covered target, distinct DD/support counts and
+disjoint three-/four-T0 groups. Six owned PNGs across two temporary contexts
+(112,027 and 113,240 bytes) were removed immediately after review. Real AppShell
+interaction remains user-owned: create/edit an Abyss deck, add/remove T1/T0 while
+checking shared T4/T3 coverage, scroll the table, then switch to Free Draft.
+No Computer Use, real account access or application launch occurred.

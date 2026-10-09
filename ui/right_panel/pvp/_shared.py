@@ -153,6 +153,32 @@ QLabel#pvp_rules_heading {{
     font-size: 13px;
     font-weight: 700;
 }}
+QLabel#pvp_requirement_header {{
+    color: {UI_TEXT_MUTED};
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_description,
+QLabel#pvp_requirement_current {{
+    color: {UI_TEXT_SECONDARY};
+    font-size: 12px;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_detail {{
+    color: {UI_TEXT_MUTED};
+    font-size: 11px;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_status {{
+    color: {UI_TEXT_MUTED};
+    font-size: 14px;
+    font-weight: 700;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_status[requirementStatus="pass"] {{ color: #77c991; }}
+QLabel#pvp_requirement_status[requirementStatus="fail"] {{ color: #f18b84; }}
+QLabel#pvp_requirement_status[requirementStatus="unknown"] {{ color: #e5c16b; }}
 QFrame#pvp_rules_section {{
     background: {UI_BG_PANEL_RAISED};
     border: 1px solid {UI_BORDER_PANEL};

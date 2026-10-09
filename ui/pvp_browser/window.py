@@ -487,6 +487,7 @@ class PvpDecksWorkspace(QWidget):
         self._last_status = ""
         self.rules_controller = DeckRulesController(self)
         self.rules_controller.changed.connect(self._rules_changed)
+        self.rules_controller.requirements_changed.connect(self.state_changed.emit)
         self.rules_controller.rules_received.connect(self._rules_received)
         self._rules_edit_generation = 0
         self._rules_snapshot_cache = None

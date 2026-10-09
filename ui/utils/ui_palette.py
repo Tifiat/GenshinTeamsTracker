@@ -48,6 +48,12 @@ UI_BG_FOREIGN_EQUIPPED = "#2d2327"
 UI_BG_FOREIGN_EQUIPPED_HOVER = "#38272d"
 UI_BORDER_FOREIGN_EQUIPPED = UI_STATE_DANGER
 
+# Fallbacks for transparent character cards without an imported rarity layer.
+UI_CHARACTER_RARITY_BACKGROUNDS = {
+    4: ("#595580", "#9276ad"),
+    5: ("#805b49", "#bd9563"),
+}
+
 # Saved-run reports and their element-tinted tooltips.
 UI_HISTORY_TEAM_1 = "#59cbd0"
 UI_HISTORY_TEAM_2 = "#dbc478"

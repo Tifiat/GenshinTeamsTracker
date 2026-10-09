@@ -67,6 +67,11 @@ def build_asset_grid_items(
                 ),
             )
         )
+        metadata = asset.get("metadata") or {}
+        if metadata.get("portrait_is_neutral"):
+            from ui.utils.character_card_layers import with_character_card_layers
+
+            items[-1] = with_character_card_layers(items[-1], metadata.get("character") or {})
     return AssetGridBuildResult(items=tuple(items), assets_by_id=assets_by_id)
 
 

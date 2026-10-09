@@ -333,9 +333,10 @@ def account_character_asset_item(
 def pvp_character_asset_item(asset: dict[str, Any]) -> dict[str, Any]:
     """Use a transparent portrait; keep constellation badges outside the bitmap."""
     metadata = dict(asset.get("metadata") or {})
+    metadata["portrait_is_neutral"] = True
     pvp_path = _existing_project_path(metadata.get("portrait_pvp_path"))
     if pvp_path is None and metadata.get("source") != "account_sqlite":
-        return asset
+        return {**asset, "metadata": metadata}
     character = dict(metadata.get("character") or {})
     path_text = str(pvp_path) if pvp_path is not None else ""
     metadata["portrait_pvp_path"] = path_text

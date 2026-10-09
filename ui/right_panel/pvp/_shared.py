@@ -26,6 +26,7 @@ from run_workspace.pvp.deck_preset import character_id_from_asset, weapon_ref_fr
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import metadata_int
 from ui.utils.icon_utils import contrast_icon_color
+from ui.utils.character_card_layers import with_character_card_layers
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
@@ -632,7 +633,7 @@ def build_pvp_draft_grid_item(
                 )
             )
     status = _text(entry.get("status")) or "available"
-    return PixelIconGridItem(
+    item = PixelIconGridItem(
         item_id=character_id,
         icon_path=portrait_path,
         label=_text(entry.get("display_name")) or character_id,
@@ -658,6 +659,7 @@ def build_pvp_draft_grid_item(
         },
         pixmap_cache_key_parts=("pvp_draft", character_id),
     )
+    return with_character_card_layers(item, entry, show_constellation=False)
 
 
 def _draft_entries_by_id(board: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:

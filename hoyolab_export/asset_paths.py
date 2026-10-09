@@ -73,3 +73,9 @@ def element_icon_path(element: str) -> Path | None:
     shared = current_manifest().get("sharedAssets") or {}
     elements = shared.get("elements") or {}
     return existing_manifest_asset(elements.get(str(element or "").lower()))
+
+
+def character_background_path(rarity: int) -> Path | None:
+    shared = current_manifest().get("sharedAssets") or {}
+    backgrounds = shared.get("characterBackgrounds") or {}
+    return existing_manifest_asset(backgrounds.get(str(rarity)))

@@ -55,7 +55,7 @@ known schema and portability defects into user data.
 ## Current Reality
 
 <!-- handoff-current: pvp-profile-package -->
-2026-10-04: the v3 implementation constructs a new portable SQLite slice from
+Reviewed 2026-10-09: the v3 implementation constructs a new portable SQLite slice from
 explicit tables/columns, reads the source without writes, embeds deduplicated
 neutral PNGs, and validates its staged export through the importer before an
 atomic output replacement. Imported data is checked before a separate managed
@@ -83,6 +83,10 @@ and result cards. Per-seat stats and fresh runtime equipment remain independent.
 The local `portrait` source layer is preferred; the archive fills missing ids
 or missing local files, including shared characters. All-shared decks keep
 local portraits without switching images between seats.
+Deck/build browsers now add rarity backgrounds, element icons and seat-local
+constellation badges as runtime layers. Draft pool/results share the background
+and element layers while retaining their existing ownership/badge semantics.
+The 9 October scoped verification receipt below keeps physical acceptance open.
 
 The v2 foundation's focused verification is retained below as dated evidence.
 Current v3/build-service followup verification is in `PVP_BUILD_SERVICES.md`.
@@ -133,6 +137,15 @@ The same image is valid for both seats; account-browser crops and background
 composites are not source portraits. PvP may reuse a local source layer by game
 id even when the account-browser crop differs; account-specific History
 variants still require a matching browser crop.
+
+The displayed card uses a separate rarity background and top-left element layer.
+It reuses imported shared layers with a palette rarity fallback and bundled
+element fallback when needed. Deck/build browsers draw the current character's
+constellation at top right, including C0; draft pool keeps its two seat badges.
+These presentation layers never enter exported character bitmaps or session
+identity. Ordinary account composites do not receive duplicate layers. Pixmaps
+are prepared through the shared DPR-aware grid cache, outside painting; changing
+only constellation text does not load another portrait or generate image files.
 
 - Player-1-only card: full Player 1 frame and Player 1 constellation badge on
   the left;
@@ -269,6 +282,21 @@ row/type/value bounds and exact schema checks run before runtime hydration.
 This manual sequence is pending user execution, not a passed UI result.
 
 ## Focused Verification Receipt
+
+2026-10-09 presentation fix: 36 unique scoped checks passed (pixel grid,
+character assets, two-profile integration and four selected PvP browser cases).
+The initial run passed 31; five profile fixtures were stopped by the temporary
+DB guard misreading SQLite file URIs. After correcting that guard, all five
+profile cases passed. The guard allowed writes/databases only inside a disposable
+root; no account data, app smoke or Computer Use was involved. Pixel checks cover
+background/portrait/element stacking, missing background fallback, layer refresh
+and constellation-only cache reuse. Browser checks cover rarity/element/C0-C6,
+edit dimming, changing constellations and shared portraits with different seat C.
+
+User-owned visual check: PvP -> Decks -> create/edit/view; verify 4-star/5-star
+backgrounds, top-left element and top-right C badge survive filters and selection.
+Then Play -> Draft -> Assignment: check shared portraits retain independent seat
+constellations and team-slot markers. This path has not been physically accepted.
 
 The initial v2 baseline on 2026-10-04 passed 43 backend and 22 headless tests.
 The final rerun after the transparent-portrait clarification passed 44 backend

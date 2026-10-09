@@ -67,6 +67,13 @@ class PixelIconGridFill:
 
 
 @dataclass(frozen=True)
+class PixelIconGridBackground:
+    top_color: str
+    bottom_color: str
+    icon_path: str = ""
+
+
+@dataclass(frozen=True)
 class PixelIconGridOverlayIcon:
     icon_path: str
     size_ratio: float = 1.0
@@ -81,6 +88,7 @@ class PixelIconGridOverlayIcon:
     background_border_color: str = "#ffffff"
     background_border_alpha: int = 210
     background_border_width: float = 2.0
+    position: str = "top_right"
 
 
 @dataclass(frozen=True)
@@ -109,6 +117,7 @@ class PixelIconGridItem:
     badges: tuple[PixelIconGridBadge, ...] = ()
     properties: dict[str, Any] = field(default_factory=dict)
     pixmap_cache_key_parts: tuple[object, ...] = ()
+    background: PixelIconGridBackground | None = None
 
 
 @dataclass(frozen=True)
@@ -226,6 +235,7 @@ class PixelIconGrid(QWidget):
         self._layout = build_pixel_icon_grid_layout(0, 1, self._metrics)
         self._prepared_pixmaps: dict[str, QPixmap] = {}
         self._prepared_overlay_pixmaps: dict[tuple[str, int], QPixmap] = {}
+        self._prepared_card_backgrounds: dict[str, QPixmap] = {}
         self._prepared_backgrounds: dict[tuple[str, int, int], QPixmap] = {}
         self._prepared_pixmap_signature: tuple[object, ...] | None = None
         self._pixmap_cache: dict[tuple[object, ...], QPixmap | None] = {}
@@ -383,6 +393,7 @@ class PixelIconGrid(QWidget):
                 if not rect.intersects(visible):
                     continue
                 icon_rect = self._icon_physical_rect(item, rect)
+                self._draw_card_background(painter, item, icon_rect)
                 self._draw_icon(painter, item, icon_rect)
                 if item.overlay_fill is not None:
                     self._draw_fill(painter, item.overlay_fill, rect)
@@ -427,8 +438,20 @@ class PixelIconGrid(QWidget):
             return
         self._prepared_pixmaps = {}
         self._prepared_overlay_pixmaps = {}
+        self._prepared_card_backgrounds = {}
         self._prepared_backgrounds = {}
         for item in self._items:
+            if item.background is not None and item.background.icon_path:
+                result = load_hidpi_pixmap(
+                    item.background.icon_path,
+                    QSize(self._metrics.item_width, self._metrics.resolved_item_height),
+                    dpr=dpr,
+                    aspect_mode=Qt.AspectRatioMode.IgnoreAspectRatio,
+                    transform_mode=Qt.TransformationMode.SmoothTransformation,
+                    cache=self._pixmap_cache,
+                    surface=f"{self._surface}_background",
+                )
+                self._prepared_card_backgrounds[item.item_id] = result.pixmap
             if item.icon_path:
                 result = load_hidpi_pixmap(
                     item.icon_path,
@@ -493,6 +516,20 @@ class PixelIconGrid(QWidget):
         target = _logical_rect(icon_rect, self._layout.dpr)
         source = QRectF(0, 0, pixmap.width(), pixmap.height())
         painter.drawPixmap(target, pixmap, source)
+
+    def _draw_card_background(self, painter: QPainter, item: PixelIconGridItem, rect: QRect) -> None:
+        background = item.background
+        if background is None:
+            return
+        target = _logical_rect(rect, self._layout.dpr)
+        pixmap = self._prepared_card_backgrounds.get(item.item_id)
+        if pixmap is not None and not pixmap.isNull():
+            painter.drawPixmap(target, pixmap, QRectF(0, 0, pixmap.width(), pixmap.height()))
+            return
+        gradient = QLinearGradient(target.topLeft(), target.bottomLeft())
+        gradient.setColorAt(0, QColor(background.top_color))
+        gradient.setColorAt(1, QColor(background.bottom_color))
+        painter.fillRect(target, QBrush(gradient))
 
     def _draw_fill(self, painter: QPainter, fill: PixelIconGridFill, rect: QRect) -> None:
         color = QColor(fill.color)
@@ -632,7 +669,8 @@ class PixelIconGrid(QWidget):
         right_overhang = int(round(overlay_size.width() * overlay.right_overhang_ratio))
         top_overhang = int(round(overlay_size.height() * overlay.top_overhang_ratio))
         target = QRect(
-            icon_rect.right() - overlay_size.width() + 1 + right_overhang,
+            (icon_rect.left() - right_overhang if overlay.position == "top_left"
+             else icon_rect.right() - overlay_size.width() + 1 + right_overhang),
             icon_rect.top() - top_overhang,
             overlay_size.width(),
             overlay_size.height(),
@@ -735,6 +773,7 @@ def _item_pixmap_inputs_changed(
         previous.item_id != current.item_id
         or previous.icon_path != current.icon_path
         or previous.overlay_icons != current.overlay_icons
+        or _card_background_path(previous) != _card_background_path(current)
         or previous.pixmap_cache_key_parts != current.pixmap_cache_key_parts
     )
 
@@ -743,6 +782,7 @@ def _item_pixmap_signature(item: PixelIconGridItem) -> tuple[object, ...]:
     return (
         item.item_id,
         _path_signature(item.icon_path),
+        _path_signature(_card_background_path(item)),
         tuple(
             (
                 overlay,
@@ -752,6 +792,10 @@ def _item_pixmap_signature(item: PixelIconGridItem) -> tuple[object, ...]:
         ),
         item.pixmap_cache_key_parts,
     )
+
+
+def _card_background_path(item: PixelIconGridItem) -> str:
+    return item.background.icon_path if item.background is not None else ""
 
 
 def _path_signature(path_value: str) -> tuple[str, int, int]:

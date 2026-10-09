@@ -38,6 +38,7 @@ def plain_label(text):
 
 class RotationImportDialog(QDialog):
     chosen = Signal(str)
+    loaded = Signal(object)
 
     def __init__(self, team, environment, shell, *, names=None, catalog=None,
                  set_choices=(), parent=None, search=search_team):
@@ -141,6 +142,7 @@ class RotationImportDialog(QDialog):
             self.results.setItemWidget(item, row)
         if self.records:
             self.results.setCurrentRow(0)
+        self.loaded.emit(result)
 
     def _preview(self, index):
         self.prepared = None
@@ -166,4 +168,3 @@ class RotationImportDialog(QDialog):
     def _choose(self):
         if self.prepared is not None:
             self.chosen.emit(self.prepared.source)
-

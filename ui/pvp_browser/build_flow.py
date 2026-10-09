@@ -599,6 +599,7 @@ class PvpSeatBuildContext:
             from ui.gcsim_browser.window import GcsimBrowserWorkspace
 
             self.gcsim_browser = GcsimBrowserWorkspace(parent=parent, mode=MODE_ABYSS, scoped_build=True)
+            self.gcsim_browser.rotation_team_provider = self.controller.gcsim_rotation_team_context
             self.gcsim_browser.prepare_requested.connect(self._prepare_gcsim_config)
             self.gcsim_browser.run_selected_requested.connect(self._run_gcsim_selected)
             self.gcsim_browser.run_all_requested.connect(self._run_gcsim_all)

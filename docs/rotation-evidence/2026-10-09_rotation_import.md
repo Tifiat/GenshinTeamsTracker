@@ -108,3 +108,46 @@ import/editor stage on local master under the standing user authorization in
 CODEX.md and the shared Git policy. No push, branch transfer, engine change or
 account mutation is included. The orchestrator-owned hub status is not edited
 by this personally used execution chat.
+
+## Follow-up: immediate main-window result
+
+The user's follow-up supersedes the draft-only import path above. Find now
+searches in the background and loads the first ranked supported candidate into
+the main Code/Readable area as one undoable edit, selecting Readable. If the
+first candidate cannot be extracted, the current source stays intact and the
+reason is shown. Other rotations opens the retained alternatives separately;
+explicit selection updates the same main area. A separate editor draft is
+preserved, with its stale Apply blocked. Team/equipment/engine and main source
+revision guards remain; explicit alternative selection prepares against current
+combat settings. Empty/unresolved team, missing engine, network and extraction
+failures are displayed beside Find, not in the offscreen run report.
+
+Native investigation used the actual AppShell launched by PyCharm from this
+checkout with `.venv/Scripts/python.exe ui/app_shell_smoke.py`. Its selected
+team had four empty slots; the account panel reported an unimported profile.
+Clicking Find had already written the team-required error below the viewport,
+so it appeared to do nothing. This observation does not prove other reported
+empty-team cases had the same cause. No team was inferred from the example code.
+
+After a normal close, AppShell was restarted from the same checkout/interpreter
+with `-m ui.app_shell_smoke`, through its normal profile supervisor. Native
+clicks verified the empty-team message directly beneath Find. Four public
+runtime test characters were then selected through the standard Browser cards:
+Furina/Ororon/Bennett/Chasca, C0, without selecting equipment. Find returned the
+three live KQM records named above and immediately displayed the first program
+in main Readable (six rotations), without opening a draft or picker. Other
+rotations showed all three rows and original author descriptions. Selecting
+the second row and Choose this rotation closed the picker and changed main
+Readable to four rotations; Code showed the same imported program and the
+retained Browser combat options. The window was left on Readable with this
+public test team. No account import, equipment save or battle simulation ran.
+The pre-existing wide virtual-card layout still requires horizontal scrolling
+on this compact window; layout redesign remains separate.
+
+Review also found the embedded PvP Browser missing its team provider. It now
+uses the owning seat controller and selected team; four scoped PvP tests cover
+the connection, team switching, seat separation and unchanged source profiles.
+This path was tested with controlled fixtures, not native PvP interaction.
+Nine importer UI and 24 editor UI checks passed, covering immediate main import,
+alternatives, undo, draft preservation, source/team staleness and visible errors.
+The earlier backend/live engine checks above remain scoped historical evidence.

@@ -10,6 +10,7 @@ from unittest.mock import patch
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QPushButton
+from localization import tr
 
 from run_workspace.gcsim.rotation_database import DatabaseMember, RotationRecord, SearchResult
 from run_workspace.gcsim.rotation_editor import Dialect
@@ -48,6 +49,17 @@ class RotationImportUiTests(unittest.TestCase):
         self.addCleanup(browser.close)
         return browser
 
+    def search(self, browser, result):
+        def make_picker(*args, **kwargs):
+            return RotationImportDialog(*args, **kwargs, search=lambda *args, **kwargs: result)
+        with patch('ui.gcsim_browser.rotation_import.RotationImportDialog', side_effect=make_picker):
+            QTest.mouseClick(browser.import_rotation_button, Qt.MouseButton.LeftButton)
+        dialog = browser._import_dialog
+        self.addCleanup(dialog.close)
+        self.assertTrue(dialog.worker.wait(3000))
+        APP.processEvents()
+        return dialog
+
     def test_first_preview_is_ranked_and_description_is_unpolluted(self):
         dialog = self.dialog([record('changed', cons=6), record('exact')])
         self.assertEqual(dialog.records[0].id, 'exact')
@@ -65,7 +77,7 @@ class RotationImportUiTests(unittest.TestCase):
         self.assertIn('???', dialog.original.toPlainText())
         self.assertFalse(dialog.code.toPlainText())
 
-    def test_loading_preserves_main_code_and_existing_draft_undo(self):
+    def test_loading_updates_main_code_preserves_draft_and_is_undoable(self):
         browser = self.browser()
         browser._create_rotation_window(ENV, SHELL, reset_base=True)
         window = browser._rotation_window
@@ -73,10 +85,13 @@ class RotationImportUiTests(unittest.TestCase):
         dialog = self.dialog([record('new')])
         snapshot = browser._import_state(ENV, TEAM)
         browser._accept_rotation_import(dialog.prepared.source, snapshot, dialog)
-        self.assertEqual(browser.rotation_editor.toPlainText(), SHELL)
-        self.assertIn('furina burst;', window.session.code_text())
-        window.session.undo()
         self.assertEqual(window.session.code_text(), SHELL)
+        self.assertTrue(window._apply_block_reason)
+        self.assertIn('furina burst;', browser.rotation_editor.toPlainText())
+        self.assertEqual(browser.rotation_tabs.currentIndex(), 1)
+        self.assertIn('Взрыв стихии', browser.readable_text.toPlainText())
+        browser.rotation_editor.undo()
+        self.assertEqual(browser.rotation_editor.toPlainText(), SHELL)
 
     def test_stale_main_revision_and_team_roundtrip_reject_import(self):
         browser = self.browser()
@@ -95,31 +110,54 @@ class RotationImportUiTests(unittest.TestCase):
         browser.refresh_rotation_team_context()
         self.assertNotEqual(snapshot, browser._import_state(ENV, TEAM))
 
-    def test_failed_window_creation_keeps_picker_and_main_code(self):
+    def test_empty_team_reports_next_to_find_without_network(self):
         browser = self.browser()
-        dialog = self.dialog([record('new')])
-        snapshot = browser._import_state(ENV, TEAM)
-        with patch.object(browser, '_create_rotation_window', return_value=False):
-            browser._accept_rotation_import(dialog.prepared.source, snapshot, dialog)
-        self.assertTrue(dialog.isVisible())
+        browser.rotation_team_provider = lambda index: TeamContext('empty')
+        with patch('ui.gcsim_browser.rotation_import.RotationImportDialog') as picker:
+            QTest.mouseClick(browser.import_rotation_button, Qt.MouseButton.LeftButton)
+        picker.assert_not_called()
+        self.assertTrue(browser.import_rotation_status.isVisible())
+        self.assertEqual(browser.import_rotation_status.text(), tr('rotation.import.team_required'))
         self.assertEqual(browser.rotation_editor.toPlainText(), SHELL)
 
-    def test_open_button_establishes_context_before_unchanged_refresh(self):
+    def test_find_button_directly_loads_best_into_main_without_draft(self):
         browser = self.browser()
-        def make_picker(*args, **kwargs):
-            return RotationImportDialog(*args, **kwargs,
-                search=lambda *args, **kwargs: SearchResult((record('new'),), True))
-        with patch('ui.gcsim_browser.rotation_import.RotationImportDialog', side_effect=make_picker):
-            QTest.mouseClick(browser.import_rotation_button, Qt.MouseButton.LeftButton)
-        dialog = browser._import_dialog
-        self.addCleanup(dialog.close)
-        self.assertTrue(dialog.worker.wait(3000))
-        APP.processEvents()
+        dialog = self.search(browser, SearchResult((record('new'),), True))
         browser.refresh_rotation_team_context()
+        self.assertIsNone(browser._rotation_window)
+        self.assertFalse(dialog.isVisible())
+        self.assertIn('furina burst;', browser.rotation_editor.toPlainText())
+        self.assertIn('Взрыв стихии', browser.readable_text.toPlainText())
+        self.assertTrue(browser.rotation_alternatives_button.isVisible())
+
+    def test_alternative_replaces_main_without_stale_self_revision(self):
+        browser = self.browser()
+        other = record('other', cons=6, source='active furina; furina dash;')
+        dialog = self.search(browser, SearchResult((other, record('exact')), True))
+        self.assertIn('furina burst;', browser.rotation_editor.toPlainText())
+        QTest.mouseClick(browser.rotation_alternatives_button, Qt.MouseButton.LeftButton)
+        self.assertTrue(dialog.isVisible())
+        dialog.results.setCurrentRow(1)
         QTest.mouseClick(dialog.load_button, Qt.MouseButton.LeftButton)
-        self.assertIsNotNone(browser._rotation_window)
-        self.addCleanup(browser._rotation_window.close)
-        self.assertIn('furina burst;', browser._rotation_window.session.code_text())
+        self.assertFalse(dialog.isVisible())
+        self.assertIn('furina dash;', browser.rotation_editor.toPlainText())
+        self.assertIn('Рывок', browser.readable_text.toPlainText())
+
+    def test_network_and_unsupported_errors_are_inline_and_preserve_code(self):
+        for result in (SearchResult((), False, 'offline', 'error'),
+                       SearchResult((record('bad', source='active furina; ???;'),), True)):
+            with self.subTest(result=result):
+                browser = self.browser()
+                dialog = self.search(browser, result)
+                self.assertEqual(browser.rotation_editor.toPlainText(), SHELL)
+                self.assertTrue(browser.import_rotation_status.isVisible())
+                self.assertFalse(dialog.isVisible())
+
+    def test_missing_engine_is_inline(self):
+        browser = self.browser()
+        with patch.object(browser, '_load_rotation_environment', side_effect=ValueError('missing')):
+            QTest.mouseClick(browser.import_rotation_button, Qt.MouseButton.LeftButton)
+        self.assertEqual(browser.import_rotation_status.text(), tr('rotation.editor.no_engine'))
         self.assertEqual(browser.rotation_editor.toPlainText(), SHELL)
 
 

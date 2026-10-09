@@ -8,17 +8,53 @@ from unittest.mock import patch
 from PySide6.QtTest import QSignalSpy
 
 from ui.gcsim_browser.window import GcsimBrowserWorkspace
+from run_workspace.gcsim.rotation_editor.team import from_selected_team
 from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
 from tests.ui.pvp_browser.test_pvp_artifacts import PvpBuildFixture
+from tests.ui.pvp_browser.test_pvp_browser import _asset_character_id
 
 
 class PvpGcsimPreparationUiTest(PvpBuildFixture):
+    def test_rotation_import_uses_selected_pvp_team_and_explicit_engine_keys(self) -> None:
+        context = self.context.seat("player_1")
+        chosen = tuple(context.picked_character_ids[:5])
+        keys = ("furina", "ororon", "bennett", "chasca", "mona")
+        for index, character_id in enumerate(chosen[:4]):
+            context.controller.selected_team_index = 0
+            context.controller.selected_slot_index = index
+            asset = next(item for item in context.character_assets if _asset_character_id(item) == character_id)
+            if index:
+                self.assertTrue(context.add_or_replace_character(asset))
+        context.controller.selected_team_index = 1
+        context.controller.selected_slot_index = 0
+        fifth = next(item for item in context.character_assets if _asset_character_id(item) == chosen[4])
+        self.assertTrue(context.add_or_replace_character(fifth))
+        identity = dict(zip(chosen, keys))
+
+        def load_explicit_team(payload, *, scope, database):
+            self.assertEqual(database, context.db_path)
+            return from_selected_team(payload, scope=scope, lookup=lambda character_id: {
+                "gcsim_character_key_status": "ready", "gcsim_character_key": identity[character_id],
+            } if character_id in identity else {})
+
+        with patch("run_workspace.gcsim.rotation_editor.team.load_selected_team", side_effect=load_explicit_team):
+            browser = context.ensure_gcsim_browser(self.workspace.draft_workspace.build_browser_stack)
+            self.assertIs(browser.rotation_team_provider.__self__, context.controller)
+            browser.team_tabs.setCurrentIndex(0)
+            selected = browser._current_rotation_team()
+            self.assertEqual(selected.keys, keys[:4])
+            self.assertFalse(selected.unresolved)
+            browser.team_tabs.setCurrentIndex(1)
+            self.assertEqual(browser._current_rotation_team().keys, keys[4:])
+        self.assert_sources_unchanged()
+
     def test_browser_is_reused_per_seat_and_executable_actions_are_unavailable(self) -> None:
         panel = PvpDraftRightPanel(self.workspace)
         self.addCleanup(panel.close)
         panel.postdraft_gcsim_buttons_by_seat["player_1"].click()
         first = self.context.seat("player_1").gcsim_browser
         self.assertIsInstance(first, GcsimBrowserWorkspace)
+        self.assertIs(first.rotation_team_provider.__self__, self.context.seat("player_1").controller)
         self.assertFalse(first.isWindow())
         self.assertEqual(self.context.browser_kind, "gcsim")
         self.assertFalse(first.workspace_tabs.isTabVisible(1))
@@ -39,6 +75,7 @@ class PvpGcsimPreparationUiTest(PvpBuildFixture):
         self.assertEqual(self.context.browser_seat, "player_2")
         second = self.context.seat("player_2").gcsim_browser
         self.assertIsNot(first, second)
+        self.assertIs(second.rotation_team_provider.__self__, self.context.seat("player_2").controller)
         second.rotation_editor.setPlainText("second rotation")
         second.set_prepare_result_text("second report")
         self.workspace.close_build_browser()

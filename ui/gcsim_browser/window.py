@@ -129,6 +129,9 @@ class GcsimBrowserWorkspace(QWidget):
         ]
         self._team_cards: list[list[_TeamCard]] = []
         self._virtual_catalog = GcsimVirtualRosterCatalog.empty()
+        self._rotation_window = None
+        self._rotation_environment = None
+        self._rotation_base_source = ""
         self._virtual_set_choices: tuple[GcsimVirtualArtifactSetChoice, ...] = ()
         self._team_notes: list[QLabel] = []
         self._optimizer_elapsed_clock = QElapsedTimer()
@@ -254,6 +257,9 @@ class GcsimBrowserWorkspace(QWidget):
         self.rotation_title = QLabel()
         self.rotation_title.setObjectName("GcsimBrowserSectionTitle")
         rotation_layout.addWidget(self.rotation_title)
+        self.open_rotation_editor_button = QPushButton()
+        self.open_rotation_editor_button.clicked.connect(self._open_rotation_editor)
+        rotation_layout.addWidget(self.open_rotation_editor_button)
         self.rotation_tabs = QTabWidget()
         self.rotation_tabs.setDocumentMode(True)
         code_tab = QWidget()
@@ -453,6 +459,97 @@ class GcsimBrowserWorkspace(QWidget):
         for slot_index, card in enumerate(self._team_cards[team_index]):
             card.set_preview(normalized_slots[slot_index])
 
+    def _load_rotation_environment(self):
+        # Source and metadata reads happen on this explicit user entry, not
+        # during application startup or an unrelated browser refresh.
+        from run_workspace.gcsim.engine_store import GcsimEngineStore
+        from run_workspace.gcsim.rotation_editor.integration import load_environment
+
+        installation = GcsimEngineStore().get_active_engine()
+        if installation is None:
+            raise ValueError(tr("rotation.editor.no_engine"))
+        return load_environment(installation)
+
+    def _open_rotation_editor(self) -> None:
+        try:
+            environment = self._load_rotation_environment()
+        except (OSError, ValueError, RuntimeError) as error:
+            self.set_prepare_result_text(tr("rotation.editor.error", reason=str(error)))
+            return
+        source = self.rotation_editor.toPlainText()
+        if self._rotation_window is not None:
+            if not self._rotation_window.flush_code():
+                self._rotation_window.show()
+                return
+            if self._rotation_environment.identity == environment.identity:
+                # Preserve an unfinished draft and undo history on close/reopen.
+                self._rotation_window.show()
+                self._rotation_window.raise_()
+                self._rotation_window.activateWindow()
+                return
+            draft = self._rotation_window.session.code_text()
+            if draft is None:
+                self._rotation_window.set_message(tr("rotation.editor.engine_change"))
+                self._rotation_window.apply_button.setEnabled(False)
+                self._rotation_window.show()
+                return
+            source = draft
+        self._create_rotation_window(environment, source, reset_base=self._rotation_window is None)
+
+    def _create_rotation_window(self, environment, source: str, *, reset_base: bool) -> None:
+        from ui.gcsim_browser.rotation_editor import RotationEditorWindow
+
+        names = {item.gcsim_key: item.display_name for item in self._virtual_catalog.characters}
+        for key in set(environment.dialect.character_aliases.values()):
+            localized = tr("rotation.character." + key)
+            if localized != "rotation.character." + key:
+                names[key] = localized
+        try:
+            replacement = RotationEditorWindow(source, environment.dialect, names=names,
+                character_options=environment.character_options, parent=self)
+        except (ValueError, RecursionError) as error:
+            if self._rotation_window is not None:
+                self._rotation_window.set_message(tr("rotation.editor.error", reason=str(error)))
+            else:
+                self.set_prepare_result_text(tr("rotation.editor.error", reason=str(error)))
+            return
+        if self._rotation_window is not None:
+            self._rotation_window.close()
+            self._rotation_window.deleteLater()
+        self._rotation_environment = environment
+        self._rotation_window = replacement
+        if reset_base:
+            self._rotation_base_source = self.rotation_editor.toPlainText()
+        self._rotation_window.applied.connect(self._apply_rotation_draft)
+        self._rotation_window.reload_requested.connect(self._reload_rotation_draft)
+        self._rotation_window.show()
+
+    def _reload_rotation_draft(self) -> None:
+        # Explicitly labeled destructive draft replacement, requested by a click.
+        try:
+            environment = self._load_rotation_environment()
+        except (OSError, ValueError, RuntimeError) as error:
+            self._rotation_window.set_message(tr("rotation.editor.error", reason=str(error)))
+            return
+        self._create_rotation_window(environment, self.rotation_editor.toPlainText(), reset_base=True)
+
+    def _apply_rotation_draft(self, source: str) -> None:
+        window = self._rotation_window
+        try:
+            environment = self._load_rotation_environment()
+            if environment.identity != self._rotation_environment.identity:
+                window.set_message(tr("rotation.editor.engine_change"))
+                return
+        except (OSError, ValueError, RuntimeError):
+            window.set_message(tr("rotation.editor.no_engine"))
+            return
+        if self.rotation_editor.toPlainText() != self._rotation_base_source:
+            window.set_message(tr("rotation.editor.external_change"))
+            return
+        self.rotation_editor.setPlainText(source)
+        self._rotation_base_source = source
+        window.set_message(tr("rotation.editor.applied"))
+
     def set_virtual_gcsim_catalogs(
         self,
         catalog: GcsimVirtualRosterCatalog,
@@ -549,6 +646,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.rotation_title.setText(
             _fallback("gcsim.browser.rotation", "Rotation")
         )
+        self.open_rotation_editor_button.setText(tr("rotation.editor.open"))
         self.rotation_tabs.setTabText(0, _fallback("gcsim.browser.rotation_code", "Code"))
         self.rotation_tabs.setTabText(
             1,
@@ -560,14 +658,14 @@ class GcsimBrowserWorkspace(QWidget):
         )
         self.readable_placeholder.setText(
             _fallback(
-                "gcsim.browser.rotation_readable_placeholder",
-                "Readable rotation view is reserved for a later pass. Raw code remains the working input.",
+                "rotation.editor.open",
+                "Open rotation editor",
             )
         )
         self.builder_placeholder.setText(
             _fallback(
-                "gcsim.browser.rotation_builder_placeholder",
-                "Action builder is reserved for a later pass. No-code buttons are not wired yet.",
+                "rotation.editor.open",
+                "Open rotation editor",
             )
         )
         self.prepare_button.setText(

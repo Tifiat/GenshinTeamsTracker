@@ -24,6 +24,11 @@ from tests.run_workspace.gcsim.test_rotation_editor import DIALECT, PUBLIC_CASES
 from tests.run_workspace.gcsim.test_rotation_conditions import CONDITION_CASES, with_condition
 from tests.run_workspace.gcsim.test_rotation_variants import VARIANT_CASES, plan_document
 from run_workspace.gcsim.rotation_editor.conditions import compile_condition, recognize
+from run_workspace.gcsim.rotation_editor.conditions import Condition, make_if
+from run_workspace.gcsim.rotation_editor.editing import Selection, insert, move, remove, wrap
+from run_workspace.gcsim.rotation_editor.model import action
+from run_workspace.gcsim.rotation_editor.readable import render
+from tests.run_workspace.gcsim.test_rotation_editor import translator
 
 
 def user_block_pairs() -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
@@ -118,6 +123,32 @@ def condition_variant_pairs() -> tuple[list[tuple[str, str]], list[tuple[str, st
     return generated, truths
 
 
+def structural_pairs() -> list[tuple[str, str]]:
+    pairs = []
+    source = "active furina; furina skill, dash, burst; chasca skill;"
+    document = parse(source, DIALECT)
+    dash = document.root.get("items")[1].get("actions")[1]
+    pairs.append((write(insert(document, Selection(dash.node_id), action("bennett", "burst"))),
+        "active furina; furina skill, dash; bennett burst; furina burst; chasca skill;"))
+    pairs.append((write(wrap(document, Selection(dash.node_id), make_if(document, Condition("energy_full", "furina")))),
+        "active furina; furina skill; if .furina.energy >= .furina.energymax { furina dash; } furina burst; chasca skill;"))
+    pairs.append((write(move(document, Selection(dash.node_id), -1)),
+        "active furina; furina dash, skill, burst; chasca skill;"))
+    document = parse("active furina; furina swap; furina skill; if .furina.onfield { furina burst; } chasca skill;", DIALECT)
+    window = Selection.from_view(render(document, translator()).items[0])
+    pairs.append((write(remove(document, window)), "active furina; chasca skill;"))
+    pairs.append((write(wrap(document, window, make_if(document, Condition("energy_full", "furina")))),
+        "active furina; if .furina.energy >= .furina.energymax { furina swap; furina skill; if .furina.onfield { furina burst; } } chasca skill;"))
+    document = parse("active furina; furina skill; chasca burst;", DIALECT)
+    selected = document.root.get("items")[1].get("actions")[0]
+    pairs.append((write(remove(document, Selection(selected.node_id))), "active furina; chasca burst;"))
+    document = parse("active furina; if .furina.onfield { furina skill; } else { chasca skill; }", DIALECT)
+    branch = document.root.get("items")[1].get("then")
+    pairs.append((write(remove(document, Selection(branch.node_id))),
+        "active furina; if .furina.onfield {} else { chasca skill; }"))
+    return pairs
+
+
 def main() -> int:
     args = argparse.ArgumentParser(description=__doc__)
     args.add_argument("--engine-root", type=Path, required=True)
@@ -132,10 +163,12 @@ def main() -> int:
     pairs = [(source, write(parse(source, DIALECT), preserve=False)) for source in sources]
     generated_pairs, predicates = user_block_pairs()
     advanced, condition_truths = condition_variant_pairs()
+    edits = structural_pairs()
     pairs.extend(generated_pairs)
     pairs.extend(predicates)
     pairs.extend(advanced)
     pairs.extend(condition_truths)
+    pairs.extend(edits)
     payload = "".join(json.dumps({"source": text}) + "\n" for pair in pairs for text in pair)
     environment = dict(os.environ, GOPROXY="off", GOSUMDB="off", GOTOOLCHAIN="local", GOFLAGS="-mod=readonly", GOWORK="off")
     result = subprocess.run([go, "run", str(ROOT / "tools/gcsim_rotation_parse_oracle.go")], cwd=selected,
@@ -160,6 +193,7 @@ def main() -> int:
         return 1
     print(f"PASS: {len(sources)} public source pairs, {len(generated_pairs)} generated block pairs and {len(predicates)} schedule truth checks match upstream parsed trees and configuration.")
     print(f"PASS: {len(advanced)} condition/variant code pairs and {len(condition_truths)} condition truth checks match the same upstream parser.")
+    print(f"PASS: {len(edits)} structural editor changes match independently written expected GCSL in the same parser.")
     print("Parser-only comparison: per-character runtime registration, execution and UI are not exercised.")
     return 0
 

@@ -18,10 +18,12 @@ class EditorSession:
         self.current = parse(source, dialect)
         self.last_complete = self.current if self.current.syntax_complete else None
         self._history: list[Document] = []
+        self._redo: list[Document] = []
         self._undo_limit = undo_limit
 
     def _set(self, document: Document, *, parsed: bool = False) -> Document:
         self._history.append(self.current)
+        self._redo.clear()
         del self._history[:-self._undo_limit]
         self.current = document
         if parsed and document.syntax_complete:
@@ -33,6 +35,18 @@ class EditorSession:
 
     def replace(self, node_id: str, replacement: Node) -> Document:
         return self._set(self.current.replace(node_id, replacement))
+
+    def edit_structure(self, operation, *args) -> Document:
+        """Apply a pure tree edit as one undo step, including incomplete slots."""
+        return self._set(operation(self.current, *args))
+
+    @property
+    def can_undo(self) -> bool:
+        return bool(self._history)
+
+    @property
+    def can_redo(self) -> bool:
+        return bool(self._redo)
 
     def edit_option(self, node_id: str, property_key: str, value: object) -> Document:
         from .context import apply_context_edit
@@ -57,7 +71,14 @@ class EditorSession:
 
     def undo(self) -> Document:
         if self._history:
+            self._redo.append(self.current)
             self.current = self._history.pop()
+        return self.current
+
+    def redo(self) -> Document:
+        if self._redo:
+            self._history.append(self.current)
+            self.current = self._redo.pop()
         return self.current
 
     def code_text(self) -> str | None:

@@ -71,6 +71,38 @@ def _character(game_id: str, element: str, *, level: int | None = 90,
     return DraftCharacter(game_id, game_id, element, "SWORD", 5, level, constellation)
 
 
+def _screenshot_scale_source():
+    """Synthetic identities; only tier counts/total match the 9 Oct user screenshot."""
+    system, _, _ = _source()
+    system["main"]["title"] = "Synthetic 78-character roster"
+    system["costs"].update(agents=[], engines=[], agentsBundles=[], tiers=[
+        {"tier": tier, "minCost": low, "maxCost": high}
+        for tier, low, high in ((0, 1, 14), (1, 15, 44), (2, 45, 49), (3, 50, 64), (4, 65, 1000))
+    ])
+    system["draft"] = {"minMaxCosts": {"agents": [520, 0], "engines": [0, 0]},
+                       "minMaxCount": {"agents": [0, 0], "engines": [0, 0]}}
+    system["preset"] = {"ddAgents": [], "rules": [
+        {"type": "requires", "to": 4, "from": [{"agent": 1, "specification": 0}, {"agent": 1, "specification": 1}]},
+        {"type": "requires", "to": 3, "from": [{"agent": 1}]},
+        {"type": "equals", "to": 1, "from": [{"agent": 0}] * 3, "fromCost": 19},
+        {"type": "equals", "to": 1, "from": [{"agent": 0}] * 4, "fromCost": 20},
+        {"type": "max_count", "count": 50},
+    ]}
+    agents, characters = [], []
+    for tier, count, cost in ((0, 19, 7), (1, 17, 20), (2, 1, 47), (3, 3, 50), (4, 2, 70), (None, 36, 0)):
+        for local_index in range(count):
+            index = len(agents)
+            sid, cid = f"{100 + index:024x}", str(90000000 + index)
+            price = cost + (11 if tier == 1 and local_index < 7 else 0)
+            agents.append({"_id": sid, "enkaId": cid, "attribute": 17,
+                           "name": {"en": f"Fixture {index + 1}"}})
+            system["costs"]["agents"].append({"agent": sid, "costs": [price] * 7 + [0, 0], "specification": 0})
+            if local_index % 2 == 0:
+                system["preset"]["ddAgents"].append(cid)
+            characters.append(_character(cid, "PYRO"))
+    return (system, agents, []), tuple(characters)
+
+
 def _deck(*characters: DraftCharacter, weapons: tuple[DraftWeaponStack, ...] = ()) -> DraftDeck:
     return DraftDeck(1, DRAFT_DECK_KIND, "Synthetic", characters=characters, weapons=weapons)
 
@@ -80,6 +112,40 @@ def _weapon(game_id: str, refinement: int = 1, count: int = 1) -> DraftWeaponSta
 
 
 class AbyssRulesTests(unittest.TestCase):
+    def test_screenshot_scale_roster_with_zero_prices_keeps_known_allocation(self):
+        source, characters = _screenshot_scale_source()
+        rules = AbyssRuleset.from_source(*source)
+        report = evaluate_deck(_deck(*characters), rules)
+        self.assertEqual(report.character_total, 887)
+        self.assertEqual(report.character_count, 78)
+        self.assertEqual(report.tier_counts, {"0": 19, "1": 17, "2": 1, "3": 3, "4": 2})
+        self.assertEqual(sum(row["tier_status"] == "outside" for row in report.character_rows), 36)
+        allocation = allocate_requirements(report.character_rows, rules.to_dict()["preset_rules"])
+        self.assertEqual(allocation["status"], "pass")
+        self.assertEqual([(row["covered"], row["selected"]) for row in allocation["rules"]], [(2, 2), (3, 3)])
+        self.assertEqual([row["filled"] for row in allocation["rules"][0]["slots"]], [2, 2])
+        self.assertEqual([row["used"] for row in allocation["equals"]], [0, 0])
+        self.assertIn("max_character_count_exceeded", {issue.code for issue in report.issues})
+
+    def test_tier_classification_distinguishes_outside_unknown_and_ambiguous(self):
+        source, characters = _screenshot_scale_source()
+        rules = AbyssRuleset.from_source(*source)
+        zero = characters[-1]
+        self.assertEqual(evaluate_deck(_deck(zero), rules).character_rows[0]["tier_status"], "outside")
+        source[0]["costs"]["tiers"][0]["minCost"] = 0
+        inside = evaluate_deck(_deck(zero), AbyssRuleset.from_source(*source)).character_rows[0]
+        self.assertEqual((inside["tier"], inside["tier_status"]), (0, "known"))
+        missing = _character(zero.character_id, "PYRO", level=None)
+        self.assertEqual(evaluate_deck(_deck(missing), rules).character_rows[0]["tier_status"], "unknown")
+        source[0]["costs"]["tiers"][1]["minCost"] = 0
+        ambiguous = evaluate_deck(_deck(zero), AbyssRuleset.from_source(*source)).character_rows[0]
+        self.assertEqual((ambiguous["tier"], ambiguous["tier_status"]), (None, "ambiguous"))
+        source[0]["costs"]["tiers"] = []
+        missing_bands = AbyssRuleset.from_source(*source)
+        missing_report = evaluate_deck(_deck(zero), missing_bands)
+        self.assertEqual(missing_report.character_rows[0]["tier_status"], "unknown")
+        self.assertEqual(allocate_requirements(missing_report.character_rows, missing_bands.to_dict()["preset_rules"])["status"], "unknown")
+
     def test_snapshot_is_pinned_allowlisted_and_roundtrips(self) -> None:
         system, agents, engines = _source()
         system["privateProfile"] = {"token": "never-copy"}

@@ -260,6 +260,10 @@ def format_report(snapshot, report, deck, *, allocation=None):
             "label": _t("tier_band", tier=row["tier"], minimum=_number(row["min_cost"]), maximum=_number(row["max_cost"])),
             "current": str(counts.get(str(row["tier"]), 0)), "status": "info",
         })
+    outside_count = sum(row.get("tier_status") == "outside" for row in report["character_rows"])
+    if outside_count:
+        requirement_rows.append({"label": _t("outside_tiers"), "current": str(outside_count),
+                                 "status": "info", "detail": _t("outside_tiers_detail")})
     for rule_index, rule in enumerate(snapshot["preset_rules"]):
         kind = rule["type"]
         if kind in ("requires", "equals"):
@@ -271,23 +275,30 @@ def format_report(snapshot, report, deck, *, allocation=None):
             if kind == "requires":
                 assigned = allocation_rules.get(rule_index, {})
                 selected = assigned.get("selected", counts.get(str(rule["to"]), 0))
-                covered = assigned.get("covered", 0)
-                requirement_rows.append({"label": text, "current": f"{covered} / {selected}",
+                if not assigned and any(row["tier"] is None and row.get("tier_status") != "outside"
+                                        for row in report["character_rows"]):
+                    selected = None  # An unresolved tier may add another target.
+                covered = assigned.get("covered")
+                requirement_rows.append({"label": text, "current": f"{covered if covered is not None else '—'} / {selected if selected is not None else '?'}",
                                          "status": _coverage_status(covered, selected, allocation),
                                          "detail": _t("coverage_legend")})
-                slots = assigned.get("slots") or [dict(item, required=selected, filled=0) for item in rule["from"]]
+                slots = assigned.get("slots") or [dict(item, required=selected, filled=None) for item in rule["from"]]
                 for slot in slots:
                     requirement_rows.append({"label": _criterion_label(slot),
-                                             "current": f"{slot['filled']} / {slot['required']}",
+                                             "current": f"{slot['filled'] if slot['filled'] is not None else '—'} / {slot['required'] if slot['required'] is not None else '?'}",
                                              "status": _coverage_status(slot["filled"], slot["required"], allocation),
                                              "depth": 1,
                                              **({"character_filter": (slot["tier"], slot["specification"])}
                                                 if slot.get("specification") in (0, 1) else {})})
             else:
                 assigned = allocation_equals.get(rule_index, {})
-                used = assigned.get("used", 0)
-                requirement_rows.append({"label": text, "current": _t("groups_used", count=used),
-                                         "status": "pass" if used else "info"})
+                used = assigned.get("used")
+                settled = allocation.get("complete", False)
+                current = ("—" if used is None else _t("groups_not_needed")
+                           if used == 0 and allocation.get("status") == "pass"
+                           else _t("groups_used", count=used))
+                requirement_rows.append({"label": text, "current": current,
+                                         "status": "unknown" if not settled else "pass" if used else "info"})
                 for group in assigned.get("groups", ()):
                     members = [character_rows[index] for index in group]
                     label = " + ".join(names.get(row["character_id"], row["character_id"]) for row in members)

@@ -1,4 +1,7 @@
 {
+  "app_shell.pvp.rules.groups_not_needed": "Não necessários",
+  "app_shell.pvp.rules.outside_tiers": "Fora das faixas de tiers",
+  "app_shell.pvp.rules.outside_tiers_detail": "O custo desses personagens está fora das faixas das regras selecionadas. Eles não participam das combinações de tiers.",
   "app_shell.pvp.rules.filter_show": "Mostrar",
   "app_shell.pvp.rules.filter_reset": "Limpar",
   "app_shell.pvp.rules.filter_active": "Filtro das regras: T{tier} {role} · encontrados: {count}",

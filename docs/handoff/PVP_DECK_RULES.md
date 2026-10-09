@@ -21,11 +21,11 @@ of tournament legality. Abyss match launch is disabled; Free Draft remains the
 executable match mode. Current Abyss Cup requires Pyro Traveler, whose selection
 is not supported by GTT yet; the UI names the variant and limitation.
 
-The user's 9 October screenshot exposed unreadable new-deck rules: content outside
-the scroll area compressed labels to 4–5px. The repair puts new and saved details
-inside one scroll area, groups costs/requirements/issues, wraps counts and keeps
-scroll position during same-deck updates. Constrained offscreen layout checks and
-rendered previews now pass; this does not accept the native interaction path.
+The user's clipping failure is repaired with one scroll area and wrapped tables.
+A later screenshot exposed zero-price characters outside the declared tier bands
+aborting every combination check. These known non-tier members now stay outside
+the allocation pool without cancelling known T1/T0 coverage. Missing/ambiguous
+tiers remain unknown; the table separately counts out-of-band members.
 Allocation runs off the UI thread with one active and one latest pending request;
 stale results cannot replace a newer composition. Unknown/bounded-out checks use
 `?`, not a failure marker. Tier bands describe character cost, not quantity caps.
@@ -254,3 +254,36 @@ Decks → create/edit Abyss → Show beside T1 DD/support → Clear → change r
 confirm visible cards, unchanged selected counts and readable controls.
 No AppShell/CUA or real account access; owned synthetic preview directories use
 TemporaryDirectory cleanup and no persistent outputs are kept.
+
+## Zero-price allocation repair — 2026-10-09
+
+The user's post-fix screenshot disproved coverage on a full account-shaped roster:
+78 selected characters, tier counts 19/17/1/3/2 and 36 zero-price cards without a
+tier, with T4/T3 and role coverage all zero/unknown despite working Show filters.
+The allocator rejected the first `tier=None` before examining any requirements;
+the formatter then manufactured zero counts for absent allocation results.
+
+`evaluate_deck` now distinguishes one matching band, known cost outside all bands,
+overlapping bands and missing data. The allocator excludes only validated explicit
+outside rows after identity/duplicate checks. They still count toward roster and
+budget limits, but cannot supply T0 or create tier targets. Empty band definitions
+remain unknown, as do missing prices/levels/constellations and ambiguous variants.
+Unknown tiers may hide extra targets, so known coverage alone does not certify
+the whole allocation. No snapshot/archive migration or rule-range change.
+
+The table shows an outside-band count and explanation, em dashes for unavailable
+allocation instead of false zeros, and unknown denominators when unresolved tiers
+could add targets. Optional T0 recipes say Not needed after full coverage without
+that recipe; when used, their counters still name the actual disjoint groups.
+
+59 focused tests PASS: 10 model, 22 allocation, 18 integrated/presentation/async,
+9 right-panel. The synthetic source reproduces all screenshot tier counts and
+total 887 with invented IDs, not copied account data. It reaches T4=2/2,
+DD/support=2/2 each and T3=3/3; deleting 15 T1 through card callbacks uses five
+disjoint real T0 triples while 36 zero-price extras remain. Boundary checks cover
+zero inside/outside T0, unknown/overlapping/empty bands and duplicate identity.
+Independent review caught the empty-band edge; the focused repair checks pass.
+Two 354/650-wide offscreen previews (94,343 bytes) were inspected and removed by
+TemporaryDirectory cleanup. Native acceptance remains user-owned: reopen the
+reported deck, check T4/T3 coverage, remove/re-add T1 and observe T0 groups.
+No CUA/AppShell launch or real account reads/writes; no new source parity claim.

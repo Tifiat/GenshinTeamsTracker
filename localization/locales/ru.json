@@ -1,4 +1,7 @@
 {
+  "app_shell.pvp.rules.groups_not_needed": "Не нужны",
+  "app_shell.pvp.rules.outside_tiers": "Вне диапазонов тиров",
+  "app_shell.pvp.rules.outside_tiers_detail": "Их стоимость не попадает в диапазоны выбранных правил. В сочетаниях тиров они не участвуют.",
   "app_shell.pvp.rules.filter_show": "Показать",
   "app_shell.pvp.rules.filter_reset": "Сбросить",
   "app_shell.pvp.rules.filter_active": "Фильтр правил: T{tier} {role} · найдено: {count}",

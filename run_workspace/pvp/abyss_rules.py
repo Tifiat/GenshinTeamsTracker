@@ -585,6 +585,7 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
                 source_ids=[row["source_id"] for row in candidates])
         source = candidates[0] if len(candidates) == 1 else None
         cost = tier = role = None
+        tier_status = "unknown"
         if source is not None:
             # The selected preset defines role by DD membership. The price-row
             # specification is archival source data, not a character's role.
@@ -597,6 +598,9 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
                 cost = _priced(source["constellation_costs"][item.constellation],
                                source["level_percent"], source["level_flat"], item.level)
                 tier = _tier(cost, data["tiers"])
+                tier_status = ("unknown" if not data["tiers"] else "known" if tier is not None else "ambiguous" if any(
+                    band["min_cost"] <= cost <= band["max_cost"] for band in data["tiers"]
+                ) else "outside")
                 if tier is None:
                     add("character_tier_unmapped", "review", index=index, character_id=item.character_id, cost=cost)
                 else:
@@ -613,7 +617,7 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
         character_rows.append({"index": index, "character_id": item.character_id,
                                "source_id": source["source_id"] if source else None,
                                "names": source["names"] if source else {},
-                               "cost": cost, "tier": tier,
+                               "cost": cost, "tier": tier, "tier_status": tier_status,
                                "specification": role})
 
     by_weapon = {row["game_id"]: row for row in data["weapons"]}

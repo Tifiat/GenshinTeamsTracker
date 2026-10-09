@@ -94,16 +94,24 @@ def allocate_requirements(
                 raise _Unknown("unsupported character row")
             index, cid, sid = row.get("index"), row.get("character_id"), row.get("source_id")
             cost, tier, specification = row.get("cost"), row.get("tier"), row.get("specification")
+            outside_tiers = tier is None and row.get("tier_status") == "outside"
             if (not _integer(index) or index in seen_indexes or not isinstance(cid, str) or not cid
                     or cid in seen_character_ids or not isinstance(sid, str) or not sid
                     or sid in seen_source_ids or not _number(cost)
-                    or not _integer(tier) or (specification is not None and not _integer(specification))):
+                    or (not _integer(tier) and not outside_tiers)
+                    or (specification is not None and not _integer(specification))):
                 raise _Unknown("unknown character identity, cost, tier, or role")
             seen_indexes.add(index)
             seen_character_ids.add(cid)
             seen_source_ids.add(sid)
+            # A priced character outside every declared band (e.g. cost 0 with
+            # T0 starting at 1) is known not to match any tier requirement. It
+            # stays in roster/budget checks, but is neither a target nor support.
+            # Missing/ambiguous tier data must still stay unknown above.
+            if outside_tiers:
+                continue
             members.append(_Member(index, cid, sid, cost, tier, specification, 1 << ordinal))
-        if len(members) > 100:
+        if len(character_rows) > 100:
             raise _Unknown("character limit exceeded")
         members.sort(key=lambda m: (m.character_id, m.source_id, m.index))
         # The bit is an identity, not a position in the sorted array.

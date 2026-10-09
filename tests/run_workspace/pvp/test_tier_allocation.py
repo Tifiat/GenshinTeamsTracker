@@ -24,6 +24,34 @@ def equals(to: int, cost: int, *slots: tuple[int, int | None]) -> dict:
 
 
 class TierAllocationTests(unittest.TestCase):
+    def test_outside_band_members_do_not_cancel_or_supply_tier_allocation(self):
+        rules = [requires(4, (1, 0), (1, 1)), equals(1, 19, *((0, None),) * 3)]
+        outside = dict(row(10, None, cost=0), tier_status="outside")
+        rows = [row(0, 4), row(1, 1, 0), row(2, 1, 1), outside]
+        self.assertEqual(allocate_requirements(rows, rules)["status"], "pass")
+        # Outside-band zero must not become a T0 filler for the three-member recipe.
+        rows = [row(0, 4), row(1, 1, 0), row(2, 0, cost=10), row(3, 0, cost=10), outside]
+        result = allocate_requirements(rows, rules)
+        self.assertEqual(result["status"], "fail")
+        self.assertEqual(result["rules"][0]["slots"][0]["filled"], 1)
+        self.assertEqual(result["equals"][0]["used"], 0)
+        # Three real T0 members do provide the missing support, even with zero-price extras.
+        rows.append(row(4, 0, cost=1))
+        result = allocate_requirements(rows, rules)
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["equals"][0]["groups"], [[2, 3, 4]])
+
+    def test_outside_tiers_cannot_hide_missing_data_or_duplicates(self):
+        outside = dict(row(2, None, cost=0), tier_status="outside")
+        rules = [requires(4, (1, None))]
+        rows = [row(0, 4), row(1, 1)]
+        for uncertain in (dict(outside, cost=None), dict(outside, tier_status="unknown"),
+                          dict(outside, tier_status="ambiguous"), dict(outside, source_id=None),
+                          dict(outside, character_id=rows[0]["character_id"]),
+                          dict(outside, source_id=rows[0]["source_id"])):
+            with self.subTest(row=uncertain):
+                self.assertEqual(allocate_requirements(rows + [uncertain], rules)["status"], "unknown")
+
     def test_t4_t3_share_t1_without_reuse(self) -> None:
         rules = [requires(4, (1, 0), (1, None)), requires(3, (1, None))]
         rows = [row(0, 4), row(1, 3), row(2, 1, 0), row(3, 1, 1)]

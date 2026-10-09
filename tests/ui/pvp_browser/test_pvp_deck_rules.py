@@ -15,7 +15,7 @@ from localization import get_language, set_language, tr
 from run_workspace.pvp.abyss_client import AbyssRulesChoice
 from run_workspace.pvp.abyss_rules import AbyssRuleset, evaluate_deck
 from run_workspace.pvp.deck_preset import load_deck_presets
-from tests.run_workspace.pvp.test_abyss_rules import _character, _deck, _source, _weapon
+from tests.run_workspace.pvp.test_abyss_rules import _character, _deck, _source, _weapon, _screenshot_scale_source
 from tests.ui.pvp_browser.test_pvp_browser import _character_asset
 from ui.pvp_browser.deck_rules import DeckRulesController, format_report
 from ui.pvp_browser.window import PvpDecksWorkspace
@@ -140,6 +140,46 @@ class PvpDeckRulesTest(unittest.TestCase):
         free = self.workspace.rules_ui_state()["requirement_rows"]
         self.assertEqual((free[0]["current"], free[0]["status"]), ("1 / 11", "fail"))
         self.assertFalse(any(row["label"].startswith("T1 ·") for row in free))
+
+    def test_screenshot_scale_counters_settle_and_t0_groups_cover_removed_t1(self):
+        self.workspace.cancel_edit()
+        self.source, characters = _screenshot_scale_source()
+        self.characters = [_character_asset(item.character_id, item.display_name) for item in characters]
+        for asset in self.characters:
+            asset["metadata"]["character"]["constellation"] = 0
+        self.rules = AbyssRuleset.from_source(*self.source)
+        self.workspace.create_deck("Synthetic screenshot roster")
+        self.load_rules()
+        panel = PvpDecksRightPanel(self.workspace)
+        self.addCleanup(panel.close)
+        self.drain()
+
+        def coverage():
+            return [(row["current"], row["status"]) for row in self.workspace.rules_ui_state()["requirement_rows"]
+                    if row.get("detail") == tr("app_shell.pvp.rules.coverage_legend")]
+
+        self.assertEqual(coverage(), [("2 / 2", "pass"), ("3 / 3", "pass")])
+        rows = self.workspace.rules_ui_state()["requirement_rows"]
+        outside = next(row for row in rows if row["label"] == tr("app_shell.pvp.rules.outside_tiers"))
+        self.assertEqual(outside["current"], "36")
+        roles = [row for row in rows if row.get("character_filter")]
+        self.assertEqual([(row["current"], row["status"]) for row in roles], [("2 / 2", "pass")] * 2)
+        self.assertEqual(sum(row["current"] == tr("app_shell.pvp.rules.groups_not_needed") for row in rows), 2)
+        self.workspace.toggle_requirement_filter(1, 0)
+        self.assertEqual(len(self.workspace.character_cards_by_id), 9)
+        self.assertEqual(coverage(), [("2 / 2", "pass"), ("3 / 3", "pass")])
+        self.workspace.clear_requirement_filter()
+
+        # Keep one physical T1 of each role; five real T0 triples must cover the rest.
+        for asset in self.characters[21:36]:
+            self.workspace.character_cards_by_id[asset["metadata"]["character"]["id"]].clicked.emit(asset)
+        self.drain()
+        self.assertEqual(coverage(), [("2 / 2", "pass"), ("3 / 3", "pass")])
+        allocation = self.workspace.rules_controller._allocation_result
+        self.assertEqual([row["used"] for row in allocation["equals"]], [5, 0])
+        groups = allocation["equals"][0]["groups"]
+        self.assertEqual(len({index for group in groups for index in group}), 15)
+        self.assertEqual(self.workspace.selected_counts()[0], 63)
 
     def test_role_condition_buttons_filter_without_changing_the_deck(self):
         self.source[0]["preset"]["rules"][0]["from"].append({"agent": 1, "specification": 1})
@@ -289,6 +329,14 @@ class DeckRulesPresentationTest(unittest.TestCase):
         pending = format_report(snapshot, report, deck, allocation={"status": "unknown", "complete": False, "reason": "budget"})
         combination_rows = [row for row in pending["requirement_rows"] if row.get("detail") == tr("app_shell.pvp.rules.coverage_legend") or row.get("depth") == 1]
         self.assertTrue(all(row["status"] == "unknown" for row in combination_rows))
+        self.assertTrue(all(row["current"].startswith("— /") for row in combination_rows))
+        equivalent = next(row for row in pending["requirement_rows"] if row["label"].startswith("T0 + T0 + T0"))
+        self.assertEqual((equivalent["current"], equivalent["status"]), ("—", "unknown"))
+        report["character_rows"][0]["tier"] = None
+        uncertain = format_report(snapshot, report, deck)
+        parents = [row for row in uncertain["requirement_rows"]
+                   if row.get("detail") == tr("app_shell.pvp.rules.coverage_legend")]
+        self.assertTrue(all((row["current"], row["status"]) == ("— / ?", "unknown") for row in parents))
 
     def test_weapon_issues_use_names_and_unknown_conditions_have_readable_fallback(self):
         language = get_language()

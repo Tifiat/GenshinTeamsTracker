@@ -6,14 +6,13 @@ loads the public Abyss catalog on an explicit action, offers the latest live
 version per family plus Free Draft, and saves a validated rules snapshot with
 the deck. Character cost/tier badges, weapon base prices, budgets, tier bands,
 required combinations and scoped issues are displayed without replacing the
-existing selection grids. Older saved versions remain viewable; a current
-catalog is required to save an Abyss edit, and a known newer version must be
-adopted explicitly. Cancel preserves the original deck.
+existing selection grids. Older versions remain viewable; saving requires a
+current catalog and explicit adoption of a known newer version. Cancel preserves
+the original deck.
 
-Nine current DEFAULT source families parsed in a fresh in-memory public check;
-the tenth, Abyss Ascend Test, requires unsupported FRENCH_COST and produces a
-specific message without changing the deck. Known price/count/required-character
-checks run. A requirement table now shows live values, per-target/role coverage
+Nine DEFAULT source families are supported; FRENCH_COST remains unsupported.
+Known price/count/required-character checks run. A requirement table shows
+live values, per-target/role coverage
 and a shared non-reusing allocation, including alternative T0 groups. Exact site
 allocation parity, zero upper bounds and parts of bundle matching remain
 unverified. These are editable deck drafts, not certification
@@ -33,11 +32,13 @@ Physical character roles use the selected preset's DD-ID list, correcting the
 earlier price-field mapping. Role-condition Show/Clear actions filter this deck's
 grid by tier and role; filters reset on deck/rules changes and never alter selection.
 
-Scoped automated and live-source evidence is below. No Computer Use, application
-launch or real-account import/write. The user's Worker4 import was not inspected.
-Next is user recheck of the table in Decks create/edit, then source parity and
-match schedule work. Traveler is the first independent task for another chat in
-the common queue; selection responsiveness is recorded for later diagnosis. The
+Selection now updates one retained card and the open details in place. Inventory
+projection/prices and unchanged allocation inputs are reused until their source
+changes. The [performance receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
+owns synthetic timings, regression tests and the downstream pipeline check.
+No Computer Use, application launch or real-account import/write. Next is the
+user's create/edit recheck, then source parity and match schedule work. Traveler
+remains the first independent task for another chat. The
 [source receipt](PVP_ABYSS_SOURCE_AUDIT.md) retains API/document conflicts;
 organizer prose is not silently merged into live rules.
 <!-- /handoff-current -->

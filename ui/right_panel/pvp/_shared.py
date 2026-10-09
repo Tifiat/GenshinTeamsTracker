@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from pathlib import Path
 from run_workspace.profile_context import account_asset_path
 from typing import Any
@@ -389,8 +389,10 @@ QPushButton#pvp_postdraft_player_toggle:hover {{
 
 def _active_draft_summary_lines(
     session: PvpActiveDraftSession,
+    *,
+    board: Mapping[str, Any] | None = None,
 ) -> list[str]:
-    board = session.board_dict()
+    board = session.board_dict() if board is None else board
     draft_system = _mapping(board.get("draft_system"))
     requirement = board.get("current_requirement")
     requirement_text = _format_requirement(requirement if isinstance(requirement, Mapping) else None)
@@ -647,6 +649,7 @@ def build_pvp_draft_grid_item(
     portrait_path: str,
     result_seat: str = "",
     result_zone: str = "",
+    layer_path_cache: MutableMapping[tuple[str, str], str] | None = None,
 ) -> PixelIconGridItem:
     """Build the shared portrait-first item used by Draft pool and results."""
     character_id = _text(entry.get("character_id"))
@@ -710,7 +713,12 @@ def build_pvp_draft_grid_item(
         },
         pixmap_cache_key_parts=("pvp_draft", character_id),
     )
-    return with_character_card_layers(item, entry, show_constellation=False)
+    return with_character_card_layers(
+        item,
+        entry,
+        show_constellation=False,
+        layer_path_cache=layer_path_cache,
+    )
 
 
 def _draft_entries_by_id(board: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:

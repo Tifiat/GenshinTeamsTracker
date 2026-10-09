@@ -275,7 +275,7 @@ class PvpDraftRightPanel(QWidget):
             return
 
         self._reset_postdraft_pane_geometry()
-        board = session.board_dict()
+        board = self.workspace.draft_board_dict()
         if not post_draft_stage:
             self.action_label.setText("")
             self.action_detail_label.setText("")
@@ -513,6 +513,7 @@ class PvpDraftRightPanel(QWidget):
             else {}
         )
         items: list[Any] = []
+        layer_path_cache: dict[tuple[str, str], str] = {}
         for character_id_value in character_ids:
             character_id = str(character_id_value or "").strip()
             if not character_id:
@@ -527,6 +528,7 @@ class PvpDraftRightPanel(QWidget):
                     ),
                     result_seat=seat,
                     result_zone=zone,
+                    layer_path_cache=layer_path_cache,
                 )
             )
         return items

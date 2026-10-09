@@ -70,6 +70,11 @@ class DeckRulesController(QObject):
         self._allocation_generation = 0
         self._allocation_job = None
         self._allocation_pending = None
+        self._report_rules = None
+        self._report_characters = None
+        self._report_weapons = None
+        self._report = None
+        self._snapshot = None
 
     @property
     def requirements_loading(self):
@@ -81,7 +86,7 @@ class DeckRulesController(QObject):
         self._allocation_rules, self._allocation_characters = rules, deck.characters
         self._allocation_generation += 1
         self._allocation_result = {"status": "unknown", "complete": False, "reason": "pending"}
-        self._allocation_pending = (self._allocation_generation, report["character_rows"], rules.to_dict()["preset_rules"])
+        self._allocation_pending = (self._allocation_generation, report["character_rows"], self._snapshot["preset_rules"])
         if self._allocation_job is None:
             self._start_allocation()
 
@@ -107,6 +112,8 @@ class DeckRulesController(QObject):
             self._allocation_generation += 1
         self._allocation_rules = self._allocation_characters = self._allocation_result = None
         self._allocation_pending = None
+        self._report_rules = self._report_characters = self._report_weapons = None
+        self._report = self._snapshot = None
 
     def refresh(self):
         return self._start("catalog", None, abyss_client.list_latest_rulesets)
@@ -172,20 +179,28 @@ class DeckRulesController(QObject):
                     "status": "pass" if count >= minimum else "fail",
                 }, {"label": _t("free_costs"), "current": "—", "status": "info"})
             return state
+        if rules is not self._report_rules:
+            self._report_rules = rules
+            self._snapshot = rules.to_dict()
+            self._report = self._report_characters = self._report_weapons = None
+        source = self._snapshot["source"]
         try:
-            version_text = datetime.fromisoformat(rules.updated_at.replace("Z", "+00:00")).astimezone(timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
+            version_text = datetime.fromisoformat(source["updated_at"].replace("Z", "+00:00")).astimezone(timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
         except ValueError:
-            version_text = rules.updated_at
-        state.update(source_title=rules.title, version_text=version_text, freshness="unknown")
-        choice = next((row for row in self.catalog if row.family_id == rules.root_id), None)
+            version_text = source["updated_at"]
+        state.update(source_title=source["title"], version_text=version_text, freshness="unknown")
+        choice = next((row for row in self.catalog if row.family_id == source["root_id"]), None)
         if self.catalog_current and choice is not None:
-            is_latest = choice.system_id == rules.system_id and choice.updated_at == rules.updated_at
+            is_latest = choice.system_id == source["system_id"] and choice.updated_at == source["updated_at"]
             state["freshness"] = "current" if is_latest else "update"
             state["update_id"] = "" if is_latest else "abyss:" + choice.system_id
         if deck is not None:
-            report = evaluate_deck(deck, rules).to_dict()
+            if self._report is None or self._report_characters != deck.characters or self._report_weapons != deck.weapons:
+                self._report = evaluate_deck(deck, rules).to_dict()
+                self._report_characters, self._report_weapons = deck.characters, deck.weapons
+            report = self._report
             self._queue_allocation(rules, deck, report)
-            state.update(format_report(rules.to_dict(), report, deck, allocation=self._allocation_result))
+            state.update(format_report(self._snapshot, report, deck, allocation=self._allocation_result))
         return state
 
 

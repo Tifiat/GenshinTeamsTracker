@@ -4167,7 +4167,40 @@ class CharacterWeaponWorkspace(QWidget):
             count=len(assets),
         )
 
-    def set_auto_weapon_type_filter(self, weapon_type_key: str | None) -> bool:
+    def refresh_weapons_incremental(self) -> None:
+        """Refresh scoped weapon payloads without rebuilding unchanged grid images."""
+        assets, _load_ms, _load_source = self._weapon_asset_items()
+        assets = [asset for asset in assets if self._weapon_matches_filters(asset)]
+        assets.sort(key=self._weapon_sort_key)
+        result = build_asset_grid_items(
+            assets,
+            key_for_asset=_asset_grid_key,
+            outline_for_asset=lambda asset, _item_id: _weapon_occupied_outline(asset),
+            overlay_icons_for_asset=lambda asset, _item_id: _weapon_owner_overlay_icons(asset),
+            properties_for_asset=lambda asset, _item_id: {
+                "base_size": WEAPON_PICKER_ICON_SIZE,
+                "has_owner_badges": bool(_asset_owner_badges(asset)),
+            },
+        )
+        self.weapon_grid.set_items_incremental(result.items)
+        self._weapon_grid_assets_by_id = result.assets_by_id
+        self._last_weapon_grid_keys = tuple(_asset_grid_key(asset) for asset in assets)
+        previous_cards = self._weapon_cards_by_key
+        cards = {}
+        for item in result.items:
+            asset = result.assets_by_id[item.item_id]
+            card = previous_cards.get(item.item_id)
+            if card is None:
+                card = AssetGridItemHandle(self.weapon_grid, item.item_id, asset)
+            else:
+                card.asset = dict(asset)
+                card.owner_badges = _asset_owner_badges(asset)
+            cards[item.item_id] = card
+        self._weapon_cards_by_key = cards
+
+    def set_auto_weapon_type_filter(
+        self, weapon_type_key: str | None, *, reload_grid: bool = True
+    ) -> bool:
         key = _text(weapon_type_key)
         known_keys = {str(value) for value, _icon_name, _tooltip_key in WEAPON_TYPE_FILTERS}
         if key not in known_keys:
@@ -4182,7 +4215,7 @@ class CharacterWeaponWorkspace(QWidget):
             button.setChecked(bool(key and value == key))
             button.blockSignals(False)
         changed = previous_filters != self._weapon_type_filters
-        if changed:
+        if changed and reload_grid:
             self.reload_weapons()
         log_perf(
             "weapon_auto_filter",

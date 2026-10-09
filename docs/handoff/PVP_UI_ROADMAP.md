@@ -514,6 +514,12 @@ Hot-seat layout direction:
   the stage changes or the panel is being created. Collapsed player zones should
   shrink to a compact full-width toggle row, including when both players are
   collapsed.
+- Deck membership changes retain both painted grids and the open requirement
+  panel. Draft readers reuse a projection per controller state; hidden Play
+  validation is not part of a pick/ban click. Weapon ownership refreshes retain
+  unchanged pixmaps, and timer edits do not refresh build panels. The
+  [9 October receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
+  owns measured scope, regressions and the pending user-native recheck.
 - Weapon assignment identity must use the scoped backend stack key selected from
   the draft deck. UI display/type names are not authority; numeric Hoyo weapon
   type ids and localized names must resolve to the same canonical stack key the

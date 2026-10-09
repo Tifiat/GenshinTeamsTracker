@@ -43,6 +43,17 @@ class PvpDecksRightPanel(QWidget):
         self.pending_delete_deck_id = ""
         self.deck_row_frames: dict[str, QFrame] = {}
         self.selected_info_labels: dict[str, QLabel] = {}
+        self._rules_meta_labels: dict[str, QLabel] = {}
+        self._rules_line_sections: dict[str, tuple[QFrame, QVBoxLayout, list[QLabel]]] = {}
+        self._requirement_rows: list[dict] = []
+        self._requirement_table: QGridLayout | None = None
+        self._requirement_section: QFrame | None = None
+        self._expanded_layout: QVBoxLayout | None = None
+        self._row_count_labels: dict[str, QLabel] = {}
+        self._status_pixmaps = {
+            "pass": tinted_svg_pixmap("check", 14, UI_STATE_SUCCESS),
+            "fail": tinted_svg_pixmap("x", 14, UI_STATE_DANGER),
+        }
         self.edit_name_edit: QLineEdit | None = None
         self.ruleset_button: QComboBox | None = None
         self.rules_refresh_button: QPushButton | None = None
@@ -127,10 +138,12 @@ class PvpDecksRightPanel(QWidget):
         self._init_edit_shortcuts()
         self.create_name_edit.returnPressed.connect(self._on_create_clicked)
         self.workspace.state_changed.connect(self.refresh)
+        details_changed = getattr(self.workspace, "details_changed", None)
+        if details_changed is not None:
+            details_changed.connect(self.refresh_details)
         self.workspace.save_edit_requested.connect(self._save_active_edit)
         self.workspace.cancel_edit_requested.connect(self._cancel_active_edit)
         self.retranslate_ui()
-        self.refresh()
 
     def refresh(self) -> None:
         active = self.workspace.active_preset()
@@ -148,6 +161,28 @@ class PvpDecksRightPanel(QWidget):
         self.status_label.setText(status)
         self.status_label.setVisible(bool(status))
         self._sync_edit_shortcuts()
+        self._scroll_restore_timer.start(0)
+
+    def refresh_details(self) -> None:
+        """Update the selected draft after a membership/allocation change."""
+        preset = self.workspace.active_preset()
+        if preset is None or self._expanded_layout is None:
+            return
+        self._restore_scroll_value = self.deck_list_scroll.verticalScrollBar().value()
+        state = self.workspace.rules_ui_state()
+        self._update_rules_details(state)
+        self.selected_info_labels["counts"].setText(
+            tr("app_shell.pvp.decks.counts").format(
+                characters=len(preset.character_ids), weapons=len(preset.weapon_refs)
+            )
+        )
+        self.selected_info_labels["validation"].setText(self._validation_text())
+        count = self._row_count_labels.get(preset.deck_id)
+        if count is not None:
+            count.setText(f"({len(preset.character_ids) + len(preset.weapon_refs)})")
+        status = self.workspace._last_status
+        self.status_label.setText(status)
+        self.status_label.setVisible(bool(status))
         self._scroll_restore_timer.start(0)
 
     def _restore_scroll_position(self) -> None:
@@ -280,6 +315,15 @@ class PvpDecksRightPanel(QWidget):
         _clear_layout(self.new_deck_info_layout)
         self.deck_row_frames.clear()
         self.selected_info_labels.clear()
+        self._rules_meta_labels.clear()
+        self._rules_line_sections.clear()
+        self._requirement_rows.clear()
+        self._requirement_table = None
+        self._requirement_section = None
+        self._requirement_content = None
+        self._requirement_row_shape = None
+        self._expanded_layout = None
+        self._row_count_labels.clear()
         self.edit_name_edit = None
         self.ruleset_button = None
         self.rules_refresh_button = None
@@ -389,6 +433,7 @@ class PvpDecksRightPanel(QWidget):
             count_label = QLabel(f"({len(preset.character_ids) + len(preset.weapon_refs)})")
             count_label.setObjectName("small_muted")
             top.addWidget(count_label)
+            self._row_count_labels[preset.deck_id] = count_label
 
             edit_button = self._row_icon_button("edit", tr("artifact.build.edit"))
             edit_button.clicked.connect(self.workspace.begin_edit)
@@ -417,6 +462,7 @@ class PvpDecksRightPanel(QWidget):
         layout = QVBoxLayout(info)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
+        self._expanded_layout = layout
 
         rules_state = self.workspace.rules_ui_state()
         rules_header = QHBoxLayout()
@@ -466,53 +512,21 @@ class PvpDecksRightPanel(QWidget):
         self.rules_refresh_button.clicked.connect(self.workspace.refresh_rules_catalog)
         layout.addWidget(self.rules_refresh_button)
 
-        if rules_state.get("loading"):
-            layout.addWidget(self._rules_detail_label(tr("app_shell.pvp.decks.rules_loading")))
-        source_title = str(rules_state.get("source_title", "")).strip()
-        if source_title:
-            layout.addWidget(self._rules_detail_label(
-                tr("app_shell.pvp.decks.rules_source").format(source=source_title)
-            ))
-        version_text = str(rules_state.get("version_text", "")).strip()
-        if version_text:
-            layout.addWidget(self._rules_detail_label(
-                tr("app_shell.pvp.decks.rules_version").format(version=version_text)
-            ))
-        freshness = str(rules_state.get("freshness", "unknown"))
-        freshness_keys = {
-            "current": "rules_current",
-            "update": "rules_update_available",
-            "unknown": "rules_unknown",
-        }
-        if freshness in freshness_keys:
-            layout.addWidget(self._rules_detail_label(
-                tr("app_shell.pvp.decks." + freshness_keys[freshness])
-            ))
-        if freshness == "update" and rules_state.get("update_id"):
-            self.rules_update_button = QPushButton(
-                tr("app_shell.pvp.decks.rules_update_button")
-            )
-            self.rules_update_button.setObjectName("pvp_secondary_button")
-            self.rules_update_button.setEnabled(not bool(rules_state.get("loading")))
-            self.rules_update_button.clicked.connect(self.workspace.update_ruleset)
-            layout.addWidget(self.rules_update_button)
+        for name in ("loading", "source", "version", "freshness"):
+            label = self._rules_detail_label("")
+            layout.addWidget(label)
+            self._rules_meta_labels[name] = label
+        self.rules_update_button = QPushButton(tr("app_shell.pvp.decks.rules_update_button"))
+        self.rules_update_button.setObjectName("pvp_secondary_button")
+        self.rules_update_button.clicked.connect(self.workspace.update_ruleset)
+        layout.addWidget(self.rules_update_button)
 
-        self._add_rules_lines(
-            layout, "rules_costs_heading", rules_state.get("summary_lines", ())
-        )
-        requirement_rows = rules_state.get("requirement_rows", ())
-        if requirement_rows:
-            self._add_requirement_rows(layout, requirement_rows, rules_state.get("active_character_filter"))
-        else:
-            self._add_rules_lines(
-                layout, "rules_requirements_heading", rules_state.get("requirement_lines", ())
-            )
-        self._add_rules_lines(
-            layout, "rules_issues_heading", rules_state.get("issue_lines", ())
-        )
-        error_text = str(rules_state.get("error_text", "")).strip()
-        if error_text:
-            self._add_rules_lines(layout, "rules_error_heading", (error_text,))
+        self._add_rules_lines(layout, "rules_costs_heading", ())
+        self._add_rules_lines(layout, "rules_requirements_heading", ())
+        self._add_requirement_rows(layout, (), None)
+        self._add_rules_lines(layout, "rules_issues_heading", ())
+        self._add_rules_lines(layout, "rules_error_heading", ())
+        self._update_rules_details(rules_state)
 
         counts_label = self._info_label(
             tr("app_shell.pvp.decks.counts").format(
@@ -546,8 +560,6 @@ class PvpDecksRightPanel(QWidget):
         return label
 
     def _add_rules_lines(self, layout: QVBoxLayout, heading_key: str, lines) -> None:
-        if not lines:
-            return
         section = QFrame()
         section.setObjectName("pvp_rules_section")
         section.setProperty("rulesSection", heading_key)
@@ -557,9 +569,56 @@ class PvpDecksRightPanel(QWidget):
         heading = self._rules_detail_label(tr("app_shell.pvp.decks." + heading_key))
         heading.setObjectName("pvp_rules_heading")
         content.addWidget(heading)
-        for line in lines:
-            content.addWidget(self._rules_detail_label(str(line)))
         layout.addWidget(section)
+        self._rules_line_sections[heading_key] = (section, content, [])
+        self._update_rules_lines(heading_key, lines)
+
+    def _update_rules_lines(self, heading_key: str, lines) -> None:
+        section, content, labels = self._rules_line_sections[heading_key]
+        lines = tuple(str(line) for line in lines)
+        while len(labels) < len(lines):
+            label = self._rules_detail_label("")
+            content.addWidget(label)
+            labels.append(label)
+        for index, label in enumerate(labels):
+            if index < len(lines):
+                label.setText(lines[index])
+                label.show()
+            else:
+                label.hide()
+        section.setVisible(bool(lines))
+
+    def _update_rules_details(self, state: dict) -> None:
+        loading = bool(state.get("loading"))
+        source = str(state.get("source_title", "")).strip()
+        version = str(state.get("version_text", "")).strip()
+        freshness = str(state.get("freshness", "unknown"))
+        freshness_keys = {
+            "current": "rules_current", "update": "rules_update_available",
+            "unknown": "rules_unknown",
+        }
+        texts = {
+            "loading": tr("app_shell.pvp.decks.rules_loading") if loading else "",
+            "source": tr("app_shell.pvp.decks.rules_source").format(source=source) if source else "",
+            "version": tr("app_shell.pvp.decks.rules_version").format(version=version) if version else "",
+            "freshness": tr("app_shell.pvp.decks." + freshness_keys[freshness])
+                         if freshness in freshness_keys else "",
+        }
+        for name, value in texts.items():
+            label = self._rules_meta_labels[name]
+            label.setText(value)
+            label.setVisible(bool(value))
+        self.rules_update_button.setVisible(freshness == "update" and bool(state.get("update_id")))
+        self.rules_update_button.setEnabled(not loading)
+        self._update_rules_lines("rules_costs_heading", state.get("summary_lines", ()))
+        rows = tuple(state.get("requirement_rows", ()))
+        self._update_rules_lines(
+            "rules_requirements_heading", state.get("requirement_lines", ()) if not rows else ()
+        )
+        self._update_requirement_rows(rows, state.get("active_character_filter"))
+        self._update_rules_lines("rules_issues_heading", state.get("issue_lines", ()))
+        error = str(state.get("error_text", "")).strip()
+        self._update_rules_lines("rules_error_heading", (error,) if error else ())
 
     def _add_requirement_rows(self, layout: QVBoxLayout, rows, active_filter=None) -> None:
         section = QFrame()
@@ -573,8 +632,66 @@ class PvpDecksRightPanel(QWidget):
         )
         heading.setObjectName("pvp_rules_heading")
         content.addWidget(heading)
+        self._requirement_section = section
+        self._requirement_content = content
+        layout.addWidget(section)
+        self._update_requirement_rows(tuple(rows), active_filter)
+
+    @staticmethod
+    def _requirement_shape(rows) -> tuple:
+        return tuple(
+            (bool(str(entry.get("detail", "")).strip()),
+             tuple(entry["character_filter"]) if entry.get("character_filter") is not None else None,
+             entry.get("depth") == 1)
+            for entry in rows
+        )
+
+    def _update_requirement_rows(self, rows, active_filter=None) -> None:
+        self._requirement_section.setVisible(bool(rows))
+        if not rows:
+            return
+        shape = self._requirement_shape(rows)
+        if shape != getattr(self, "_requirement_row_shape", None):
+            if self._requirement_table is not None:
+                self._requirement_content.removeItem(self._requirement_table)
+                _clear_layout(self._requirement_table)
+                self._requirement_table.deleteLater()
+            self._requirement_rows = []
+            self._requirement_row_shape = shape
+            self._populate_requirement_rows(rows, active_filter)
+            return
+        for entry, widgets in zip(rows, self._requirement_rows):
+            label = widgets["label"]
+            label.setText(str(entry.get("label", "")))
+            widgets["current"].setText(str(entry.get("current", "")))
+            if widgets["detail"] is not None:
+                widgets["detail"].setText(str(entry.get("detail", "")).strip())
+            button = widgets["button"]
+            if button is not None:
+                active = tuple(entry["character_filter"]) == active_filter
+                button.setChecked(active)
+                button.setText(tr("app_shell.pvp.rules.filter_reset" if active else "app_shell.pvp.rules.filter_show"))
+                button.setAccessibleName(button.text() + ": " + label.text())
+            self._set_requirement_status(widgets["marker"], str(entry.get("status", "info")))
+
+    def _set_requirement_status(self, marker: QLabel, status: str) -> None:
+        if status not in ("pass", "fail", "unknown", "info"):
+            status = "info"
+        if marker.property("requirementStatus") == status:
+            return
+        marker.setProperty("requirementStatus", status)
+        marker.setAccessibleName(tr("app_shell.pvp.rules.status_" + status))
+        if status in self._status_pixmaps:
+            marker.setText("")
+            marker.setPixmap(self._status_pixmaps[status])
+        else:
+            marker.clear()
+            marker.setText("?" if status == "unknown" else "—")
+
+    def _populate_requirement_rows(self, rows, active_filter=None) -> None:
 
         table = QGridLayout()
+        self._requirement_table = table
         table.setObjectName("pvp_requirement_table")
         table.setContentsMargins(0, 0, 0, 0)
         table.setHorizontalSpacing(6)
@@ -596,7 +713,6 @@ class PvpDecksRightPanel(QWidget):
                 header.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
             table.addWidget(header, 0, column)
 
-        status_markers = {"pass", "fail", "unknown", "info"}
         next_row = 1
         for entry in rows:
             label = self._rules_detail_label(str(entry.get("label", "")))
@@ -605,6 +721,7 @@ class PvpDecksRightPanel(QWidget):
                 # QLabel.indent also indents the top edge with AlignTop.
                 label.setContentsMargins(12, 0, 0, 0)
             criterion = entry.get("character_filter")
+            button = None
             if criterion is not None:
                 description = QWidget()
                 line = QHBoxLayout(description)
@@ -631,27 +748,16 @@ class PvpDecksRightPanel(QWidget):
             current.setFixedWidth(62)
             table.addWidget(current, next_row, 1)
 
-            status = str(entry.get("status", "info"))
-            if status not in status_markers:
-                status = "info"
             marker = QLabel()
             marker.setObjectName("pvp_requirement_status")
             marker.setFixedWidth(54)
-            marker.setProperty("requirementStatus", status)
             marker.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
-            marker.setAccessibleName(tr("app_shell.pvp.rules.status_" + status))
-            if status in ("pass", "fail"):
-                icon_name, color = (
-                    ("check", UI_STATE_SUCCESS) if status == "pass"
-                    else ("x", UI_STATE_DANGER)
-                )
-                marker.setPixmap(tinted_svg_pixmap(icon_name, 14, color))
-            else:
-                marker.setText("?" if status == "unknown" else "—")
+            self._set_requirement_status(marker, str(entry.get("status", "info")))
             table.addWidget(marker, next_row, 2)
             next_row += 1
 
             detail = str(entry.get("detail", "")).strip()
+            detail_label = None
             if detail:
                 detail_label = self._rules_detail_label(detail)
                 detail_label.setObjectName("pvp_requirement_detail")
@@ -659,9 +765,12 @@ class PvpDecksRightPanel(QWidget):
                     detail_label.setContentsMargins(12, 0, 0, 0)
                 table.addWidget(detail_label, next_row, 0, 1, 2)
                 next_row += 1
+            self._requirement_rows.append({
+                "label": label, "current": current, "marker": marker,
+                "detail": detail_label, "button": button,
+            })
 
-        content.addLayout(table)
-        layout.addWidget(section)
+        self._requirement_content.addLayout(table)
 
     def _info_label(self, text: str) -> QLabel:
         label = QLabel(text)

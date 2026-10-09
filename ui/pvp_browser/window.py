@@ -47,6 +47,8 @@ from run_workspace.pvp.deck_preset import (
     character_id_from_asset,
     create_deck_preset_from_account_assets,
     deck_preset_to_draft_deck,
+    draft_character_from_asset,
+    draft_weapon_stack_from_asset,
     delete_deck_preset,
     load_deck_presets,
     rename_deck_preset,
@@ -57,7 +59,7 @@ from run_workspace.pvp.deck_preset import (
     weapon_ref_from_asset,
 )
 from run_workspace.pvp.account_deck_copy import copy_deck_for_player_2
-from run_workspace.pvp.deck import DraftDeck, FREE_DRAFT_V0_RULESET_ID
+from run_workspace.pvp.deck import DraftDeck, DraftDeckRulesetRef, FREE_DRAFT_V0_RULESET_ID, FREE_DRAFT_V0_RULESET_NAME
 from run_workspace.pvp.abyss_rules import AbyssRuleset, evaluate_deck
 from ui.pvp_browser.deck_rules import DeckRulesController
 from run_workspace.pvp.free_draft_controller import (
@@ -450,6 +452,7 @@ QWidget#pvp-postdraft-source-grid-viewport {{
 
 class PvpDecksWorkspace(QWidget):
     state_changed = Signal()
+    details_changed = Signal()
     save_edit_requested = Signal()
     cancel_edit_requested = Signal()
 
@@ -487,13 +490,20 @@ class PvpDecksWorkspace(QWidget):
         self._last_status = ""
         self.rules_controller = DeckRulesController(self)
         self.rules_controller.changed.connect(self._rules_changed)
-        self.rules_controller.requirements_changed.connect(self.state_changed.emit)
+        self.rules_controller.requirements_changed.connect(self.details_changed.emit)
         self.rules_controller.rules_received.connect(self._rules_received)
         self._rules_edit_generation = 0
         self._rules_snapshot_cache = None
         self._rules_model_cache = None
         self._character_rule_rows = {}
         self._weapon_rule_rows = {}
+        self._inventory_inputs = None
+        self._inventory_draft = None
+        self._inventory_characters = {}
+        self._inventory_weapons = {}
+        self._inventory_weapon_assets = {}
+        self._inventory_weapon_keys = ()
+        self._inventory_price_rules = None
         self.character_cards_by_id: dict[str, Any] = {}
         self.weapon_cards_by_key: dict[str, Any] = {}
         self._character_grid_assets_by_id: dict[str, dict[str, Any]] = {}
@@ -626,10 +636,40 @@ class PvpDecksWorkspace(QWidget):
     def rules_ui_state(self):
         preset = self.active_preset()
         rules = self.active_rules()
-        deck = deck_preset_to_draft_deck(preset, self.character_assets, self.weapon_assets) if preset and rules else None
+        deck = self._draft_for_preset(preset) if preset and rules else None
         state = self.rules_controller.ui_state(preset, editable=self.is_editing, rules=rules, deck=deck)
         state["active_character_filter"] = self._character_requirement_filter
         return state
+
+    def _ensure_inventory_draft(self) -> None:
+        inputs = (self.character_assets, self.weapon_assets)
+        if self._inventory_inputs and all(old is new for old, new in zip(self._inventory_inputs, inputs)):
+            return
+        inventory = PvpDeckPreset(
+            deck_id="inventory", name="",
+            character_ids=tuple(character_id_from_asset(asset) for asset in self.character_assets),
+            weapon_refs=tuple(ref for asset in self.weapon_assets if (ref := weapon_ref_from_asset(asset)) is not None),
+        )
+        self._inventory_draft = deck_preset_to_draft_deck(inventory, self.character_assets, self.weapon_assets)
+        self._inventory_characters = {item.character_id: item for item in self._inventory_draft.characters}
+        self._inventory_weapon_keys = tuple(ref.key for ref in inventory.weapon_refs)
+        self._inventory_weapons = dict(zip(inventory.weapon_refs, self._inventory_draft.weapons))
+        self._inventory_weapon_assets = {ref.key: asset for asset in self.weapon_assets
+                                         if (ref := weapon_ref_from_asset(asset)) is not None}
+        self._inventory_inputs = inputs
+        self._inventory_price_rules = None
+
+    def _draft_for_preset(self, preset: PvpDeckPreset) -> DraftDeck:
+        """Project current members for validation; exports build their own source metadata."""
+        self._ensure_inventory_draft()
+        characters = tuple(self._inventory_characters.get(cid) or draft_character_from_asset(
+            character_id=cid, asset=None) for cid in preset.character_ids)
+        weapons = tuple(self._inventory_weapons.get(ref) or draft_weapon_stack_from_asset(
+            ref=ref, asset=self._inventory_weapon_assets.get(ref.key)) for ref in preset.weapon_refs)
+        return replace(self._inventory_draft, deck_name=preset.name, characters=characters, weapons=weapons,
+                       ruleset_ref=DraftDeckRulesetRef(ruleset_id=preset.ruleset_id,
+                           ruleset_name=(str(preset.rules_snapshot.get("source", {}).get("title") or preset.ruleset_id)
+                                         if preset.rules_snapshot else FREE_DRAFT_V0_RULESET_NAME)))
 
     def toggle_requirement_filter(self, tier: int, role: int) -> None:
         rules = self.active_rules()
@@ -868,11 +908,7 @@ class PvpDecksWorkspace(QWidget):
         preset = self.active_preset()
         if preset is None:
             return None
-        draft_deck = deck_preset_to_draft_deck(
-            preset,
-            self.character_assets,
-            self.weapon_assets,
-        )
+        draft_deck = self._draft_for_preset(preset)
         return validate_draft_deck(
             draft_deck, check_free_draft_minimum=preset.ruleset_id == FREE_DRAFT_V0_RULESET_ID,
         )
@@ -889,23 +925,23 @@ class PvpDecksWorkspace(QWidget):
         character_ids = set(preset.character_ids) if preset is not None else set()
         weapon_keys = {ref.key for ref in preset.weapon_refs} if preset is not None else set()
         weapon_assets = self._visible_weapon_assets(weapon_keys, editing)
-        self._character_rule_rows = {}
-        self._weapon_rule_rows = {}
+        self._ensure_inventory_draft()
         rules = self.active_rules()
         filter_context = (preset.deck_id, rules.content_hash) if preset and rules else None
         if filter_context != self._character_requirement_filter_context:
             self._character_requirement_filter = None
             self._character_requirement_filter_context = filter_context
-        if rules is not None and preset is not None:
-            # Price all available cards so an unselected character still has a cost.
-            all_preset = replace(
-                preset, character_ids=tuple(character_id_from_asset(item) for item in self.character_assets),
-                weapon_refs=tuple(ref for item in self.weapon_assets if (ref := weapon_ref_from_asset(item)) is not None),
-            )
-            all_deck = deck_preset_to_draft_deck(all_preset, self.character_assets, self.weapon_assets)
-            all_report = evaluate_deck(all_deck, rules)
-            self._character_rule_rows = {row["character_id"]: row for row in all_report.character_rows}
-            self._weapon_rule_rows = {ref.key: row for ref, row in zip(all_preset.weapon_refs, all_report.weapon_rows)}
+        if rules is not self._inventory_price_rules or (
+            rules is None and (self._character_rule_rows or self._weapon_rule_rows)
+        ):
+            self._inventory_price_rules = rules
+            self._character_rule_rows = {}
+            self._weapon_rule_rows = {}
+            if rules is not None:
+                # Badge prices depend on inventory and rules, not deck membership.
+                all_report = evaluate_deck(self._inventory_draft, rules)
+                self._character_rule_rows = {row["character_id"]: row for row in all_report.character_rows}
+                self._weapon_rule_rows = dict(zip(self._inventory_weapon_keys, all_report.weapon_rows))
 
         character_assets = self._visible_character_assets(character_ids, editing)
         self._reload_deck_grid(
@@ -1058,6 +1094,8 @@ class PvpDecksWorkspace(QWidget):
         vertical_safe_margin: int = 0,
         vertical_safe_top_margin: int | None = None,
     ) -> None:
+        for handle in registry.values():
+            handle.deleteLater()
         registry.clear()
         safe_margin = max(0, int(vertical_safe_margin))
         safe_top_margin = (
@@ -1144,8 +1182,8 @@ class PvpDecksWorkspace(QWidget):
             character_ids=character_ids,
             weapon_refs=self._editing_preset.weapon_refs,
         )
-        self.refresh_view()
-        self.state_changed.emit()
+        self._update_selection_item(self.character_grid, character_id, character_id in character_ids)
+        self.details_changed.emit()
 
     def _on_weapon_card_clicked(self, asset: dict[str, Any]) -> None:
         if self._editing_preset is None:
@@ -1168,8 +1206,16 @@ class PvpDecksWorkspace(QWidget):
             character_ids=self._editing_preset.character_ids,
             weapon_refs=refs,
         )
-        self.refresh_view()
-        self.state_changed.emit()
+        self._update_selection_item(self.weapon_grid, ref.key, existing_index is None)
+        self.details_changed.emit()
+
+    def _update_selection_item(self, grid, item_id, selected):
+        grid.update_item(
+            item_id,
+            outline=_pvp_deck_outline(editing=True, selected=selected),
+            overlay_fill=_pvp_deck_inactive_fill(editing=True, selected=selected),
+            properties=_pvp_deck_item_properties(editing=True, selected=selected),
+        )
 
     def _sync_empty_state(self) -> None:
         preset = self.active_preset()
@@ -1376,6 +1422,7 @@ class PvpPlayWorkspace(QWidget):
         self.setObjectName("PvpPlayWorkspace")
         self.setStyleSheet(PVP_DECKS_WORKSPACE_STYLE)
         self._active_session: PvpActiveDraftSession | None = None
+        self._board: Mapping[str, Any] | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 18, 18, 18)
@@ -1409,9 +1456,17 @@ class PvpPlayWorkspace(QWidget):
         root.addStretch(1)
         self.retranslate_ui()
 
-    def set_active_session(self, session: PvpActiveDraftSession | None) -> None:
+    def set_active_session(
+        self,
+        session: PvpActiveDraftSession | None,
+        *,
+        board: Mapping[str, Any] | None = None,
+        refresh: bool = True,
+    ) -> None:
         self._active_session = session
-        self.refresh()
+        self._board = board
+        if refresh:
+            self.refresh()
 
     def refresh(self) -> None:
         session = self._active_session
@@ -1420,7 +1475,7 @@ class PvpPlayWorkspace(QWidget):
             lines = [tr("app_shell.pvp.play.setup_on_right")]
         else:
             self.summary_title_label.setText(tr("app_shell.pvp.play.active_local_draft"))
-            lines = _active_draft_summary_lines(session)
+            lines = _active_draft_summary_lines(session, board=self._board)
         for index, label in enumerate(self.summary_labels):
             text = lines[index] if index < len(lines) else ""
             label.setText(text)
@@ -1448,6 +1503,10 @@ class PvpDraftWorkspace(QWidget):
         self._build_flow_context: Any | None = None
         self._character_assets_by_id: dict[str, dict[str, Any]] = {}
         self._weapon_assets_by_stack_key: dict[str, dict[str, Any]] = {}
+        self._character_assets_source: object | None = None
+        self._weapon_assets_source: object | None = None
+        self._portrait_paths_by_character_id: dict[str, str] = {}
+        self._draft_board: Mapping[str, Any] | None = None
         self.pool_grid: PixelIconGrid | None = None
         self._draft_pool_frame: QFrame | None = None
         self._draft_pool_info_label: QLabel | None = None
@@ -1541,6 +1600,7 @@ class PvpDraftWorkspace(QWidget):
         *,
         status_text: str = "",
         view_state: Mapping[str, Any] | None = None,
+        board: Mapping[str, Any] | None = None,
         character_assets: Iterable[dict[str, Any]] = (),
         weapon_assets: Iterable[dict[str, Any]] = (),
         build_flow_context: Any | None = None,
@@ -1551,8 +1611,17 @@ class PvpDraftWorkspace(QWidget):
         self._view_state = dict(view_state or {})
         self._build_flow_context = build_flow_context
         self._abyss_source_data = abyss_source_data
-        self._character_assets_by_id = _character_assets_by_id(character_assets)
-        self._weapon_assets_by_stack_key = _weapon_assets_by_stack_key(weapon_assets)
+        self._draft_board = board
+        if character_assets is not self._character_assets_source:
+            self._character_assets_source = character_assets
+            self._character_assets_by_id = _character_assets_by_id(character_assets)
+            self._portrait_paths_by_character_id = {
+                character_id: _asset_image_path(asset)
+                for character_id, asset in self._character_assets_by_id.items()
+            }
+        if weapon_assets is not self._weapon_assets_source:
+            self._weapon_assets_source = weapon_assets
+            self._weapon_assets_by_stack_key = _weapon_assets_by_stack_key(weapon_assets)
         self.refresh()
 
     def refresh(self) -> None:
@@ -1581,8 +1650,10 @@ class PvpDraftWorkspace(QWidget):
             self._draft_pool_empty_label = None
             self.pool_grid = None
             _clear_layout(self.scroll_layout)
-            self.board_frame.setProperty("complete", False)
-            _refresh_qss(self.board_frame)
+            if self.board_frame.property("complete") is not False:
+                self.board_frame.setProperty("complete", False)
+                _refresh_qss(self.board_frame)
+            self._draft_board = None
             self.order_strip.set_board({}, portrait_paths={})
             self.scroll_area.setHorizontalScrollBarPolicy(
                 Qt.ScrollBarPolicy.ScrollBarAlwaysOff
@@ -1612,19 +1683,18 @@ class PvpDraftWorkspace(QWidget):
         if stage not in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}:
             self.set_postdraft_alignment_margins(0, 0)
             self.lock_postdraft_content_height(None)
-        board = {} if post_draft_stage else session.board_dict()
+        board = {} if post_draft_stage else self._current_board_dict()
         complete = True if post_draft_stage else _draft_is_complete(board)
         self.board_frame.setVisible(stage == PVP_DRAFT_STAGE_DRAFT)
-        self.board_frame.setProperty("complete", complete)
-        _refresh_qss(self.board_frame)
+        if self.board_frame.property("complete") != complete:
+            self.board_frame.setProperty("complete", complete)
+            _refresh_qss(self.board_frame)
         self.order_strip.setVisible(stage == PVP_DRAFT_STAGE_DRAFT)
-        self.order_strip.set_board(
-            board,
-            portrait_paths={
-                character_id: _asset_image_path(asset)
-                for character_id, asset in self._character_assets_by_id.items()
-            },
-        )
+        if stage == PVP_DRAFT_STAGE_DRAFT:
+            self.order_strip.set_board(
+                board,
+                portrait_paths=self._portrait_paths_by_character_id,
+            )
 
         if stage in {
             PVP_DRAFT_STAGE_ASSIGNMENT,
@@ -1772,8 +1842,10 @@ class PvpDraftWorkspace(QWidget):
             layout.addWidget(self._draft_pool_empty_label)
 
             self._draft_pool_frame = pool_frame
-        pool_frame.setProperty("active", not draft_complete)
-        _refresh_qss(pool_frame)
+        active = not draft_complete
+        if pool_frame.property("active") != active:
+            pool_frame.setProperty("active", active)
+            _refresh_qss(pool_frame)
 
         entries = self._filtered_draft_pool_entries(board)
         if self._draft_pool_info_label is not None:
@@ -1790,14 +1862,17 @@ class PvpDraftWorkspace(QWidget):
 
         items = []
         legal_ids: list[str] = []
+        layer_path_cache: dict[tuple[str, str], str] = {}
         for entry_value in entries:
             entry = _mapping(entry_value)
             character_id = _text(entry.get("character_id"))
             item = build_pvp_draft_grid_item(
                 entry,
-                portrait_path=_asset_image_path(
-                    self._character_assets_by_id.get(character_id),
+                portrait_path=self._portrait_paths_by_character_id.get(
+                    character_id,
+                    "",
                 ),
+                layer_path_cache=layer_path_cache,
             )
             items.append(item)
             self.pool_items_by_character_id[character_id] = item
@@ -1806,7 +1881,7 @@ class PvpDraftWorkspace(QWidget):
                 legal_ids.append(character_id)
                 self._draft_actions_by_character_id[character_id] = dict(action)
         if self.pool_grid is not None:
-            self.pool_grid.set_items(items)
+            self.pool_grid.set_items_incremental(items)
         self.legal_character_ids = tuple(legal_ids)
         return pool_frame
 
@@ -1828,8 +1903,15 @@ class PvpDraftWorkspace(QWidget):
     def _refresh_draft_pool_filters(self) -> None:
         if self._active_session is None:
             return
-        board = self._active_session.board_dict()
+        board = self._current_board_dict()
         self._build_unified_pool(board, _draft_is_complete(board))
+
+    def _current_board_dict(self) -> Mapping[str, Any]:
+        if self._draft_board is not None:
+            return self._draft_board
+        if self._active_session is None:
+            return {}
+        return self._active_session.board_dict()
 
     def _filtered_draft_pool_entries(
         self,
@@ -2111,6 +2193,10 @@ class PvpWorkspace(QWidget):
             str,
             tuple[list[dict[str, Any]], list[dict[str, Any]]],
         ] = {}
+        self._shared_character_assets_cache: list[dict[str, Any]] | None = None
+        self._draft_board_session: PvpActiveDraftSession | None = None
+        self._draft_board_state: Any | None = None
+        self._draft_board_cache: dict[str, Any] | None = None
         self.timer_texts_by_seat: dict[str, list[str]] = {
             seat: [""] * len(PVP_TIMER_CHAMBERS)
             for seat in PVP_SEATS
@@ -2198,6 +2284,7 @@ class PvpWorkspace(QWidget):
             reload_presets=reload_presets,
             emit_signal=False,
         )
+        self._invalidate_shared_character_assets()
         for seat, provider in self._profile_providers_by_seat.items():
             if provider is self._local_profile_provider:
                 self._profile_assets_by_seat.pop(seat, None)
@@ -2254,6 +2341,7 @@ class PvpWorkspace(QWidget):
         previous = self._profile_providers_by_seat.get(seat)
         self._profile_providers_by_seat[seat] = ImportedPvpProfileProvider(profile)
         self._profile_assets_by_seat.pop(seat, None)
+        self._invalidate_shared_character_assets()
         if previous is not None and previous is not self._local_profile_provider:
             close = getattr(previous, "close", None)
             if callable(close):
@@ -2272,6 +2360,7 @@ class PvpWorkspace(QWidget):
         previous = self._profile_providers_by_seat.get(seat)
         self._profile_providers_by_seat[seat] = self._local_profile_provider
         self._profile_assets_by_seat.pop(seat, None)
+        self._invalidate_shared_character_assets()
         if previous is not None and previous is not self._local_profile_provider:
             close = getattr(previous, "close", None)
             if callable(close):
@@ -2318,6 +2407,8 @@ class PvpWorkspace(QWidget):
 
     def _shared_character_assets(self) -> list[dict[str, Any]]:
         """One bitmap per game id; each seat keeps its own account metadata."""
+        if self._shared_character_assets_cache is not None:
+            return self._shared_character_assets_cache
         shared = _character_assets_by_id(self.character_assets)
         for seat in PVP_SEATS:
             for asset in self._profile_assets(seat)[0]:
@@ -2328,7 +2419,11 @@ class PvpWorkspace(QWidget):
                     and Path(_asset_image_path(asset)).is_file()
                 ):
                     shared[character_id] = asset
-        return list(shared.values())
+        self._shared_character_assets_cache = list(shared.values())
+        return self._shared_character_assets_cache
+
+    def _invalidate_shared_character_assets(self) -> None:
+        self._shared_character_assets_cache = None
 
     def _build_character_assets_for_seat(self, seat: str) -> list[dict[str, Any]]:
         portraits = {
@@ -2539,7 +2634,7 @@ class PvpWorkspace(QWidget):
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
-        board = session.board_dict()
+        board = self.draft_board_dict()
         if _draft_is_complete(board):
             self._last_draft_status = tr("app_shell.pvp.draft.already_completed")
             self._sync_draft_workspace()
@@ -2575,7 +2670,7 @@ class PvpWorkspace(QWidget):
 
     def continue_to_assignment(self) -> bool:
         session = self.active_draft_session
-        if session is None or not _draft_is_complete(session.board_dict()):
+        if session is None or not session.controller.session_state.is_complete:
             self._last_draft_status = tr("app_shell.pvp.post.draft_not_complete")
             self._sync_draft_workspace()
             self.state_changed.emit()
@@ -2814,7 +2909,6 @@ class PvpWorkspace(QWidget):
         if seat not in PVP_SEATS or not (0 <= index < len(PVP_TIMER_CHAMBERS)):
             return
         self.timer_texts_by_seat[seat][index] = text
-        self.state_changed.emit()
 
     def timers_ready(self) -> bool:
         return all(
@@ -3032,17 +3126,52 @@ class PvpWorkspace(QWidget):
         return source if source is not None and source.floor == 12 and source.period.start_date == period.ref.start_date else None
 
     def _on_decks_state_changed(self) -> None:
+        self._invalidate_shared_character_assets()
         self._sync_play_workspace()
         self.state_changed.emit()
 
+    def draft_board_dict(self) -> dict[str, Any]:
+        """Return one projection per immutable controller state for UI readers."""
+        session = self.active_draft_session
+        if session is None:
+            self._draft_board_session = None
+            self._draft_board_state = None
+            self._draft_board_cache = None
+            return {}
+        state = session.controller.state
+        if (
+            self._draft_board_session is not session
+            or self._draft_board_state is not state
+            or self._draft_board_cache is None
+        ):
+            self._draft_board_cache = session.controller.to_board_dict()
+            self._draft_board_session = session
+            self._draft_board_state = state
+        return self._draft_board_cache
+
     def _sync_play_workspace(self) -> None:
-        self.play_workspace.set_active_session(self.active_draft_session)
+        session = self.active_draft_session
+        if session is not None and self.active_page_id != PVP_PAGE_PLAY:
+            self.play_workspace.set_active_session(
+                session,
+                board={},
+                refresh=False,
+            )
+            return
+        board = self.draft_board_dict() if session is not None else None
+        self.play_workspace.set_active_session(session, board=board)
 
     def _sync_draft_workspace(self) -> None:
         self.draft_workspace.set_active_session(
             self.active_draft_session,
             status_text=self._last_draft_status,
             view_state=self._draft_view_state(),
+            board=(
+                self.draft_board_dict()
+                if self.active_draft_session is not None
+                and self.draft_stage == PVP_DRAFT_STAGE_DRAFT
+                else None
+            ),
             character_assets=self._shared_character_assets(),
             weapon_assets=self.weapon_assets,
             build_flow_context=self.build_flow_context,

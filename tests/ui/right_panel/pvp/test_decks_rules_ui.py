@@ -5,13 +5,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPoint, Signal
 from PySide6.QtGui import QFont, QFontDatabase
-from PySide6.QtWidgets import QApplication, QGridLayout, QLabel, QPushButton, QStackedWidget
+from PySide6.QtWidgets import QApplication, QFrame, QGridLayout, QLabel, QPushButton, QStackedWidget
 
 from localization import get_language, set_language, tr
 from ui.right_panel.live_run.panel import right_panel_stylesheet
@@ -20,6 +21,7 @@ from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 
 class _Workspace(QObject):
     state_changed = Signal()
+    details_changed = Signal()
     save_edit_requested = Signal()
     cancel_edit_requested = Signal()
 
@@ -216,6 +218,23 @@ class DecksRulesUiTests(unittest.TestCase):
         )
         panel.deleteLater()
 
+    def test_workspace_without_details_signal_keeps_structural_refresh(self):
+        class LegacyWorkspace:
+            def __init__(self, inner):
+                self.inner = inner
+
+            def __getattr__(self, name):
+                if name == "details_changed":
+                    raise AttributeError(name)
+                return getattr(self.inner, name)
+
+        workspace = _Workspace()
+        panel = PvpDecksRightPanel(LegacyWorkspace(workspace))
+        workspace.preset.character_ids = ("a", "b")
+        workspace.state_changed.emit()
+        self.assertEqual(panel._row_count_labels[workspace.preset.deck_id].text(), "(3)")
+        panel.deleteLater()
+
     def test_requirement_table_has_three_columns_and_accessible_statuses(self):
         workspace = _Workspace()
         workspace.presets = []
@@ -257,6 +276,92 @@ class DecksRulesUiTests(unittest.TestCase):
         self.assertEqual((margins.left(), margins.top()), (12, 0))
         self.assertFalse(any(label.text() == "At least 8 characters"
                              for label in panel.findChildren(QLabel)))
+        panel.deleteLater()
+
+    def test_details_signal_updates_in_place_without_rebuilding_or_icons(self):
+        workspace = _Workspace()
+        state = workspace.rules_ui_state()
+        state["requirement_rows"] = (
+            {"label": "Characters", "current": "1 / 2", "status": "fail",
+             "detail": "Add one character", "character_filter": (1, 1)},
+        )
+        calls = []
+        workspace.rules_ui_state = lambda: (calls.append("state"), state)[1]
+        workspace.toggle_requirement_filter = lambda *_: None
+        panel = PvpDecksRightPanel(workspace)
+        table = panel.findChild(QGridLayout, "pvp_requirement_table")
+        summary = panel._rules_line_sections["rules_costs_heading"][2][0]
+        issue = panel._rules_line_sections["rules_issues_heading"][2][0]
+        marker = panel.findChild(QLabel, "pvp_requirement_status")
+        button = panel.findChild(QPushButton, "pvp_requirement_show")
+        counts = panel.selected_info_labels["counts"]
+        ruleset = panel.ruleset_button
+        row = panel.deck_row_frames[workspace.preset.deck_id]
+        calls.clear()
+
+        workspace.preset.character_ids = ("a", "b")
+        workspace.validation_report = lambda: SimpleNamespace(
+            ready=False, issue_codes=lambda: ("missing_weapon",)
+        )
+        state.update(summary_lines=("Total cost: 25",), issue_lines=("New issue",),
+                     active_character_filter=(1, 1),
+                     requirement_rows=({"label": "Characters", "current": "2 / 2",
+                                        "status": "pass", "detail": "Covered",
+                                        "character_filter": (1, 1)},))
+        with patch.object(panel, "_rebuild_deck_list", side_effect=AssertionError("rebuilt")), \
+             patch.object(panel, "_refresh_create_controls", side_effect=AssertionError("controls")), \
+             patch.object(panel, "_ui_icon", side_effect=AssertionError("icon")), \
+             patch("ui.right_panel.pvp.decks.panel.tinted_svg_pixmap", side_effect=AssertionError("pixmap")):
+            workspace.details_changed.emit()
+
+        self.assertEqual(calls, ["state"])
+        self.assertIs(panel.findChild(QGridLayout, "pvp_requirement_table"), table)
+        self.assertIs(panel.findChild(QLabel, "pvp_requirement_status"), marker)
+        self.assertIs(panel.findChild(QPushButton, "pvp_requirement_show"), button)
+        self.assertIs(panel.ruleset_button, ruleset)
+        self.assertIs(panel.deck_row_frames[workspace.preset.deck_id], row)
+        self.assertIs(panel.selected_info_labels["counts"], counts)
+        self.assertIs(panel._rules_line_sections["rules_costs_heading"][2][0], summary)
+        self.assertIs(panel._rules_line_sections["rules_issues_heading"][2][0], issue)
+        self.assertEqual((summary.text(), issue.text()), ("Total cost: 25", "New issue"))
+        self.assertEqual(table.itemAtPosition(1, 1).widget().text(), "2 / 2")
+        self.assertEqual(marker.property("requirementStatus"), "pass")
+        self.assertEqual(marker.accessibleName(), tr("app_shell.pvp.rules.status_pass"))
+        self.assertTrue(button.isChecked())
+        self.assertIn("2", counts.text())
+        self.assertEqual(panel._row_count_labels[workspace.preset.deck_id].text(), "(3)")
+        self.assertIn("missing_weapon", panel.selected_info_labels["validation"].text())
+        panel.deleteLater()
+
+    def test_details_signal_changes_only_dynamic_sections(self):
+        workspace = _Workspace()
+        state = workspace.rules_ui_state()
+        state["requirement_rows"] = ({"label": "First", "current": "1", "status": "unknown"},)
+        workspace.rules_ui_state = lambda: state
+        panel = PvpDecksRightPanel(workspace)
+        info = panel.findChild(QFrame, "pvp_deck_expanded_info")
+        section = panel._requirement_section
+        first_issue = panel._rules_line_sections["rules_issues_heading"][2][0]
+        state.update(issue_lines=("Changed", "Another issue"),
+                     requirement_rows=(
+                         {"label": "First", "current": "2", "status": "pass"},
+                         {"label": "Second", "current": "0", "status": "fail", "detail": "Missing"},
+                     ))
+        workspace.details_changed.emit()
+        self.app.processEvents()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        self.assertIs(panel.findChild(QFrame, "pvp_deck_expanded_info"), info)
+        self.assertIs(panel._requirement_section, section)
+        self.assertIs(panel._rules_line_sections["rules_issues_heading"][2][0], first_issue)
+        self.assertEqual(first_issue.text(), "Changed")
+        self.assertEqual([label.text() for label in panel.findChildren(QLabel, "pvp_requirement_description")],
+                         ["First", "Second"])
+        self.assertEqual([label.property("requirementStatus") for label in
+                          panel.findChildren(QLabel, "pvp_requirement_status")], ["pass", "fail"])
+        state.update(issue_lines=(), requirement_rows=())
+        workspace.details_changed.emit()
+        self.assertFalse(panel._rules_line_sections["rules_issues_heading"][0].isVisibleTo(panel))
+        self.assertFalse(panel._requirement_section.isVisibleTo(panel))
         panel.deleteLater()
 
 
@@ -396,6 +501,48 @@ class DecksRulesLayoutTests(unittest.TestCase):
             self.assertTrue(all(button.isChecked() for button in panel.findChildren(QPushButton, "pvp_requirement_show")))
             self.assert_readable(panel)
             host.close()
+
+    def test_dynamic_details_keep_constrained_layout_in_all_languages(self):
+        for language in ("ru", "en", "pt-br"):
+            with self.subTest(language=language):
+                workspace, state, panel, host = self.make_panel(language=language)
+                workspace.toggle_requirement_filter = lambda *_: None
+                host.setFixedSize(354, 480)
+                host.show()
+                self.settle()
+                expanded = panel._requirement_section
+                state["requirement_rows"] = state["requirement_rows"][:5]
+                state["issue_lines"] = state["issue_lines"] + ("Additional allocation issue",)
+                state["active_character_filter"] = (1, 1)
+                workspace.details_changed.emit()
+                self.settle()
+                self.assertIs(panel._requirement_section, expanded)
+                self.assertEqual(len(panel.findChildren(QLabel, "pvp_requirement_status")), 5)
+                self.assert_readable(panel)
+                host.close()
+
+    def test_same_shape_details_preserve_scroll_and_role_button(self):
+        workspace, state, panel, host = self.make_panel()
+        workspace.toggle_requirement_filter = lambda *_: None
+        host.setFixedSize(354, 480)
+        host.show()
+        self.settle()
+        scroll = panel.deck_list_scroll.verticalScrollBar()
+        scroll.setValue(scroll.maximum() // 2)
+        previous = scroll.value()
+        button = panel.findChild(QPushButton, "pvp_requirement_show")
+        table = panel.findChild(QGridLayout, "pvp_requirement_table")
+        rows = list(state["requirement_rows"])
+        rows[0] = dict(rows[0], current="2 / 2", status="pass")
+        state["requirement_rows"] = tuple(rows)
+        state["active_character_filter"] = (1, 1)
+        workspace.details_changed.emit()
+        self.settle()
+        self.assertEqual(scroll.value(), previous)
+        self.assertIs(panel.findChild(QGridLayout, "pvp_requirement_table"), table)
+        self.assertIs(panel.findChild(QPushButton, "pvp_requirement_show"), button)
+        self.assertTrue(button.isChecked())
+        self.assert_readable(panel)
 
     def test_bottom_is_reachable_and_short_rules_shrink_content(self):
         workspace, state, panel, host = self.make_panel()

@@ -15,7 +15,6 @@ from localization import tr
 from run_workspace.pvp.deck_preset import PvpDeckPreset
 from ui.right_panel.pvp._shared import (
     PVP_DECKS_RIGHT_PANEL_STYLE,
-    PVP_DRAFT_STAGE_DRAFT,
     PVP_PAGE_DRAFT,
     _active_draft_summary_lines,
     _text,
@@ -33,6 +32,8 @@ class PvpPlayRightPanel(QWidget):
         self.player_1_deck_id = ""
         self.player_2_deck_id = ""
         self._refreshing = False
+        self._has_refreshed = False
+        self._summary_session: object | None = None
         self.setObjectName("RightPanelPrototypeContent")
         self.setStyleSheet(PVP_DECKS_RIGHT_PANEL_STYLE)
 
@@ -144,17 +145,11 @@ class PvpPlayRightPanel(QWidget):
         root.addWidget(self.status_label)
         root.addStretch(1)
 
-        self.workspace.state_changed.connect(self.refresh)
-        self.workspace.active_draft_changed.connect(self.refresh)
+        self.workspace.state_changed.connect(self._on_workspace_state_changed)
         self.retranslate_ui()
-        self.refresh()
 
     def refresh(self) -> None:
-        if (
-            self.workspace.active_page_id == PVP_PAGE_DRAFT
-            and self.workspace.draft_stage != PVP_DRAFT_STAGE_DRAFT
-        ):
-            return
+        """Refresh visible Play readiness, selections, and draft summary."""
         if self._refreshing:
             return
         self._refreshing = True
@@ -231,6 +226,24 @@ class PvpPlayRightPanel(QWidget):
             self.status_label.setVisible(bool(status))
         finally:
             self._refreshing = False
+            self._has_refreshed = True
+            self._summary_session = self.workspace.active_draft_session
+
+    def _on_workspace_state_changed(self) -> None:
+        if (
+            self._has_refreshed
+            and self.workspace.active_page_id == PVP_PAGE_DRAFT
+        ):
+            session = self.workspace.active_draft_session
+            if session is not self._summary_session:
+                self._refresh_active_summary()
+                self._summary_session = session
+            play_status = self.workspace.last_play_status()
+            if play_status:
+                self.status_label.setText(play_status)
+                self.status_label.setVisible(True)
+            return
+        self.refresh()
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.play.title"))
@@ -308,7 +321,14 @@ class PvpPlayRightPanel(QWidget):
     def _refresh_active_summary(self) -> None:
         session = self.workspace.active_draft_session
         self.active_frame.setVisible(session is not None)
-        lines = _active_draft_summary_lines(session) if session is not None else []
+        lines = (
+            _active_draft_summary_lines(
+                session,
+                board=self.workspace.draft_board_dict(),
+            )
+            if session is not None
+            else []
+        )
         for index, label in enumerate(self.active_summary_labels):
             text = lines[index] if index < len(lines) else ""
             label.setText(text)

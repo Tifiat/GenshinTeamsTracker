@@ -2,6 +2,10 @@
 
 Research date: 2026-05-19
 
+Historical evidence below. The 2026-10-09 [Abyss source receipt](PVP_ABYSS_SOURCE_AUDIT.md)
+supersedes the old user-file prerequisite: public machine rules and linked
+regulations are confirmed; Worker4 discovers/maps them without a user upload.
+
 Implementation follow-up: 2026-06-11
 
 Scope: docs-only research notes. No app code, app startup, HoYoLAB import,

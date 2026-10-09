@@ -1,15 +1,15 @@
 # PvP Ruleset Source Discovery Matrix
 
-Last checked: 2026-06-11.
+Last checked: Abyss 2026-10-09; Gentor historical findings 2026-06-11.
 
 Scope: backend/research handoff only. No UI, no importer product surface, no
 script execution, no saved raw public payloads.
 
-Current direction pointer (2026-09-16): the no-rules Free Draft hot-seat UI
-and post-draft weapon/timer loop are implemented. Provider/package work is next
-under `PVP_PROFILE_PACKAGE.md`. Ruleset mapping/import remains paused until
-usable tournament files exist. Public source findings below were last checked
-in June 2026, not reverified during this documentation cleanup.
+Current direction (2026-10-09): Free Draft and provider/build services exist.
+Usable public Abyss machine rules and tournament-linked regulations are now
+confirmed. [Live source mapping and conflicts](PVP_ABYSS_SOURCE_AUDIT.md) owns
+current evidence. The user asked Worker4 to discover/retrieve/map sources; do
+not wait for the user to locate an export. Product UI/enforcement remains open.
 
 ## Draft System vs Ruleset Data
 
@@ -22,8 +22,9 @@ in June 2026, not reverified during this documentation cleanup.
   restrictions, weapon costs/overrides, ban counts, thresholds, and tier
   requirements, but those knobs are not automatically a complete executable
   schedule.
-- Gentor/Abyss public data is useful for cost/config/balance research. It is
-  not enough today to derive universal schedule execution automatically.
+- Gentor configuration alone does not define a universal schedule. Abyss now
+  supplies an explicit phase/action list; unsupported actions still need a GTT
+  adapter and validation before execution.
 - Detailed organizer spreadsheets may later get a source-specific adapter after
   the source format and permissions are explicit.
 
@@ -32,9 +33,9 @@ in June 2026, not reverified during this documentation cleanup.
 | Source | Public location checked | Confirmed fields | Current parser support | PvP backend applicability | Schedule status | Risk / next step |
 | --- | --- | --- | --- | --- | --- | --- |
 | Gentor rulesheets | `https://gentor.vercel.app/planilhas`, `https://gentor.com.br/planilha`, `https://gentor.com.br/planilha/3` | `personagens`, `armas`, character C0-C6 costs, level 95/100 extras, weapon R1-R5 costs, character-specific weapon overrides, `tiers`, `configuracao`, optional script | `TournamentRulesetV1` parses normalized and Gentor-like shapes for costs/config/tiers. Live probe on 2026-06-11 returned HTTP 200 for `/planilha` and `/planilha/3`. | Cost-preview and report-only deck application research is supported through `run_workspace/pvp/ruleset_costs.py` and `run_workspace/pvp/ruleset_balance.py`; id mismatch/name fallback is reported as a mapping gap. | Not executable. Gentor config gives knobs and may include script logic, but not a universal explicit pick/ban flow. | Add a source-specific adapter only after importer/source-permission expectations are decided. Do not execute source scripts in v0. |
-| Abyss Draft | `https://abyss.darte.gg/`, `/drafts`, `/draft-systems` | Public UI and client chunks expose draft concepts/phases/roles; unauthenticated browser probe saw pages/assets/API calls. Plain `urllib` GET returned 403 on 2026-06-11. | No current ruleset payload parser. | Product concepts inform PvP vocabulary, but no real Abyss ruleset can be parsed from public data today. | Not executable. | Needs either an explicit public API/sample, user-provided export, or a manual normalized fixture before backend mapping. |
+| Abyss Draft | `https://abyss.darte.gg/api/abyss/draft_systems`, `/draft_systems/{id}`, `/agents`, `/engines`, `/tournaments` | HTTP 200 without auth; prices, percentage level modifiers, weapon overrides, bundles, tiers, preset constraints and explicit phases. | Research probe maps IDs/price slots and preserves declarations; not `TournamentRulesetV1` or product UI. | Current system: 131 character rows / 125 game IDs, 233 weapons, 135 overrides, 10 bundles. Preserve Traveler variants. | Explicit 26-action list available; immune actions and exact rule matching are not implemented/accepted in GTT. | Pin version and surface API/document conflicts; [current receipt](PVP_ABYSS_SOURCE_AUDIT.md). |
 | Local normalized JSON/CSV | `samples/rulesets/minimal_ruleset.json`, `samples/pvp/rulesets/*.json` | Metadata, characters, weapons, tiers, draft config; synthetic PvP samples also cover id-aligned deck pricing and Gentor-like id gaps. | Supported by `TournamentRulesetV1`; PvP applicability, cost, and balance application reports consume parsed rulesets. | Supported for offline tests and smoke only. | Not executable unless a future ruleset is paired with an explicit GTT `DraftSchedule`/draft-system adapter. | Keep samples small and clearly synthetic; replace only with sanitized real fixtures when the import contract exists. |
-| Organizer spreadsheets / Discord docs | No durable public sample in repo | Unknown; likely tournament-specific columns and localized names | Not implemented | Not applicable | Not executable | Future manual XLSX/CSV importer should generate alias/mapping reports before any automatic use. |
+| Organizer documents / spreadsheets | Abyss tournament API links public Google Docs and cost Sheets; current links in receipt | Regulated budget, weapon split, tier counts, restarts and phases; linked guide/Sheets differ from current API | Public text/CSV access confirmed; no product document importer | Requires an explicit tournament override/conflict layer | Do not infer full execution from prose | Keep versions separate; no user-provided file prerequisite for the confirmed Abyss source. |
 
 ## Current Backend Entry Points
 
@@ -60,9 +61,10 @@ in June 2026, not reverified during this documentation cleanup.
 Real Gentor rulesheets can currently be parsed enough for character/weapon cost
 research, config inspection, and report-only deck application summaries, but
 not enough to execute a PvP draft schedule without an explicit GTT draft-system
-adapter or source-specific adapter. Real Abyss Draft rulesets cannot currently
-be parsed from confirmed public data in this repo.
+adapter or source-specific adapter. Real Abyss rules are now retrieved and
+annotated by the research probe. Its percentage modifiers, bundles, constraints
+and source versions require a model extension and executable rule adapter.
 
-Do not start alias/import/schedule-derivation work from this matrix alone. Keep
-these modules report-only until the user provides real tournament Excel/Sheets,
-Discord docs, JSON examples, or equivalent usable files.
+Keep research reports distinct from enforced legality. Use the confirmed Abyss
+API and linked source documents to prepare the adapter; the user need not find
+the sources. No online-room or product-UI acceptance is implied by source access.

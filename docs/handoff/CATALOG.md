@@ -104,7 +104,8 @@ in every file.
 | [PVP_BUILD_SERVICES.md](PVP_BUILD_SERVICES.md) | Scoped artifact/GCSIM services, local period admission, lifecycle and acceptance |
 | [PVP_REFERENCE_SITE_AUDIT.md](PVP_REFERENCE_SITE_AUDIT.md) | Dated Abyss Draft/Gentor product-reference research |
 | [PVP_RULESETS_AUDIT.md](PVP_RULESETS_AUDIT.md) | Historical tournament source research |
-| [PVP_RULESET_SOURCE_MATRIX.md](PVP_RULESET_SOURCE_MATRIX.md) | Source/applicability map; import work paused pending usable sources |
+| [PVP_RULESET_SOURCE_MATRIX.md](PVP_RULESET_SOURCE_MATRIX.md) | Source/applicability map; confirmed public Abyss source and remaining adapters |
+| [PVP_ABYSS_SOURCE_AUDIT.md](PVP_ABYSS_SOURCE_AUDIT.md) | Current public API, ID/price/constraint mapping, document conflicts and research probe |
 | [FAR_FUTURE_TODO.md](FAR_FUTURE_TODO.md) | Non-MVP ideas; read only when requested |
 
 ## Maintenance Entry

@@ -1,11 +1,11 @@
 # PvP Backend Status
 
-Last updated: 2026-10-04 (scoped services and local period admission only).
+Last updated: 2026-10-09 (source discovery; runtime services remain the 4 October baseline).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
-mapping boundaries live in `PVP_RULESET_SOURCE_MATRIX.md` and are paused until
-real usable tournament files are provided.
+mapping boundaries live in `PVP_RULESET_SOURCE_MATRIX.md`. Public Abyss rules
+are confirmed and mapped by a research probe; executable adapters remain open.
 
 The PvP UI roadmap is intentionally separate: see `PVP_UI_ROADMAP.md` for the
 AppShell/Decks/Play/Draft/assignment/result UI direction.
@@ -22,9 +22,10 @@ The active backend direction is no-rules Free Draft v0:
 - post-draft team/weapon/timer/result summaries;
 - session bundle snapshot/verifier.
 
-Ruleset/balance modules remain report-only research support. They are not the
-active implementation direction until real tournament Excel/Sheets/Discord docs
-or JSON examples exist.
+Ruleset/balance modules remain report-only research support. The real-source
+prerequisite is met for Abyss; `PVP_ABYSS_SOURCE_AUDIT.md` owns retrieval,
+version/conflict findings and the remaining semantics/model work. Free Draft
+is still the only executable registered mode.
 
 ## AppShell UI Status
 

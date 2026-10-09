@@ -34,8 +34,9 @@ No application launch, real-account capture, engine run or rules import occurred
 The main target's reviewed API/marker isolation and scoped automated acceptance
 are recorded in the [integration receipt](integration_receipts/2026-10-04_ready_workers.md).
 
-Next: user-owned build/profile/engine acceptance, isolated second-account source
-and usable rules sources. Online server authority, scoring/History/result export
+Next: user-owned build/profile/engine acceptance and isolated second-account source.
+Rules source discovery is now confirmed separately in `PVP_ABYSS_SOURCE_AUDIT.md`.
+Online server authority, scoring/History/result export
 remain later work. The existing timer header width failure is retained below.
 <!-- /handoff-current -->
 

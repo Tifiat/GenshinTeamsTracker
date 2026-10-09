@@ -1,4 +1,7 @@
 {
+  "app_shell.pvp.rules.filter_show": "Show",
+  "app_shell.pvp.rules.filter_reset": "Clear",
+  "app_shell.pvp.rules.filter_active": "Rules filter: T{tier} {role} · found: {count}",
   "app_shell.pvp.rules.allocation_pending": "Finding a shared character allocation…",
   "app_shell.pvp.rules.table_requirement": "Requirement",
   "app_shell.pvp.rules.table_current": "Current",

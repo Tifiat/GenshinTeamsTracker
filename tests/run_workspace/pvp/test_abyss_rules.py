@@ -4,6 +4,7 @@ import unittest
 
 from run_workspace.pvp.abyss_rules import AbyssRulesError, AbyssRuleset, evaluate_deck
 from run_workspace.pvp.deck import DRAFT_DECK_KIND, DraftCharacter, DraftDeck, DraftWeaponStack
+from run_workspace.pvp.tier_allocation import allocate_requirements
 
 
 IDS = {name: f"{index:024x}" for index, name in enumerate(
@@ -131,11 +132,20 @@ class AbyssRulesTests(unittest.TestCase):
         self.assertIn("weapon_assignment_needed", {issue.code for issue in report.issues})
 
     def test_variant_bounds_and_maximums(self) -> None:
-        rules = AbyssRuleset.from_source(*_source())
+        system, agents, engines = _source()
+        system["costs"]["agents"][2]["specification"] = 0
+        system["costs"]["agents"][3]["specification"] = 1
+        agents.append({"_id": "f" * 24, "enkaId": "1003", "attribute": 12,
+                       "name": {"en": "Unpriced Cryo"}})
+        rules = AbyssRuleset.from_source(system, agents, engines)
         deck = _deck(_character("10000007", "DENDRO"), _character("1001", "PYRO"),
-                     _character("1002", "HYDRO"), _character("missing", "CRYO"))
+                     _character("1002", "HYDRO"), _character("missing", "CRYO"),
+                     _character("1003", "CRYO"))
         report = evaluate_deck(deck, rules)
         self.assertEqual(report.character_rows[0]["source_id"], IDS["trav_dendro"])
+        self.assertEqual(report.character_rows[0]["specification"], 1)
+        self.assertIsNone(report.character_rows[3]["specification"])
+        self.assertIsNone(report.character_rows[4]["specification"])
         codes = {issue.code for issue in report.issues}
         self.assertIn("max_character_count_exceeded", codes)
         self.assertIn("bound_maximum_exceeded", codes)
@@ -143,7 +153,35 @@ class AbyssRulesTests(unittest.TestCase):
         self.assertIsNone(report.character_total)
         ambiguous = evaluate_deck(_deck(_character("10000007", "")), rules)
         self.assertIn("character_variant_ambiguous", {issue.code for issue in ambiguous.issues})
+        self.assertIsNone(ambiguous.character_rows[0]["specification"])
         self.assertIsNone(ambiguous.character_total)
+
+    def test_evaluated_roles_follow_preset_dd_membership_and_rule_roles(self) -> None:
+        system, agents, engines = _source()
+        for row in system["costs"]["agents"]:
+            row["specification"] = 0
+        system["costs"]["agents"][0]["costs"][0] = 20
+        rules = AbyssRuleset.from_source(system, agents, engines)
+        snapshot = rules.to_dict()
+        self.assertEqual({row["specification"] for row in snapshot["characters"]}, {0})
+        self.assertEqual(snapshot["dd_character_ids"], ["1001"])
+
+        deck = _deck(_character("1001", "PYRO", constellation=0),
+                     _character("1002", "HYDRO", constellation=2))
+        report = evaluate_deck(deck, rules)
+        self.assertEqual(report.character_rows[0]["specification"], 0)
+        self.assertEqual(report.character_rows[1]["specification"], 1)
+        self.assertEqual(allocate_requirements(report.character_rows, snapshot["preset_rules"])["status"], "fail")
+
+        support_rules = [dict(rule) for rule in snapshot["preset_rules"]]
+        support_rules[0] = {**support_rules[0], "from": [{"tier": 1, "specification": 1}]}
+        support_snapshot = {**snapshot, "preset_rules": support_rules}
+        support_ruleset = AbyssRuleset.from_dict(support_snapshot)
+        support_report = evaluate_deck(deck, support_ruleset)
+        self.assertEqual(support_report.character_rows[1]["specification"], 1)
+        self.assertEqual(allocate_requirements(support_report.character_rows, support_rules)["status"], "pass")
+
+        self.assertEqual(report.bundle_candidates[0]["match"], "matched")
 
     def test_corrupt_or_changed_source_is_rejected(self) -> None:
         source = _source()

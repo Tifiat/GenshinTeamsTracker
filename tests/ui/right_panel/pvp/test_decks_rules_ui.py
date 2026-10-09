@@ -11,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPoint, Signal
 from PySide6.QtGui import QFont, QFontDatabase
-from PySide6.QtWidgets import QApplication, QGridLayout, QLabel, QStackedWidget
+from PySide6.QtWidgets import QApplication, QGridLayout, QLabel, QPushButton, QStackedWidget
 
 from localization import get_language, set_language, tr
 from ui.right_panel.live_run.panel import right_panel_stylesheet
@@ -134,8 +134,9 @@ def _long_rules_state(workspace):
              "current": "17 / 20", "status": "pass"},
             {"label": t("requires", tier=4, parts="T1 " + t("role_dd") + " + T1 " + t("role_support")),
              "current": "1 / 2", "status": "unknown"},
-            {"label": t("role_support") + " · " + t("role_dd"),
+            {"label": "T1 " + t("role_support"),
              "current": "0 / 1", "status": "info", "depth": 1,
+             "character_filter": (1, 1),
              "detail": t("tier_combination_unverified")},
         ) * 3,
         issue_lines=(t("traveler_unavailable"), t("weapon_assignment_needed"),
@@ -252,7 +253,8 @@ class DecksRulesUiTests(unittest.TestCase):
                           "pvp_requirement_detail")], ["Choose two"])
         self.assertIs(table.itemAtPosition(2, 0), table.itemAtPosition(2, 1))
         self.assertIsNone(table.itemAtPosition(2, 2))
-        self.assertEqual(table.itemAtPosition(5, 0).widget().indent(), 12)
+        margins = table.itemAtPosition(5, 0).widget().contentsMargins()
+        self.assertEqual((margins.left(), margins.top()), (12, 0))
         self.assertFalse(any(label.text() == "At least 8 characters"
                              for label in panel.findChildren(QLabel)))
         panel.deleteLater()
@@ -369,6 +371,31 @@ class DecksRulesLayoutTests(unittest.TestCase):
         workspace.state_changed.emit()
         self.settle()
         self.assertEqual(scroll.value(), 0)
+
+    def test_role_actions_fit_next_to_the_requirement_in_all_languages(self):
+        for language in ("ru", "en", "pt-br"):
+            workspace, state, panel, host = self.make_panel(language=language)
+            calls = []
+            workspace.toggle_requirement_filter = lambda *criterion: calls.append(criterion)
+            host.setFixedSize(354, 480)
+            host.show()
+            self.settle()
+            buttons = panel.findChildren(QPushButton, "pvp_requirement_show")
+            self.assertEqual(len(buttons), 3)
+            for button in buttons:
+                label = button.parentWidget().findChild(QLabel, "pvp_requirement_description")
+                self.assertGreaterEqual(button.width(), button.sizeHint().width())
+                self.assertLess(label.geometry().right(), button.geometry().left())
+                self.assertGreaterEqual(label.height(), label.heightForWidth(label.width()))
+                self.assertLessEqual(button.geometry().right(), button.parentWidget().width())
+            buttons[0].click()
+            self.assertEqual(calls, [(1, 1)])
+            state["active_character_filter"] = (1, 1)
+            workspace.state_changed.emit()
+            self.settle()
+            self.assertTrue(all(button.isChecked() for button in panel.findChildren(QPushButton, "pvp_requirement_show")))
+            self.assert_readable(panel)
+            host.close()
 
     def test_bottom_is_reachable_and_short_rules_shrink_content(self):
         workspace, state, panel, host = self.make_panel()

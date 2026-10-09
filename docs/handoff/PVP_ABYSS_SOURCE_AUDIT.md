@@ -58,6 +58,7 @@ mandatory-character rules; GTT currently excludes Traveler.
 | `costs.costLimit` | French per-character difference cap (`rl`), **not total deck budget**. `disableCostLimit` exempts a character. |
 | `draft.minMaxCosts`, `minMaxCount` | Separate roster cost/count bounds. Current character cost pair `[520,0]`; zero-bound enforcement is unverified, so preserve zero explicitly. |
 | `preset.rules` | Declarative `requires`, `equals`, `required_agents`, `max_count`; see below. |
+| `preset.ddAgents` | Game IDs classified as DD in the selected system; other eligible priced IDs are support. Price-row `specification` is not a role source. Confirmed by later same-day client display/form inspection; [correction and implementation](PVP_DECK_RULES.md#character-role-correction-and-contextual-filters--2026-10-09). |
 | `phasePicks` | Ordered action list, player0/player1, 60,000 ms pick time, 300,000 ms reserve, preban step 60. |
 | `phaseStage`, `phaseTeams`, `phaseMatch` | Stage settings, team weapon costs, restarts; separate from draft deck validation. |
 

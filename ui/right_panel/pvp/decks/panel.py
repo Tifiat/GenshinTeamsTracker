@@ -502,7 +502,7 @@ class PvpDecksRightPanel(QWidget):
         )
         requirement_rows = rules_state.get("requirement_rows", ())
         if requirement_rows:
-            self._add_requirement_rows(layout, requirement_rows)
+            self._add_requirement_rows(layout, requirement_rows, rules_state.get("active_character_filter"))
         else:
             self._add_rules_lines(
                 layout, "rules_requirements_heading", rules_state.get("requirement_lines", ())
@@ -561,7 +561,7 @@ class PvpDecksRightPanel(QWidget):
             content.addWidget(self._rules_detail_label(str(line)))
         layout.addWidget(section)
 
-    def _add_requirement_rows(self, layout: QVBoxLayout, rows) -> None:
+    def _add_requirement_rows(self, layout: QVBoxLayout, rows, active_filter=None) -> None:
         section = QFrame()
         section.setObjectName("pvp_rules_section")
         section.setProperty("rulesSection", "rules_requirements_heading")
@@ -602,8 +602,29 @@ class PvpDecksRightPanel(QWidget):
             label = self._rules_detail_label(str(entry.get("label", "")))
             label.setObjectName("pvp_requirement_description")
             if entry.get("depth") == 1:
-                label.setIndent(12)
-            table.addWidget(label, next_row, 0)
+                # QLabel.indent also indents the top edge with AlignTop.
+                label.setContentsMargins(12, 0, 0, 0)
+            criterion = entry.get("character_filter")
+            if criterion is not None:
+                description = QWidget()
+                line = QHBoxLayout(description)
+                line.setContentsMargins(0, 0, 0, 0)
+                line.setSpacing(6)
+                line.addWidget(label, 1, Qt.AlignmentFlag.AlignTop)
+                active = tuple(criterion) == active_filter
+                button = QPushButton(tr("app_shell.pvp.rules.filter_reset" if active else "app_shell.pvp.rules.filter_show"))
+                button.setObjectName("pvp_requirement_show")
+                button.setProperty("criterionTier", criterion[0])
+                button.setProperty("criterionRole", criterion[1])
+                button.setCheckable(True)
+                button.setChecked(active)
+                button.setAccessibleName(button.text() + ": " + label.text())
+                button.clicked.connect(lambda _checked=False, value=tuple(criterion):
+                                       self.workspace.toggle_requirement_filter(*value))
+                line.addWidget(button, 0, Qt.AlignmentFlag.AlignTop)
+                table.addWidget(description, next_row, 0)
+            else:
+                table.addWidget(label, next_row, 0)
 
             current = self._rules_detail_label(str(entry.get("current", "")))
             current.setObjectName("pvp_requirement_current")
@@ -635,7 +656,7 @@ class PvpDecksRightPanel(QWidget):
                 detail_label = self._rules_detail_label(detail)
                 detail_label.setObjectName("pvp_requirement_detail")
                 if entry.get("depth") == 1:
-                    detail_label.setIndent(12)
+                    detail_label.setContentsMargins(12, 0, 0, 0)
                 table.addWidget(detail_label, next_row, 0, 1, 2)
                 next_row += 1
 

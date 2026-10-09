@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QPushButton
 
 from localization import get_language, set_language, tr
 from run_workspace.pvp.abyss_client import AbyssRulesChoice
@@ -140,6 +140,95 @@ class PvpDeckRulesTest(unittest.TestCase):
         free = self.workspace.rules_ui_state()["requirement_rows"]
         self.assertEqual((free[0]["current"], free[0]["status"]), ("1 / 11", "fail"))
         self.assertFalse(any(row["label"].startswith("T1 ·") for row in free))
+
+    def test_role_condition_buttons_filter_without_changing_the_deck(self):
+        self.source[0]["preset"]["rules"][0]["from"].append({"agent": 1, "specification": 1})
+        for row in self.source[0]["costs"]["agents"]:
+            row["specification"] = 0  # Public price-editor default, not character roles.
+        self.rules = AbyssRuleset.from_source(*self.source)
+        self.load_rules()
+        panel = PvpDecksRightPanel(self.workspace)
+        self.addCleanup(panel.close)
+        before = self.workspace.active_preset().to_dict()
+
+        def button(role):
+            self.app.processEvents()
+            return next(item for item in panel.findChildren(QPushButton, "pvp_requirement_show")
+                        if item.isVisibleTo(panel) and item.property("criterionRole") == role)
+
+        button(0).click()
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1001"})
+        self.assertTrue(button(0).isChecked())
+        self.assertEqual(button(0).text(), tr("app_shell.pvp.rules.filter_reset"))
+        self.assertEqual(self.workspace.rules_ui_state()["active_character_filter"], (1, 0))
+        self.assertTrue(self.workspace.requirement_filter_frame.isVisibleTo(self.workspace))
+        button(1).click()
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1002"})
+        self.assertFalse(button(0).isChecked())
+        self.assertTrue(button(1).isChecked())
+        button(1).click()
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1001", "1002"})
+        self.assertFalse(self.workspace.requirement_filter_frame.isVisibleTo(self.workspace))
+        self.assertEqual(self.workspace.active_preset().to_dict(), before)
+
+    def test_active_role_filter_banner_retranslates_immediately(self):
+        self.load_rules()
+        self.workspace.toggle_requirement_filter(1, 0)
+        self.addCleanup(set_language, get_language(), persist=False)
+        for language in ("ru", "en", "pt-br"):
+            set_language(language, persist=False)
+            self.workspace.retranslate_ui()
+            expected = tr("app_shell.pvp.rules.filter_active").format(
+                tier=1, role=tr("app_shell.pvp.rules.role_dd"), count=1,
+            )
+            self.assertEqual(self.workspace.requirement_filter_label.text(), expected)
+            self.assertEqual(self.workspace.requirement_filter_reset.text(), tr("app_shell.pvp.rules.filter_reset"))
+
+    def test_role_filter_intersects_other_filters_and_clears_for_new_rules(self):
+        self.characters[1]["metadata"]["character"]["element"] = "Hydro"
+        self.workspace.refresh_account_data(reload_presets=False)
+        self.load_rules()
+        self.workspace.toggle_requirement_filter(1, 0)
+        self.workspace._character_element_filters.add("Hydro")
+        self.workspace.refresh_view()
+        self.assertFalse(self.workspace.character_cards_by_id)
+        self.workspace.requirement_filter_reset.click()
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1002"})
+        self.workspace._character_element_filters.clear()
+        self.workspace.toggle_requirement_filter(1, 0)
+        self.workspace.select_ruleset("free_draft_v0")
+        self.assertIsNone(self.workspace.rules_ui_state()["active_character_filter"])
+        self.workspace.toggle_requirement_filter(1, 0)
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1001", "1002"})
+        self.assertFalse(any("character_filter" in row for row in self.workspace.rules_ui_state()["requirement_rows"]))
+
+    def test_role_filter_uses_tier_and_resets_on_rules_version_change(self):
+        self.load_rules()
+        self.workspace.toggle_requirement_filter(1, 0)
+        newer, agents, engines = _source()
+        newer["_id"] = "f" * 24
+        newer["preset"]["ddAgents"] = ["1002"]
+        newer["costs"]["agents"][1]["costs"] = [25] * 7 + [0, 0]
+        rules = AbyssRuleset.from_source(newer, agents, engines)
+        context = (self.workspace._rules_edit_generation, self.workspace.active_preset().deck_id)
+        self.workspace._rules_received(context, rules)
+        self.workspace._rules_changed()
+        self.assertIsNone(self.workspace.rules_ui_state()["active_character_filter"])
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1001", "1002"})
+        self.workspace.toggle_requirement_filter(1, 0)
+        self.assertFalse(self.workspace.character_cards_by_id)  # The only DD is T4.
+        self.workspace.clear_requirement_filter()
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1001", "1002"})
+
+    def test_role_filter_preserves_hidden_selection_on_save_and_does_not_persist(self):
+        self.load_rules()
+        self.workspace.toggle_requirement_filter(1, 0)
+        self.assertTrue(self.workspace.save_edit())
+        saved = load_deck_presets(self.temp.name)[0]
+        self.assertEqual(saved.character_ids, ("1001", "1002"))
+        self.workspace.create_deck("Another")
+        self.assertIsNone(self.workspace.rules_ui_state()["active_character_filter"])
+        self.assertEqual(set(self.workspace.character_cards_by_id), {"1001", "1002"})
 
     def test_same_roster_reuses_allocation_but_selection_invalidates_it(self):
         self.load_rules()

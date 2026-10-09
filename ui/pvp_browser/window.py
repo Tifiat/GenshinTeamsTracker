@@ -503,6 +503,8 @@ class PvpDecksWorkspace(QWidget):
         self._character_rarity_filters: set[int] = set()
         self._character_trait_filters: set[str] = set()
         self._character_standard_filter = STANDARD_FILTER_ALL
+        self._character_requirement_filter = None
+        self._character_requirement_filter_context = None
         self._weapon_type_filters: set[str] = set()
         self._weapon_rarity_filters: set[int] = set()
         self._weapon_type_buttons: dict[str, QPushButton] = {}
@@ -570,6 +572,16 @@ class PvpDecksWorkspace(QWidget):
             )
         )
         editor.addSpacing(6)
+        self.requirement_filter_frame = QWidget()
+        requirement_filter_layout = QHBoxLayout(self.requirement_filter_frame)
+        requirement_filter_layout.setContentsMargins(0, 0, 0, 0)
+        self.requirement_filter_label = QLabel()
+        self.requirement_filter_label.setWordWrap(True)
+        requirement_filter_layout.addWidget(self.requirement_filter_label, 1)
+        self.requirement_filter_reset = QPushButton()
+        self.requirement_filter_reset.clicked.connect(self.clear_requirement_filter)
+        requirement_filter_layout.addWidget(self.requirement_filter_reset)
+        editor.addWidget(self.requirement_filter_frame)
         self.character_area, self.character_widget, self.character_grid = (
             self._make_grid_area()
         )
@@ -615,7 +627,30 @@ class PvpDecksWorkspace(QWidget):
         preset = self.active_preset()
         rules = self.active_rules()
         deck = deck_preset_to_draft_deck(preset, self.character_assets, self.weapon_assets) if preset and rules else None
-        return self.rules_controller.ui_state(preset, editable=self.is_editing, rules=rules, deck=deck)
+        state = self.rules_controller.ui_state(preset, editable=self.is_editing, rules=rules, deck=deck)
+        state["active_character_filter"] = self._character_requirement_filter
+        return state
+
+    def toggle_requirement_filter(self, tier: int, role: int) -> None:
+        rules = self.active_rules()
+        if rules is None or role not in (0, 1):
+            return
+        # Actions come only from actual role conditions in the selected rules.
+        if not any(rule["type"] == "requires" and any(
+            slot["tier"] == tier and slot.get("specification") == role for slot in rule["from"]
+        ) for rule in rules.to_dict()["preset_rules"]):
+            return
+        criterion = (tier, role)
+        self._character_requirement_filter = (
+            None if self._character_requirement_filter == criterion else criterion
+        )
+        self.refresh_view()
+        self.state_changed.emit()
+
+    def clear_requirement_filter(self) -> None:
+        self._character_requirement_filter = None
+        self.refresh_view()
+        self.state_changed.emit()
 
     def refresh_rules_catalog(self):
         return self.rules_controller.refresh()
@@ -853,11 +888,14 @@ class PvpDecksWorkspace(QWidget):
         editing = self.is_editing
         character_ids = set(preset.character_ids) if preset is not None else set()
         weapon_keys = {ref.key for ref in preset.weapon_refs} if preset is not None else set()
-        character_assets = self._visible_character_assets(character_ids, editing)
         weapon_assets = self._visible_weapon_assets(weapon_keys, editing)
         self._character_rule_rows = {}
         self._weapon_rule_rows = {}
         rules = self.active_rules()
+        filter_context = (preset.deck_id, rules.content_hash) if preset and rules else None
+        if filter_context != self._character_requirement_filter_context:
+            self._character_requirement_filter = None
+            self._character_requirement_filter_context = filter_context
         if rules is not None and preset is not None:
             # Price all available cards so an unselected character still has a cost.
             all_preset = replace(
@@ -869,6 +907,7 @@ class PvpDecksWorkspace(QWidget):
             self._character_rule_rows = {row["character_id"]: row for row in all_report.character_rows}
             self._weapon_rule_rows = {ref.key: row for ref, row in zip(all_preset.weapon_refs, all_report.weapon_rows)}
 
+        character_assets = self._visible_character_assets(character_ids, editing)
         self._reload_deck_grid(
             weapon_assets,
             self.weapon_grid,
@@ -898,6 +937,7 @@ class PvpDecksWorkspace(QWidget):
             registry=self.character_cards_by_id,
             vertical_safe_top_margin=CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
         )
+        self._sync_requirement_filter_text()
         self._sync_empty_state()
         self._sync_edit_state()
         self._last_refresh_viewport_widths = self._current_viewport_widths()
@@ -905,7 +945,18 @@ class PvpDecksWorkspace(QWidget):
     def retranslate_ui(self) -> None:
         self.character_title_label.setText(tr("app_shell.pvp.decks.characters"))
         self.weapon_title_label.setText(tr("app_shell.pvp.decks.weapons"))
+        self.requirement_filter_reset.setText(tr("app_shell.pvp.rules.filter_reset"))
+        self._sync_requirement_filter_text()
         self._sync_empty_state()
+
+    def _sync_requirement_filter_text(self) -> None:
+        self.requirement_filter_frame.setVisible(self._character_requirement_filter is not None)
+        if self._character_requirement_filter is not None:
+            tier, role = self._character_requirement_filter
+            self.requirement_filter_label.setText(tr("app_shell.pvp.rules.filter_active").format(
+                tier=tier, role=tr("app_shell.pvp.rules.role_dd" if role == 0 else "app_shell.pvp.rules.role_support"),
+                count=len(self.character_cards_by_id),
+            ))
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -970,6 +1021,12 @@ class PvpDecksWorkspace(QWidget):
             )
         ]
         assets.sort(key=character_sort_key)
+        if self._character_requirement_filter is not None:
+            tier, role = self._character_requirement_filter
+            assets = [asset for asset in assets if (
+                (row := self._character_rule_rows.get(character_id_from_asset(asset), {})).get("tier") == tier
+                and row.get("specification") == role
+            )]
         if editing:
             return assets
         return [asset for asset in assets if character_id_from_asset(asset) in selected_ids]

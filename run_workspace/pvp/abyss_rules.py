@@ -568,6 +568,7 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
     by_game: dict[str, list[dict[str, Any]]] = {}
     for row in data["characters"]:
         by_game.setdefault(row["game_id"], []).append(row)
+    dd_character_ids = set(data["dd_character_ids"])
     character_rows = []
     selected: dict[str, dict[str, Any]] = {}
     character_base_total: int | float | None = 0
@@ -583,8 +584,11 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
             add("character_variant_ambiguous", "review", index=index, character_id=item.character_id,
                 source_ids=[row["source_id"] for row in candidates])
         source = candidates[0] if len(candidates) == 1 else None
-        cost = tier = None
+        cost = tier = role = None
         if source is not None:
+            # The selected preset defines role by DD membership. The price-row
+            # specification is archival source data, not a character's role.
+            role = 0 if item.character_id in dd_character_ids else 1
             if item.constellation is None or not 0 <= item.constellation <= 6:
                 add("character_constellation_unknown", index=index, character_id=item.character_id)
             if item.level is None or not 1 <= item.level <= 100:
@@ -601,7 +605,7 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
             if source["source_id"] in selected:
                 add("duplicate_character", index=index, source_id=source["source_id"])
             selected[source["source_id"]] = {"constellation": item.constellation, "cost": cost,
-                                              "tier": tier, "specification": source["specification"]}
+                                              "tier": tier, "specification": role}
         if cost is None:
             character_base_total = None
         elif character_base_total is not None:
@@ -610,7 +614,7 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
                                "source_id": source["source_id"] if source else None,
                                "names": source["names"] if source else {},
                                "cost": cost, "tier": tier,
-                               "specification": source["specification"] if source else None})
+                               "specification": role})
 
     by_weapon = {row["game_id"]: row for row in data["weapons"]}
     weapon_rows = []

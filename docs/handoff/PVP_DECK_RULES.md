@@ -29,6 +29,9 @@ rendered previews now pass; this does not accept the native interaction path.
 Allocation runs off the UI thread with one active and one latest pending request;
 stale results cannot replace a newer composition. Unknown/bounded-out checks use
 `?`, not a failure marker. Tier bands describe character cost, not quantity caps.
+Physical character roles use the selected preset's DD-ID list, correcting the
+earlier price-field mapping. Role-condition Show/Clear actions filter this deck's
+grid by tier and role; filters reset on deck/rules changes and never alter selection.
 
 Scoped automated and live-source evidence is below. No Computer Use, application
 launch or real-account import/write. The user's Worker4 import was not inspected.
@@ -213,3 +216,41 @@ disjoint three-/four-T0 groups. Six owned PNGs across two temporary contexts
 interaction remains user-owned: create/edit an Abyss deck, add/remove T1/T0 while
 checking shared T4/T3 coverage, scroll the table, then switch to Free Draft.
 No Computer Use, real account access or application launch occurred.
+
+## Character role correction and contextual filters — 2026-10-09
+
+The public client's [character display](https://abyss.darte.gg/assets/agent-list.component-DCkqRtrj.js)
+and [preset editor](https://abyss.darte.gg/assets/draft-system-form.component-D22FFMIo.js)
+classify eligible characters by `preset.ddAgents` membership of `enkaId`: DD=0,
+support=1. The inspected current Abyss Cup has 50 DD IDs and 131 price rows whose
+`specification` values are all zero. Price-editor defaults are not role evidence.
+The evaluator now derives roles from snapshot `dd_character_ids`, including the
+bundle input projection; unknown/unpriced/ambiguous variants retain unknown role.
+Raw price fields remain unchanged for snapshot/hash/archive compatibility. Existing
+saved snapshots already contain the DD list; no migration/refetch is required.
+This corrects physical roles; the separate T0-equivalent role inference above
+remains unchanged and does not establish full site allocation parity.
+
+User narrowed scope to condition checking and contextual PvP filters, with no
+universal character-role DB or filters in other browsers. Show beside a role
+requirement such as T1 DD filters the current Decks grid by both tier and role.
+Show becomes Clear while active, and the grid shows an active-filter/count banner
+with its own Clear action. Existing element/weapon/rarity filters still intersect.
+At most one requirement filter is active; a deck or snapshot change clears it.
+Filtering never changes selected membership, counts, allocation or saved data.
+Free Draft has no role actions. UI text is localized in RU/EN/PT-BR.
+
+Focused validation covers all-zero prices, derived support allocation, unresolved
+variants, rule-specific role changes, tier filtering, filter intersections,
+Show/Clear callbacks, hidden membership on save, reset on deck/version/Free Draft,
+immediate banner retranslation and constrained layouts in three languages.
+Sixty-four focused tests PASS (8 model, 20 allocation, 17 integrated/presentation,
+9 panel, 10 existing Decks). The final combined run initially retained one stale
+indent assertion; it now checks left-only margins and its focused rerun passes.
+Independent review found a stale banner translation, corrected with a regression.
+Offscreen review exposed QLabel's top indentation on role rows; left-only margins
+keep labels aligned with their actions. Native verification remains user-owned:
+Decks → create/edit Abyss → Show beside T1 DD/support → Clear → change rules;
+confirm visible cards, unchanged selected counts and readable controls.
+No AppShell/CUA or real account access; owned synthetic preview directories use
+TemporaryDirectory cleanup and no persistent outputs are kept.

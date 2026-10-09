@@ -280,7 +280,9 @@ def format_report(snapshot, report, deck, *, allocation=None):
                     requirement_rows.append({"label": _criterion_label(slot),
                                              "current": f"{slot['filled']} / {slot['required']}",
                                              "status": _coverage_status(slot["filled"], slot["required"], allocation),
-                                             "depth": 1})
+                                             "depth": 1,
+                                             **({"character_filter": (slot["tier"], slot["specification"])}
+                                                if slot.get("specification") in (0, 1) else {})})
             else:
                 assigned = allocation_equals.get(rule_index, {})
                 used = assigned.get("used", 0)

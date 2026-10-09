@@ -179,6 +179,18 @@ QLabel#pvp_requirement_status {{
 QLabel#pvp_requirement_status[requirementStatus="pass"] {{ color: #77c991; }}
 QLabel#pvp_requirement_status[requirementStatus="fail"] {{ color: #f18b84; }}
 QLabel#pvp_requirement_status[requirementStatus="unknown"] {{ color: #e5c16b; }}
+QPushButton#pvp_requirement_show {{
+    color: {UI_TEXT_SECONDARY};
+    background: {UI_BG_BUTTON};
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 11px;
+}}
+QPushButton#pvp_requirement_show:checked {{
+    color: {UI_TEXT_PRIMARY};
+    border-color: {UI_STATE_SUCCESS};
+}}
 QFrame#pvp_rules_section {{
     background: {UI_BG_PANEL_RAISED};
     border: 1px solid {UI_BORDER_PANEL};

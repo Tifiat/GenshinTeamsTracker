@@ -1,4 +1,7 @@
 {
+  "app_shell.pvp.rules.filter_show": "Показать",
+  "app_shell.pvp.rules.filter_reset": "Сбросить",
+  "app_shell.pvp.rules.filter_active": "Фильтр правил: T{tier} {role} · найдено: {count}",
   "app_shell.pvp.rules.allocation_pending": "Подбираем общее распределение персонажей…",
   "app_shell.pvp.rules.table_requirement": "Требование",
   "app_shell.pvp.rules.table_current": "Сейчас",

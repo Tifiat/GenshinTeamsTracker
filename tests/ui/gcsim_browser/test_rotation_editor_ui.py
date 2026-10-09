@@ -92,12 +92,47 @@ class RotationEditorUiTests(unittest.TestCase):
 
     def test_character_navigation_has_back_and_action_insert(self):
         window = self.make_window()
+        groups = tuple(window.command_groups.values())
+        self.assertTrue(all(button.isVisible() and button.geometry().bottom() < window.commands_scroll.geometry().top()
+                            for button in groups))
         self.click_button(window, tr("rotation.editor.page.characters"))
         self.click_button(window, "Часка")
-        self.click_button(window, tr("rotation.action.skill"), window.properties_scroll)
+        window.resize(800, 520)
+        APP.processEvents()
+        scrollbar = window.commands_scroll.verticalScrollBar()
+        self.assertGreater(scrollbar.maximum(), 0)
+        scrollbar.setValue(scrollbar.maximum())
+        self.assertTrue(all(button.isVisible() for button in groups))
+        scrollbar.setValue(0)
+        self.assertTrue(any(button.text() == tr("rotation.editor.back") and button.isVisible()
+                            for button in window.commands_scroll.findChildren(QPushButton)))
+        self.assertFalse(any(button.text() == tr("rotation.action.skill") and button.isVisible()
+                             for button in window.properties_scroll.findChildren(QPushButton)))
+        self.click_button(window, tr("rotation.action.skill"), window.commands_scroll)
         self.assertIn("chasca skill", window.session.code_text())
+        self.assertEqual(window._command_actor, "chasca")
+        self.assertTrue(all(button.isVisible() for button in groups))
+        self.click_button(window, tr("rotation.editor.back"), window.commands_scroll)
         self.assertTrue(any(button.text() == "Фурина" and button.isVisible() for button in window.commands_scroll.findChildren(QPushButton)))
         self.assertEqual(window.session.current.find(window.selection.node_id).kind, "action")
+
+    def test_group_tabs_stay_visible_and_preserve_selection(self):
+        window = self.make_window()
+        selected = window.session.current.root.get("items")[1].get("actions")[0]
+        window.select(Selection(selected.node_id, "action"))
+        self.click_button(window, tr("rotation.editor.page.cycles"))
+        self.assertTrue(window.command_groups["cycles"].isChecked())
+        self.assertTrue(any(button.text() == tr("rotation.editor.add_cycle") and button.isVisible()
+                            for button in window.commands_scroll.findChildren(QPushButton)))
+        self.click_button(window, tr("rotation.editor.page.characters"))
+        self.click_button(window, "Часка", window.commands_scroll)
+        self.assertEqual(window.selection.node_id, selected.node_id)
+        self.assertTrue(all(button.isVisible() for button in window.command_groups.values()))
+        self.assertFalse(any(button.text() == tr("rotation.action.aim") and button.isVisible()
+                             for button in window.properties_scroll.findChildren(QPushButton)))
+        self.click_button(window, tr("rotation.action.aim"), window.commands_scroll)
+        self.assertEqual(window.session.current.find(window.selection.node_id).kind, "action")
+        self.assertIn("chasca aim", window.session.code_text())
 
     def test_code_typing_and_undo_use_current_draft(self):
         original = "active furina; furina skill;"
@@ -118,7 +153,7 @@ class RotationEditorUiTests(unittest.TestCase):
     def test_delete_projected_window_and_undo(self):
         source = "active furina; furina skill; furina burst; chasca skill;"
         window = self.make_window(source)
-        self.click_button(window, "Фурина")
+        self.click_button(window, "Фурина", window.readable_scroll)
         self.click_button(window, tr("rotation.editor.delete"))
         self.assertNotIn("furina skill", window.session.code_text())
         self.assertNotIn("furina burst", window.session.code_text())
@@ -166,7 +201,8 @@ class RotationEditorUiTests(unittest.TestCase):
             allowed_actors=('chasca',), character_options={'chasca': descriptor})
         window.show()
         self.addCleanup(window.close)
-        self.click_button(window, tr('rotation.action.aim'))
+        selected = window.session.current.root.get('items')[1].get('actions')[0]
+        window.select(Selection(selected.node_id, 'action'))
         self.assertFalse(window.properties_scroll.findChildren(VariantControl))
         self.assertTrue(any(item.text() == tr('rotation.editor.options_missing') for item in window.properties_scroll.findChildren(QLabel)))
 
@@ -176,16 +212,17 @@ class RotationEditorUiTests(unittest.TestCase):
         window.select(Selection(block.get('then').node_id, 'branch'))
         self.click_button(window, tr('rotation.editor.page.characters'))
         self.click_button(window, 'Часка', window.commands_scroll)
-        self.click_button(window, tr('rotation.action.aim'), window.properties_scroll)
+        self.click_button(window, tr('rotation.action.aim'), window.commands_scroll)
         selected = window.session.current.find(window.selection.node_id)
         self.assertEqual(selected.kind, 'action')
-        self.assertEqual(window._navigation, ['characters'])
+        self.assertEqual(window._command_group, 'characters')
+        self.assertEqual(window._command_actor, 'chasca')
         self.assertTrue(window.properties_scroll.findChildren(VariantControl))
         self.assertIn(block.node_id, [item.node_id for item in analyze(window.session.current).ancestors(selected.node_id)])
         self.click_button(window, tr('rotation.editor.delete'))
         self.assertEqual(window.selection.node_id, block.get('then').node_id)
-        self.assertEqual(window._navigation, ['characters'])
-        self.click_button(window, tr('rotation.action.aim'), window.properties_scroll)
+        self.assertEqual(window._command_actor, 'chasca')
+        self.click_button(window, tr('rotation.action.aim'), window.commands_scroll)
         self.assertEqual(window.session.current.find(window.selection.node_id).kind, 'action')
 
     def test_readable_tab_is_live_compact_text_of_main_code_and_applied_draft(self):
@@ -251,7 +288,9 @@ class RotationEditorUiTests(unittest.TestCase):
     def test_chasca_variant_is_an_explicit_edit_with_visible_preconditions(self):
         source = "active chasca; chasca skill, aim;"
         window = self.make_window(source)
-        self.click_button(window, tr("rotation.action.aim"))
+        selected = window.session.current.root.get("items")[1].get("actions")[1]
+        window.select(Selection(selected.node_id, "action"))
+        APP.processEvents()
         self.assertEqual(window.session.code_text(), source)
         variant = window.properties_scroll.findChildren(VariantControl)[0]
         variant.amount.setCurrentIndex(variant.amount.findData(4))

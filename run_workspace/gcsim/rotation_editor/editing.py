@@ -49,12 +49,54 @@ def _items(document, parent, field, values):
     return document.replace(parent.node_id, parent.changed(**{field: tuple(values)}))
 
 
+def _body_items(body: Node | None) -> tuple[Node, ...]:
+    if body is None or body.kind == "hole":
+        return ()
+    if body.kind == "block":
+        return body.get("items")
+    # An `else if` is an ordinary nested condition, not a statement block.
+    if body.kind == "if":
+        return (body,)
+    raise ValueError("rotation.remove.unsupported")
+
+
+def _has_direct_loop_control(body: Node | None) -> bool:
+    """Find control statements that would change target after unwrapping."""
+    if body is None:
+        return False
+    if body.kind in {"for", "while", "function", "function_expr"}:
+        return False
+    if body.kind == "control" and body.get("value") in {"break", "continue"}:
+        return True
+    return any(_has_direct_loop_control(child) for child in body.children())
+
+
+def _unwrapped_items(document: Document, selected: Node) -> tuple[Node, ...]:
+    if selected.kind == "if":
+        items = _body_items(selected.get("then")) + _body_items(selected.get("otherwise"))
+    else:
+        if selected.kind == "for" and (selected.get("initial") is not None or selected.get("post") is not None):
+            cycle = analyze(document).cycles.get(selected.node_id)
+            if cycle is None or any(part.kind == "name" and part.get("value") == cycle.counter
+                                    for part in selected.get("body").walk()):
+                raise ValueError("rotation.remove.counter")
+        body = selected.get("body")
+        if _has_direct_loop_control(body):
+            raise ValueError("rotation.remove.control")
+        items = _body_items(body)
+    if any(item.kind == "let" for item in items):
+        raise ValueError("rotation.remove.scope")
+    return items
+
+
 def remove(document: Document, selection: Selection) -> Document:
     selected = document.find(selection.node_id)
     if selected.kind in {"block", "case_body"}:
         return document.replace(selected.node_id, selected.changed(items=()))
     parent, field, start, end = _location(document, selection)
     values = parent.get(field)
+    if selection.kind != "window" and selected.kind in {"if", "while", "for"}:
+        return _items(document, parent, field, values[:start] + _unwrapped_items(document, selected) + values[end:])
     if field == "actions" and len(values) == end - start:
         return remove(document, Selection(parent.node_id))
     return _items(document, parent, field, values[:start] + values[end:])

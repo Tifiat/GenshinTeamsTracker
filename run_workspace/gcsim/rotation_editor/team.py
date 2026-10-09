@@ -15,6 +15,8 @@ class TeamMember:
     name: str
     source_id: str = ""
     constellation: int | None = None
+    weapon: str | None = None
+    refinement: int | None = None
 
 
 @dataclass(frozen=True)
@@ -30,6 +32,10 @@ class TeamContext:
     @property
     def binding(self):
         return self.scope, tuple((member.key, member.source_id, member.constellation) for member in self.members), self.unresolved
+
+    @property
+    def search_binding(self):
+        return self.binding, tuple((member.weapon, member.refinement) for member in self.members)
 
 
 def _mapping(value):
@@ -47,6 +53,8 @@ def from_selected_team(payload: Mapping, *, scope: str,
             key = str(character.get("gcsim_key") or "")
             source_id = "virtual:" + key
             constellation = character.get("constellation")
+            weapon = _mapping(virtual.get("weapon"))
+            weapon_key = str(weapon.get("gcsim_key") or "") or None
         else:
             details = _mapping(_mapping(slot).get("character_details_data"))
             character = _mapping(details.get("account_character")) or _mapping(_mapping(slot).get("character"))
@@ -58,11 +66,15 @@ def from_selected_team(payload: Mapping, *, scope: str,
             identity = _mapping(lookup(source_id)) if lookup else character
             key = str(identity.get("gcsim_character_key") or "") if identity.get("gcsim_character_key_status") == "ready" else ""
             constellation = character.get("constellation")
+            weapon = _mapping(details.get("account_weapon")) or _mapping(_mapping(slot).get("weapon"))
+            weapon_key = (str(weapon.get("gcsim_weapon_key") or "") or None) if weapon.get("gcsim_weapon_key_status") == "ready" else None
         if not key:
             unresolved.append(source_id or str(slot.get("slot_index", "")))
             continue
         amount = constellation if type(constellation) is int and 0 <= constellation <= 6 else None
-        members.append(TeamMember(key, str(character.get("name") or key), source_id, amount))
+        refinement = weapon.get("refinement")
+        refinement = refinement if type(refinement) is int and 1 <= refinement <= 5 else None
+        members.append(TeamMember(key, str(character.get("name") or key), source_id, amount, weapon_key, refinement))
     if len(members) > 4 or len({item.key for item in members}) != len(members):
         return TeamContext(scope, (), tuple(unresolved) + ("duplicate_or_oversized_team",))
     return TeamContext(scope, tuple(members), tuple(unresolved))

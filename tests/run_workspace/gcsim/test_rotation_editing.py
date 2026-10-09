@@ -81,6 +81,59 @@ class StructuralEditingTests(unittest.TestCase):
         branch = document.root.get("items")[1].get("then")
         self.check_code(remove(document, Selection(branch.node_id)), "active furina; if .furina.onfield {} else { chasca skill; }")
 
+    def test_remove_condition_keeps_both_branches_in_order(self):
+        document = parse("active furina; furina dash; if .furina.onfield { furina skill; furina burst; } else { chasca skill; } chasca burst;", DIALECT)
+        condition = document.root.get("items")[2]
+        self.check_code(remove(document, Selection(condition.node_id)),
+                        "active furina; furina dash; furina skill; furina burst; chasca skill; chasca burst;")
+
+    def test_remove_outer_condition_keeps_nested_condition(self):
+        document = parse("active furina; if .furina.onfield { if .furina.energy > 60 { furina burst; } } else { chasca skill; }", DIALECT)
+        outer = document.root.get("items")[1]
+        self.check_code(remove(document, Selection(outer.node_id)),
+                        "active furina; if .furina.energy > 60 { furina burst; } chasca skill;")
+
+    def test_remove_simple_loop_keeps_body_and_undo_roundtrip(self):
+        session = EditorSession("active furina; while .furina.energy < 60 { furina skill; furina dash; } chasca burst;", DIALECT)
+        cycle = session.current.root.get("items")[1]
+        session.edit_structure(remove, Selection(cycle.node_id))
+        self.check_code(session.current, "active furina; furina skill; furina dash; chasca burst;")
+        changed_code = session.code_text()
+        session.undo()
+        self.check_code(session.current, "active furina; while .furina.energy < 60 { furina skill; furina dash; } chasca burst;")
+        session.redo()
+        self.assertEqual(session.code_text(), changed_code)
+        self.assertTrue(session.commit().syntax_complete)
+
+    def test_remove_plain_for_loop_keeps_actions(self):
+        document = parse("active furina; for .furina.energy < 60 { furina skill; } chasca burst;", DIALECT)
+        cycle = document.root.get("items")[1]
+        self.check_code(remove(document, Selection(cycle.node_id)), "active furina; furina skill; chasca burst;")
+
+    def test_remove_counted_or_controlled_loop_rejects_unsafe_unwrap(self):
+        counted = parse("active furina; for let i=0; i<4; i=i+1 { furina attack:i; }", DIALECT)
+        cycle = counted.root.get("items")[1]
+        with self.assertRaisesRegex(ValueError, "rotation.remove.counter"):
+            remove(counted, Selection(cycle.node_id))
+        controlled = parse("active furina; for { furina skill; break; }", DIALECT)
+        cycle = controlled.root.get("items")[1]
+        with self.assertRaisesRegex(ValueError, "rotation.remove.control"):
+            remove(controlled, Selection(cycle.node_id))
+        scoped = parse("active furina; if .furina.onfield { let i=1; furina skill; }", DIALECT)
+        condition = scoped.root.get("items")[1]
+        with self.assertRaisesRegex(ValueError, "rotation.remove.scope"):
+            remove(scoped, Selection(condition.node_id))
+
+    def test_remove_counted_loop_without_counter_dependency_keeps_actions(self):
+        document = parse("active furina; for let i=0; i<4; i=i+1 { furina skill, burst; }", DIALECT)
+        cycle = document.root.get("items")[1]
+        self.check_code(remove(document, Selection(cycle.node_id)), "active furina; furina skill, burst;")
+
+    def test_window_delete_still_removes_actions_inside_condition(self):
+        document = parse("active furina; furina skill; if .furina.onfield { furina burst; } chasca skill;", DIALECT)
+        window = render(document, translator()).items[0]
+        self.check_code(remove(document, Selection.from_view(window)), "active furina; chasca skill;")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,7 +3,7 @@
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QCheckBox, QFrame, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
+    QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
     QPushButton, QScrollArea, QSpinBox, QSplitter, QTabWidget, QVBoxLayout, QWidget,
 )
 
@@ -68,14 +68,14 @@ class RotationEditorWindow(QWidget):
         self.character_options = character_options or {}
         self.selection = None
         self.selected_actor = ""
-        self._property_mode = "selection"
+        self._command_group = "characters"
+        self._command_actor = ""
         self._buttons = []
         self._updating = False
         self._visible_count = 0
         self._message = ""
         self._apply_block_reason = ""
         self._draft_incomplete = False
-        self._navigation = []
         layout = QVBoxLayout(self)
         toolbar = QHBoxLayout()
         self.undo_button = QPushButton(tr("rotation.editor.undo"))
@@ -114,6 +114,17 @@ class RotationEditorWindow(QWidget):
         splitter.setSizes([840, 360])
         self.commands_title = label(tr("rotation.editor.commands"))
         side_layout.addWidget(self.commands_title)
+        group_layout = QGridLayout()
+        group_layout.setSpacing(4)
+        self.command_groups = {}
+        for index, key in enumerate(("characters", "cycles", "conditions", "other")):
+            button = QPushButton(tr("rotation.editor.page." + key))
+            button.setCheckable(True)
+            button.setChecked(key == self._command_group)
+            button.clicked.connect(lambda checked=False, page=key: self._navigate(page))
+            group_layout.addWidget(button, index // 2, index % 2)
+            self.command_groups[key] = button
+        side_layout.addLayout(group_layout)
         self.commands_scroll = QScrollArea()
         self.commands_scroll.setWidgetResizable(True)
         commands_panel = QWidget()
@@ -184,7 +195,8 @@ class RotationEditorWindow(QWidget):
         self.display_names = names
         if self.selected_actor not in self.names:
             self.selected_actor = ""
-            self._navigation.clear()
+        if self._command_actor not in self.names:
+            self._command_actor = ""
         if self.flush_code():
             self.refresh()
 
@@ -293,7 +305,6 @@ class RotationEditorWindow(QWidget):
         if not self.flush_code():
             return
         self.selection = selection
-        self._property_mode = "selection"
         if actor:
             self.selected_actor = actor
         self._selection_changed()
@@ -302,13 +313,11 @@ class RotationEditorWindow(QWidget):
         self.select(None)
 
     def _selection_changed(self):
-        action_selection = False
         if self.selection:
             try:
-                selected = self.session.current.find(self.selection.node_id)
-                action_selection = selected.kind == "action"
+                self.session.current.find(self.selection.node_id)
                 actor = context_for(self.session.current, self.selection.node_id).actor_key
-                if actor and self._property_mode != "character":
+                if actor:
                     self.selected_actor = actor if actor in self.names else ""
             except (StopIteration, KeyError):
                 self.selection = None
@@ -318,12 +327,6 @@ class RotationEditorWindow(QWidget):
         self.up_button.setEnabled(self.selection is not None and self.selection.kind not in {"hole", "branch", "window", "unreachable"})
         self.down_button.setEnabled(self.up_button.isEnabled())
         clear(self.properties_layout)
-        if self._property_mode == "character" and self.selected_actor in self.names:
-            self._actor_actions()
-            self._commands()
-            return
-        if self.selected_actor in self.names and not action_selection:
-            self._actor_actions()
         if self.selection is None:
             self.properties_layout.addWidget(label(tr("rotation.editor.select_hint")))
             active = [item for item in self.session.current.root.get("items") if item.kind == "active"]
@@ -368,8 +371,6 @@ class RotationEditorWindow(QWidget):
             except (KeyError, StopIteration, ValueError, CodeGenerationError):
                 self.selection = None
                 self.properties_layout.addWidget(label(tr("rotation.editor.select_hint")))
-        if self.selected_actor in self.names and action_selection:
-            self._actor_actions()
         self._commands()
 
     def _property(self, prop):
@@ -418,9 +419,11 @@ class RotationEditorWindow(QWidget):
 
     def _commands(self):
         clear(self.commands_layout)
-        if self._navigation:
+        if self._command_group == "characters" and self._command_actor in self.names:
             self._button(tr("rotation.editor.back"), self._back, self.commands_layout)
-        page = self._navigation[-1] if self._navigation else "root"
+            self._actor_actions(self._command_actor)
+            return
+        page = self._command_group
         if page == "characters":
             for key, text in self.names.items():
                 self._button(text, lambda key=key: self._choose_actor(key), self.commands_layout)
@@ -457,41 +460,39 @@ class RotationEditorWindow(QWidget):
             self.commands_layout.addWidget(self.wait_amount)
             self._button(tr("rotation.editor.add_wait"), lambda: self.add_statement(node("expression_stmt", value=node("call", function=node("name", value="wait"),
                 arguments=(node("number", value=str(self.wait_amount.value())),)))), self.commands_layout)
-        else:
-            for key, page_name in (("characters", "characters"), ("cycles", "cycles"), ("conditions", "conditions"), ("other", "other")):
-                self._button(tr("rotation.editor.page." + key), lambda page_name=page_name: self._navigate(page_name), self.commands_layout)
-
-    def _actor_actions(self):
-        self.properties_layout.addWidget(label(tr("rotation.editor.actions_for", actor=self.names[self.selected_actor])))
-        metadata = self.character_options.get(self.selected_actor)
+    def _actor_actions(self, actor_key):
+        self.commands_layout.addWidget(label(tr("rotation.editor.actions_for", actor=self.names[actor_key])))
+        metadata = self.character_options.get(actor_key)
         documented = {item.name for item in metadata.actions if not item.invalid} if metadata and metadata.origin != "unavailable" else set()
         if not documented:
-            self.properties_layout.addWidget(label(tr("rotation.editor.options_missing")))
+            self.commands_layout.addWidget(label(tr("rotation.editor.options_missing")))
         for name in ("skill", "burst", "attack", "charge", "aim", "dash", "jump", "high_plunge", "low_plunge", "walk", "swap"):
             if name in documented and name in self.session.current.dialect.actions:
-                self._button(tr("rotation.action." + name), lambda name=name: self.add_statement(action(actor_token(self.session.current, self.selected_actor), name)), self.properties_layout)
+                self._button(tr("rotation.action." + name), lambda name=name, actor=actor_key: self.add_statement(
+                    action(actor_token(self.session.current, actor), name)), self.commands_layout)
 
     def _navigate(self, page):
-        self._navigation.append(page)
+        self._command_group = page
+        self._command_actor = ""
+        for key, button in self.command_groups.items():
+            button.setChecked(key == page)
         self._commands()
 
     def _back(self):
-        self._navigation.pop()
+        self._command_actor = ""
         self._commands()
 
     def _choose_actor(self, key):
         if key not in self.names:
             self.set_message(tr("rotation.editor.team_outside"))
             return
-        self.selected_actor = key
-        self._property_mode = "character"
-        self._selection_changed()
+        self._command_actor = key
+        self._commands()
 
     def add_statement(self, statement):
         def edit():
             fresh = statement() if callable(statement) else statement
             self.session.edit_structure(insert, self.selection, fresh)
-            self._property_mode = "selection"
             self.selection = Selection(fresh.get("actions")[0].node_id, "action") if fresh.kind == "action_line" else Selection(fresh.node_id)
         self._do(edit)
 
@@ -515,6 +516,8 @@ class RotationEditorWindow(QWidget):
                 self.properties_scroll.verticalScrollBar().setValue(0)
         except (ValueError, KeyError, StopIteration, RecursionError) as error:
             reason = tr("rotation.editor.team_outside") if str(error) == "rotation.team.outside" else tr("rotation.editor.team_empty") if str(error) == "rotation.team.empty" else str(error)
+            if reason.startswith("rotation.remove."):
+                reason = tr(reason)
             self.set_message(tr("rotation.editor.error", reason=reason))
 
     def delete_selection(self, selection=None):

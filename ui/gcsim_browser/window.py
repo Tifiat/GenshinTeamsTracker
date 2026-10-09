@@ -134,6 +134,10 @@ class GcsimBrowserWorkspace(QWidget):
         self._rotation_base_source = ""
         self.rotation_team_provider = None
         self._rotation_team_context = None
+        self._rotation_revision = 0
+        self._import_generation = 0
+        self._import_binding = None
+        self._import_dialog = None
         self._virtual_set_choices: tuple[GcsimVirtualArtifactSetChoice, ...] = ()
         self._team_notes: list[QLabel] = []
         self._optimizer_elapsed_clock = QElapsedTimer()
@@ -262,6 +266,9 @@ class GcsimBrowserWorkspace(QWidget):
         self.open_rotation_editor_button = QPushButton()
         self.open_rotation_editor_button.clicked.connect(self._open_rotation_editor)
         rotation_layout.addWidget(self.open_rotation_editor_button)
+        self.import_rotation_button = QPushButton()
+        self.import_rotation_button.clicked.connect(self._open_rotation_import)
+        rotation_layout.addWidget(self.import_rotation_button)
         self.rotation_tabs = QTabWidget()
         self.rotation_tabs.setDocumentMode(True)
         code_tab = QWidget()
@@ -271,6 +278,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.rotation_editor = QPlainTextEdit()
         self.rotation_editor.setPlainText(DEFAULT_ROTATION_CODE)
         self.rotation_editor.textChanged.connect(self.rotation_text_changed.emit)
+        self.rotation_editor.textChanged.connect(self._rotation_source_changed)
         self.rotation_editor.setMinimumHeight(180)
         code_layout.addWidget(self.rotation_editor)
         self.rotation_tabs.addTab(code_tab, "")
@@ -497,6 +505,10 @@ class GcsimBrowserWorkspace(QWidget):
     def refresh_rotation_team_context(self):
         if not hasattr(self, "rotation_tabs"):
             return
+        binding = self._current_rotation_team().search_binding
+        if self._import_binding != binding:
+            self._import_generation += 1
+            self._import_binding = binding
         if self._rotation_window is not None:
             team = self._current_rotation_team()
             names = self._rotation_names(self._rotation_environment, team)
@@ -509,6 +521,82 @@ class GcsimBrowserWorkspace(QWidget):
     def _rotation_tab_changed(self, index):
         if index == 1:
             self._refresh_readable()
+
+    def _rotation_source_changed(self):
+        self._rotation_revision += 1
+
+    def _import_state(self, environment, team):
+        draft = self._rotation_window
+        draft_state = (id(draft), id(draft.session.current), draft.code.document().revision()) if draft else None
+        return self._rotation_revision, self._import_generation, team.search_binding, environment.identity, draft_state
+
+    def _open_rotation_import(self):
+        from ui.gcsim_browser.rotation_import import RotationImportDialog
+        team = self._current_rotation_team()
+        if len(team.keys) != 4 or team.unresolved:
+            self.set_prepare_result_text(tr("rotation.import.team_required"))
+            return
+        try:
+            environment = self._load_rotation_environment()
+        except (OSError, ValueError, RuntimeError):
+            self.set_prepare_result_text(tr("rotation.editor.no_engine"))
+            return
+        if self._import_dialog is not None:
+            if self._import_dialog.worker.isRunning():
+                self._import_dialog.show()
+                self._import_dialog.raise_()
+                return
+            self._import_dialog.deleteLater()
+        if self._rotation_window is not None:
+            self._rotation_window.flush_code()
+        if self._import_binding != team.search_binding:
+            self._import_generation += 1
+            self._import_binding = team.search_binding
+        snapshot = self._import_state(environment, team)
+        dialog = RotationImportDialog(team, environment, self.rotation_editor.toPlainText(),
+            names=self._rotation_names(environment, team), catalog=self._virtual_catalog,
+            set_choices=self._virtual_set_choices, parent=self)
+        dialog.chosen.connect(lambda source: self._accept_rotation_import(source, snapshot, dialog))
+        self._import_dialog = dialog
+        dialog.show()
+
+    def _accept_rotation_import(self, source, snapshot, dialog):
+        team = self._current_rotation_team()
+        try:
+            environment = self._load_rotation_environment()
+        except (OSError, ValueError, RuntimeError):
+            dialog.notice.setText(tr("rotation.editor.no_engine"))
+            return
+        if self._import_state(environment, team) != snapshot:
+            dialog.notice.setText(tr("rotation.import.stale"))
+            dialog.load_button.setEnabled(False)
+            return
+        # Choosing an import explicitly replaces the draft. Preserve its undo
+        # history where the same dialect/environment still owns the window.
+        if self._rotation_window is not None and self._rotation_environment.identity == environment.identity:
+            window = self._rotation_window
+            window.timer.stop()
+            try:
+                window.session.set_code(source)
+            except (ValueError, RecursionError):
+                dialog.notice.setText(tr("rotation.import.syntax"))
+                return
+            window.selection = None
+            window.refresh()
+            window.set_team(team.keys, self._rotation_names(environment, team))
+            window.block_apply("")
+            self._rotation_team_context = team
+            self._rotation_base_source = self.rotation_editor.toPlainText()
+            window.refresh()
+            window.show()
+        else:
+            if not self._create_rotation_window(environment, source, reset_base=True):
+                dialog.notice.setText(tr("rotation.import.syntax"))
+                return
+        dialog.accept()
+        if self._rotation_window is not None:
+            self._rotation_window.raise_()
+            self._rotation_window.activateWindow()
 
     def _schedule_readable(self):
         if self.rotation_tabs.currentIndex() == 1:
@@ -560,7 +648,7 @@ class GcsimBrowserWorkspace(QWidget):
             source = draft
         self._create_rotation_window(environment, source, reset_base=self._rotation_window is None)
 
-    def _create_rotation_window(self, environment, source: str, *, reset_base: bool) -> None:
+    def _create_rotation_window(self, environment, source: str, *, reset_base: bool) -> bool:
         from ui.gcsim_browser.rotation_editor import RotationEditorWindow
 
         team = self._current_rotation_team()
@@ -573,7 +661,7 @@ class GcsimBrowserWorkspace(QWidget):
                 self._rotation_window.set_message(tr("rotation.editor.error", reason=str(error)))
             else:
                 self.set_prepare_result_text(tr("rotation.editor.error", reason=str(error)))
-            return
+            return False
         if self._rotation_window is not None:
             self._rotation_window.close()
             self._rotation_window.deleteLater()
@@ -585,6 +673,7 @@ class GcsimBrowserWorkspace(QWidget):
         self._rotation_window.applied.connect(self._apply_rotation_draft)
         self._rotation_window.reload_requested.connect(self._reload_rotation_draft)
         self._rotation_window.show()
+        return True
 
     def _reload_rotation_draft(self) -> None:
         # Explicitly labeled destructive draft replacement, requested by a click.
@@ -727,6 +816,7 @@ class GcsimBrowserWorkspace(QWidget):
             _fallback("gcsim.browser.rotation", "Rotation")
         )
         self.open_rotation_editor_button.setText(tr("rotation.editor.open"))
+        self.import_rotation_button.setText(tr("rotation.import.button"))
         self.rotation_tabs.setTabText(0, _fallback("gcsim.browser.rotation_code", "Code"))
         self.rotation_tabs.setTabText(
             1,

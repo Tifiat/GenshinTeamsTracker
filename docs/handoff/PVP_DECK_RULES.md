@@ -1,7 +1,7 @@
 # PvP deck rules editor
 
 <!-- handoff-current: pvp-deck-rules -->
-Reviewed 2026-10-09, Worker4 source branch only. Decks explicitly loads the public
+Reviewed 2026-10-10, Worker4 source branch only. Decks explicitly loads the public
 catalog, offers the latest live version per family plus Free Draft, and saves a
 validated snapshot. Older decks remain viewable; saving requires currentness and
 explicit adoption of newer rules. Cancel preserves the original selection.
@@ -14,12 +14,13 @@ abort allocation. Missing/ambiguous tiers remain unknown. Roles use the preset D
 list; scoped Show/Clear filters never change selection. Exact site allocation,
 zero upper bounds and some bundle semantics remain unverified.
 
-The rejected weapon-price accordion is removed. Compact sums distinguish one
-copy per selected stack, known full quantities and assignment-dependent pricing.
-The exact inspected Cup version displays attributed tournament prose (155 = 130
-general + 25 cheap-only), separately from the API Teams-phase cap. Panel geometry
+The rejected weapon-price accordion is removed. The exact inspected Cup now
+evaluates total roster cost ≤155 and expensive weapons ≥15 total ≤130.
+Structured API roster bounds take precedence; otherwise a bounded parser reads
+the inspected version-bound regulation statement. Each selected card's base price
+at its refinement is counted once, separately from copies and Teams cost. Panel geometry
 remains stable across selection/pending/results; repeated descendant layout
-activation was removed. The [current receipt](#weapon-limits-and-local-matches--2026-10-09)
+activation was removed. The [current receipt](#weapon-roster-requirements--2026-10-10)
 owns verification and the [prior performance receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
 owns earlier pipeline measurements.
 
@@ -141,6 +142,51 @@ Current Cup still needs the independently assigned Pyro Traveler support. One
 diagnostic synthetic widget was accidentally shown on the desktop and closed;
 other UI checks were offscreen. No production app/real-account access or Computer
 Use occurred. Handoff checker and source diff review complete the local closeout.
+
+## Weapon roster requirements — 2026-10-10
+
+The user rejected the manual-only weapon note as an incomplete requirement.
+`weapon_roster_budget.py` now owns a pure selected-roster counter and constraint
+evaluation shared by Decks and Play admission. Each selected weapon entry's base
+price at its refinement is counted once, including zero prices. Observed inventory
+copy counts remain availability metadata and are never guessed or multiplied into
+this roster counter. Conditional prices after character assignment remain a separate
+Teams-phase calculation.
+
+Structured `bounds.engines.cost` wins whenever it supplies a nonzero bound. The
+current inspected Cup has `[0,0]`, so the fallback parses the inspected original
+weapon paragraph; it also accepts the concise statement quoted by the user. This bounded parser
+does not inspect localized UI strings, execute scripts or guess changed grammar.
+It requires total = general + reserve, repeated reserve consistency, and adjacent
+cheap/expensive thresholds. The fallback is bound to the inspected system ID/root/
+update and regulation link; no tournament prose is applied to another version.
+This stage interprets a checked statement; automatic discovery/refresh of arbitrary
+organizer prose is not claimed.
+
+The requirement table now has numeric current/limit values and pass/fail/unknown
+markers for total ≤155 and weapon prices ≥15 summing to ≤130. Cheap weapons may
+spend from either pool: their entire sum is not capped at 25. Empty/zero selections
+count as zero; missing prices show the known subtotal without a false pass. A price
+between the stated thresholds leaves the split check unknown. Other source rules
+still show a current weapon counter even when they declare no roster cap. Exceeded
+or inconclusive applicable checks block local match admission with a readable reason.
+Saved rule JSON/hashes and archive shape are unchanged; this is a derived report.
+
+91 distinct focused cases PASS: 28 backend/parser/persistence/source-match,
+27 Decks rule presentation, 15 right-panel, two geometry, eight performance,
+and 11 integrated Play/source-match/export/import cases. Tests cover exact
+boundaries, expensive-only failures below total cap, cheap cost above 25,
+unknown/zero prices, missing quantities, R-specific entry prices, API precedence,
+version isolation, original/condensed prose parsing, corrupt grammar and readable
+match rejection. Locale keys/placeholders and the handoff checker pass.
+The 70-weapon click median is 3.733 ms over 20 samples; the unchanged 16.67 ms guard
+passes after the last localized text change. No native/app/account interaction.
+
+User smoke: in the matching Cup deck, select/remove weapons and verify the
+selected sum and both current/limit rows update without panel movement. Expensive
+131 must fail even below total 155; total 155/expensive 130 must pass; cheap
+cost above 25 can pass while total is at most 155. An exceeded or inconclusive
+applicable weapon requirement must block Play. Physical acceptance remains open.
 
 ## Verification receipt — 2026-10-09
 

@@ -11,17 +11,13 @@ from run_workspace.pvp.abyss_rules import AbyssRuleset, evaluate_deck
 from run_workspace.pvp.deck import FREE_DRAFT_V0_RULESET_ID
 from run_workspace.pvp.schedule import default_free_draft_v0_config
 from run_workspace.pvp.tier_allocation import allocate_requirements
-
-
-_MANUAL_REGULATION_SOURCE = {
-    "system_id": "6ac54cc57032007b0dd5e4f9",
-    "root_id": "6953c08267a24684c387795c",
-    "updated_at": "2026-10-06T19:34:41.433Z",
-}
-_MANUAL_REGULATION_URL = (
-    "https://docs.google.com/document/d/1sBlA2ybrqqp35J66XbwejBx8S1z-Ehk-fwfd8asKhJI/"
-    "edit?tab=t.0"
+from run_workspace.pvp.weapon_roster_budget import (
+    CUP_SOURCE as _MANUAL_REGULATION_SOURCE,
+    REGULATION_URL as _MANUAL_REGULATION_URL,
+    build_weapon_roster_report,
 )
+
+
 _MANUAL_REGULATION_CHECKED = "2026-10-09"
 
 
@@ -240,6 +236,98 @@ def _coverage_status(filled, required, allocation):
     return "fail"
 
 
+def _weapon_roster_current(check, roster):
+    actual = check.get("actual")
+    maximum = check.get("maximum", 0)
+    if actual is not None:
+        return f"{_number(actual)} / {_number(maximum)}" if maximum else _number(actual)
+    if check.get("code") == "weapon_roster_expensive":
+        partial = _t(
+            "weapon_roster_expensive_partial",
+            known=_number(check.get("known_actual", 0)),
+            unknown_prices=roster.get("unknown_price_count", 0),
+            unclassified=roster.get("unclassified_count", 0),
+            threshold=_number((roster.get("policy") or {}).get("expensive_min") or 15),
+        )
+    else:
+        partial = _t(
+            "weapon_roster_partial",
+            known=_number(check.get("known_actual", 0)),
+            unknown=roster.get("unknown_price_count", 0),
+        )
+    return f"{partial} / {_number(maximum)}" if maximum else partial
+
+
+def _weapon_roster_requirement_rows(snapshot, roster):
+    policy = roster.get("policy")
+    provenance = ""
+    if policy:
+        if policy.get("source_kind") == "regulation":
+            provenance = _t(
+                "weapon_roster_regulation_source",
+                title=policy.get("source_title") or snapshot["source"].get("title", ""),
+                date=policy.get("checked_at", ""),
+                url=policy.get("url", ""),
+            )
+        else:
+            api_parts = [_t(
+                "weapon_roster_api_source",
+                title=policy.get("source_title") or snapshot["source"].get("title", ""),
+            )]
+            if policy.get("source_kind") == "api" and (
+                    policy.get("minimum", 0) or not policy.get("maximum", 0)):
+                api_parts.append(_t(
+                    "weapon_roster_api_bounds",
+                    minimum=_number(policy.get("minimum", 0)),
+                    maximum=_number(policy.get("maximum", 0)) if policy.get("maximum", 0)
+                    else _t("unspecified"),
+                ))
+            provenance = " · ".join(api_parts)
+
+    price_unknown = (_t("weapon_roster_unknown_prices", count=roster["unknown_price_count"])
+                     if roster.get("unknown_price_count", 0) else "")
+    classification_unknown = (
+        _t("weapon_roster_classification_unknown", count=roster["unclassified_count"])
+        if roster.get("unclassified_count", 0) else "")
+
+    if not policy:
+        total = (_t("weapon_roster_partial", known=_number(roster.get("known_total", 0)),
+                    unknown=roster.get("unknown_price_count", 0))
+                 if roster.get("unknown_price_count", 0)
+                 else _number(roster.get("total") if roster.get("total") is not None
+                              else roster.get("known_total", 0)))
+        return [{"label": _t("weapon_roster_cost"), "current": total,
+                 "status": "info", "detail": _t("weapon_roster_policy_unspecified")}]
+
+    rows = []
+    for check in roster.get("checks", ()):
+        code = check.get("code")
+        label_key = {
+            "weapon_roster_cost": "weapon_roster_cost",
+            "weapon_roster_expensive": "weapon_roster_expensive",
+        }.get(code)
+        if label_key is None:
+            continue
+        label_values = ({"threshold": _number(policy.get("expensive_min") or 15)}
+                        if code == "weapon_roster_expensive" else {})
+        if code == "weapon_roster_expensive" and policy.get("general_pool") is not None:
+            detail_parts = [_t(
+                "weapon_roster_pools_detail",
+                general=_number(policy["general_pool"]),
+                reserve=_number(policy["cheap_pool"]),
+                cheap_max=_number(policy["cheap_max"]),
+            )]
+        else:
+            detail_parts = [provenance]
+        if price_unknown:
+            detail_parts.append(price_unknown)
+        if code == "weapon_roster_expensive" and classification_unknown:
+            detail_parts.append(classification_unknown)
+        rows.append({"label": _t(label_key, **label_values), "current": _weapon_roster_current(check, roster),
+                     "status": check.get("status", "unknown"), "detail": " · ".join(detail_parts)})
+    return rows
+
+
 def format_report(snapshot, report, deck, *, allocation=None):
     language = get_language()
     names = {row["game_id"]: row.get("names", {}).get(language) or row.get("names", {}).get("en") or row["game_id"]
@@ -251,36 +339,24 @@ def format_report(snapshot, report, deck, *, allocation=None):
     allocation_rules = {row["rule_index"]: row for row in allocation.get("rules", ())}
     allocation_equals = {row["rule_index"]: row for row in allocation.get("equals", ())}
     character_rows = {row["index"]: row for row in report["character_rows"]}
-    weapon_rows = report["weapon_rows"]
-    known_unit_prices = [row["base_unit_cost"] for row in weapon_rows
-                         if row["base_unit_cost"] is not None]
-    missing_price_count = sum(row["base_unit_cost"] is None for row in weapon_rows)
-    valid_quantities = [row for row in weapon_rows
-                        if isinstance(row["count"], int) and not isinstance(row["count"], bool)
-                        and row["count"] > 0]
-    unknown_quantity_count = len(weapon_rows) - len(valid_quantities)
-    known_observed_base_cost = sum(
-        row["base_unit_cost"] * row["count"] for row in valid_quantities
-        if row["base_unit_cost"] is not None
-    )
-    issues_by_code = {issue["code"] for issue in report["issues"]}
-    if report["weapon_total"] is not None:
-        after_assignment = _number(report["weapon_total"])
-    elif "weapon_assignment_needed" in issues_by_code:
-        after_assignment = _t("weapon_assignment_pending")
+    weapon_roster = report.get("weapon_roster")
+    if not isinstance(weapon_roster, dict):
+        # Older synthetic reports may not include the derived roster section.
+        weapon_roster = build_weapon_roster_report(snapshot, report["weapon_rows"])
+    known_total = _number(weapon_roster.get("known_total", 0))
+    unknown_price_count = weapon_roster.get("unknown_price_count", 0)
+    if unknown_price_count:
+        roster_total = _t("weapon_roster_partial", known=known_total,
+                          unknown=unknown_price_count)
     else:
-        after_assignment = _t("weapon_cost_incomplete")
+        roster_total = _number(weapon_roster.get("total")
+                               if weapon_roster.get("total") is not None
+                               else weapon_roster.get("known_total", 0))
     summary = [
         _t("character_cost", value=_number(report["character_total"])),
-        _t("weapon_selected_unit_base", value=_number(sum(known_unit_prices))),
-        _t("weapon_base_cost", value=_number(known_observed_base_cost)),
-        _t("weapon_cost", value=after_assignment),
+        _t("weapon_roster_summary", value=roster_total),
         _t("card_legend"),
     ]
-    if missing_price_count:
-        summary.append(_t("weapon_missing_prices", count=missing_price_count))
-    if unknown_quantity_count:
-        summary.append(_t("weapon_unknown_quantities", count=unknown_quantity_count))
     if report.get("bundle_adjustment_total"):
         summary.append(_t("bundle_adjustment", value=_number(report["bundle_adjustment_total"])))
     counts = report["tier_counts"]
@@ -290,8 +366,8 @@ def format_report(snapshot, report, deck, *, allocation=None):
     requirement_rows = []
     requirement_rows.append({"label": _t("weapon_price_explanation"), "current": "—", "status": "info"})
     traveler_required = False
-    for group in ("agents", "engines"):
-        for metric in ("cost", "count"):
+    for group, metrics in (("agents", ("cost", "count")), ("engines", ("count",))):
+        for metric in metrics:
             low, high = snapshot["bounds"][group][metric]
             if low or high:
                 label = _t("limit", subject=_t(group + "_" + metric),
@@ -303,15 +379,12 @@ def format_report(snapshot, report, deck, *, allocation=None):
                 status = ("unknown" if actual is None or uncertain else "fail" if failed
                           else "unknown" if high == 0 else "pass")
                 if actual is None and group == "engines":
-                    current = (_t("weapon_count_incomplete") if metric == "count"
-                               else after_assignment)
+                    current = _t("weapon_count_incomplete")
                 else:
                     current = _number(actual)
                 requirement_rows.append({"label": label, "current": current, "status": status,
                                          "detail": _t("bundle_application_unverified") if uncertain else ""})
-    if snapshot["bounds"]["engines"]["cost"][1] == 0:
-        requirement_rows.append({"label": _t("weapon_deck_cost_cap_unspecified"),
-                                 "current": "—", "status": "info"})
+    requirement_rows.extend(_weapon_roster_requirement_rows(snapshot, weapon_roster))
     phase_teams = snapshot.get("phase_teams", {})
     team_weapon_max = phase_teams.get("max_engines_cost")
     if team_weapon_max is not None:
@@ -328,8 +401,6 @@ def format_report(snapshot, report, deck, *, allocation=None):
         source_detail = _t("manual_regulation_source", date=_MANUAL_REGULATION_CHECKED,
                            url=_MANUAL_REGULATION_URL)
         requirement_rows.extend((
-            {"label": _t("manual_weapon_regulation"), "current": _t("manual_info"),
-             "status": "info", "detail": source_detail},
             {"label": _t("manual_joker_regulation"), "current": _t("manual_info"),
              "status": "info", "detail": source_detail},
             {"label": _t("regulation_score_difference"), "current": _t("manual_info"),
@@ -428,7 +499,11 @@ def format_report(snapshot, report, deck, *, allocation=None):
             continue
         by_code.setdefault(issue["code"], []).append(issue["details"])
     for key, details in by_code.items():
-        text = _t(key)
+        if key == "weapon_roster_classification_unknown":
+            count = sum(detail.get("count", 0) for detail in details)
+            text = _t(key, count=count)
+        else:
+            text = _t(key)
         if text == "app_shell.pvp.rules." + key:
             text = _t("unsupported_rule")
         identities = list(dict.fromkeys(value for detail in details

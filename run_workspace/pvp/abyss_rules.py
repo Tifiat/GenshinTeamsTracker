@@ -15,6 +15,7 @@ import re
 from typing import Any, Mapping
 
 from .deck import DraftDeck
+from .weapon_roster_budget import build_weapon_roster_report
 
 
 FORMAT = "gtt.pvp.abyss_rules.v1"
@@ -608,6 +609,7 @@ class AbyssDeckReport:
     bundle_candidates: tuple[Mapping[str, Any], ...]
     declarations: tuple[Mapping[str, Any], ...]
     issues: tuple[AbyssIssue, ...]
+    weapon_roster: Mapping[str, Any]
 
     @property
     def complete(self) -> bool:
@@ -623,6 +625,7 @@ class AbyssDeckReport:
                 "character_base_total": self.character_base_total,
                 "bundle_adjustment_total": self.bundle_adjustment_total,
                 "character_total": self.character_total, "weapon_total": self.weapon_total,
+                "weapon_roster": dict(self.weapon_roster),
                 "character_count": self.character_count, "weapon_count": self.weapon_count,
                 "tier_counts": dict(self.tier_counts), "bundle_candidates": list(self.bundle_candidates),
                 "declarations": list(self.declarations), "issues": [issue.to_dict() for issue in self.issues],
@@ -743,6 +746,14 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
                             "possible_unit_min": min(candidates) if candidates else None,
                             "possible_unit_max": max(candidates) if candidates else None})
 
+    weapon_roster = build_weapon_roster_report(data, weapon_rows)
+    if weapon_roster["policy"] and weapon_roster["policy"]["source_kind"] == "regulation":
+        for check in weapon_roster["checks"]:
+            if check["status"] == "fail":
+                add(check["code"] + "_exceeded", actual=check["actual"], maximum=check["maximum"])
+        if weapon_roster["unclassified_count"]:
+            add("weapon_roster_classification_unknown", "review", count=weapon_roster["unclassified_count"])
+
     bundle_candidates = []
     for index, bundle in enumerate(data["bundles"]):
         present = True
@@ -790,18 +801,20 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
             add("tier_combination_unverified", "review", rule_index=index, type=kind)
 
     for group, total, count in (("agents", character_total, len(deck.characters)),
-                                ("engines", weapon_total, weapon_count)):
+                                ("engines", weapon_roster["total"], weapon_count)):
         for metric, actual in (("cost", total), ("count", count)):
             lower, upper = data["bounds"][group][metric]
             if actual is not None and lower > 0 and actual < lower:
                 add("bound_minimum_unmet", group=group, metric=metric, minimum=lower, actual=actual)
             if upper > 0 and actual is not None and actual > upper:
                 add("bound_maximum_exceeded", group=group, metric=metric, maximum=upper, actual=actual)
-            if upper == 0:
+            if upper == 0 and not (group == "engines" and metric == "cost"
+                                  and weapon_roster["policy"] and weapon_roster["policy"]["maximum"] > 0):
                 add("zero_upper_bound_unverified", "review", group=group, metric=metric)
     if data["french_difference_cap"] not in (None, 0):
         add("french_difference_cap_unverified", "review", cap=data["french_difference_cap"])
     return AbyssDeckReport(rules.system_id, rules.content_hash, tuple(character_rows),
                            tuple(weapon_rows), character_base_total, bundle_adjustment_total,
                            character_total, weapon_total, len(deck.characters),
-                           weapon_count, tier_counts, tuple(bundle_candidates), tuple(declarations), tuple(issues))
+                           weapon_count, tier_counts, tuple(bundle_candidates), tuple(declarations), tuple(issues),
+                           weapon_roster)

@@ -94,14 +94,15 @@ class PvpDeckRulesTest(unittest.TestCase):
         self.assertNotIn("weapon_rule_lines", state)
         self.assertNotIn("rules_weapon_prices_heading", panel._rules_line_sections)
         self.assertFalse(hasattr(panel, "_weapon_rules_button"))
-        self.assertIn(tr("app_shell.pvp.rules.weapon_selected_unit_base").format(value="0"),
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_summary").format(value="0"),
                       state["summary_lines"])
         self.workspace._on_weapon_card_clicked(inventory[0])
         self.assertEqual(self.workspace.selected_counts()[1], 1)
         selected = self.workspace.rules_ui_state()
         self.assertNotIn("weapon_rule_lines", selected)
-        self.assertIn(tr("app_shell.pvp.rules.weapon_cost").format(
-            value=tr("app_shell.pvp.rules.weapon_assignment_pending")), selected["summary_lines"])
+        weapon_summary = next(line for line in selected["summary_lines"]
+                              if line.startswith(tr("app_shell.pvp.rules.weapon_roster_summary").split(":")[0]))
+        self.assertNotIn("?", weapon_summary)
 
     def test_new_version_only_and_explicit_update_preserves_selection(self):
         self.load_rules()
@@ -378,7 +379,7 @@ class DeckRulesPresentationTest(unittest.TestCase):
                    if row.get("detail") == tr("app_shell.pvp.rules.coverage_legend")]
         self.assertTrue(all((row["current"], row["status"]) == ("— / ?", "unknown") for row in parents))
 
-    def test_weapon_price_summary_distinguishes_unit_base_and_observed_copies(self):
+    def test_weapon_summary_uses_selected_entry_prices_and_explicit_unknown_count(self):
         language = get_language()
         self.addCleanup(set_language, language, persist=False)
         rules = AbyssRuleset.from_source(*_source())
@@ -390,72 +391,194 @@ class DeckRulesPresentationTest(unittest.TestCase):
         ))
         report = evaluate_deck(deck, rules).to_dict()
         state = format_report(snapshot, report, deck)
-        self.assertIn(tr("app_shell.pvp.rules.weapon_selected_unit_base").format(value="5"),
-                      state["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_base_cost").format(value="12"),
-                      state["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_missing_prices").format(count=1),
-                      state["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_cost").format(
-            value=tr("app_shell.pvp.rules.weapon_assignment_pending")), state["summary_lines"])
-        self.assertNotIn("?", next(line for line in state["summary_lines"]
-                                    if line.startswith(tr("app_shell.pvp.rules.weapon_cost").split(":")[0])))
+        self.assertEqual(report["weapon_roster"]["known_total"], 5)
+        self.assertEqual(report["weapon_roster"]["unknown_price_count"], 1)
+        partial = tr("app_shell.pvp.rules.weapon_roster_partial").format(known="5", unknown=1)
+        expected = tr("app_shell.pvp.rules.weapon_roster_summary").format(value=partial)
+        self.assertIn(expected, state["summary_lines"])
+        self.assertNotIn("?", expected)
+        counter = next(row for row in state["requirement_rows"]
+                       if row["label"] == tr("app_shell.pvp.rules.weapon_roster_cost"))
+        self.assertEqual((counter["current"], counter["status"]), (partial, "info"))
         self.assertNotIn("weapon_rule_lines", state)
 
-    def test_weapon_unknown_quantity_does_not_guess_a_copy(self):
+    def test_unknown_inventory_quantity_does_not_change_selected_weapon_cost(self):
         rules = AbyssRuleset.from_source(*_source())
         deck = _deck(_character("1001", "PYRO"), weapons=(_weapon("2002", 1, None),))
         report = evaluate_deck(deck, rules).to_dict()
         state = format_report(rules.to_dict(), report, deck)
-        self.assertIn(tr("app_shell.pvp.rules.weapon_selected_unit_base").format(value="2"),
+        self.assertIsNone(report["weapon_count"])
+        self.assertEqual(report["weapon_roster"]["total"], 2)
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_summary").format(value="2"),
                       state["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_base_cost").format(value="0"),
-                      state["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_unknown_quantities").format(count=1),
-                      state["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_cost").format(
-            value=tr("app_shell.pvp.rules.weapon_cost_incomplete")), state["summary_lines"])
-        self.assertNotIn("?", next(line for line in state["summary_lines"]
-                                    if line.startswith(tr("app_shell.pvp.rules.weapon_cost").split(":")[0])))
+        counter = next(row for row in state["requirement_rows"]
+                       if row["label"] == tr("app_shell.pvp.rules.weapon_roster_cost"))
+        self.assertEqual((counter["current"], counter["status"]), ("2", "info"))
 
         snapshot = rules.to_dict()
         snapshot["bounds"]["engines"]["count"] = [0, 2]
         snapshot["bounds"]["engines"]["cost"] = [0, 10]
-        bounded = format_report(snapshot, report, deck)
+        legacy_report = dict(report)
+        legacy_report.pop("weapon_roster")
+        bounded = format_report(snapshot, legacy_report, deck)
         count_label = tr("app_shell.pvp.rules.limit").format(
             subject=tr("app_shell.pvp.rules.engines_count"), minimum="0", maximum="2",
-        )
-        cost_label = tr("app_shell.pvp.rules.limit").format(
-            subject=tr("app_shell.pvp.rules.engines_cost"), minimum="0", maximum="10",
         )
         bounded_rows = {row["label"]: row for row in bounded["requirement_rows"]}
         self.assertEqual(bounded_rows[count_label]["current"],
                          tr("app_shell.pvp.rules.weapon_count_incomplete"))
-        self.assertEqual(bounded_rows[cost_label]["current"],
-                         tr("app_shell.pvp.rules.weapon_cost_incomplete"))
+        self.assertEqual(bounded_rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["current"],
+                         "2 / 10")
+        self.assertNotIn(tr("app_shell.pvp.rules.limit").format(
+            subject=tr("app_shell.pvp.rules.engines_cost"), minimum="0", maximum="10",
+        ), bounded_rows)
 
-    def test_weapon_empty_and_known_zero_prices_render_as_numeric_zero(self):
+    def test_roster_policy_rows_show_total_and_expensive_costs_with_source(self):
+        system, agents, engines = _source()
+        system["_id"] = "6ac54cc57032007b0dd5e4f9"
+        system["root"] = "6953c08267a24684c387795c"
+        system["updatedAt"] = "2026-10-06T19:34:41.433Z"
+        system["costs"]["engines"][0]["costs"] = [14] * 6
+        system["costs"]["engines"][1]["costs"] = [15] * 6
+        rules = AbyssRuleset.from_source(system, agents, engines)
+        deck = _deck(_character("1001", "PYRO"), weapons=(
+            _weapon("2001"), _weapon("2002"),
+        ))
+        report = evaluate_deck(deck, rules).to_dict()
+        state = format_report(rules.to_dict(), report, deck)
+        labels = {row["label"]: row for row in state["requirement_rows"]}
+        total = labels[tr("app_shell.pvp.rules.weapon_roster_cost")]
+        expensive_label = tr("app_shell.pvp.rules.weapon_roster_expensive").format(threshold="15")
+        expensive = labels[expensive_label]
+        self.assertEqual((total["current"], total["status"]), ("29 / 155", "pass"))
+        self.assertEqual((expensive["current"], expensive["status"]), ("15 / 130", "pass"))
+        self.assertIn("2026-10-10", total["detail"])
+        self.assertIn("docs.google.com/document", total["detail"])
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_pools_detail").format(
+            general="130", reserve="25", cheap_max="14"), expensive["detail"])
+        self.assertNotIn("docs.google.com/document", expensive["detail"])
+        rows = state["requirement_rows"]
+        self.assertFalse(any("130 + 25" in row["label"] for row in rows))
+
+        # The reserve is not a separate cap on cheap weapons: these total 28,
+        # which exceeds the 25 reserve while remaining within the total pool.
+        system["costs"]["engines"][1]["costs"] = [14] * 6
+        cheap_rules = AbyssRuleset.from_source(system, agents, engines)
+        cheap_deck = _deck(_character("1001", "PYRO"), weapons=(
+            _weapon("2001"), _weapon("2002"),
+        ))
+        cheap_report = evaluate_deck(cheap_deck, cheap_rules).to_dict()
+        cheap_rows = {row["label"]: row for row in format_report(
+            cheap_rules.to_dict(), cheap_report, cheap_deck)["requirement_rows"]}
+        expensive_label = tr("app_shell.pvp.rules.weapon_roster_expensive").format(threshold="15")
+        self.assertEqual((cheap_rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["current"],
+                          cheap_rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["status"]),
+                         ("28 / 155", "pass"))
+        self.assertEqual((cheap_rows[expensive_label]["current"],
+                          cheap_rows[expensive_label]["status"]),
+                         ("0 / 130", "pass"))
+
+        system["costs"]["engines"][0]["costs"] = [160] * 6
+        over_rules = AbyssRuleset.from_source(system, agents, engines)
+        over_deck = _deck(_character("1001", "PYRO"), weapons=(_weapon("2001"),))
+        over_report = evaluate_deck(over_deck, over_rules).to_dict()
+        over_state = format_report(over_rules.to_dict(), over_report, over_deck)
+        over_rows = {row["label"]: row for row in over_state["requirement_rows"]}
+        self.assertEqual((over_rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["current"],
+                          over_rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["status"]),
+                         ("160 / 155", "fail"))
+        self.assertEqual((over_rows[expensive_label]["current"],
+                          over_rows[expensive_label]["status"]), ("160 / 130", "fail"))
+
+    def test_unknown_prices_and_unclassified_costs_stay_unknown(self):
+        system, agents, engines = _source()
+        system["_id"] = "6ac54cc57032007b0dd5e4f9"
+        system["root"] = "6953c08267a24684c387795c"
+        system["updatedAt"] = "2026-10-06T19:34:41.433Z"
+        rules = AbyssRuleset.from_source(system, agents, engines)
+        deck = _deck(_character("1001", "PYRO"), weapons=(
+            _weapon("2001"), _weapon("9999"),
+        ))
+        report = evaluate_deck(deck, rules).to_dict()
+        state = format_report(rules.to_dict(), report, deck)
+        rows = {row["label"]: row for row in state["requirement_rows"]}
+        total = rows[tr("app_shell.pvp.rules.weapon_roster_cost")]
+        expensive_label = tr("app_shell.pvp.rules.weapon_roster_expensive").format(threshold="15")
+        expensive = rows[expensive_label]
+        self.assertEqual(total["status"], "unknown")
+        self.assertIn("3", total["current"])
+        self.assertIn("1", total["current"])
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_unknown_prices").format(count=1),
+                      total["detail"])
+        self.assertEqual(expensive["status"], "unknown")
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_unknown_prices").format(count=1),
+                      expensive["detail"])
+        self.assertNotIn("?", total["current"] + expensive["current"])
+
+        # 14.5 falls between the documented ≤14 and ≥15 pools.
+        deck = _deck(_character("1001", "PYRO"), weapons=(_weapon("2001"),))
+        report = evaluate_deck(deck, rules).to_dict()
+        report["weapon_rows"][0]["base_unit_cost"] = 14.5
+        report.pop("weapon_roster")
+        report["issues"].append({"code": "weapon_roster_classification_unknown",
+                                 "details": {"count": 1}})
+        classified = format_report(rules.to_dict(), report, deck)
+        rows = {row["label"]: row for row in classified["requirement_rows"]}
+        self.assertEqual((rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["current"],
+                          rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["status"]),
+                         ("14.5 / 155", "pass"))
+        expensive_label = tr("app_shell.pvp.rules.weapon_roster_expensive").format(threshold="15")
+        expensive = rows[expensive_label]
+        self.assertEqual(expensive["status"], "unknown")
+        self.assertTrue(expensive["current"].startswith(
+            tr("app_shell.pvp.rules.weapon_roster_expensive_partial").format(
+                known="0", unknown_prices=0, unclassified=1, threshold="15")))
+        classification_text = tr("app_shell.pvp.rules.weapon_roster_classification_unknown").format(count=1)
+        self.assertIn(classification_text, expensive["detail"])
+        self.assertNotIn(classification_text,
+                         rows[tr("app_shell.pvp.rules.weapon_roster_cost")]["detail"])
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_classification_unknown").format(count=1),
+                      classified["issue_lines"])
+
+    def test_no_policy_still_shows_a_numeric_weapon_counter(self):
         rules = AbyssRuleset.from_source(*_source())
         empty_deck = _deck(_character("1001", "PYRO"))
         empty = format_report(rules.to_dict(), evaluate_deck(empty_deck, rules).to_dict(), empty_deck)
-        self.assertIn(tr("app_shell.pvp.rules.weapon_selected_unit_base").format(value="0"),
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_summary").format(value="0"),
                       empty["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_base_cost").format(value="0"), empty["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_cost").format(value="0"), empty["summary_lines"])
+        empty_row = next(row for row in empty["requirement_rows"]
+                         if row["label"] == tr("app_shell.pvp.rules.weapon_roster_cost"))
+        self.assertEqual((empty_row["current"], empty_row["status"]), ("0", "info"))
+        self.assertEqual(empty_row["detail"], tr("app_shell.pvp.rules.weapon_roster_policy_unspecified"))
 
         system, agents, engines = _source()
         system["costs"]["engines"][1]["costs"][0] = 0
         zero_rules = AbyssRuleset.from_source(system, agents, engines)
         zero_deck = _deck(_character("1001", "PYRO"), weapons=(_weapon("2002", 1, 2),))
         zero = format_report(zero_rules.to_dict(), evaluate_deck(zero_deck, zero_rules).to_dict(), zero_deck)
-        self.assertIn(tr("app_shell.pvp.rules.weapon_selected_unit_base").format(value="0"),
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_summary").format(value="0"),
                       zero["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_base_cost").format(value="0"), zero["summary_lines"])
-        self.assertIn(tr("app_shell.pvp.rules.weapon_cost").format(value="0"), zero["summary_lines"])
-        self.assertNotIn(tr("app_shell.pvp.rules.weapon_missing_prices").format(count=1),
-                         zero["summary_lines"])
 
-    def test_weapon_requirements_distinguish_deck_cap_teams_phase_and_pinned_manual_notes(self):
+    def test_structured_api_budget_precedes_pinned_prose_for_legacy_reports(self):
+        system, agents, engines = _source()
+        system["_id"] = "6ac54cc57032007b0dd5e4f9"
+        system["root"] = "6953c08267a24684c387795c"
+        system["updatedAt"] = "2026-10-06T19:34:41.433Z"
+        rules = AbyssRuleset.from_source(system, agents, engines)
+        deck = _deck(_character("1001", "PYRO"), weapons=(_weapon("2001"),))
+        report = evaluate_deck(deck, rules).to_dict()
+        report.pop("weapon_roster")
+        snapshot = rules.to_dict()
+        snapshot["bounds"]["engines"]["cost"] = [0, 100]
+        state = format_report(snapshot, report, deck)
+        row = next(row for row in state["requirement_rows"]
+                   if row["label"] == tr("app_shell.pvp.rules.weapon_roster_cost"))
+        self.assertEqual((row["current"], row["status"]), ("3 / 100", "pass"))
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_api_source").format(
+            title=system["main"]["title"]), row["detail"])
+        self.assertNotIn("155", row["current"])
+
+    def test_weapon_requirements_show_live_pinned_budget_not_manual_weapon_note(self):
         system, agents, engines = _source()
         system["_id"] = "6ac54cc57032007b0dd5e4f9"
         system["root"] = "6953c08267a24684c387795c"
@@ -467,17 +590,15 @@ class DeckRulesPresentationTest(unittest.TestCase):
         rows = state["requirement_rows"]
         labels = {row["label"]: row for row in rows}
         self.assertIn(tr("app_shell.pvp.rules.weapon_price_explanation"), labels)
-        self.assertIn(tr("app_shell.pvp.rules.weapon_deck_cost_cap_unspecified"), labels)
+        self.assertIn(tr("app_shell.pvp.rules.weapon_roster_cost"), labels)
+        expensive_label = tr("app_shell.pvp.rules.weapon_roster_expensive").format(threshold="15")
+        self.assertIn(expensive_label, labels)
+        self.assertFalse(any("130 + 25" in row["label"] for row in rows))
         team_max = labels[tr("app_shell.pvp.rules.phase_teams_weapon_max")]
         self.assertEqual((team_max["current"], team_max["status"], team_max["detail"]),
                          ("155", "info", tr("app_shell.pvp.rules.phase_teams_not_deck_cap")))
         self.assertEqual(labels[tr("app_shell.pvp.rules.phase_teams_weapon_step")]["current"], "25")
-        manual = labels[tr("app_shell.pvp.rules.manual_weapon_regulation")]
-        self.assertEqual(manual["status"], "info")
-        self.assertIn("≤155", manual["label"])
-        self.assertIn("130 + 25", manual["label"])
-        self.assertIn("2026-10-09", manual["detail"])
-        self.assertIn("https://docs.google.com/document/d/", manual["detail"])
+        self.assertIn("2026-10-10", labels[tr("app_shell.pvp.rules.weapon_roster_cost")]["detail"])
         joker = labels[tr("app_shell.pvp.rules.manual_joker_regulation")]
         self.assertIn("docs.google.com/document", joker["detail"])
 
@@ -485,7 +606,6 @@ class DeckRulesPresentationTest(unittest.TestCase):
         other_version = AbyssRuleset.from_source(system, agents, engines)
         other = format_report(other_version.to_dict(), evaluate_deck(deck, other_version).to_dict(), deck)
         self.assertFalse(any(row["label"] in {
-            tr("app_shell.pvp.rules.manual_weapon_regulation"),
             tr("app_shell.pvp.rules.manual_joker_regulation"),
         } for row in other["requirement_rows"]))
 
@@ -495,7 +615,21 @@ class DeckRulesPresentationTest(unittest.TestCase):
         for language in ("ru", "en", "pt-br"):
             set_language(language, persist=False)
             for key in (
-                "app_shell.pvp.rules.weapon_assignment_pending",
+                "app_shell.pvp.rules.weapon_roster_summary",
+                "app_shell.pvp.rules.weapon_roster_partial",
+                "app_shell.pvp.rules.weapon_roster_cost",
+                "app_shell.pvp.rules.weapon_roster_expensive",
+                "app_shell.pvp.rules.weapon_roster_expensive_partial",
+                "app_shell.pvp.rules.weapon_roster_pools_detail",
+                "app_shell.pvp.rules.weapon_roster_policy_unspecified",
+                "app_shell.pvp.rules.weapon_roster_api_source",
+                "app_shell.pvp.rules.weapon_roster_regulation_source",
+                "app_shell.pvp.rules.weapon_roster_api_bounds",
+                "app_shell.pvp.rules.weapon_roster_unknown_prices",
+                "app_shell.pvp.rules.weapon_roster_classification_unknown",
+                "app_shell.pvp.rules.weapon_roster_cost_exceeded",
+                "app_shell.pvp.rules.weapon_roster_expensive_exceeded",
+                "app_shell.pvp.rules.weapon_roster_budget_unknown",
                 "app_shell.pvp.rules.match_rules_mismatch",
                 "app_shell.pvp.rules.match_phase_missing",
                 "app_shell.pvp.rules.match_flow_unsupported",
@@ -517,6 +651,8 @@ class DeckRulesPresentationTest(unittest.TestCase):
             ):
                 self.assertNotEqual(tr(key), key)
             self.assertIn("{character}", tr("app_shell.pvp.rules.match_required_missing"))
+            self.assertIn("{count}", tr("app_shell.pvp.rules.weapon_roster_classification_unknown"))
+            self.assertIn("{threshold}", tr("app_shell.pvp.rules.weapon_roster_expensive"))
 
     def test_weapon_issues_use_names_and_unknown_conditions_have_readable_fallback(self):
         language = get_language()

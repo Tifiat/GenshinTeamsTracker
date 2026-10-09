@@ -115,8 +115,7 @@ def _long_rules_state(workspace):
         version_text="09.10.2026 00:00 UTC",
         summary_lines=(
             t("character_cost", value="987"),
-            t("weapon_base_cost", value="128"),
-            t("weapon_cost", value="?"),
+            t("weapon_roster_summary", value="128"),
             t("card_legend"),
             t("tier_counts", values="T0: 12 · T1: 17 · T2: 4 · T3: 3 · T4: 2"),
         ),

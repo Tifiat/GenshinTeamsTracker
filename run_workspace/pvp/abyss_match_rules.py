@@ -169,6 +169,8 @@ def validate_abyss_match_deck(deck: DraftDeck, rules: AbyssRuleset) -> DeckValid
                              details={"minimum": minimum, "actual": len(deck.character_ids)}))
 
     report = evaluate_deck(deck, rules)
+    if any(check["status"] == "unknown" for check in report.weapon_roster["checks"]):
+        issues.append(_error("abyss_weapon_roster_budget_unknown", "weapons"))
     required_by_source = {
         row["source_id"]: row for row in data["characters"]
     }

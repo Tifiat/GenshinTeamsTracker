@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 
 from localization import tr
 from run_workspace.pvp.abyss_rules import AbyssRuleset
+from run_workspace.pvp.weapon_roster_budget import CUP_SOURCE
 from run_workspace.pvp.deck_preset import save_deck_preset
 from tests.run_workspace.pvp.test_abyss_rules import _source
 from tests.ui.pvp_browser.test_pvp_period import _workspace_fixture
@@ -199,6 +200,26 @@ class AbyssMatchIntegrationTest(unittest.TestCase):
         self.assertEqual(remote.rules_snapshot, self.rules.to_dict())
         self.assertTrue(self.workspace.can_start_local_draft("local", remote.deck_id))
         self.assertTrue(self.workspace.start_local_draft("local", remote.deck_id))
+
+    def test_weapon_roster_limit_blocks_play_with_a_readable_reason(self):
+        data = self.rules.to_dict()
+        data["source"].update(CUP_SOURCE)
+        data["weapons"][0]["refinement_costs"] = [131] * 5
+        self.save_rules(rules=AbyssRuleset.from_dict(data))
+        status = self.workspace.deck_start_status("local", player_label="Player 1")
+        self.assertFalse(status.ready)
+        self.assertEqual(status.text, tr("app_shell.pvp.rules.weapon_roster_expensive_exceeded"))
+        self.assertIn("abyss_weapon_roster_expensive_exceeded", status.issue_codes)
+        self.assertFalse(self.workspace.start_local_draft("local", "local"))
+
+    def test_incomplete_weapon_roster_check_cannot_start_a_match(self):
+        data = self.rules.to_dict()
+        data["source"].update(CUP_SOURCE)
+        data["weapons"][0]["refinement_costs"] = [14.5] * 5
+        self.save_rules(rules=AbyssRuleset.from_dict(data))
+        status = self.workspace.deck_start_status("local", player_label="Player 1")
+        self.assertFalse(status.ready)
+        self.assertEqual(status.text, tr("app_shell.pvp.rules.weapon_roster_budget_unknown"))
 
 
 if __name__ == "__main__":

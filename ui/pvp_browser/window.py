@@ -2550,6 +2550,10 @@ class PvpWorkspace(QWidget):
                 if issue.code == "abyss_match_mode_unsupported":
                     text = tr("app_shell.pvp.rules.match_mode_unsupported")
                     break
+                if issue.code in {"abyss_weapon_roster_cost_exceeded", "abyss_weapon_roster_expensive_exceeded",
+                                  "abyss_weapon_roster_budget_unknown"}:
+                    text = tr("app_shell.pvp.rules." + issue.code.removeprefix("abyss_"))
+                    break
                 if issue.code == "abyss_required_character_missing":
                     names = issue.details.get("names", {})
                     name = names.get(get_language()) or names.get("en") or issue.details.get("game_id", "")

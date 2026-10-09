@@ -8,6 +8,22 @@ rule enforcement, application launch, Computer Use or account access.
 
 ## Follow-up: weapon limits and executable client semantics — 9 October
 
+10 October follow-up: unauthenticated current Cup reads still expose
+`draft.minMaxCosts.engines=[0,0]` and separate `phaseTeams=500/500`; the inspected
+costs/draft/preset fields contain no structured 155/130/25 split. The user now
+explicitly requires interpreting the quoted weapon statement as executable
+requirements. The selected-entry counter and narrowly parsed version-bound prose
+fallback are owned by [the current requirement receipt](PVP_DECK_RULES.md#weapon-roster-requirements--2026-10-10).
+The shipped client sums one assigned `team.engine.cost` per team entry; its engine
+catalog has no inventory quantity field. GTT inventory counts therefore remain
+availability metadata rather than multipliers for selected-card roster cost.
+The public Google Docs text export was also read in memory on 10 October:
+its original weapon paragraph still states 155 total, 130 general, 25 reserved,
+cheap ≤14, expensive ≥15, and cheap weapons may use the general pool. The parser
+fixture retains that bounded paragraph; the document edition timestamp remains unknown.
+No arbitrary-document importer, refreshed document edition or server parity is
+claimed by this fallback.
+
 Public GET/client-text inspection was repeated in memory without credentials,
 script execution, account access or new payload files. Current exact Cup is
 `6ac54cc57032007b0dd5e4f9`, root `6953c08267a24684c387795c`, updated

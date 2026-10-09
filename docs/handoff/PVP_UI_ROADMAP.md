@@ -45,7 +45,8 @@ remains in `PVP_BACKEND_STATUS.md`.
   with validated portable v3 slices/assets and pending real-account acceptance.
   Scoped Artifact Browser, GCSIM dispatch and local period admission are
   implemented; current acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`.
-  Online play, ruleset costs, immune picks, result PNG/export, and PvP History
+  Deck rules/costs are now implemented under `PVP_DECK_RULES.md`. Online play,
+  Abyss match execution, immune picks, result PNG/export, and PvP History
   are still not implemented. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
 
@@ -160,7 +161,8 @@ Left/main area:
   dimmed.
 - Clicking in edit mode toggles membership in the deck preset.
 - Characters and weapons should be separate sections.
-- Costs/ruleset visuals are reserved for later.
+- Costs and tier badges use separate lower card zones; `PVP_DECK_RULES.md` owns
+  current source/version selection, calculation and acceptance boundaries.
 
 Right panel:
 
@@ -174,11 +176,11 @@ Right panel:
   lower rows down and contains compact info/actions instead of a separate form.
 - Selected preset info owns:
   - ruleset/cost system selector;
-  - initially only `No rules / Free Draft`;
+  - `No rules / Free Draft` and latest Abyss source families;
   - character count;
   - weapon count;
   - automatic compact validation/status;
-  - future character/weapon cost summary;
+  - character/weapon cost summary and rules requirements;
   - edit actions;
   - later export actions.
 - The ruleset/cost selector belongs inside expanded deck preset info, not as an
@@ -234,9 +236,9 @@ Current identity status:
 
 ## Cost / Ruleset Roadmap
 
-- The first Decks implementation does not implement ruleset costs.
+- The initial Free Draft-only stage is superseded by `PVP_DECK_RULES.md` for costs.
 - Free Draft / No Rules treats costs as disabled or `0`.
-- Future rulesets/cost systems should show character costs, weapon costs,
+- Implemented Abyss deck rules show character costs, weapon base costs,
   tier/cost summaries in the right preset panel, and a cost line on cards.
 - Cost display on cards should reserve a separate lower text row/zone.
 - Level likely belongs in a lower corner/row rather than competing with the
@@ -381,7 +383,7 @@ Current v0 scope:
   hot-seat play.
 - Current v0 includes artifact equipment and scoped GCSIM dispatch through
   normal services; real-engine/user acceptance remains open in `PVP_BUILD_SERVICES.md`.
-- Online mode, ruleset cost rendering, immune picks, session files, PvP History
+- Online mode, Abyss match execution, immune picks, session files, PvP History
   writes, and result export are not implemented in current v0. The separate
   portable profile implementation is still awaiting real-account/user-path
   acceptance; see `PVP_PROFILE_PACKAGE.md`.
@@ -704,8 +706,8 @@ Current v0 limitations / later work:
 - online;
 - History;
 - PNG/export result card;
-- ruleset cost rendering;
-- Gentor/Abyss importer;
+- native acceptance of deck rules/costs under `PVP_DECK_RULES.md`;
+- Gentor importer and complete Abyss matching/match schedule;
 - user acceptance of scoped artifact equipment and GCSIM preparation;
 - extended GTT JSON artifact+preset import/export QoL;
 - scoped PvP GCSIM scoring;

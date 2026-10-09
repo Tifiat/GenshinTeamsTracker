@@ -1,6 +1,8 @@
 # Abyss public rules source — 9 October 2026
 
-Owner: Worker4. This receipt supersedes the June finding that no usable public
+Owner: Worker4. This dated research receipt precedes the product adapter in
+[Deck rules](PVP_DECK_RULES.md), which owns current implementation/acceptance.
+This receipt supersedes the June finding that no usable public
 Abyss rules payload had been confirmed. Research only: no product importer,
 rule enforcement, application launch, Computer Use or account access.
 

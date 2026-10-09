@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -39,7 +40,9 @@ class PvpDecksRightPanel(QWidget):
         self.deck_row_frames: dict[str, QFrame] = {}
         self.selected_info_labels: dict[str, QLabel] = {}
         self.edit_name_edit: QLineEdit | None = None
-        self.ruleset_button: QPushButton | None = None
+        self.ruleset_button: QComboBox | None = None
+        self.rules_refresh_button: QPushButton | None = None
+        self.rules_update_button: QPushButton | None = None
         self._edit_shortcuts: list[QShortcut] = []
         self._preserved_edit_deck_id = ""
         self._preserved_edit_name = ""
@@ -79,6 +82,11 @@ class PvpDecksRightPanel(QWidget):
         self.cancel_new_deck_button.clicked.connect(self._on_cancel_new_clicked)
         create_layout.addWidget(self.cancel_new_deck_button)
         root.addWidget(self.create_row_widget)
+
+        self.new_deck_info = QWidget()
+        self.new_deck_info_layout = QVBoxLayout(self.new_deck_info)
+        self.new_deck_info_layout.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(self.new_deck_info)
 
         self.deck_list_scroll = OverlayVerticalScrollArea()
         self.deck_list_scroll.setWidgetResizable(True)
@@ -240,10 +248,19 @@ class PvpDecksRightPanel(QWidget):
 
     def _rebuild_deck_list(self) -> None:
         _clear_layout(self.deck_list_layout)
+        _clear_layout(self.new_deck_info_layout)
         self.deck_row_frames.clear()
         self.selected_info_labels.clear()
         self.edit_name_edit = None
         self.ruleset_button = None
+        self.rules_refresh_button = None
+        self.rules_update_button = None
+
+        self.new_deck_info.setVisible(self.workspace.is_new_deck_edit)
+        if self.workspace.is_new_deck_edit:
+            self._add_expanded_deck_info(
+                self.new_deck_info_layout, self.workspace.active_preset()
+            )
 
         if not self.workspace.presets:
             if not self.workspace.is_new_deck_edit:
@@ -372,10 +389,96 @@ class PvpDecksRightPanel(QWidget):
         layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(4)
 
-        self.ruleset_button = QPushButton(tr("app_shell.pvp.decks.ruleset_free"))
+        rules_state = self.workspace.rules_ui_state()
+        rules_header = QHBoxLayout()
+        rules_header.setContentsMargins(0, 0, 0, 0)
+        rules_label = self._info_label(tr("app_shell.pvp.decks.rules_label"))
+        rules_header.addWidget(rules_label)
+        rules_header.addStretch(1)
+        layout.addLayout(rules_header)
+
+        self.ruleset_button = QComboBox()
         self.ruleset_button.setObjectName("pvp_ruleset_chip")
-        self.ruleset_button.setEnabled(False)
+        self.ruleset_button.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.ruleset_button.setMinimumContentsLength(12)
+        options = rules_state.get("options", ())
+        selected_id = str(rules_state.get("selected_id", ""))
+        for option in options:
+            self.ruleset_button.addItem(str(option["label"]), str(option["id"]))
+        selected_index = self.ruleset_button.findData(selected_id)
+        if selected_index < 0:
+            saved_text = str(rules_state.get("source_title", "")).strip() or selected_id
+            self.ruleset_button.insertItem(
+                0,
+                tr("app_shell.pvp.decks.rules_unlisted").format(source=saved_text),
+                None,
+            )
+            self.ruleset_button.model().item(0).setEnabled(False)
+            selected_index = 0
+        self.ruleset_button.setCurrentIndex(selected_index)
+        self.ruleset_button.setEnabled(
+            bool(rules_state.get("editable")) and not bool(rules_state.get("loading"))
+        )
+        self.ruleset_button.activated.connect(self._on_ruleset_activated)
         layout.addWidget(self.ruleset_button)
+
+        self.rules_refresh_button = QPushButton(
+            tr(
+                "app_shell.pvp.decks.rules_refresh"
+                if rules_state.get("catalog_loaded")
+                else "app_shell.pvp.decks.rules_load"
+            )
+        )
+        self.rules_refresh_button.setObjectName("pvp_secondary_button")
+        self.rules_refresh_button.setEnabled(not bool(rules_state.get("loading")))
+        self.rules_refresh_button.clicked.connect(self.workspace.refresh_rules_catalog)
+        layout.addWidget(self.rules_refresh_button)
+
+        if rules_state.get("loading"):
+            layout.addWidget(self._rules_detail_label(tr("app_shell.pvp.decks.rules_loading")))
+        source_title = str(rules_state.get("source_title", "")).strip()
+        if source_title:
+            layout.addWidget(self._rules_detail_label(
+                tr("app_shell.pvp.decks.rules_source").format(source=source_title)
+            ))
+        version_text = str(rules_state.get("version_text", "")).strip()
+        if version_text:
+            layout.addWidget(self._rules_detail_label(
+                tr("app_shell.pvp.decks.rules_version").format(version=version_text)
+            ))
+        freshness = str(rules_state.get("freshness", "unknown"))
+        freshness_keys = {
+            "current": "rules_current",
+            "update": "rules_update_available",
+            "unknown": "rules_unknown",
+        }
+        if freshness in freshness_keys:
+            layout.addWidget(self._rules_detail_label(
+                tr("app_shell.pvp.decks." + freshness_keys[freshness])
+            ))
+        if freshness == "update" and rules_state.get("update_id"):
+            self.rules_update_button = QPushButton(
+                tr("app_shell.pvp.decks.rules_update_button")
+            )
+            self.rules_update_button.setObjectName("pvp_secondary_button")
+            self.rules_update_button.setEnabled(not bool(rules_state.get("loading")))
+            self.rules_update_button.clicked.connect(self.workspace.update_ruleset)
+            layout.addWidget(self.rules_update_button)
+
+        self._add_rules_lines(
+            layout, "rules_costs_heading", rules_state.get("summary_lines", ())
+        )
+        self._add_rules_lines(
+            layout, "rules_requirements_heading", rules_state.get("requirement_lines", ())
+        )
+        self._add_rules_lines(
+            layout, "rules_issues_heading", rules_state.get("issue_lines", ())
+        )
+        error_text = str(rules_state.get("error_text", "")).strip()
+        if error_text:
+            self._add_rules_lines(layout, "rules_error_heading", (error_text,))
 
         counts_label = self._info_label(
             tr("app_shell.pvp.decks.counts").format(
@@ -393,6 +496,27 @@ class PvpDecksRightPanel(QWidget):
 
         outer.addWidget(info)
 
+    def _on_ruleset_activated(self, index: int) -> None:
+        if self.ruleset_button is None:
+            return
+        ruleset_id = self.ruleset_button.itemData(index)
+        if ruleset_id:
+            self.workspace.select_ruleset(str(ruleset_id))
+
+    def _rules_detail_label(self, text: str) -> QLabel:
+        label = self._info_label(text)
+        label.setTextFormat(Qt.TextFormat.PlainText)
+        label.setWordWrap(True)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        return label
+
+    def _add_rules_lines(self, layout: QVBoxLayout, heading_key: str, lines) -> None:
+        if not lines:
+            return
+        layout.addWidget(self._rules_detail_label(tr("app_shell.pvp.decks." + heading_key)))
+        for line in lines:
+            layout.addWidget(self._rules_detail_label(str(line)))
+
     def _info_label(self, text: str) -> QLabel:
         label = QLabel(text)
         label.setObjectName("pvp_deck_info_line")
@@ -402,6 +526,8 @@ class PvpDecksRightPanel(QWidget):
         preset = self.workspace.active_preset()
         if preset is None:
             return tr("app_shell.pvp.decks.validation_none")
+        if getattr(preset, "rules_snapshot", None):
+            return tr("app_shell.pvp.rules.deck_editable")
         try:
             report = self.workspace.validation_report()
         except Exception as exc:

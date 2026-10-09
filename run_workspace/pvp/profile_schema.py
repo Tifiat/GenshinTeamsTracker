@@ -561,7 +561,13 @@ def _validate_deck_preset_metadata(
             raise ProfileSchemaError(f"Deck {deck_id} has an empty name.")
         if preset.schema_version != PVP_DECK_PRESET_SCHEMA_VERSION or preset.kind != PVP_DECK_PRESET_KIND:
             raise ProfileSchemaError(f"Deck {deck_id} uses an unsupported preset schema.")
-        if preset.ruleset_id != FREE_DRAFT_V0_RULESET_ID:
+        if preset.ruleset_id.startswith("abyss:") or preset.rules_snapshot:
+            from .deck_preset import _validated_rules_snapshot
+            try:
+                _validated_rules_snapshot(preset.rules_snapshot, preset.ruleset_id)
+            except ValueError as exc:
+                raise ProfileSchemaError(f"Deck {deck_id} has invalid saved rules.") from exc
+        elif preset.ruleset_id != FREE_DRAFT_V0_RULESET_ID:
             raise ProfileSchemaError(f"Deck {deck_id} uses an unrecognized ruleset id.")
         if not isinstance(preset.extra, Mapping) or preset.extra:
             raise ProfileSchemaError(f"Deck {deck_id} contains unsupported free-form fields.")
@@ -1058,10 +1064,12 @@ def _validate_deck_data(
 
         validation_preset = replace(preset, weapon_refs=tuple(validation_refs))
         deck = deck_preset_to_draft_deck(validation_preset, char_assets, weapon_assets)
-        report = validate_draft_deck(deck)
+        report = validate_draft_deck(
+            deck, check_free_draft_minimum=preset.ruleset_id == FREE_DRAFT_V0_RULESET_ID,
+        )
         if not report.ready:
             codes = ", ".join(dict.fromkeys(report.issue_codes()))
-            raise ProfileSchemaError(f"Deck {preset.deck_id} fails free_draft_v0 validation: {codes}.")
+            raise ProfileSchemaError(f"Deck {preset.deck_id} fails structural validation: {codes}.")
     if referenced_weapon_fingerprints != {
         str(row["weapon_fingerprint"]) for row in weapons
     }:

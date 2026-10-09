@@ -106,6 +106,7 @@ in every file.
 | [PVP_RULESETS_AUDIT.md](PVP_RULESETS_AUDIT.md) | Historical tournament source research |
 | [PVP_RULESET_SOURCE_MATRIX.md](PVP_RULESET_SOURCE_MATRIX.md) | Source/applicability map; confirmed public Abyss source and remaining adapters |
 | [PVP_ABYSS_SOURCE_AUDIT.md](PVP_ABYSS_SOURCE_AUDIT.md) | Current public API, ID/price/constraint mapping, document conflicts and research probe |
+| [PVP_DECK_RULES.md](PVP_DECK_RULES.md) | Latest Abyss deck rules, saved versions, costs/UI, portable snapshots and acceptance limits |
 | [FAR_FUTURE_TODO.md](FAR_FUTURE_TODO.md) | Non-MVP ideas; read only when requested |
 
 ## Maintenance Entry

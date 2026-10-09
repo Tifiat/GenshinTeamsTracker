@@ -16,7 +16,7 @@ investigation. Within one chat, reread only changed sections or diffs.
 | Account / catalogs / imports | [profiles/defaults](ACCOUNT_PROFILES.md), [storage](ACCOUNT_SQLITE_STORAGE.md), [import](HOYOLAB_IMPORT_RELIABILITY.md), or [data lifecycle](DATA_RUNTIME_BOUNDARIES.md) | [data rules](DATA_WORK_RULES.md) |
 | Artifacts / equipment | [artifact browser](ARTIFACT_BROWSER.md) or [equipment](ACCOUNT_EQUIPMENT_STATE_DESIGN.md) | [data rules](DATA_WORK_RULES.md); [UI rules](UI_WORK_RULES.md) for visual work |
 | Abyss data / mechanics | [enemy data](ABYSS_ENEMY_DATA.md) or [mechanics](ABYSS_MECHANICS_NOTES.md) | [data rules](DATA_WORK_RULES.md) when storing outputs |
-| PvP | [build services](PVP_BUILD_SERVICES.md), [profile](PVP_PROFILE_PACKAGE.md), or [backend status](PVP_BACKEND_STATUS.md) | relevant UI/data rules |
+| PvP | [deck rules](PVP_DECK_RULES.md), [build services](PVP_BUILD_SERVICES.md), [profile](PVP_PROFILE_PACKAGE.md), or [backend status](PVP_BACKEND_STATUS.md) | relevant UI/data rules |
 | Testing / tooltips / performance | [tests](TESTS.md), [tooltip contracts](TOOLTIP_CONTRACTS.md), or [preloader backlog](PRELOADER_BACKLOG.md) | relevant UI/data rules |
 
 The [full catalog](CATALOG.md) is for finding a document not shown here; it is

@@ -1,11 +1,12 @@
 # PvP Backend Status
 
-Last updated: 2026-10-09 (source discovery; runtime services remain the 4 October baseline).
+Last updated: 2026-10-09 (Abyss deck editor; match runtime remains Free Draft).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
 mapping boundaries live in `PVP_RULESET_SOURCE_MATRIX.md`. Public Abyss rules
-are confirmed and mapped by a research probe; executable adapters remain open.
+feed the deck editor through a product adapter. [Deck rules](PVP_DECK_RULES.md)
+owns its implementation/acceptance limits; match adapters remain open.
 
 The PvP UI roadmap is intentionally separate: see `PVP_UI_ROADMAP.md` for the
 AppShell/Decks/Play/Draft/assignment/result UI direction.
@@ -22,10 +23,10 @@ The active backend direction is no-rules Free Draft v0:
 - post-draft team/weapon/timer/result summaries;
 - session bundle snapshot/verifier.
 
-Ruleset/balance modules remain report-only research support. The real-source
-prerequisite is met for Abyss; `PVP_ABYSS_SOURCE_AUDIT.md` owns retrieval,
-version/conflict findings and the remaining semantics/model work. Free Draft
-is still the only executable registered mode.
+Legacy generic ruleset/balance modules remain report-only research support.
+Abyss has a separate pinned deck adapter with price/constraint presentation;
+`PVP_DECK_RULES.md` owns current limits and the user smoke. Free Draft is still
+the only executable registered match mode.
 
 ## AppShell UI Status
 
@@ -257,7 +258,8 @@ Still out of scope / not implemented:
 - online/P2P/relay transport;
 - PvP History persistence;
 - result PNG/export UI;
-- real Gentor/Abyss importer;
+- Gentor importer and complete Abyss rule matching/match execution (deck editor
+  is implemented under `PVP_DECK_RULES.md`);
 - XLSX/Google Sheets/Discord importer;
 - ruleset identity mapping / alias layer;
 - automatic draft schedule derivation;

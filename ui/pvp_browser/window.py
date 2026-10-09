@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -52,11 +52,14 @@ from run_workspace.pvp.deck_preset import (
     rename_deck_preset,
     resolve_deck_preset_dir,
     save_deck_preset,
+    set_deck_preset_rules,
     update_deck_preset_selection,
     weapon_ref_from_asset,
 )
 from run_workspace.pvp.account_deck_copy import copy_deck_for_player_2
-from run_workspace.pvp.deck import DraftDeck
+from run_workspace.pvp.deck import DraftDeck, FREE_DRAFT_V0_RULESET_ID
+from run_workspace.pvp.abyss_rules import AbyssRuleset, evaluate_deck
+from ui.pvp_browser.deck_rules import DeckRulesController
 from run_workspace.pvp.free_draft_controller import (
     FreeDraftController,
     FreeDraftControllerActionRejected,
@@ -104,6 +107,7 @@ from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
+    PixelIconGridBadge,
     PixelIconGridMetrics,
 )
 from ui.utils.tooltips import install_custom_tooltip
@@ -481,6 +485,14 @@ class PvpDecksWorkspace(QWidget):
         self._editing_is_new_deck = False
         self._selected_deck_id_before_new_edit = ""
         self._last_status = ""
+        self.rules_controller = DeckRulesController(self)
+        self.rules_controller.changed.connect(self._rules_changed)
+        self.rules_controller.rules_received.connect(self._rules_received)
+        self._rules_edit_generation = 0
+        self._rules_snapshot_cache = None
+        self._rules_model_cache = None
+        self._character_rule_rows = {}
+        self._weapon_rule_rows = {}
         self.character_cards_by_id: dict[str, Any] = {}
         self.weapon_cards_by_key: dict[str, Any] = {}
         self._character_grid_assets_by_id: dict[str, dict[str, Any]] = {}
@@ -590,6 +602,53 @@ class PvpDecksWorkspace(QWidget):
     def active_preset(self) -> PvpDeckPreset | None:
         return self._editing_preset or self.selected_preset()
 
+    def active_rules(self):
+        preset = self.active_preset()
+        snapshot = preset.rules_snapshot if preset else None
+        if snapshot is not self._rules_snapshot_cache:
+            self._rules_snapshot_cache = snapshot
+            self._rules_model_cache = AbyssRuleset.from_dict(snapshot) if snapshot else None
+        return self._rules_model_cache
+
+    def rules_ui_state(self):
+        preset = self.active_preset()
+        rules = self.active_rules()
+        deck = deck_preset_to_draft_deck(preset, self.character_assets, self.weapon_assets) if preset and rules else None
+        return self.rules_controller.ui_state(preset, editable=self.is_editing, rules=rules, deck=deck)
+
+    def refresh_rules_catalog(self):
+        return self.rules_controller.refresh()
+
+    def select_ruleset(self, ruleset_id: str) -> bool:
+        preset = self._editing_preset
+        if preset is None or self.rules_controller.loading:
+            return False
+        if ruleset_id == FREE_DRAFT_V0_RULESET_ID:
+            self._editing_preset = set_deck_preset_rules(preset)
+            self._rules_changed()
+            return True
+        if not ruleset_id.startswith("abyss:"):
+            return False
+        context = (self._rules_edit_generation, preset.deck_id)
+        return self.rules_controller.load(ruleset_id.removeprefix("abyss:"), context)
+
+    def update_ruleset(self) -> bool:
+        target = self.rules_ui_state().get("update_id")
+        if not target or self.rules_controller.loading:
+            return False
+        if not self.is_editing and not self.begin_edit():
+            return False
+        return self.select_ruleset(target)
+
+    def _rules_received(self, context, rules):
+        preset = self._editing_preset
+        if preset is not None and context == (self._rules_edit_generation, preset.deck_id):
+            self._editing_preset = set_deck_preset_rules(preset, rules)
+
+    def _rules_changed(self):
+        self.refresh_view()
+        self.state_changed.emit()
+
     def refresh_account_data(
         self,
         *,
@@ -634,6 +693,7 @@ class PvpDecksWorkspace(QWidget):
         self._last_status = ""
         self._selected_deck_id_before_new_edit = self.selected_deck_id
         self._editing_preset = preset
+        self._rules_edit_generation += 1
         self._editing_is_new_deck = True
         self.selected_deck_id = preset.deck_id
         self.refresh_view()
@@ -655,6 +715,7 @@ class PvpDecksWorkspace(QWidget):
         if preset is None:
             return False
         self._editing_preset = preset
+        self._rules_edit_generation += 1
         self._editing_is_new_deck = False
         self._selected_deck_id_before_new_edit = ""
         self.refresh_view()
@@ -664,6 +725,19 @@ class PvpDecksWorkspace(QWidget):
     def save_edit(self, *, name: str = "") -> bool:
         preset = self._editing_preset
         if preset is None:
+            return False
+        if self.rules_controller.loading:
+            self._last_status = tr("app_shell.pvp.decks.rules_loading")
+            self.state_changed.emit()
+            return False
+        rules_state = self.rules_ui_state()
+        if preset.rules_snapshot and rules_state["freshness"] == "unknown":
+            self._last_status = tr("app_shell.pvp.rules.check_before_save")
+            self.state_changed.emit()
+            return False
+        if preset.rules_snapshot and rules_state["freshness"] == "update":
+            self._last_status = tr("app_shell.pvp.rules.update_before_save")
+            self.state_changed.emit()
             return False
         if name:
             preset = rename_deck_preset(preset, name)
@@ -675,6 +749,7 @@ class PvpDecksWorkspace(QWidget):
             return False
         self.selected_deck_id = preset.deck_id
         self._editing_preset = None
+        self._rules_edit_generation += 1
         self._editing_is_new_deck = False
         self._selected_deck_id_before_new_edit = ""
         self.reload_presets(emit_signal=False)
@@ -689,6 +764,7 @@ class PvpDecksWorkspace(QWidget):
         was_new = self._editing_is_new_deck
         previous_deck_id = self._selected_deck_id_before_new_edit
         self._editing_preset = None
+        self._rules_edit_generation += 1
         self._editing_is_new_deck = False
         self._selected_deck_id_before_new_edit = ""
         if was_new:
@@ -761,7 +837,9 @@ class PvpDecksWorkspace(QWidget):
             self.character_assets,
             self.weapon_assets,
         )
-        return validate_draft_deck(draft_deck)
+        return validate_draft_deck(
+            draft_deck, check_free_draft_minimum=preset.ruleset_id == FREE_DRAFT_V0_RULESET_ID,
+        )
 
     def selected_counts(self) -> tuple[int, int]:
         preset = self.active_preset()
@@ -776,6 +854,19 @@ class PvpDecksWorkspace(QWidget):
         weapon_keys = {ref.key for ref in preset.weapon_refs} if preset is not None else set()
         character_assets = self._visible_character_assets(character_ids, editing)
         weapon_assets = self._visible_weapon_assets(weapon_keys, editing)
+        self._character_rule_rows = {}
+        self._weapon_rule_rows = {}
+        rules = self.active_rules()
+        if rules is not None and preset is not None:
+            # Price all available cards so an unselected character still has a cost.
+            all_preset = replace(
+                preset, character_ids=tuple(character_id_from_asset(item) for item in self.character_assets),
+                weapon_refs=tuple(ref for item in self.weapon_assets if (ref := weapon_ref_from_asset(item)) is not None),
+            )
+            all_deck = deck_preset_to_draft_deck(all_preset, self.character_assets, self.weapon_assets)
+            all_report = evaluate_deck(all_deck, rules)
+            self._character_rule_rows = {row["character_id"]: row for row in all_report.character_rows}
+            self._weapon_rule_rows = {ref.key: row for ref, row in zip(all_preset.weapon_refs, all_report.weapon_rows)}
 
         self._reload_deck_grid(
             weapon_assets,
@@ -940,7 +1031,27 @@ class PvpDecksWorkspace(QWidget):
                 selected=bool(key and key in selected_keys),
             ),
         )
-        grid.set_items(result.items)
+        items = result.items
+        if self.active_rules() is not None:
+            priced_items = []
+            for item in items:
+                is_character = grid is self.character_grid
+                row = (self._character_rule_rows if is_character else self._weapon_rule_rows).get(item.item_id, {})
+                cost = row.get("cost" if is_character else "base_unit_cost")
+                text = "?" if cost is None else f"{cost:g}"
+                badges = item.badges + (PixelIconGridBadge(
+                    text=text, color=UI_BG_PANEL, position="bottom_left", width=28,
+                    height=17, margin=2, font_size=8,
+                ),)
+                tier = row.get("tier")
+                if is_character and tier is not None:
+                    badges += (PixelIconGridBadge(
+                        text=f"T{tier}", color=UI_BG_PANEL_RAISED, position="bottom_right",
+                        width=26, height=17, margin=2, font_size=8,
+                    ),)
+                priced_items.append(replace(item, badges=badges))
+            items = tuple(priced_items)
+        grid.set_items(items)
         if grid is self.character_grid:
             self._character_grid_assets_by_id = result.assets_by_id
         else:
@@ -2230,6 +2341,11 @@ class PvpWorkspace(QWidget):
                 report=None,
                 text=tr("app_shell.pvp.play.deck_missing"),
                 ready=False,
+            )
+        if preset.ruleset_id != FREE_DRAFT_V0_RULESET_ID:
+            return PvpDeckStartStatus(
+                preset=preset, draft_deck=None, report=None,
+                text=tr("app_shell.pvp.rules.match_not_available"), ready=False,
             )
         try:
             character_assets, weapon_assets = self._profile_assets(seat)

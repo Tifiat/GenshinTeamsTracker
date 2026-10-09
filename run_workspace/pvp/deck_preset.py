@@ -58,6 +58,7 @@ class PvpDeckPreset:
     created_at_utc: str = ""
     updated_at_utc: str = ""
     extra: Mapping[str, Any] = field(default_factory=dict)
+    rules_snapshot: Mapping[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -72,6 +73,8 @@ class PvpDeckPreset:
             "updated_at_utc": self.updated_at_utc,
         }
         payload.update(dict(sorted(self.extra.items())))
+        if self.rules_snapshot:
+            payload["rules_snapshot"] = dict(self.rules_snapshot)
         return payload
 
 
@@ -174,6 +177,7 @@ def save_deck_preset(
     deck_id = _safe_deck_id(preset.deck_id)
     if not deck_id:
         raise DeckPresetError("Deck preset deck_id is required.")
+    _validated_rules_snapshot(preset.rules_snapshot, preset.ruleset_id)
     root = resolve_deck_preset_dir(directory)
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{deck_id}.json"
@@ -238,6 +242,7 @@ def deck_preset_from_mapping(payload: Mapping[str, Any]) -> PvpDeckPreset:
         "weapon_refs",
         "created_at_utc",
         "updated_at_utc",
+        "rules_snapshot",
     }
     return PvpDeckPreset(
         schema_version=schema_version,
@@ -261,6 +266,36 @@ def deck_preset_from_mapping(payload: Mapping[str, Any]) -> PvpDeckPreset:
         created_at_utc=_text(payload.get("created_at_utc")),
         updated_at_utc=_text(payload.get("updated_at_utc")),
         extra={str(key): value for key, value in payload.items() if key not in known},
+        rules_snapshot=_validated_rules_snapshot(
+            payload.get("rules_snapshot", {}),
+            _text(payload.get("ruleset_id")) or FREE_DRAFT_V0_RULESET_ID,
+        ),
+    )
+
+
+def _validated_rules_snapshot(value: Any, ruleset_id: str) -> dict[str, Any]:
+    if not value:
+        if ruleset_id.startswith("abyss:"):
+            raise DeckPresetError("Abyss deck is missing its saved rules version.")
+        return {}
+    from .abyss_rules import AbyssRuleset
+
+    try:
+        rules = AbyssRuleset.from_dict(value)
+        if ruleset_id != f"abyss:{rules.system_id}":
+            raise ValueError("Rules version does not match the deck reference.")
+        return rules.to_dict()
+    except (ValueError, TypeError, KeyError) as exc:
+        raise DeckPresetError("Invalid saved Abyss rules version.") from exc
+
+
+def set_deck_preset_rules(preset: PvpDeckPreset, rules=None) -> PvpDeckPreset:
+    """Change rules in an edit transaction; membership is deliberately retained."""
+    return replace(
+        preset,
+        ruleset_id=f"abyss:{rules.system_id}" if rules is not None else FREE_DRAFT_V0_RULESET_ID,
+        rules_snapshot=rules.to_dict() if rules is not None else {},
+        updated_at_utc=_utc_stamp(),
     )
 
 
@@ -310,7 +345,10 @@ def deck_preset_to_draft_deck(
         deck_name=preset.name,
         ruleset_ref=DraftDeckRulesetRef(
             ruleset_id=preset.ruleset_id or FREE_DRAFT_V0_RULESET_ID,
-            ruleset_name=FREE_DRAFT_V0_RULESET_NAME,
+            ruleset_name=(
+                str(preset.rules_snapshot.get("source", {}).get("title") or preset.ruleset_id)
+                if preset.rules_snapshot else FREE_DRAFT_V0_RULESET_NAME
+            ),
         ),
         player=DraftDeckPlayer(nickname=_text(player_nickname)),
         source=DraftDeckSource(

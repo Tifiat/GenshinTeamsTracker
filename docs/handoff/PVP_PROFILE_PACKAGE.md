@@ -5,6 +5,10 @@ portable PvP profile package. The PvP product flow remains in
 `PVP_V0_CONTRACT.md`; this file owns the package boundary, independent seat data
 and shared neutral visual assets.
 
+Optional pinned Abyss rules in deck presets and deduplicated v3 exchange
+snapshots are defined in [Deck rules](PVP_DECK_RULES.md#persistence-and-exchange).
+They preserve the inventory/privacy boundary and do not enable Abyss matches.
+
 ## Target transport direction — user decision 2026-10-06
 
 The future website will also provide the PvP server. This supersedes an

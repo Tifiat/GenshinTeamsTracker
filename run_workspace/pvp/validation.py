@@ -124,6 +124,7 @@ def validate_draft_deck(
     deck: DraftDeck,
     *,
     config: FreeDraftV0Config | None = None,
+    check_free_draft_minimum: bool = True,
 ) -> DeckValidationReport:
     config = config or default_free_draft_v0_config()
     issues: list[ValidationIssue] = []
@@ -193,7 +194,7 @@ def validate_draft_deck(
                 )
             )
 
-    if len(valid_character_ids) < config.minimum_characters_per_deck:
+    if check_free_draft_minimum and len(valid_character_ids) < config.minimum_characters_per_deck:
         issues.append(
             _error(
                 ISSUE_NOT_ENOUGH_CHARACTERS_FREE_DRAFT,

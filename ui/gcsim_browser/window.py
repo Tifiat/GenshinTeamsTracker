@@ -132,6 +132,8 @@ class GcsimBrowserWorkspace(QWidget):
         self._rotation_window = None
         self._rotation_environment = None
         self._rotation_base_source = ""
+        self.rotation_team_provider = None
+        self._rotation_team_context = None
         self._virtual_set_choices: tuple[GcsimVirtualArtifactSetChoice, ...] = ()
         self._team_notes: list[QLabel] = []
         self._optimizer_elapsed_clock = QElapsedTimer()
@@ -276,10 +278,10 @@ class GcsimBrowserWorkspace(QWidget):
         readable_tab = QWidget()
         readable_layout = QVBoxLayout(readable_tab)
         readable_layout.setContentsMargins(8, 8, 8, 8)
-        self.readable_placeholder = QLabel()
-        self.readable_placeholder.setWordWrap(True)
-        readable_layout.addWidget(self.readable_placeholder)
-        readable_layout.addStretch(1)
+        self.readable_text = QPlainTextEdit()
+        self.readable_text.setReadOnly(True)
+        self.readable_text.setMinimumHeight(180)
+        readable_layout.addWidget(self.readable_text)
         self.rotation_tabs.addTab(readable_tab, "")
 
         builder_tab = QWidget()
@@ -290,8 +292,14 @@ class GcsimBrowserWorkspace(QWidget):
         builder_layout.addWidget(self.builder_placeholder)
         builder_layout.addStretch(1)
         self.rotation_tabs.addTab(builder_tab, "")
-        self.rotation_tabs.setTabEnabled(1, False)
+        self.rotation_tabs.setTabEnabled(1, True)
         self.rotation_tabs.setTabEnabled(2, False)
+        self._readable_timer = QTimer(self)
+        self._readable_timer.setSingleShot(True)
+        self._readable_timer.setInterval(200)
+        self._readable_timer.timeout.connect(self._refresh_readable)
+        self.rotation_editor.textChanged.connect(self._schedule_readable)
+        self.rotation_tabs.currentChanged.connect(self._rotation_tab_changed)
         rotation_layout.addWidget(self.rotation_tabs)
 
         actions = QHBoxLayout()
@@ -470,6 +478,59 @@ class GcsimBrowserWorkspace(QWidget):
             raise ValueError(tr("rotation.editor.no_engine"))
         return load_environment(installation)
 
+    def _current_rotation_team(self):
+        from run_workspace.gcsim.rotation_editor.team import TeamContext
+        index = 0 if self._mode == MODE_DPS_DUMMY else max(0, self.team_tabs.currentIndex())
+        if self.rotation_team_provider is not None:
+            return self.rotation_team_provider(index)
+        return TeamContext(f"{self._mode}:{index}")
+
+    def _rotation_names(self, environment, team):
+        names = {item.gcsim_key: item.display_name for item in self._virtual_catalog.characters}
+        names.update({member.key: member.name for member in team.members})
+        for key in environment.dialect.character_aliases.values():
+            localized = tr("rotation.character." + key)
+            if localized != "rotation.character." + key:
+                names[key] = localized
+        return names
+
+    def refresh_rotation_team_context(self):
+        if not hasattr(self, "rotation_tabs"):
+            return
+        if self._rotation_window is not None:
+            team = self._current_rotation_team()
+            names = self._rotation_names(self._rotation_environment, team)
+            self._rotation_window.set_team(team.keys, names)
+            if team.binding != self._rotation_team_context.binding:
+                self._rotation_window.block_apply(tr("rotation.editor.team_changed"))
+        if self.rotation_tabs.currentIndex() == 1:
+            self._refresh_readable()
+
+    def _rotation_tab_changed(self, index):
+        if index == 1:
+            self._refresh_readable()
+
+    def _schedule_readable(self):
+        if self.rotation_tabs.currentIndex() == 1:
+            self._readable_timer.start()
+
+    def _refresh_readable(self):
+        from run_workspace.gcsim.rotation_editor import parse
+        from run_workspace.gcsim.rotation_editor.readable import render
+
+        self._readable_timer.stop()
+        try:
+            environment = self._load_rotation_environment()
+            team = self._current_rotation_team()
+            names = self._rotation_names(environment, team)
+            document = parse(self.rotation_editor.toPlainText(), environment.dialect)
+            text = render(document, tr, resolve_name=names.get).compact_text()
+            if not document.syntax_complete:
+                text = tr("rotation.editor.syntax_issue") + "\n\n" + text
+            self.readable_text.setPlainText(text)
+        except (OSError, ValueError, RuntimeError, RecursionError) as error:
+            self.readable_text.setPlainText(tr("rotation.editor.error", reason=str(error)))
+
     def _open_rotation_editor(self) -> None:
         try:
             environment = self._load_rotation_environment()
@@ -483,14 +544,17 @@ class GcsimBrowserWorkspace(QWidget):
                 return
             if self._rotation_environment.identity == environment.identity:
                 # Preserve an unfinished draft and undo history on close/reopen.
+                team = self._current_rotation_team()
+                self._rotation_team_context = team
+                self._rotation_window.set_team(team.keys, self._rotation_names(environment, team))
+                self._rotation_window.block_apply("" if self.rotation_editor.toPlainText() == self._rotation_base_source else tr("rotation.editor.external_change"))
                 self._rotation_window.show()
                 self._rotation_window.raise_()
                 self._rotation_window.activateWindow()
                 return
             draft = self._rotation_window.session.code_text()
             if draft is None:
-                self._rotation_window.set_message(tr("rotation.editor.engine_change"))
-                self._rotation_window.apply_button.setEnabled(False)
+                self._rotation_window.block_apply(tr("rotation.editor.engine_change"))
                 self._rotation_window.show()
                 return
             source = draft
@@ -499,14 +563,11 @@ class GcsimBrowserWorkspace(QWidget):
     def _create_rotation_window(self, environment, source: str, *, reset_base: bool) -> None:
         from ui.gcsim_browser.rotation_editor import RotationEditorWindow
 
-        names = {item.gcsim_key: item.display_name for item in self._virtual_catalog.characters}
-        for key in set(environment.dialect.character_aliases.values()):
-            localized = tr("rotation.character." + key)
-            if localized != "rotation.character." + key:
-                names[key] = localized
+        team = self._current_rotation_team()
+        names = self._rotation_names(environment, team)
         try:
             replacement = RotationEditorWindow(source, environment.dialect, names=names,
-                character_options=environment.character_options, parent=self)
+                character_options=environment.character_options, allowed_actors=team.keys, parent=self)
         except (ValueError, RecursionError) as error:
             if self._rotation_window is not None:
                 self._rotation_window.set_message(tr("rotation.editor.error", reason=str(error)))
@@ -517,6 +578,7 @@ class GcsimBrowserWorkspace(QWidget):
             self._rotation_window.close()
             self._rotation_window.deleteLater()
         self._rotation_environment = environment
+        self._rotation_team_context = team
         self._rotation_window = replacement
         if reset_base:
             self._rotation_base_source = self.rotation_editor.toPlainText()
@@ -535,16 +597,34 @@ class GcsimBrowserWorkspace(QWidget):
 
     def _apply_rotation_draft(self, source: str) -> None:
         window = self._rotation_window
+        team = self._current_rotation_team()
+        if team.binding != self._rotation_team_context.binding:
+            self.refresh_rotation_team_context()
+            window.set_message(tr("rotation.editor.team_changed"))
+            return
+        from run_workspace.gcsim.rotation_editor import parse
+        from run_workspace.gcsim.rotation_editor.team import validate_team
+        try:
+            document = parse(source, self._rotation_environment.dialect)
+        except (ValueError, RecursionError):
+            window.set_message(tr("rotation.editor.syntax_issue"))
+            return
+        if not document.syntax_complete:
+            window.set_message(tr("rotation.editor.syntax_issue"))
+            return
+        if not team.keys or validate_team(document, team.keys):
+            window.set_message(tr("rotation.editor.team_outside"))
+            return
         try:
             environment = self._load_rotation_environment()
             if environment.identity != self._rotation_environment.identity:
-                window.set_message(tr("rotation.editor.engine_change"))
+                window.block_apply(tr("rotation.editor.engine_change"))
                 return
         except (OSError, ValueError, RuntimeError):
             window.set_message(tr("rotation.editor.no_engine"))
             return
         if self.rotation_editor.toPlainText() != self._rotation_base_source:
-            window.set_message(tr("rotation.editor.external_change"))
+            window.block_apply(tr("rotation.editor.external_change"))
             return
         self.rotation_editor.setPlainText(source)
         self._rotation_base_source = source
@@ -656,12 +736,8 @@ class GcsimBrowserWorkspace(QWidget):
             2,
             _fallback("gcsim.browser.rotation_builder", "Builder"),
         )
-        self.readable_placeholder.setText(
-            _fallback(
-                "rotation.editor.open",
-                "Open rotation editor",
-            )
-        )
+        if self.rotation_tabs.currentIndex() == 1:
+            self._refresh_readable()
         self.builder_placeholder.setText(
             _fallback(
                 "rotation.editor.open",
@@ -1234,6 +1310,7 @@ class GcsimBrowserWorkspace(QWidget):
     def _refresh_context(self) -> None:
         if not hasattr(self, "mode_context_label"):
             return
+        self.refresh_rotation_team_context()
         mode_text = (
             _fallback("right_panel.mode.dps_dummy", "DPS Dummy")
             if self._mode == MODE_DPS_DUMMY

@@ -12,16 +12,33 @@ from .writer import CodeGenerationError, write
 
 
 class EditorSession:
-    def __init__(self, source: str, dialect: Dialect, *, undo_limit: int = 50):
+    def __init__(self, source: str, dialect: Dialect, *, undo_limit: int = 50, allowed_actors=None, character_options=None):
         if undo_limit < 1:
             raise ValueError("undo_limit must be positive")
         self.current = parse(source, dialect)
+        self.allowed_actors = None if allowed_actors is None else frozenset(dialect.character_aliases.get(key, key) for key in allowed_actors)
+        self.character_options = character_options
         self.last_complete = self.current if self.current.syntax_complete else None
         self._history: list[Document] = []
         self._redo: list[Document] = []
         self._undo_limit = undo_limit
 
     def _set(self, document: Document, *, parsed: bool = False) -> Document:
+        if not parsed and self.allowed_actors is not None:
+            from collections import Counter
+            from .team import validate_team
+            previous = Counter(dict(item.details)["actor"] for item in validate_team(self.current, self.allowed_actors))
+            following = Counter(dict(item.details)["actor"] for item in validate_team(document, self.allowed_actors))
+            if following - previous:
+                raise CodeGenerationError("rotation.team.outside")
+        if not parsed and self.character_options is not None:
+            from collections import Counter
+            def failures(value):
+                return Counter((item.code, item.details) for item in validate_actions(value, self.character_options, require_options=True)
+                               if item.severity == "error")
+            added = failures(document) - failures(self.current)
+            if added:
+                raise CodeGenerationError(", ".join(dict.fromkeys(code for code, _ in added)))
         self._history.append(self.current)
         self._redo.clear()
         del self._history[:-self._undo_limit]
@@ -62,6 +79,14 @@ class EditorSession:
         if not parsed.syntax_complete or shape(parsed.root) != shape(self.current.root):
             raise CodeGenerationError("Generated code does not round-trip to the edited document")
         diagnostics = list(validate_setup(parsed)) if parsed.dialect.identity == "gcsim-v2.45.0-gcsl" else []
+        if self.allowed_actors is not None:
+            from .team import validate_team
+            if not self.allowed_actors:
+                raise CodeGenerationError("rotation.team.empty")
+            diagnostics.extend(validate_team(parsed, self.allowed_actors))
+        if character_options is None:
+            character_options = self.character_options
+            require_options = require_options or self.character_options is not None
         if character_options is not None or require_options:
             diagnostics.extend(validate_actions(parsed, character_options or {}, expected_identity, require_options))
         errors = [diagnostic.code for diagnostic in diagnostics if diagnostic.severity == "error"]

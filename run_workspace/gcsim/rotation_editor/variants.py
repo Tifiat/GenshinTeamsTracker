@@ -4,11 +4,11 @@ Import inspection is read-only. Only an explicit builder/edit request creates
 preparation or guards, and those remain visible ordinary GCSL nodes.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .conditions import Condition, PROFILE, actor_token, make_if
-from .model import Document, Node, action, node
-from .semantics import analyze, integer, name
+from .model import Document, Node, action, node, shape
+from .semantics import analyze, integer, name, make_cycle
 
 
 @dataclass(frozen=True)
@@ -127,17 +127,57 @@ def apply_variant(document: Document, action_id: str, choice: VariantChoice) -> 
     actor = name(line.get("actor"))
     if choice.key not in {item.key for item in choices_for(document, actor, name(current.get("name")))}:
         raise ValueError("Variant is not available for this action")
-    if current.get("repeat") is not None and integer(current.get("repeat")) != 1:
-        raise ValueError("Select a single action; repeated variant preparation needs an explicit loop")
+    repeats = integer(current.get("repeat")) if current.get("repeat") is not None else 1
+    if repeats is None:
+        raise ValueError("Repeated preparation exceeds the supported exact cycle range")
     variant = next(item for item in VARIANTS if item.key == choice.key)
     entries = current.get("parameters").get("entries") if current.get("parameters") else ()
     if any(name(entry.get("key")) != variant.parameter for entry in entries):
         raise ValueError("Extra parameters require a detailed edit; they cannot be silently discarded")
     plan = plan_variant(document, choice, actor=actor)
+    # Keep the selected action's identity through lowering into prerequisite
+    # blocks, so the UI stays on that action rather than losing selection.
+    target = next(item for item in plan.block.walk() if item.kind == "action" and name(item.get("name")) == variant.action)
+    def retain(value):
+        if value.node_id == target.node_id:
+            return replace(value, node_id=current.node_id,
+                fields=tuple((key, current.get("repeat") if variant.actor == "bennett" and key == "repeat" else field)
+                             for key, field in value.fields))
+        return replace(value, fields=tuple((key, retain(field) if isinstance(field, Node) else
+            tuple(retain(child) if isinstance(child, Node) else child for child in field) if isinstance(field, tuple) else field)
+            for key, field in value.fields))
+    generated = retain(plan.block)
+    if variant.actor != "bennett" and repeats != 1:
+        if repeats == 0:
+            generated = _block(make_if(document, Condition("constant", value="false"), generated))
+        else:
+            generated = _block(make_cycle(document, repeats, generated))
+    # A prior exact audited plan is a replaceable range in the ordinary tree.
+    # Recognizing its shape prevents piling preparation/old C restrictions up
+    # each time the same action's variant is changed. Unrelated guards survive.
+    for ancestor in meaning.ancestors(action_id):
+        if ancestor.kind not in {"document", "block", "case_body"}:
+            continue
+        siblings = ancestor.get("items")
+        for old_variant in choices_for(document, actor, name(current.get("name"))):
+            amount = old_variant.default
+            if old_variant.parameter:
+                entry = next((entry for entry in entries if name(entry.get("key")) == old_variant.parameter), None)
+                amount = integer(entry.get("value")) if entry else None
+                if amount not in old_variant.values:
+                    continue
+            for policy in ("ensure", "guard"):
+                expected = plan_variant(document, VariantChoice(old_variant.key, amount, policy), actor=actor).block.get("items")
+                for start in range(len(siblings) - len(expected) + 1):
+                    segment = siblings[start:start + len(expected)]
+                    if (any(child.node_id == action_id for item in segment for child in item.walk())
+                            and shape(segment) == shape(expected)):
+                        return document.replace(ancestor.node_id, ancestor.changed(items=(
+                            siblings[:start] + generated.get("items") + siblings[start + len(expected):])))
     actions = line.get("actions")
     index = next(i for i, item in enumerate(actions) if item.node_id == action_id)
     before, after = actions[:index], actions[index + 1:]
-    items = ((_line(actor, before),) if before else ()) + plan.block.get("items") + ((_line(actor, after),) if after else ())
+    items = ((_line(actor, before),) if before else ()) + generated.get("items") + ((_line(actor, after),) if after else ())
     return document.replace(line.node_id, _block(*items))
 
 

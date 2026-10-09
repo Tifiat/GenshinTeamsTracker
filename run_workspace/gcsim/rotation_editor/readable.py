@@ -47,6 +47,30 @@ class ReadableDocument:
         items = self.items + self.details if include_details else self.items
         return "\n".join(line for item in items for line in item.lines())
 
+    def compact_text(self, *, include_details: bool = False) -> str:
+        """Plain quick preview: adjacent actions share a line, branches remain."""
+        lines = []
+        def sequence(items, indent):
+            pending = []
+            def flush():
+                if pending:
+                    lines.append("  " * indent + ", ".join(pending))
+                    pending.clear()
+            for item in items:
+                if item.kind == "action" and not item.children:
+                    pending.append(item.text)
+                    continue
+                flush()
+                if item.kind == "window" and item.children and all(child.kind == "action" and not child.children for child in item.children):
+                    lines.append("  " * indent + item.text + ": " + ", ".join(child.text for child in item.children))
+                else:
+                    if item.text:
+                        lines.append("  " * indent + item.text)
+                    sequence(item.children, indent + bool(item.text))
+            flush()
+        sequence(self.items + (self.details if include_details else ()), 0)
+        return "\n".join(lines)
+
 
 class Renderer:
     def __init__(self, document: Document, translate: Translate, *,

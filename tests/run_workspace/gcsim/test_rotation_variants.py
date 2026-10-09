@@ -96,17 +96,36 @@ class VariantTests(unittest.TestCase):
         session.undo()
         self.assertEqual(session.code_text(), source)
 
-    def test_parameter_conflicts_and_repeated_actions_require_explicit_edit(self):
+    def test_parameter_conflicts_require_explicit_edit(self):
         for source, choice in (
             ('bennett skill[hold=1,hold_c4=1];', VariantChoice('bennett.skill_hold', 2)),
             ('chasca aim[hold=1,bullets=4];', VariantChoice('chasca.nightsoul_aim', 4)),
-            ('chasca aim:4;', VariantChoice('chasca.nightsoul_aim', 6)),
         ):
             doc = parse('active furina; ' + source, DIALECT)
             selected = next(item for item in doc.root.walk() if item.kind == 'action')
             with self.assertRaises(ValueError):
                 apply_variant(doc, selected.node_id, choice)
             self.assertEqual(write(doc), doc.source)
+
+    def test_repeated_chasca_variant_keeps_count_and_selection(self):
+        document = parse('active chasca; chasca aim:4;', DIALECT)
+        selected = next(item for item in document.root.walk() if item.kind == 'action')
+        changed = apply_variant(document, selected.node_id, VariantChoice('chasca.nightsoul_aim', 6))
+        from run_workspace.gcsim.rotation_editor.semantics import analyze
+        self.assertEqual(next(iter(analyze(changed).cycles.values())).count, 4)
+        self.assertEqual(changed.find(selected.node_id).get('parameters').get('entries')[0].get('value').get('value'), '6')
+        self.assertEqual(write(changed).count('chasca skill;'), 1)
+        self.assertEqual(shape(changed.root), shape(parse(write(changed), DIALECT).root))
+
+    def test_reediting_variant_replaces_old_plan_and_constellation_guard(self):
+        document = parse('active chasca; chasca dash, aim, jump;', DIALECT)
+        selected = next(item for item in document.root.walk() if item.kind == 'action' and item.get('name').get('value') == 'aim')
+        changed = apply_variant(document, selected.node_id, VariantChoice('chasca.nightsoul_aim', 4))
+        changed = apply_variant(changed, selected.node_id, VariantChoice('chasca.nightsoul_aim', 6))
+        self.assertNotIn('.chasca.cons', write(changed))
+        self.assertEqual(write(changed).count('chasca skill;'), 1)
+        self.assertIn('chasca dash;', write(changed))
+        self.assertIn('chasca jump;', write(changed))
 
     def test_ranges_actor_and_custom_handlers_are_validated(self):
         doc = parse('active furina;', DIALECT)

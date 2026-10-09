@@ -18,6 +18,7 @@ def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument("--engine-root", type=Path, required=True)
     cli.add_argument("--language", choices=("ru", "en", "pt-br"), default="ru")
+    cli.add_argument("--browser", action="store_true", help="Show the real Browser widget with an explicit public team; no AppShell or accounts")
     args = cli.parse_args()
     os.environ["GTT_LANGUAGE"] = args.language
     sys.path.insert(0, str(ROOT))
@@ -33,10 +34,21 @@ def main():
     source = (ROOT / "run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt").read_text(encoding="utf-8")
     names = {key: tr("rotation.character." + key) for key in ("furina", "chasca", "bennett", "ororon")}
     app = QApplication.instance() or QApplication([])
-    window = RotationEditorWindow(source, environment.dialect, names=names, character_options=environment.character_options)
-    window.reload_button.setVisible(False)
-    window.setWindowTitle(tr("rotation.editor.preview_title"))
-    window.applied.connect(lambda _: window.set_message(tr("rotation.editor.preview_applied")))
+    if args.browser:
+        from ui.gcsim_browser.window import GcsimBrowserWorkspace, GcsimBrowserTeamSlotPreview
+        from run_workspace.gcsim.rotation_editor.team import TeamContext, TeamMember
+        window = GcsimBrowserWorkspace()
+        window.rotation_team_provider = lambda index: TeamContext(f"public:{index}", tuple(TeamMember(key, title, "public:" + key) for key, title in names.items()))
+        window._load_rotation_environment = lambda: environment
+        window.rotation_editor.setPlainText(source)
+        window.set_team_preview(0, [GcsimBrowserTeamSlotPreview(name=title) for title in names.values()])
+        window.setWindowTitle(tr("rotation.editor.browser_preview_title"))
+        window.resize(1000, 800)
+    else:
+        window = RotationEditorWindow(source, environment.dialect, names=names, character_options=environment.character_options, allowed_actors=tuple(names))
+        window.reload_button.setVisible(False)
+        window.setWindowTitle(tr("rotation.editor.preview_title"))
+        window.applied.connect(lambda _: window.set_message(tr("rotation.editor.preview_applied")))
     window.show()
     return app.exec()
 

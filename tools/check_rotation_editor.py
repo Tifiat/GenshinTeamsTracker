@@ -23,6 +23,7 @@ from run_workspace.gcsim.rotation_editor.semantics import ScheduleChoice, analyz
 from tests.run_workspace.gcsim.test_rotation_editor import DIALECT, PUBLIC_CASES
 from tests.run_workspace.gcsim.test_rotation_conditions import CONDITION_CASES, with_condition
 from tests.run_workspace.gcsim.test_rotation_variants import VARIANT_CASES, plan_document
+from run_workspace.gcsim.rotation_editor.variants import apply_variant, VariantChoice
 from run_workspace.gcsim.rotation_editor.conditions import compile_condition, recognize
 from run_workspace.gcsim.rotation_editor.conditions import Condition, make_if
 from run_workspace.gcsim.rotation_editor.editing import Selection, insert, move, remove, wrap
@@ -146,6 +147,15 @@ def structural_pairs() -> list[tuple[str, str]]:
     branch = document.root.get("items")[1].get("then")
     pairs.append((write(remove(document, Selection(branch.node_id))),
         "active furina; if .furina.onfield {} else { chasca skill; }"))
+    document = parse("active chasca; chasca aim:4;", DIALECT)
+    selected = next(item for item in document.root.walk() if item.kind == "action")
+    changed = apply_variant(document, selected.node_id, VariantChoice("chasca.nightsoul_aim", 6))
+    pairs.append((write(changed), "active chasca; { for let _rotation=1; _rotation<=4; _rotation=_rotation+1 { if !.chasca.nightsoul.state { chasca skill; } if .chasca.nightsoul.state { chasca aim[bullets=6]; } } }"))
+    document = parse("active chasca; chasca dash, aim, jump;", DIALECT)
+    selected = next(item for item in document.root.walk() if item.kind == "action" and item.get("name").get("value") == "aim")
+    changed = apply_variant(document, selected.node_id, VariantChoice("chasca.nightsoul_aim", 4))
+    changed = apply_variant(changed, selected.node_id, VariantChoice("chasca.nightsoul_aim", 6))
+    pairs.append((write(changed), "active chasca; { chasca dash; if !.chasca.nightsoul.state { chasca skill; } if .chasca.nightsoul.state { chasca aim[bullets=6]; } chasca jump; }"))
     return pairs
 
 

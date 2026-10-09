@@ -1128,6 +1128,11 @@ class AppShellController:
             slot_payload["is_empty"] = False
         return payload
 
+    def gcsim_rotation_team_context(self, team_index: int):
+        from run_workspace.gcsim.rotation_editor.team import load_selected_team
+        return load_selected_team(self.gcsim_browser_selected_team(team_index),
+            scope=f"{self.mode}:{team_index}", database=Path(self.equipment_db_path))
+
     def gcsim_browser_abyss_targets_preview(
         self,
         *,
@@ -1762,6 +1767,7 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.rotation_text_changed.connect(
             self._on_gcsim_rotation_text_changed
         )
+        self.left_host.gcsim_browser_workspace.rotation_team_provider = self.controller.gcsim_rotation_team_context
         self.left_host.gcsim_browser_workspace.optimizer_selected_requested.connect(
             self._on_gcsim_optimizer_selected_requested
         )
@@ -2134,6 +2140,7 @@ class AppShell(QWidget):
                 self.controller.gcsim_run_settings().boosted_energy_enabled
             ),
         )
+        self.left_host.gcsim_browser_workspace.refresh_rotation_team_context()
 
     def _on_gcsim_prepare_requested(
         self,

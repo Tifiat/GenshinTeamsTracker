@@ -1,49 +1,41 @@
 # PvP deck rules editor
 
 <!-- handoff-current: pvp-deck-rules -->
-Reviewed 2026-10-09, Worker4 source branch only. The existing Decks editor now
-loads the public Abyss catalog on an explicit action, offers the latest live
-version per family plus Free Draft, and saves a validated rules snapshot with
-the deck. Character cost/tier badges, weapon base prices, budgets, tier bands,
-required combinations and scoped issues are displayed without replacing the
-existing selection grids. Older versions remain viewable; saving requires a
-current catalog and explicit adoption of a known newer version. Cancel preserves
-the original deck.
+Reviewed 2026-10-09, Worker4 source branch only. Decks explicitly loads the public
+catalog, offers the latest live version per family plus Free Draft, and saves a
+validated snapshot. Older decks remain viewable; saving requires currentness and
+explicit adoption of newer rules. Cancel preserves the original selection.
 
-Nine DEFAULT source families are supported; FRENCH_COST remains unsupported.
-Known price/count/required-character checks run. A requirement table shows
-live values, per-target/role coverage
-and a shared non-reusing allocation, including alternative T0 groups. Exact site
-allocation parity, zero upper bounds and parts of bundle matching remain
-unverified. These are editable deck drafts, not certification
-of tournament legality. Abyss match launch is disabled; Free Draft remains the
-executable match mode. Current Abyss Cup requires Pyro Traveler, whose selection
-is not supported by GTT yet; the UI names the variant and limitation.
+Nine DEFAULT families normalize; FRENCH_COST remains unsupported. Cost/tier badges,
+budgets and required characters/combination statuses use the existing grids and
+wrapped table. Allocation shares non-reusing T1/T0 resources and runs off-thread
+with stale-result rejection. Known zero-price members outside tier bands no longer
+abort allocation. Missing/ambiguous tiers remain unknown. Roles use the preset DD
+list; scoped Show/Clear filters never change selection. Exact site allocation,
+zero upper bounds and some bundle semantics remain unverified.
 
-The user's clipping failure is repaired with one scroll area and wrapped tables.
-A later screenshot exposed zero-price characters outside the declared tier bands
-aborting every combination check. These known non-tier members now stay outside
-the allocation pool without cancelling known T1/T0 coverage. Missing/ambiguous
-tiers remain unknown; the table separately counts out-of-band members.
-Allocation runs off the UI thread with one active and one latest pending request;
-stale results cannot replace a newer composition. Unknown/bounded-out checks use
-`?`, not a failure marker. Tier bands describe character cost, not quantity caps.
-Physical character roles use the selected preset's DD-ID list, correcting the
-earlier price-field mapping. Role-condition Show/Clear actions filter this deck's
-grid by tier and role; filters reset on deck/rules changes and never alter selection.
+The rejected weapon-price accordion is removed. Compact sums distinguish one
+copy per selected stack, known full quantities and assignment-dependent pricing.
+The exact inspected Cup version displays attributed tournament prose (155 = 130
+general + 25 cheap-only), separately from the API Teams-phase cap. Panel geometry
+remains stable across selection/pending/results; repeated descendant layout
+activation was removed. The [current receipt](#weapon-limits-and-local-matches--2026-10-09)
+owns verification and the [prior performance receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
+owns earlier pipeline measurements.
 
-Selection updates retained cards/details. The later panel jump is repaired with
-stable geometry across pending/results and settled layout before painting.
-Available weapon pricing has an expandable R1–R5/character-exception section.
-The [repair receipt](#panel-stability-and-weapon-pricing--2026-10-09) owns checks;
-the [performance receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
-owns timings and downstream checks. Persistent catalog reuse is deferred to MVP
-by the user; current catalog loading remains explicit.
-No Computer Use, application launch or real-account import/write. Next is the
-user's create/edit recheck, then source parity and match schedule work. Traveler
-remains the first independent task for another chat. The
-[source receipt](PVP_ABYSS_SOURCE_AUDIT.md) retains API/document conflicts;
-organizer prose is not silently merged into live rules.
+Pinned 26-action local Abyss matches now connect immunity, existing build services,
+assigned-weapon budgets and restart-adjusted single-game Shiyu scoring. Both decks
+must use equal rules and have enough compatible shared immunity candidates.
+Unsupported flows/modes/stages and incomplete snapshots fail explicitly; old
+snapshots require refresh. Source session-bundle verification and tournament
+series remain open. Current Cup requires Pyro Traveler; GTT cannot select that
+variant yet, and Play names the missing character. Traveler remains the first
+independent task for another chat.
+
+Persistent catalog caching is user-deferred to MVP. No Computer Use, application
+launch or real-account access. Next is the user's Decks → Play → Draft/build/timer
+recheck. The [source receipt](PVP_ABYSS_SOURCE_AUDIT.md) retains API/document
+conflicts; organizer prose is not silently treated as machine validation.
 <!-- /handoff-current -->
 
 ## Boundaries and implementation
@@ -77,6 +69,10 @@ organizer prose is not silently merged into live rules.
 `gtt.pvp_deck_preset` v1 gains optional `rules_snapshot`; old Free Draft JSON
 remains valid and omits it. Abyss references are `abyss:<exact system id>`.
 Snapshot/reference mismatches and unsupported extra snapshot fields are rejected.
+Optional v1 projections now retain source mode, weapon-type specialties,
+pick flow/immunity, Teams cap/step, stage-enabled flag and restart policy.
+Absent extensions are not inserted into older snapshots, preserving their hashes;
+old snapshots require explicit rules refresh before local source execution.
 The snapshot is user-created deck content, retained until that deck is deleted;
 the existing deck deletion owns cleanup. No separate cache or database migration.
 
@@ -90,6 +86,61 @@ extension reject Abyss archives; they must receive the reviewed source package.
 Nested snapshot text has the existing portable no-local-path/no-NUL gate.
 The inventory, auth exclusion, neutral image and managed-provider cleanup contract
 remains owned by [profile exchange](PVP_PROFILE_PACKAGE.md).
+
+## Weapon limits and local matches — 2026-10-09
+
+The user rejected the prior expandable weapon catalog: costs already appear on
+cards. It is removed, including its formatter/cache/localization paths. Summary
+prices no longer use a bare `?`: one-copy prices are labelled separately from
+whole-stack costs; unknown quantities/prices are explicit, and conditional final
+prices are described as pending character assignment. No unknown count becomes 1.
+
+The inspected exact Cup ID/root/update is pinned to a small attributed manual
+note from the linked **Abyss Fast Soup 23** regulation: 155 total, 130 general
+plus 25 usable only by weapons priced at most 14; expensive weapons (at least 15)
+cannot consume the extra 25. This is not a machine-verified generic roster cap.
+The API's separate cumulative per-seat Teams cap/step (500/500) is displayed
+and enforced after assignment. Price uses matching character override, then
+off-specialty, then refinement base price. Joker exceptions remain linked prose.
+
+`abyss_match_rules.py` binds the source snapshot to its 26 actions, distinct
+preparatory immunity actions, ordinary bans/picks and immune picks. Preparation
+requires four eligible shared same-price characters. Match launch requires both
+decks to use equal rule content, ignoring retrieval-only timestamp/hash metadata;
+missing mandatory characters are named. The local flow ends in two four-character
+teams per seat, validated inventory/weapon assignments and three chamber timers.
+Per-seat restart counters apply the pinned API/client policy; current Cup has
+three free, then +5/+5/+10 seconds. Lower adjusted time wins. Source mode must
+be `shiyu`; enabled stage phases, MIRROR/other flows and missing projections
+fail explicitly. Free Draft retains its prior behavior/serialized shape.
+
+This is one local game, not a tournament series or server certification. The
+linked regulation differs on paid restarts, failed rooms and tie-breaks; these
+rules are not silently substituted. Abyss session-bundle export rejects explicitly
+until a versioned pinned-snapshot replay/verifier exists. Catalog caching remains
+user-deferred; the new memoized UI calculations are match/widget memory only.
+
+The earlier 55-check receipt remains dated evidence; its accordion UI was rejected.
+192 distinct scoped automated cases PASS: 112 backend/model/serialization cases,
+67 rules/panel/geometry/source-match/timer/period/profile/artifact UI cases and
+13 selection/draft performance cases. The initial UI run reproduced the dated
+HP-title width failure; wrapping those titles and aligning values at the top
+fixed the same assertion in a 44-case combined rerun. Prior failed evidence stays
+in `PVP_BUILD_SERVICES.md`; no physical acceptance is inferred.
+The 70-weapon selection median is 3.701 ms over 20 samples against the unchanged
+16.67 ms guard. Existing 78-card Draft action medians are 96.52/100.03 ms
+(ban/pick), one board projection/incremental pool update and zero full grid resets
+per action. All nine current DEFAULT families normalized from public reads in
+memory; FRENCH_COST rejected. No payload files or persistent catalog were created.
+
+The smoke remains user-owned: recheck Decks rules/weapon sums and selection without
+panel movement; refresh old rules, use matching valid decks in Play; complete
+immunity/bans/picks, assign two teams/equipment per seat, check weapon sum/cap,
+Ready both, enter chamber times and restart counts, and verify adjusted result.
+Current Cup still needs the independently assigned Pyro Traveler support. One
+diagnostic synthetic widget was accidentally shown on the desktop and closed;
+other UI checks were offscreen. No production app/real-account access or Computer
+Use occurred. Handoff checker and source diff review complete the local closeout.
 
 ## Verification receipt — 2026-10-09
 

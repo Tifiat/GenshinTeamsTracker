@@ -1,19 +1,19 @@
 # PvP Backend Status
 
-Last updated: 2026-10-09 (Abyss deck editor; match runtime remains Free Draft).
+Last updated: 2026-10-09 (pinned Abyss local matches alongside Free Draft).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
 mapping boundaries live in `PVP_RULESET_SOURCE_MATRIX.md`. Public Abyss rules
 feed the deck editor through a product adapter. [Deck rules](PVP_DECK_RULES.md)
-owns its implementation/acceptance limits; match adapters remain open.
+owns its implementation/acceptance limits and supported local match adapter.
 
 The PvP UI roadmap is intentionally separate: see `PVP_UI_ROADMAP.md` for the
 AppShell/Decks/Play/Draft/assignment/result UI direction.
 
 ## Active Direction
 
-The active backend direction is no-rules Free Draft v0:
+The original no-rules Free Draft v0 remains available:
 
 - local hot-seat / ghost-deck sessions;
 - two `DraftDeck` payloads;
@@ -25,8 +25,11 @@ The active backend direction is no-rules Free Draft v0:
 
 Legacy generic ruleset/balance modules remain report-only research support.
 Abyss has a separate pinned deck adapter with price/constraint presentation;
-`PVP_DECK_RULES.md` owns current limits and the user smoke. Free Draft is still
-the only executable registered match mode.
+`PVP_DECK_RULES.md` owns current limits and the user smoke. A dynamic pinned
+source definition now executes supported 26-action Abyss flows with immunity,
+assigned-weapon budgets and restart-adjusted single-game Shiyu scoring.
+Unsupported modes/flows/stages fail closed. Its session-bundle export remains
+unsupported until the verifier can carry and replay pinned source content.
 
 ## AppShell UI Status
 

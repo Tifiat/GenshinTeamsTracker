@@ -13,6 +13,18 @@ from run_workspace.pvp.schedule import default_free_draft_v0_config
 from run_workspace.pvp.tier_allocation import allocate_requirements
 
 
+_MANUAL_REGULATION_SOURCE = {
+    "system_id": "6ac54cc57032007b0dd5e4f9",
+    "root_id": "6953c08267a24684c387795c",
+    "updated_at": "2026-10-06T19:34:41.433Z",
+}
+_MANUAL_REGULATION_URL = (
+    "https://docs.google.com/document/d/1sBlA2ybrqqp35J66XbwejBx8S1z-Ehk-fwfd8asKhJI/"
+    "edit?tab=t.0"
+)
+_MANUAL_REGULATION_CHECKED = "2026-10-09"
+
+
 class _JobSignals(QObject):
     finished = Signal(object, object, object, str)
 
@@ -75,8 +87,6 @@ class DeckRulesController(QObject):
         self._report_weapons = None
         self._report = None
         self._snapshot = None
-        self._weapon_display_context = None
-        self._weapon_display_lines = ()
 
     @property
     def requirements_loading(self):
@@ -116,8 +126,6 @@ class DeckRulesController(QObject):
         self._allocation_pending = None
         self._report_rules = self._report_characters = self._report_weapons = None
         self._report = self._snapshot = None
-        self._weapon_display_context = None
-        self._weapon_display_lines = ()
 
     def refresh(self):
         return self._start("catalog", None, abyss_client.list_latest_rulesets)
@@ -160,8 +168,7 @@ class DeckRulesController(QObject):
             self.rules_received.emit(context, result)
         self.changed.emit()
 
-    def ui_state(self, preset, *, editable, rules=None, deck=None, weapon_inventory=()):
-        weapon_inventory = tuple(weapon_inventory or ())
+    def ui_state(self, preset, *, editable, rules=None, deck=None):
         state = {
             "options": ({"id": FREE_DRAFT_V0_RULESET_ID, "label": tr("app_shell.pvp.decks.ruleset_free")},)
             + tuple({"id": "abyss:" + row.system_id, "label": row.title} for row in self.catalog if self.catalog_current),
@@ -171,7 +178,6 @@ class DeckRulesController(QObject):
             "catalog_loaded": self.catalog_loaded,
             "source_title": "", "version_text": "", "freshness": "free", "update_id": "",
             "summary_lines": (), "requirement_lines": (), "requirement_rows": (), "issue_lines": (),
-            "weapon_rule_lines": (),
             "error_text": _t(self.error_code) if self.error_code else "",
         }
         if rules is None:
@@ -190,14 +196,6 @@ class DeckRulesController(QObject):
             self._snapshot = rules.to_dict()
             self._report = self._report_characters = self._report_weapons = None
         source = self._snapshot["source"]
-        # Only the derived, currently displayed text is retained in this widget.
-        # Catalog requests/freshness remain explicit; nothing is saved to disk.
-        weapon_context = (rules, tuple((item.weapon_id, item.display_name) for item in weapon_inventory),
-                          get_language())
-        if weapon_context != self._weapon_display_context:
-            self._weapon_display_lines = _weapon_rule_lines(self._snapshot, weapon_inventory)
-            self._weapon_display_context = weapon_context
-        state["weapon_rule_lines"] = self._weapon_display_lines
         try:
             version_text = datetime.fromisoformat(source["updated_at"].replace("Z", "+00:00")).astimezone(timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
         except ValueError:
@@ -214,9 +212,7 @@ class DeckRulesController(QObject):
                 self._report_characters, self._report_weapons = deck.characters, deck.weapons
             report = self._report
             self._queue_allocation(rules, deck, report)
-            state.update(format_report(self._snapshot, report, deck, allocation=self._allocation_result,
-                                      weapon_inventory=weapon_inventory,
-                                      weapon_rule_lines=self._weapon_display_lines))
+            state.update(format_report(self._snapshot, report, deck, allocation=self._allocation_result))
         return state
 
 
@@ -244,54 +240,7 @@ def _coverage_status(filled, required, allocation):
     return "fail"
 
 
-def _weapon_rule_lines(snapshot, weapon_inventory):
-    if not weapon_inventory:
-        return ()
-    language = get_language()
-    characters = {row["source_id"]: row for row in snapshot["characters"]}
-    weapons = {row["game_id"]: row for row in snapshot["weapons"]}
-    traveler_elements = {11: "anemo", 12: "cryo", 13: "dendro", 14: "electro",
-                         15: "geo", 16: "hydro", 17: "pyro"}
-    lines = []
-    seen = set()
-    for item in weapon_inventory:
-        game_id = str(item.weapon_id)
-        if game_id in seen:
-            continue
-        seen.add(game_id)
-        rule = weapons.get(game_id)
-        if rule is None:
-            continue
-        name = item.display_name or game_id
-        base_prices = " · ".join(
-            _t("weapon_refinement_price", refinement=index + 1, value=_number(value))
-            for index, value in enumerate(rule["refinement_costs"])
-        )
-        lines.append(_t("weapon_rule_base", weapon=name, values=base_prices))
-        if rule["off_specialty_cost"] != 0:
-            lines.append(_t("weapon_rule_off_specialty", weapon=name,
-                            value=_number(rule["off_specialty_cost"])))
-        for override in rule["character_overrides"]:
-            character = characters.get(override["source_id"])
-            if character is None:
-                continue
-            character_name = (character.get("names", {}).get(language)
-                              or character.get("names", {}).get("en")
-                              or override["game_id"])
-            if override["game_id"] in ("10000005", "10000007"):
-                element = traveler_elements.get(override["attribute"])
-                if element:
-                    character_name += " (" + tr("filter.element." + element) + ")"
-            prices = " · ".join(
-                _t("weapon_refinement_price", refinement=index + 1, value=_number(value))
-                for index, value in enumerate(override["refinement_costs"])
-            )
-            lines.append(_t("weapon_rule_override", weapon=name,
-                            character=character_name, values=prices))
-    return tuple(lines)
-
-
-def format_report(snapshot, report, deck, *, allocation=None, weapon_inventory=(), weapon_rule_lines=None):
+def format_report(snapshot, report, deck, *, allocation=None):
     language = get_language()
     names = {row["game_id"]: row.get("names", {}).get(language) or row.get("names", {}).get("en") or row["game_id"]
              for row in snapshot["characters"]}
@@ -302,14 +251,36 @@ def format_report(snapshot, report, deck, *, allocation=None, weapon_inventory=(
     allocation_rules = {row["rule_index"]: row for row in allocation.get("rules", ())}
     allocation_equals = {row["rule_index"]: row for row in allocation.get("equals", ())}
     character_rows = {row["index"]: row for row in report["character_rows"]}
-    base_costs = [row["base_unit_cost"] * row["count"] if row["base_unit_cost"] is not None and row["count"] else None
-                  for row in report["weapon_rows"]]
+    weapon_rows = report["weapon_rows"]
+    known_unit_prices = [row["base_unit_cost"] for row in weapon_rows
+                         if row["base_unit_cost"] is not None]
+    missing_price_count = sum(row["base_unit_cost"] is None for row in weapon_rows)
+    valid_quantities = [row for row in weapon_rows
+                        if isinstance(row["count"], int) and not isinstance(row["count"], bool)
+                        and row["count"] > 0]
+    unknown_quantity_count = len(weapon_rows) - len(valid_quantities)
+    known_observed_base_cost = sum(
+        row["base_unit_cost"] * row["count"] for row in valid_quantities
+        if row["base_unit_cost"] is not None
+    )
+    issues_by_code = {issue["code"] for issue in report["issues"]}
+    if report["weapon_total"] is not None:
+        after_assignment = _number(report["weapon_total"])
+    elif "weapon_assignment_needed" in issues_by_code:
+        after_assignment = _t("weapon_assignment_pending")
+    else:
+        after_assignment = _t("weapon_cost_incomplete")
     summary = [
         _t("character_cost", value=_number(report["character_total"])),
-        _t("weapon_base_cost", value=_number(sum(base_costs) if None not in base_costs else None)),
-        _t("weapon_cost", value=_number(report["weapon_total"])),
+        _t("weapon_selected_unit_base", value=_number(sum(known_unit_prices))),
+        _t("weapon_base_cost", value=_number(known_observed_base_cost)),
+        _t("weapon_cost", value=after_assignment),
         _t("card_legend"),
     ]
+    if missing_price_count:
+        summary.append(_t("weapon_missing_prices", count=missing_price_count))
+    if unknown_quantity_count:
+        summary.append(_t("weapon_unknown_quantities", count=unknown_quantity_count))
     if report.get("bundle_adjustment_total"):
         summary.append(_t("bundle_adjustment", value=_number(report["bundle_adjustment_total"])))
     counts = report["tier_counts"]
@@ -317,6 +288,7 @@ def format_report(snapshot, report, deck, *, allocation=None, weapon_inventory=(
         summary.append(_t("tier_counts", values=" · ".join(f"T{k}: {v}" for k, v in sorted(counts.items()))))
     requirements = []
     requirement_rows = []
+    requirement_rows.append({"label": _t("weapon_price_explanation"), "current": "—", "status": "info"})
     traveler_required = False
     for group in ("agents", "engines"):
         for metric in ("cost", "count"):
@@ -330,8 +302,39 @@ def format_report(snapshot, report, deck, *, allocation=None, weapon_inventory=(
                 failed = actual is not None and (actual < low or high > 0 and actual > high)
                 status = ("unknown" if actual is None or uncertain else "fail" if failed
                           else "unknown" if high == 0 else "pass")
-                requirement_rows.append({"label": label, "current": _number(actual), "status": status,
+                if actual is None and group == "engines":
+                    current = (_t("weapon_count_incomplete") if metric == "count"
+                               else after_assignment)
+                else:
+                    current = _number(actual)
+                requirement_rows.append({"label": label, "current": current, "status": status,
                                          "detail": _t("bundle_application_unverified") if uncertain else ""})
+    if snapshot["bounds"]["engines"]["cost"][1] == 0:
+        requirement_rows.append({"label": _t("weapon_deck_cost_cap_unspecified"),
+                                 "current": "—", "status": "info"})
+    phase_teams = snapshot.get("phase_teams", {})
+    team_weapon_max = phase_teams.get("max_engines_cost")
+    if team_weapon_max is not None:
+        requirement_rows.append({
+            "label": _t("phase_teams_weapon_max"), "current": _number(team_weapon_max),
+            "status": "info", "detail": _t("phase_teams_not_deck_cap"),
+        })
+    team_weapon_step = phase_teams.get("max_engines_cost_step")
+    if team_weapon_step is not None:
+        requirement_rows.append({"label": _t("phase_teams_weapon_step"),
+                                 "current": _number(team_weapon_step), "status": "info"})
+    source = snapshot["source"]
+    if all(source.get(key) == value for key, value in _MANUAL_REGULATION_SOURCE.items()):
+        source_detail = _t("manual_regulation_source", date=_MANUAL_REGULATION_CHECKED,
+                           url=_MANUAL_REGULATION_URL)
+        requirement_rows.extend((
+            {"label": _t("manual_weapon_regulation"), "current": _t("manual_info"),
+             "status": "info", "detail": source_detail},
+            {"label": _t("manual_joker_regulation"), "current": _t("manual_info"),
+             "status": "info", "detail": source_detail},
+            {"label": _t("regulation_score_difference"), "current": _t("manual_info"),
+             "status": "info"},
+        ))
     for row in snapshot["tiers"]:
         requirements.append(f"T{row['tier']}: {_number(row['min_cost'])}–{_number(row['max_cost'])}")
         requirement_rows.append({
@@ -447,6 +450,4 @@ def format_report(snapshot, report, deck, *, allocation=None, weapon_inventory=(
         requirement_rows.append(policy)
     return {"summary_lines": tuple(summary), "requirement_lines": tuple(requirements),
             "requirements_pending": allocation.get("reason") == "pending",
-            "requirement_rows": tuple(requirement_rows), "issue_lines": tuple(issues),
-            "weapon_rule_lines": (_weapon_rule_lines(snapshot, weapon_inventory)
-                                  if weapon_rule_lines is None else weapon_rule_lines)}
+            "requirement_rows": tuple(requirement_rows), "issue_lines": tuple(issues)}

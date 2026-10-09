@@ -37,7 +37,9 @@ are recorded in the [integration receipt](integration_receipts/2026-10-04_ready_
 Next: user-owned build/profile/engine acceptance and isolated second-account source.
 Rules source discovery is now confirmed separately in `PVP_ABYSS_SOURCE_AUDIT.md`.
 Online server authority, scoring/History/result export
-remain later work. The existing timer header width failure is retained below.
+remain later work. The dated timer-width failure is retained below; its 9 October
+source correction and user-smoke boundary are recorded in
+[the current rules/match receipt](PVP_DECK_RULES.md#weapon-limits-and-local-matches--2026-10-09).
 <!-- /handoff-current -->
 
 ## Equipment contract

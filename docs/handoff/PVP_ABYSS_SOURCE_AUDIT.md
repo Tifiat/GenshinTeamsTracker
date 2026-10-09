@@ -6,6 +6,53 @@ This receipt supersedes the June finding that no usable public
 Abyss rules payload had been confirmed. Research only: no product importer,
 rule enforcement, application launch, Computer Use or account access.
 
+## Follow-up: weapon limits and executable client semantics — 9 October
+
+Public GET/client-text inspection was repeated in memory without credentials,
+script execution, account access or new payload files. Current exact Cup is
+`6ac54cc57032007b0dd5e4f9`, root `6953c08267a24684c387795c`, updated
+`2026-10-06T19:34:41.433Z`. All nine DEFAULT families still normalize; Ascend's
+MIRROR and Reverse Cup's 22-step shape remain unsupported for local execution.
+
+The currently linked [event regulation](https://docs.google.com/document/d/1sBlA2ybrqqp35J66XbwejBx8S1z-Ehk-fwfd8asKhJI/edit?tab=t.0)
+describes roster weapons at most 155: 130 general points plus 25 reserved for
+weapons priced at most 14; weapons priced at least 15 cannot use the reserve.
+Cheap weapons may also use the general pool. This is organizer prose: current
+machine `draft.minMaxCosts.engines` is `[0,0]`. `phaseTeams` is separately
+500/500, summed over each player's two teams, with a threshold increased in
+500-point steps from the lower-cost side. Do not enforce 155 as every version's
+machine cap. Joker restrictions include role/refinement and team-buff exceptions;
+they remain manual linked rules. The older walkthrough's 65-point budget is
+historical, not current fallback.
+
+Public [character](https://abyss.darte.gg/api/abyss/agents) and
+[weapon](https://abyss.darte.gg/api/abyss/engines) catalogs supply integer
+`specialty` 1..5 (bow, catalyst, claymore, polearm, sword). The
+[price helper](https://abyss.darte.gg/assets/agent-list.component-BELlgTBD.js)
+uses a matching character override first, otherwise off-specialty slot when
+specialties differ, otherwise the selected refinement slot.
+
+The [shipped match client](https://abyss.darte.gg/assets/index-DAHBbc_N.js)
+and [phase display](https://abyss.darte.gg/assets/half-flow.component-B2IrI_Od.js)
+confirm 26 Cup actions. IMMUNE_BAN/IMMUNE_PICK are preparatory: four distinct
+shared equal-price targets are needed across both players' two actions.
+Preparatory bans affect immunity only; they do not remove later draft picks.
+Normal BAN excludes protected/absolute-immune targets. IMMUNE_PICK reserves
+a target for IMMUNE; regular IMMUNE counts as a final pick and can share that
+protected target across seats. Each seat gets six PICK plus two IMMUNE and
+three ordinary bans. No public server validator was found; this is inspected
+client behavior, not backend parity evidence.
+
+The source [result helper](https://abyss.darte.gg/assets/results-icon-DmnGoN_-.js)
+adds restart penalties to elapsed clear time; lower adjusted time wins.
+Current API `phaseMatch` is three free restarts, then `[5,5,10]`. The linked
+document instead says two paid restarts at five seconds, failed rooms add 300
+seconds, and ties compare restart count then room times across two games.
+No document modification timestamp was verified, so authority is unresolved.
+The local adapter follows pinned API/client single-game scoring, explicitly
+distinguishes this from organizer legality, and does not implement a series,
+failed-room penalties or document tie-breaks.
+
 ## Verified retrieval
 
 The current public entry script is `/assets/index-uf6B5LvO.js`. Its

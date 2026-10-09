@@ -1,8 +1,9 @@
-"""Backend-only Free Draft v0 controller for future local UI surfaces.
+"""Local draft controller for Free Draft v0 and supported pinned Abyss flows.
 
 This module is the thin runtime API over the existing draft-system registry,
 reducer, validators, deterministic smoke helpers, and session-bundle contract.
-It is not a UI layer, not an optimizer, and not a ruleset/source adapter.
+Source interpretation lives in abyss_match_rules; this controller owns runtime
+commands and their board, assignment and result projections.
 """
 
 from __future__ import annotations
@@ -11,6 +12,14 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping
 
+from .abyss_rules import AbyssRuleset
+from .abyss_match_rules import (
+    _pair_report_from_eligible,
+    abyss_immune_context,
+    build_abyss_match_definition,
+    calculate_abyss_weapon_budget,
+    validate_abyss_match_deck,
+)
 from .account_deck_export import (
     AccountDeckDataProvider,
     AccountDeckExportOptions,
@@ -40,10 +49,14 @@ from .match_result import (
     ChamberTimer,
     MatchResult,
     PlayerMatchTimers,
+    calculate_abyss_match_result,
     calculate_match_result,
 )
 from .schedule import (
     ACTION_BAN_CHARACTER,
+    ACTION_IMMUNE_BAN_CHARACTER,
+    ACTION_IMMUNE_CHARACTER,
+    ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
     PVP_SEATS,
     SEAT_PLAYER_1,
@@ -84,6 +97,8 @@ ISSUE_CONTROLLER_ASSIGNMENT_INVALID = "free_draft_controller_assignment_invalid"
 ISSUE_CONTROLLER_BUNDLE_NOT_READY = "free_draft_controller_bundle_not_ready"
 ISSUE_CONTROLLER_BUNDLE_VERIFY_FAILED = "free_draft_controller_bundle_verify_failed"
 ISSUE_CONTROLLER_REPLAY_FAILED = "free_draft_controller_replay_failed"
+ISSUE_CONTROLLER_ABYSS_BUNDLE_UNSUPPORTED = "abyss_session_bundle_unsupported"
+ISSUE_CONTROLLER_ABYSS_WEAPON_BUDGET_INVALID = "abyss_weapon_budget_invalid"
 
 
 class FreeDraftControllerActionRejected(ValueError):
@@ -193,6 +208,7 @@ class FreeDraftControllerState:
     weapon_assignments: Mapping[str, PlayerWeaponAssignment] = field(default_factory=dict)
     match_result: MatchResult | None = None
     issues: tuple[FreeDraftControllerIssue, ...] = ()
+    abyss_rules: AbyssRuleset | None = None
 
     @property
     def setup_ready(self) -> bool:
@@ -250,6 +266,54 @@ class FreeDraftController:
                 issues=issues,
             )
         )
+
+    @classmethod
+    def from_abyss_decks(
+        cls,
+        player_1_deck: DraftDeck,
+        player_2_deck: DraftDeck,
+        rules: AbyssRuleset,
+        *,
+        source_mode: str = "local_hot_seat",
+    ) -> "FreeDraftController":
+        system = build_abyss_match_definition(rules)
+        player_1_validation = validate_abyss_match_deck(player_1_deck, rules)
+        player_2_validation = validate_abyss_match_deck(player_2_deck, rules)
+        immune_eligible, absolute_immune = abyss_immune_context(
+            player_1_deck, player_2_deck, rules
+        )
+        preparatory_count = sum(
+            action.action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER)
+            for step in system.build_schedule().steps for action in step.actions
+        )
+        pair_validation = _pair_report_from_eligible(immune_eligible, preparatory_count, rules)
+        if not pair_validation.ready:
+            player_1_validation = DeckValidationReport(
+                player_1_validation.issues + pair_validation.issues
+            )
+            player_2_validation = DeckValidationReport(
+                player_2_validation.issues + pair_validation.issues
+            )
+        session_state = create_draft_session(
+            player_1_deck,
+            player_2_deck,
+            schedule=system.build_schedule(),
+            validate_decks=False,
+            rules_content_hash=rules.content_hash,
+            immune_eligible_character_ids=immune_eligible,
+            absolute_immune_character_ids=absolute_immune,
+        )
+        return cls(FreeDraftControllerState(
+            draft_system=system,
+            player_1_deck=player_1_deck,
+            player_2_deck=player_2_deck,
+            player_1_validation=player_1_validation,
+            player_2_validation=player_2_validation,
+            session_state=session_state,
+            source_mode=source_mode,
+            issues=_deck_issues(player_1_validation, player_2_validation),
+            abyss_rules=rules,
+        ))
 
     @classmethod
     def from_deck_files(
@@ -380,7 +444,11 @@ class FreeDraftController:
         seat = self.session_state.current_seat
         if requirement is None or seat is None:
             return ()
-        if requirement.action_type not in {ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER}:
+        if requirement.action_type not in {
+            ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER,
+            ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
+            ACTION_IMMUNE_CHARACTER,
+        }:
             return ()
 
         targets: list[FreeDraftTargetSummary] = []
@@ -523,7 +591,30 @@ class FreeDraftController:
             )
         assignments = dict(self.state.weapon_assignments)
         assignments[assignment.seat] = assignment
+        if self.state.abyss_rules is not None:
+            budget = self.abyss_weapon_budget(weapon_assignments=assignments)
+            seat_budget = budget["per_seat"][assignment.seat]
+            if seat_budget["issue_codes"] or (budget["complete"] and not all(
+                row["within_limit"] for row in budget["per_seat"].values()
+            )):
+                raise FreeDraftControllerActionRejected(
+                    ISSUE_CONTROLLER_ABYSS_WEAPON_BUDGET_INVALID,
+                    "Assigned weapons cannot be priced or exceed the pinned source limit.",
+                    details=budget,
+                )
         self.state = replace(self.state, weapon_assignments=assignments)
+
+    def abyss_weapon_budget(
+        self,
+        *,
+        weapon_assignments: Mapping[str, PlayerWeaponAssignment] | None = None,
+    ) -> dict[str, Any] | None:
+        rules = self.state.abyss_rules
+        if rules is None:
+            return None
+        assignments = dict(self.state.weapon_assignments)
+        assignments.update(weapon_assignments or {})
+        return calculate_abyss_weapon_budget(rules, self.state.decks_by_seat(), assignments)
 
     def assign_deterministic_teams_and_weapons(
         self,
@@ -565,8 +656,42 @@ class FreeDraftController:
         self,
         player_1_timers: PlayerMatchTimers,
         player_2_timers: PlayerMatchTimers,
+        *,
+        restarts_by_seat: Mapping[str, int] | None = None,
     ) -> MatchResult:
-        result = calculate_match_result(player_1_timers, player_2_timers)
+        if self.state.abyss_rules is not None:
+            budget = self.abyss_weapon_budget()
+            if budget is None or not budget["complete"] or any(
+                row["issue_codes"] or not row["within_limit"]
+                for row in budget["per_seat"].values()
+            ):
+                raise FreeDraftControllerActionRejected(
+                    ISSUE_CONTROLLER_ABYSS_WEAPON_BUDGET_INVALID,
+                    "Abyss weapon assignment must satisfy the pinned source limit.",
+                    details=budget or {},
+                )
+        if self.state.abyss_rules is not None:
+            if restarts_by_seat is None:
+                raise FreeDraftControllerActionRejected(
+                    "abyss_restart_counts_missing",
+                    "Abyss scoring requires a restart count for both seats.",
+                )
+            policy = self.state.abyss_rules.to_dict()["phase_match"]
+            try:
+                result = calculate_abyss_match_result(
+                    player_1_timers,
+                    player_2_timers,
+                    restarts_by_seat=restarts_by_seat,
+                    free_restarts=policy["free_restarts"],
+                    paid_restarts=tuple(policy["paid_restarts"]),
+                    source_hash=self.state.abyss_rules.content_hash,
+                )
+            except ValueError as exc:
+                raise FreeDraftControllerActionRejected(
+                    "abyss_restart_counts_invalid", str(exc)
+                ) from exc
+        else:
+            result = calculate_match_result(player_1_timers, player_2_timers)
         self.state = replace(self.state, match_result=result)
         return result
 
@@ -579,6 +704,11 @@ class FreeDraftController:
         session_id: str = "",
         created_at_utc: str = "",
     ) -> PvpSessionBundle:
+        if self.state.abyss_rules is not None:
+            raise FreeDraftControllerActionRejected(
+                ISSUE_CONTROLLER_ABYSS_BUNDLE_UNSUPPORTED,
+                "Abyss session bundles require a pinned-rules replay contract.",
+            )
         if not self.session_state.is_complete:
             raise FreeDraftControllerActionRejected(
                 ISSUE_CONTROLLER_BUNDLE_NOT_READY,
@@ -722,7 +852,8 @@ class FreeDraftController:
                 seat: {
                     "expected_bans": expected_counts[seat].get(ACTION_BAN_CHARACTER, 0),
                     "actual_bans": len(self.session_state.banned_character_ids_for(seat)),
-                    "expected_picks": expected_counts[seat].get(ACTION_PICK_CHARACTER, 0),
+                    "expected_picks": (expected_counts[seat].get(ACTION_PICK_CHARACTER, 0)
+                                       + expected_counts[seat].get(ACTION_IMMUNE_CHARACTER, 0)),
                     "actual_picks": len(self.session_state.picked_character_ids_for(seat)),
                 }
                 for seat in PVP_SEATS
@@ -778,6 +909,9 @@ class FreeDraftController:
             self.state.player_2_deck,
             schedule=self.state.draft_system.build_schedule(),
             validate_decks=False,
+            rules_content_hash=self.session_state.rules_content_hash,
+            immune_eligible_character_ids=self.session_state.immune_eligible_character_ids,
+            absolute_immune_character_ids=self.session_state.absolute_immune_character_ids,
         )
         replayed = replay_draft_actions(initial, self.accepted_actions)
         return replayed.state_hash()
@@ -788,12 +922,20 @@ def _candidate_characters(
     seat: str,
     action_type: str,
 ) -> tuple[DraftCharacter, ...]:
-    if action_type == ACTION_PICK_CHARACTER:
+    if action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER):
         return tuple(sorted(state.deck_for(seat).characters, key=_character_sort_key))
+    if action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER):
+        return tuple(sorted(
+            (character for character in state.deck_for(seat).characters
+             if character.character_id in state.immune_eligible_character_ids),
+            key=_character_sort_key,
+        ))
     if action_type == ACTION_BAN_CHARACTER:
         characters: list[DraftCharacter] = []
         seen: set[str] = set()
-        for deck in (state.deck_for(state.opponent_seat(seat)), state.deck_for(seat)):
+        decks = ((state.deck_for(state.opponent_seat(seat)),) if state.is_abyss_match else
+                 (state.deck_for(state.opponent_seat(seat)), state.deck_for(seat)))
+        for deck in decks:
             for character in sorted(deck.characters, key=_character_sort_key):
                 if not character.character_id or character.character_id in seen:
                     continue

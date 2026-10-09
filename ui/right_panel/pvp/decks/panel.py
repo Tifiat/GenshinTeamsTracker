@@ -56,9 +56,6 @@ class PvpDecksRightPanel(QWidget):
         self._expanded_info: QFrame | None = None
         self._details_geometry_width = 0
         self._reserved_geometry: dict[QWidget, tuple[int, bool]] = {}
-        self._weapon_rules_expanded = False
-        self._weapon_rule_lines: tuple[str, ...] = ()
-        self._weapon_rules_button: QPushButton | None = None
         self._row_count_labels: dict[str, QLabel] = {}
         self._status_pixmaps = {
             "pass": tinted_svg_pixmap("check", 14, UI_STATE_SUCCESS),
@@ -234,12 +231,10 @@ class PvpDecksRightPanel(QWidget):
         self._details_geometry_width = 0
 
     def _activate_details_layout(self) -> None:
-        # Settle only this panel's pending layout work before exposing its frame.
-        for widget in reversed(self.findChildren(QWidget)):
-            if widget.layout() is not None:
-                QCoreApplication.sendPostedEvents(widget, QEvent.Type.LayoutRequest)
-                widget.layout().activate()
+        # The content layout activates dirty child layouts recursively. Avoid
+        # forcing each descendant layout on every selection click.
         content = self.deck_list_scroll.widget()
+        QCoreApplication.sendPostedEvents(content, QEvent.Type.LayoutRequest)
         content.layout().activate()
         QCoreApplication.sendPostedEvents(content, QEvent.Type.LayoutRequest)
         self.layout().activate()
@@ -391,8 +386,6 @@ class PvpDecksRightPanel(QWidget):
         self._requirement_row_shape = None
         self._expanded_layout = None
         self._expanded_info = None
-        self._weapon_rule_lines = ()
-        self._weapon_rules_button = None
         self._row_count_labels.clear()
         self.edit_name_edit = None
         self.ruleset_button = None
@@ -594,13 +587,6 @@ class PvpDecksRightPanel(QWidget):
         layout.addWidget(self.rules_update_button)
 
         self._add_rules_lines(layout, "rules_costs_heading", ())
-        self._weapon_rules_button = QPushButton()
-        self._weapon_rules_button.setObjectName("pvp_secondary_button")
-        self._weapon_rules_button.setCheckable(True)
-        self._weapon_rules_button.setChecked(self._weapon_rules_expanded)
-        self._weapon_rules_button.toggled.connect(self._on_weapon_rules_toggled)
-        layout.addWidget(self._weapon_rules_button)
-        self._add_rules_lines(layout, "rules_weapon_prices_heading", ())
         self._add_rules_lines(layout, "rules_requirements_heading", ())
         self._add_requirement_rows(layout, (), None)
         self._add_rules_lines(layout, "rules_issues_heading", ())
@@ -691,7 +677,6 @@ class PvpDecksRightPanel(QWidget):
         self.rules_update_button.setVisible(freshness == "update" and bool(state.get("update_id")))
         self.rules_update_button.setEnabled(not loading)
         self._update_rules_lines("rules_costs_heading", state.get("summary_lines", ()))
-        self._update_weapon_rules(state.get("weapon_rule_lines", ()))
         rows = tuple(state.get("requirement_rows", ()))
         self._update_rules_lines(
             "rules_requirements_heading", state.get("requirement_lines", ()) if not rows else ()
@@ -701,25 +686,6 @@ class PvpDecksRightPanel(QWidget):
         self._update_rules_lines("rules_issues_heading", state.get("issue_lines", ()))
         error = str(state.get("error_text", "")).strip()
         self._update_rules_lines("rules_error_heading", (error,) if error else ())
-
-    def _update_weapon_rules(self, lines) -> None:
-        lines = tuple(str(line) for line in lines)
-        if lines != self._weapon_rule_lines:
-            self._update_rules_lines("rules_weapon_prices_heading", lines)
-            self._weapon_rule_lines = lines
-        self._weapon_rules_button.setVisible(bool(lines))
-        self._weapon_rules_button.setText(
-            ("▾ " if self._weapon_rules_expanded else "▸ ")
-            + tr("app_shell.pvp.decks.rules_weapon_prices_heading")
-        )
-        self._rules_line_sections["rules_weapon_prices_heading"][0].setVisible(
-            bool(lines) and self._weapon_rules_expanded
-        )
-
-    def _on_weapon_rules_toggled(self, expanded: bool) -> None:
-        self._release_details_geometry()
-        self._weapon_rules_expanded = bool(expanded)
-        self._update_weapon_rules(self._weapon_rule_lines)
 
     def _add_requirement_rows(self, layout: QVBoxLayout, rows, active_filter=None) -> None:
         section = QFrame()

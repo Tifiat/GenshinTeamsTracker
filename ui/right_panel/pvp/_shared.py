@@ -301,6 +301,8 @@ QFrame#pvp_postdraft_match_panel {{
     background: transparent;
     border: none;
 }}
+QLabel#pvp_weapon_budget {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; }}
+QLabel#pvp_weapon_budget[budgetInvalid="true"] {{ color: {UI_STATE_DANGER}; }}
 QFrame#pvp-postdraft-target-player-1,
 QFrame#pvp-postdraft-target-player-2 {{
     border: 1px solid {UI_BORDER_PANEL};
@@ -899,7 +901,8 @@ def _draft_action_from_unified_pool(
     target_type = _text(action_payload.get("target_type"))
     character_id = _text(action_payload.get("character_id"))
     if (
-        action_type not in {"ban_character", "pick_character"}
+        action_type not in {"ban_character", "pick_character", "immune_ban_character",
+                            "immune_pick_character", "immune_character"}
         or target_type != "character"
         or not character_id
     ):
@@ -1552,6 +1555,11 @@ def _draft_action_label(action_type: str) -> str:
         return tr("app_shell.pvp.draft.pick")
     if action_type == "ban_character":
         return tr("app_shell.pvp.draft.ban")
+    for action, key in (("immune_ban_character", "immune_ban"),
+                        ("immune_pick_character", "immune_pick"),
+                        ("immune_character", "immune")):
+        if action_type == action:
+            return tr("app_shell.pvp.draft." + key)
     return action_type
 
 

@@ -8,6 +8,9 @@ from typing import Any, Iterable, Mapping
 from .deck import DraftDeck
 from .schedule import (
     ACTION_BAN_CHARACTER,
+    ACTION_IMMUNE_BAN_CHARACTER,
+    ACTION_IMMUNE_CHARACTER,
+    ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
     DraftActionRequirement,
     DraftSchedule,
@@ -38,6 +41,10 @@ REJECT_CHARACTER_NOT_IN_DECK = "character_not_in_deck"
 REJECT_CHARACTER_GLOBALLY_BANNED = "character_globally_banned"
 REJECT_CHARACTER_PICKED_BY_SELF = "character_picked_by_self"
 REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT = "character_unavailable_to_opponent"
+REJECT_CHARACTER_NOT_IN_OPPONENT_DECK = "character_not_in_opponent_deck"
+REJECT_CHARACTER_NOT_IMMUNE_ELIGIBLE = "character_not_immune_eligible"
+REJECT_CHARACTER_RESERVED_FOR_IMMUNE = "character_reserved_for_immune"
+REJECT_CHARACTER_ABSOLUTELY_IMMUNE = "character_absolutely_immune"
 
 ISSUE_DRAFT_NOT_COMPLETE = "draft_not_complete"
 ISSUE_DRAFT_PICK_COUNT_INVALID = "draft_pick_count_invalid"
@@ -126,6 +133,13 @@ class DraftSessionState:
     player_1_picked_character_ids: tuple[str, ...] = ()
     player_2_picked_character_ids: tuple[str, ...] = ()
     accepted_actions: tuple[DraftAction, ...] = ()
+    rules_content_hash: str = ""
+    immune_eligible_character_ids: tuple[str, ...] = ()
+    absolute_immune_character_ids: tuple[str, ...] = ()
+    player_1_immune_ban_character_ids: tuple[str, ...] = ()
+    player_2_immune_ban_character_ids: tuple[str, ...] = ()
+    player_1_immune_pick_character_ids: tuple[str, ...] = ()
+    player_2_immune_pick_character_ids: tuple[str, ...] = ()
 
     @property
     def is_complete(self) -> bool:
@@ -174,6 +188,18 @@ class DraftSessionState:
             return self.player_2_banned_character_ids
         raise DraftActionRejected(REJECT_INVALID_SEAT)
 
+    @property
+    def is_abyss_match(self) -> bool:
+        return bool(self.rules_content_hash)
+
+    @property
+    def immune_ban_character_ids(self) -> tuple[str, ...]:
+        return self.player_1_immune_ban_character_ids + self.player_2_immune_ban_character_ids
+
+    @property
+    def immune_pick_character_ids(self) -> tuple[str, ...]:
+        return self.player_1_immune_pick_character_ids + self.player_2_immune_pick_character_ids
+
     def state_hash(self) -> str:
         payload = json.dumps(
             self.to_dict(),
@@ -184,7 +210,7 @@ class DraftSessionState:
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "player_1_deck": self.player_1_deck.to_dict(),
             "player_2_deck": self.player_2_deck.to_dict(),
             "schedule": self.schedule.to_dict(),
@@ -208,6 +234,21 @@ class DraftSessionState:
             },
             "accepted_actions": [item.to_dict() for item in self.accepted_actions],
         }
+        if self.is_abyss_match:
+            payload.update({
+                "rules_content_hash": self.rules_content_hash,
+                "immune_eligible_character_ids": list(self.immune_eligible_character_ids),
+                "absolute_immune_character_ids": list(self.absolute_immune_character_ids),
+                "immune_ban_character_ids_by_seat": {
+                    SEAT_PLAYER_1: list(self.player_1_immune_ban_character_ids),
+                    SEAT_PLAYER_2: list(self.player_2_immune_ban_character_ids),
+                },
+                "immune_pick_character_ids_by_seat": {
+                    SEAT_PLAYER_1: list(self.player_1_immune_pick_character_ids),
+                    SEAT_PLAYER_2: list(self.player_2_immune_pick_character_ids),
+                },
+            })
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,6 +305,9 @@ def create_draft_session(
     *,
     schedule: DraftSchedule | None = None,
     validate_decks: bool = True,
+    rules_content_hash: str = "",
+    immune_eligible_character_ids: tuple[str, ...] = (),
+    absolute_immune_character_ids: tuple[str, ...] = (),
 ) -> DraftSessionState:
     if validate_decks:
         player_1_report = validate_draft_deck(player_1_deck)
@@ -276,6 +320,9 @@ def create_draft_session(
         player_1_deck=player_1_deck,
         player_2_deck=player_2_deck,
         schedule=schedule or build_default_free_draft_v0_schedule(),
+        rules_content_hash=rules_content_hash,
+        immune_eligible_character_ids=immune_eligible_character_ids,
+        absolute_immune_character_ids=absolute_immune_character_ids,
     )
 
 
@@ -305,9 +352,13 @@ def apply_draft_action(
     if not character_id:
         raise DraftActionRejected(REJECT_MISSING_CHARACTER_ID)
 
-    if action.action_type == ACTION_BAN_CHARACTER:
+    if action.action_type == ACTION_IMMUNE_BAN_CHARACTER:
+        state = _apply_immune_preparation(state, action, character_id, ban=True)
+    elif action.action_type == ACTION_IMMUNE_PICK_CHARACTER:
+        state = _apply_immune_preparation(state, action, character_id, ban=False)
+    elif action.action_type == ACTION_BAN_CHARACTER:
         state = _apply_ban(state, action, character_id)
-    elif action.action_type == ACTION_PICK_CHARACTER:
+    elif action.action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER):
         state = _apply_pick(state, action, character_id)
     else:
         raise DraftActionRejected(REJECT_WRONG_ACTION_TYPE)
@@ -536,6 +587,27 @@ def validate_weapon_assignment(
     return SimpleValidationReport(issues=tuple(issues))
 
 
+def _apply_immune_preparation(
+    state: DraftSessionState,
+    action: DraftAction,
+    character_id: str,
+    *,
+    ban: bool,
+) -> DraftSessionState:
+    if not state.is_abyss_match or character_id not in state.immune_eligible_character_ids:
+        raise DraftActionRejected(REJECT_CHARACTER_NOT_IMMUNE_ELIGIBLE)
+    if character_id in state.immune_ban_character_ids or character_id in state.immune_pick_character_ids:
+        raise DraftActionRejected(REJECT_CHARACTER_RESERVED_FOR_IMMUNE)
+    if character_id in state.absolute_immune_character_ids:
+        raise DraftActionRejected(REJECT_CHARACTER_ABSOLUTELY_IMMUNE)
+    field_name = (
+        "player_1_immune_ban_character_ids" if ban else "player_1_immune_pick_character_ids"
+    ) if action.seat == SEAT_PLAYER_1 else (
+        "player_2_immune_ban_character_ids" if ban else "player_2_immune_pick_character_ids"
+    )
+    return replace(state, **{field_name: getattr(state, field_name) + (character_id,)})
+
+
 def _apply_ban(
     state: DraftSessionState,
     action: DraftAction,
@@ -548,6 +620,16 @@ def _apply_ban(
         and character_id not in state.player_2_deck.character_ids
     ):
         raise DraftActionRejected(REJECT_CHARACTER_NOT_IN_ANY_DECK)
+    if state.is_abyss_match:
+        if character_id not in state.deck_for(state.opponent_seat(action.seat)).character_ids:
+            raise DraftActionRejected(REJECT_CHARACTER_NOT_IN_OPPONENT_DECK)
+        if character_id in state.absolute_immune_character_ids:
+            raise DraftActionRejected(REJECT_CHARACTER_ABSOLUTELY_IMMUNE)
+        if character_id in state.immune_pick_character_ids:
+            raise DraftActionRejected(REJECT_CHARACTER_RESERVED_FOR_IMMUNE)
+        if (character_id in state.player_1_picked_character_ids
+                or character_id in state.player_2_picked_character_ids):
+            raise DraftActionRejected(REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT)
 
     if action.seat == SEAT_PLAYER_1:
         return replace(
@@ -581,7 +663,16 @@ def _apply_pick(
         raise DraftActionRejected(REJECT_CHARACTER_GLOBALLY_BANNED)
     if character_id in own_picks:
         raise DraftActionRejected(REJECT_CHARACTER_PICKED_BY_SELF)
-    if character_id in opponent_picks:
+    if (state.is_abyss_match and action.action_type == ACTION_PICK_CHARACTER
+            and character_id in state.immune_pick_character_ids):
+        raise DraftActionRejected(REJECT_CHARACTER_RESERVED_FOR_IMMUNE)
+    if character_id in opponent_picks and not (
+        state.is_abyss_match and (
+            character_id in state.absolute_immune_character_ids
+            or (action.action_type == ACTION_IMMUNE_CHARACTER
+                and character_id in state.immune_pick_character_ids)
+        )
+    ):
         raise DraftActionRejected(REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT)
 
     if action.seat == SEAT_PLAYER_1:

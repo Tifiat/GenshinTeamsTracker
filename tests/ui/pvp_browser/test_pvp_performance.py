@@ -236,7 +236,7 @@ class PvpDecksPerformanceTest(unittest.TestCase):
         ws.refresh_view()
         self.panel.refresh()
         self.settle_allocation()
-        self.assertEqual(len(ws.rules_ui_state()["weapon_rule_lines"]), 140)
+        self.assertNotIn("weapon_rule_lines", ws.rules_ui_state())
         samples = []
         for _ in range(20):
             start = time.perf_counter()

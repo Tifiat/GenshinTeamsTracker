@@ -7,7 +7,8 @@ and shared neutral visual assets.
 
 Optional pinned Abyss rules in deck presets and deduplicated v3 exchange
 snapshots are defined in [Deck rules](PVP_DECK_RULES.md#persistence-and-exchange).
-They preserve the inventory/privacy boundary and do not enable Abyss matches.
+They preserve the inventory/privacy boundary. Supported local Abyss execution
+and the optional source-phase projection are owned by that same contract.
 
 ## Target transport direction — user decision 2026-10-06
 

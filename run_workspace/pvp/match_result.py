@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from decimal import Decimal
+import math
+from typing import Any, Mapping
 
 from .schedule import SEAT_PLAYER_1, SEAT_PLAYER_2
 
@@ -66,11 +68,12 @@ class MatchResult:
     player_2_timers: PlayerMatchTimers
     status: str
     winner_seat: str | None
-    seconds_difference: int
+    seconds_difference: int | float
     technical_losses: tuple[TechnicalLoss, ...] = ()
+    source_scoring: Mapping[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "status": self.status,
             "winner_seat": self.winner_seat,
             "seconds_difference": self.seconds_difference,
@@ -82,6 +85,9 @@ class MatchResult:
             "player_2_timers": self.player_2_timers.to_dict(),
             "technical_losses": [item.to_dict() for item in self.technical_losses],
         }
+        if self.source_scoring is not None:
+            payload["source_scoring"] = dict(self.source_scoring)
+        return payload
 
 
 def calculate_match_result(
@@ -141,6 +147,58 @@ def calculate_match_result(
         seconds_difference=0,
         technical_losses=technical_losses,
     )
+
+
+def calculate_abyss_match_result(
+    player_1_timers: PlayerMatchTimers,
+    player_2_timers: PlayerMatchTimers,
+    *,
+    restarts_by_seat: Mapping[str, int],
+    free_restarts: int,
+    paid_restarts: tuple[int | float, ...],
+    source_hash: str,
+) -> MatchResult:
+    """Apply the pinned Shiyu restart schedule to local elapsed timers."""
+    if (player_1_timers.seat != SEAT_PLAYER_1 or player_2_timers.seat != SEAT_PLAYER_2
+            or set(restarts_by_seat) != {SEAT_PLAYER_1, SEAT_PLAYER_2}
+            or any(type(value) is not int or value < 0 for value in restarts_by_seat.values())
+            or type(free_restarts) is not int or free_restarts < 0
+            or any(type(value) not in (int, float) or not math.isfinite(value)
+                   or value < 0 for value in paid_restarts)):
+        raise ValueError("Invalid Abyss restart scoring inputs.")
+    per_seat: dict[str, dict[str, int | float]] = {}
+    for timers in (player_1_timers, player_2_timers):
+        paid_count = max(0, restarts_by_seat[timers.seat] - free_restarts)
+        penalty = sum((Decimal(str(value)) for value in paid_restarts[:paid_count]), Decimal(0))
+        adjusted = Decimal(timers.total_elapsed_seconds) + penalty
+        per_seat[timers.seat] = {
+            "elapsed_seconds": timers.total_elapsed_seconds,
+            "restarts": restarts_by_seat[timers.seat],
+            "paid_restart_count": paid_count,
+            "penalty_seconds": _number(penalty),
+            "adjusted_seconds": _number(adjusted),
+        }
+    score_1 = Decimal(str(per_seat[SEAT_PLAYER_1]["adjusted_seconds"]))
+    score_2 = Decimal(str(per_seat[SEAT_PLAYER_2]["adjusted_seconds"]))
+    winner = SEAT_PLAYER_1 if score_1 < score_2 else SEAT_PLAYER_2 if score_2 < score_1 else None
+    return MatchResult(
+        player_1_timers=player_1_timers,
+        player_2_timers=player_2_timers,
+        status=MATCH_STATUS_FINISHED if winner else MATCH_STATUS_DRAW,
+        winner_seat=winner,
+        seconds_difference=_number(abs(score_1 - score_2)),
+        source_scoring={
+            "mode": "SHIYU",
+            "source_hash": source_hash,
+            "free_restarts": free_restarts,
+            "paid_restarts": list(paid_restarts),
+            "per_seat": per_seat,
+        },
+    )
+
+
+def _number(value: Decimal) -> int | float:
+    return int(value) if value == value.to_integral_value() else float(value)
 
 
 def _finished_result(

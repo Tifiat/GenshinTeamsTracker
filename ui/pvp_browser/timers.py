@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -266,7 +267,7 @@ class PvpHpSummaryWidget(QFrame):
         self.multi_value.setObjectName("pvp_timer_hp_value")
         self.multi_value.setAlignment(Qt.AlignmentFlag.AlignRight)
         for label in (self.solo_title, self.multi_title):
-            label.setWordWrap(False)
+            label.setWordWrap(True)
             label.setMinimumWidth(96)
         for label in (self.solo_value, self.multi_value):
             label.setMinimumWidth(64)
@@ -279,8 +280,8 @@ class PvpHpSummaryWidget(QFrame):
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
             row.setSpacing(10)
-            row.addWidget(title, 1)
-            row.addWidget(value, 0)
+            row.addWidget(title, 1, Qt.AlignmentFlag.AlignTop)
+            row.addWidget(value, 0, Qt.AlignmentFlag.AlignTop)
             layout.addLayout(row)
         layout.addStretch(1)
 
@@ -291,6 +292,7 @@ class PvpHpSummaryWidget(QFrame):
 
 class PvpTimersResultWidget(QFrame):
     timer_text_changed = Signal(str, int, str)
+    restart_count_changed = Signal(str, int)
     finalize_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -325,6 +327,33 @@ class PvpTimersResultWidget(QFrame):
         self.period_label.setObjectName("pvp_timer_muted")
         period_layout.addWidget(self.period_label)
         root.addWidget(period_frame)
+
+        self.restart_frame = QFrame()
+        restart_layout = QVBoxLayout(self.restart_frame)
+        restart_layout.setContentsMargins(10, 7, 10, 7)
+        self.restart_rules_label = QLabel()
+        self.restart_rules_label.setWordWrap(True)
+        restart_layout.addWidget(self.restart_rules_label)
+        restart_row = QHBoxLayout()
+        self.restart_inputs = {}
+        self.restart_adjustment_labels = {}
+        self._restart_rules = None
+        for seat in PVP_SEATS:
+            restart_row.addWidget(QLabel(tr("app_shell.pvp.draft." + seat)))
+            count = QSpinBox()
+            count.setRange(0, 10000)
+            count.setPrefix(tr("app_shell.pvp.post.restart_count") + ": ")
+            count.setObjectName("pvp_restart_count")
+            count.valueChanged.connect(lambda value, s=seat: self._on_restart_changed(s, value))
+            self.restart_inputs[seat] = count
+            restart_row.addWidget(count)
+            detail = QLabel()
+            detail.setWordWrap(True)
+            self.restart_adjustment_labels[seat] = detail
+            restart_row.addWidget(detail, 1)
+        restart_layout.addLayout(restart_row)
+        self.restart_frame.setVisible(False)
+        root.addWidget(self.restart_frame)
 
         for chamber_index, chamber_id in enumerate(PVP_TIMER_CHAMBERS):
             frame = QFrame()
@@ -519,10 +548,22 @@ class PvpTimersResultWidget(QFrame):
         timer_texts: Mapping[str, Any],
         result: Mapping[str, Any] | None,
         source_data: AbyssFloorSourceData | None,
+        restart_counts: Mapping[str, int] | None = None,
+        restart_rules: Mapping[str, Any] | None = None,
     ) -> None:
         self._updating = True
         try:
             self._source_data = source_data
+            self._restart_rules = restart_rules
+            self.restart_frame.setVisible(restart_rules is not None)
+            for seat, count in self.restart_inputs.items():
+                count.setValue((restart_counts or {}).get(seat, 0))
+                count.setEnabled(not completed)
+            if restart_rules is not None:
+                self.restart_rules_label.setText(tr("app_shell.pvp.post.local_source_game") + "\n" + tr("app_shell.pvp.post.restart_rules").format(
+                    free=restart_rules["free_restarts"],
+                    penalties=" + ".join(f"{value:g}" for value in restart_rules["paid_restarts"]) or "0",
+                ))
             for key, timer in self._timer_inputs.items():
                 seat, index = key
                 values = timer_texts.get(seat)
@@ -566,6 +607,12 @@ class PvpTimersResultWidget(QFrame):
         self._refresh_scoreboard_current(completed=False, result={})
         self.timer_text_changed.emit(seat, index, _format_seconds(seconds))
 
+    def _on_restart_changed(self, seat: str, count: int) -> None:
+        if self._updating:
+            return
+        self._refresh_scoreboard_current(completed=False, result={})
+        self.restart_count_changed.emit(seat, count)
+
     def _refresh_validation(self) -> None:
         ready = all(self._timer_touched.values())
         for key, timer in self._timer_inputs.items():
@@ -580,27 +627,46 @@ class PvpTimersResultWidget(QFrame):
         completed: bool,
         result: Mapping[str, Any],
     ) -> None:
-        totals: dict[str, int] = {}
+        totals: dict[str, int | float] = {}
         for seat in PVP_SEATS:
             keys = [(seat, index) for index in range(len(PVP_TIMER_CHAMBERS))]
             total = sum(
                 ABYSS_CHAMBER_START_SECONDS - self._timer_inputs[key].seconds_left
                 for key in keys
             )
+            elapsed = total
+            penalty = 0
+            if self._restart_rules is not None:
+                paid_count = max(0, self.restart_inputs[seat].value() - self._restart_rules["free_restarts"])
+                penalty = sum(self._restart_rules["paid_restarts"][:paid_count])
+                total += penalty
+                self.restart_adjustment_labels[seat].setText(
+                    tr("app_shell.pvp.post.restart_adjustment").format(elapsed=elapsed, penalty=f"{penalty:g}")
+                )
             if completed:
                 result_totals = result.get("totals")
                 if isinstance(result_totals, Mapping) and seat in result_totals:
                     total = max(0, int(result_totals[seat] or 0))
+                scoring = result.get("source_scoring")
+                if isinstance(scoring, Mapping):
+                    scored = scoring.get("per_seat", {}).get(seat, {})
+                    total = scored.get("adjusted_seconds", total)
+                    self.restart_adjustment_labels[seat].setText(
+                        tr("app_shell.pvp.post.restart_adjustment").format(
+                            elapsed=scored.get("elapsed_seconds", elapsed),
+                            penalty=scored.get("penalty_seconds", penalty),
+                        )
+                    )
             totals[seat] = total
             self.total_labels[seat].setText(
                 tr("app_shell.pvp.post.timer_player_total_seconds").format(
                     player=1 if seat == "player_1" else 2,
-                    seconds=int(total),
+                    seconds=f"{total:g}",
                 )
             )
 
         winner = str(result.get("winner_seat") or "") if completed else ""
-        difference = int(result.get("seconds_difference") or 0) if completed else 0
+        difference = result.get("seconds_difference") or 0 if completed else 0
         if not completed:
             difference = abs(totals["player_1"] - totals["player_2"])
             if totals["player_1"] < totals["player_2"]:
@@ -752,9 +818,9 @@ def _format_seconds(seconds: int | None) -> str:
     return f"{minutes:02d}:{remainder:02d}"
 
 
-def _format_score_seconds(seconds: int | None) -> str:
+def _format_score_seconds(seconds: int | float | None) -> str:
     return tr("app_shell.pvp.post.timer_seconds").format(
-        seconds="--" if seconds is None else max(0, int(seconds))
+        seconds="--" if seconds is None else f"{max(0, seconds):g}"
     )
 
 

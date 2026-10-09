@@ -46,8 +46,9 @@ remains in `PVP_BACKEND_STATUS.md`.
   Scoped Artifact Browser, GCSIM dispatch and local period admission are
   implemented; current acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`.
   Deck rules/costs are now implemented under `PVP_DECK_RULES.md`. Online play,
-  Abyss match execution, immune picks, result PNG/export, and PvP History
-  are still not implemented. Package/provider truth lives in
+  Supported pinned Abyss local flows, immunity and restart scoring now connect
+  under `PVP_DECK_RULES.md`. Online play, tournament series, result PNG/export,
+  source session-bundle verification and PvP History remain open. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
 
 ## Core Model
@@ -383,8 +384,9 @@ Current v0 scope:
   hot-seat play.
 - Current v0 includes artifact equipment and scoped GCSIM dispatch through
   normal services; real-engine/user acceptance remains open in `PVP_BUILD_SERVICES.md`.
-- Online mode, Abyss match execution, immune picks, session files, PvP History
-  writes, and result export are not implemented in current v0. The separate
+- Supported pinned Abyss local matches now execute immunity and restart scoring;
+  current limits live in `PVP_DECK_RULES.md`. Online mode, tournament series,
+  source session verification, PvP History writes and result export remain open. The separate
   portable profile implementation is still awaiting real-account/user-path
   acceptance; see `PVP_PROFILE_PACKAGE.md`.
 

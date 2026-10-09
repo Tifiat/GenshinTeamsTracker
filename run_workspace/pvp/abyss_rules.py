@@ -120,6 +120,13 @@ def _slots(value: Any, count: int, label: str) -> list[int | float]:
     return [_number(item, label) for item in rows]
 
 
+def _specialty(value: Any) -> int:
+    value = _integer(value, "weapon specialty", minimum=1)
+    if value > 5:
+        raise AbyssRulesError("Invalid weapon specialty")
+    return value
+
+
 def _ref(source_id: Any, catalog: Mapping[str, Mapping[str, Any]], label: str) -> dict[str, Any]:
     source_id = _source_id(source_id, label)
     row = catalog.get(source_id)
@@ -153,6 +160,50 @@ def _bounds(source: Mapping[str, Any], group: str) -> dict[str, list[int | float
     return result
 
 
+_PICK_ACTIONS = {"BAN", "PICK", "IMMUNE_BAN", "IMMUNE_PICK", "IMMUNE", "MIRROR"}
+
+
+def _validate_match_phases(data: Mapping[str, Any], character_ids: set[str]) -> None:
+    """Optional v1 extension; absent phases keep old snapshot hashes intact."""
+    if "phase_picks" in data:
+        phase = _object(data["phase_picks"], "pick phase")
+        if set(phase) != {"flow", "absolute_immune", "preban_cost_step", "pick_time", "reserve_time"}:
+            raise AbyssRulesError("Invalid pick phase fields")
+        flow = _list(phase["flow"], "pick flow")
+        if not 1 <= len(flow) <= 200:
+            raise AbyssRulesError("Invalid pick flow size")
+        for value in flow:
+            row = _object(value, "pick action")
+            if (set(row) != {"type", "player"} or not isinstance(row["type"], str) or row["type"] not in _PICK_ACTIONS
+                    or row["player"] not in ("player0", "player1")):
+                raise AbyssRulesError("Unsupported pick action")
+        immune = _list(phase["absolute_immune"], "absolute immune")
+        immune_ids = [_source_id(value, "absolute immune character") for value in immune]
+        if len(immune_ids) != len(set(immune_ids)) or any(value not in character_ids for value in immune_ids):
+            raise AbyssRulesError("Invalid absolute immune characters")
+        for key in ("preban_cost_step", "pick_time", "reserve_time"):
+            _integer(phase[key], key)
+    if "phase_teams" in data:
+        phase = _object(data["phase_teams"], "team phase")
+        if set(phase) != {"max_engines_cost", "max_engines_cost_step"}:
+            raise AbyssRulesError("Invalid team phase fields")
+        for key in phase:
+            if _number(phase[key], key) < 0:
+                raise AbyssRulesError("Negative team weapon budget")
+    if "phase_stage" in data:
+        phase = _object(data["phase_stage"], "stage phase")
+        if set(phase) != {"enabled"} or type(phase["enabled"]) is not bool:
+            raise AbyssRulesError("Invalid stage phase fields")
+    if "phase_match" in data:
+        phase = _object(data["phase_match"], "match phase")
+        if set(phase) != {"free_restarts", "paid_restarts"}:
+            raise AbyssRulesError("Invalid match phase fields")
+        _integer(phase["free_restarts"], "free restarts")
+        paid = _list(phase["paid_restarts"], "paid restarts")
+        if len(paid) > 100 or any(_number(value, "restart penalty") < 0 for value in paid):
+            raise AbyssRulesError("Invalid restart penalties")
+
+
 def _normalise_source(system: Any, agents: Any, engines: Any,
                       sha256: Mapping[str, str] | None, fetched_at: str) -> dict[str, Any]:
     system = _object(system, "system")
@@ -182,6 +233,8 @@ def _normalise_source(system: Any, agents: Any, engines: Any,
         "fetched_at": fetched_at,
         "sha256": hashes,
     }
+    if "mode" in system["main"]:
+        source["mode"] = _text(system["main"]["mode"], "source mode")
     characters = []
     seen_variants: set[tuple[str, int]] = set()
     seen_sources: set[str] = set()
@@ -203,6 +256,8 @@ def _normalise_source(system: Any, agents: Any, engines: Any,
                            "constellation_costs": slots[:7],
                            "level_percent": slots[7], "level_flat": slots[8],
                            "specification": specification, "disable_french_cap": disable_cap})
+        if "specialty" in agent_catalog[ref["source_id"]]:
+            characters[-1]["specialty"] = _specialty(agent_catalog[ref["source_id"]]["specialty"])
     weapons = []
     seen_weapon_ids: set[str] = set()
     for value in _list(costs.get("engines"), "weapon prices"):
@@ -228,6 +283,8 @@ def _normalise_source(system: Any, agents: Any, engines: Any,
         weapons.append({"source_id": source_id, "game_id": game_id,
                         "refinement_costs": slots[:5], "off_specialty_cost": slots[5],
                         "character_overrides": overrides})
+        if "specialty" in catalog_row:
+            weapons[-1]["specialty"] = _specialty(catalog_row["specialty"])
     bundles = []
     for value in _list(costs.get("agentsBundles", []), "character bundles"):
         row = _object(value, "character bundle")
@@ -287,11 +344,32 @@ def _normalise_source(system: Any, agents: Any, engines: Any,
     cap = costs.get("costLimit")
     if cap is not None:
         cap = _number(cap, "French difference cap")
-    return {"format": FORMAT, "source": source, "characters": characters,
+    result = {"format": FORMAT, "source": source, "characters": characters,
             "weapons": weapons, "bundles": bundles, "tiers": tiers,
             "french_difference_cap": cap,
             "bounds": {group: _bounds(draft, group) for group in ("agents", "engines")},
             "preset_rules": rules, "dd_character_ids": dd_ids}
+    if "phasePicks" in system:
+        phase = _object(system["phasePicks"], "phasePicks")
+        result["phase_picks"] = {
+            "flow": [{"type": row.get("type"), "player": row.get("player")}
+                     for row in (_object(value, "pick action") for value in _list(phase.get("flow"), "pick flow"))],
+            "absolute_immune": _list(phase.get("absoluteImmune", []), "absolute immune"),
+            "preban_cost_step": phase.get("prebanCostStep"),
+            "pick_time": phase.get("pickTime"), "reserve_time": phase.get("reserveTime"),
+        }
+    if "phaseTeams" in system:
+        phase = _object(system["phaseTeams"], "phaseTeams")
+        result["phase_teams"] = {"max_engines_cost": phase.get("maxEnginesCost"),
+                                 "max_engines_cost_step": phase.get("maxEnginesCostStep")}
+    if "phaseStage" in system:
+        phase = _object(system["phaseStage"], "phaseStage")
+        result["phase_stage"] = {"enabled": phase.get("isEnabled")}
+    if "phaseMatch" in system:
+        phase = _object(system["phaseMatch"], "phaseMatch")
+        result["phase_match"] = {"free_restarts": phase.get("freeRestarts"),
+                                 "paid_restarts": phase.get("paidRestarts")}
+    return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -312,13 +390,16 @@ class AbyssRuleset:
         data = _object(payload, "Abyss snapshot")
         if data.get("format") != FORMAT:
             raise AbyssRulesError("Unsupported Abyss snapshot format")
-        if set(data) != {"format", "source", "characters", "weapons", "bundles", "tiers",
-                         "french_difference_cap", "bounds", "preset_rules", "dd_character_ids"}:
+        required = {"format", "source", "characters", "weapons", "bundles", "tiers",
+                    "french_difference_cap", "bounds", "preset_rules", "dd_character_ids"}
+        if not required <= set(data) or set(data) - required - {"phase_picks", "phase_teams", "phase_stage", "phase_match"}:
             raise AbyssRulesError("Unexpected or missing Abyss snapshot fields")
         source = _object(data["source"], "source")
-        if set(source) != {"family", "system_id", "root_id", "root_id_from_source", "predecessor_id", "title",
-                           "updated_at", "fetched_at", "sha256"} or source["family"] != SOURCE_FAMILY:
+        if set(source) - {"mode"} != {"family", "system_id", "root_id", "root_id_from_source", "predecessor_id", "title",
+                                      "updated_at", "fetched_at", "sha256"} or source["family"] != SOURCE_FAMILY:
             raise AbyssRulesError("Invalid Abyss source metadata")
+        if "mode" in source:
+            _text(source["mode"], "source mode")
         for key in ("system_id", "root_id"):
             _source_id(source[key], key)
         if type(source["root_id_from_source"]) is not bool or (
@@ -342,9 +423,11 @@ class AbyssRuleset:
         character_identity: dict[str, tuple[str, int]] = {}
         for item in _list(data["characters"], "characters"):
             row = _object(item, "character")
-            if set(row) != {"source_id", "game_id", "attribute", "names", "constellation_costs",
-                            "level_percent", "level_flat", "specification", "disable_french_cap"}:
+            if set(row) - {"specialty"} != {"source_id", "game_id", "attribute", "names", "constellation_costs",
+                                           "level_percent", "level_flat", "specification", "disable_french_cap"}:
                 raise AbyssRulesError("Invalid character fields")
+            if "specialty" in row:
+                _specialty(row["specialty"])
             source_id = _source_id(row["source_id"], "character source id")
             game_id = _text(row["game_id"], "character game id")
             names = _object(row["names"], "character names")
@@ -363,11 +446,14 @@ class AbyssRuleset:
                 _integer(row["specification"], "specification")
             if type(row["disable_french_cap"]) is not bool:
                 raise AbyssRulesError("Invalid French cap exemption")
+        _validate_match_phases(data, seen_char_sources)
         seen_weapon_ids: set[str] = set()
         for item in _list(data["weapons"], "weapons"):
             row = _object(item, "weapon")
-            if set(row) != {"source_id", "game_id", "refinement_costs", "off_specialty_cost", "character_overrides"}:
+            if set(row) - {"specialty"} != {"source_id", "game_id", "refinement_costs", "off_specialty_cost", "character_overrides"}:
                 raise AbyssRulesError("Invalid weapon fields")
+            if "specialty" in row:
+                _specialty(row["specialty"])
             _source_id(row["source_id"], "weapon source id")
             game_id = _text(row["game_id"], "weapon game id")
             if not game_id.isdigit() or game_id in seen_weapon_ids:

@@ -544,42 +544,35 @@ class DecksRulesLayoutTests(unittest.TestCase):
         self.assertTrue(button.isChecked())
         self.assert_readable(panel)
 
-    def test_weapon_rules_are_readable_and_keep_geometry_during_deselection(self):
+    def test_weapon_price_summary_has_no_accordion_and_keeps_geometry_during_deselection(self):
         for language in ("ru", "en", "pt-br"):
             with self.subTest(language=language):
                 workspace, state, panel, host = self.make_panel(language=language)
-                state["weapon_rule_lines"] = (
-                    tr("app_shell.pvp.rules.weapon_rule_base").format(
-                        weapon="Long weapon display name", values="R1: 3 · R2: 4 · R3: 5 · R4: 6 · R5: 7"),
-                    tr("app_shell.pvp.rules.weapon_rule_off_specialty").format(
-                        weapon="Long weapon display name", value=2),
-                    tr("app_shell.pvp.rules.weapon_rule_override").format(
-                        weapon="Long weapon display name", character="Character display name",
-                        values="R1: 8 · R2: 9 · R3: 10 · R4: 11 · R5: 12"),
-                )
-                workspace.state_changed.emit()
                 host.setFixedSize(354, 480)
                 host.show()
                 self.settle()
-                panel._weapon_rules_button.click()
-                self.settle()
-                section, _layout, labels = panel._rules_line_sections["rules_weapon_prices_heading"]
-                self.assertTrue(section.isVisibleTo(panel))
-                for label in labels:
-                    self.assertGreaterEqual(label.height(), label.heightForWidth(label.width()))
-                    self.assertLessEqual(label.geometry().right(), section.width())
-                old_section = section.geometry()
+
+                self.assertNotIn("rules_weapon_prices_heading", panel._rules_line_sections)
+                self.assertFalse(hasattr(panel, "_weapon_rules_button"))
+                summary_section, _layout, summary_labels = panel._rules_line_sections["rules_costs_heading"]
+                original_summary_labels = tuple(summary_labels)
+                old_summary = summary_section.geometry()
                 old_rules = panel._requirement_section.geometry()
+
                 workspace.preset.weapon_refs = ()
+                summary_lines = list(state["summary_lines"])
+                summary_lines[1] = summary_lines[1].replace("128", "127")
+                state["summary_lines"] = tuple(summary_lines)
+                rows = list(state["requirement_rows"])
+                rows[1] = dict(rows[1], current="16 / 20")
+                state["requirement_rows"] = tuple(rows)
                 workspace.details_changed.emit()
                 self.settle()
-                self.assertEqual(section.geometry(), old_section)
+
+                self.assertEqual(summary_section.geometry(), old_summary)
                 self.assertEqual(panel._requirement_section.geometry(), old_rules)
-                self.assertTrue(panel._weapon_rules_button.isChecked())
-                self.assertEqual(tuple(label.text() for label in labels), state["weapon_rule_lines"])
-                panel._weapon_rules_button.click()
-                self.settle()
-                self.assertFalse(section.isVisibleTo(panel))
+                self.assertEqual(tuple(summary_labels), original_summary_labels)
+                self.assertEqual(summary_labels[1].text(), summary_lines[1])
                 host.close()
 
     def test_bottom_is_reachable_and_short_rules_shrink_content(self):

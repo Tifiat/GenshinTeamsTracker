@@ -100,3 +100,7 @@ counts and requirements stay current. In a Free Draft match, perform pick/ban,
 assign characters/weapons including swaps, then edit all six timers and finish.
 Compare visible response with Characters/Weapons and check for jumps or stale
 owner badges. This native sequence has not been performed by the agent.
+
+The later user-reported right-panel jump is retained in the
+[panel/weapon follow-up](../PVP_DECK_RULES.md#panel-stability-and-weapon-pricing--2026-10-09).
+The 147 checks above did not cover geometry across every painted allocation phase.

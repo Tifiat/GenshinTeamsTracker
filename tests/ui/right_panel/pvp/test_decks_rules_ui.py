@@ -544,6 +544,44 @@ class DecksRulesLayoutTests(unittest.TestCase):
         self.assertTrue(button.isChecked())
         self.assert_readable(panel)
 
+    def test_weapon_rules_are_readable_and_keep_geometry_during_deselection(self):
+        for language in ("ru", "en", "pt-br"):
+            with self.subTest(language=language):
+                workspace, state, panel, host = self.make_panel(language=language)
+                state["weapon_rule_lines"] = (
+                    tr("app_shell.pvp.rules.weapon_rule_base").format(
+                        weapon="Long weapon display name", values="R1: 3 · R2: 4 · R3: 5 · R4: 6 · R5: 7"),
+                    tr("app_shell.pvp.rules.weapon_rule_off_specialty").format(
+                        weapon="Long weapon display name", value=2),
+                    tr("app_shell.pvp.rules.weapon_rule_override").format(
+                        weapon="Long weapon display name", character="Character display name",
+                        values="R1: 8 · R2: 9 · R3: 10 · R4: 11 · R5: 12"),
+                )
+                workspace.state_changed.emit()
+                host.setFixedSize(354, 480)
+                host.show()
+                self.settle()
+                panel._weapon_rules_button.click()
+                self.settle()
+                section, _layout, labels = panel._rules_line_sections["rules_weapon_prices_heading"]
+                self.assertTrue(section.isVisibleTo(panel))
+                for label in labels:
+                    self.assertGreaterEqual(label.height(), label.heightForWidth(label.width()))
+                    self.assertLessEqual(label.geometry().right(), section.width())
+                old_section = section.geometry()
+                old_rules = panel._requirement_section.geometry()
+                workspace.preset.weapon_refs = ()
+                workspace.details_changed.emit()
+                self.settle()
+                self.assertEqual(section.geometry(), old_section)
+                self.assertEqual(panel._requirement_section.geometry(), old_rules)
+                self.assertTrue(panel._weapon_rules_button.isChecked())
+                self.assertEqual(tuple(label.text() for label in labels), state["weapon_rule_lines"])
+                panel._weapon_rules_button.click()
+                self.settle()
+                self.assertFalse(section.isVisibleTo(panel))
+                host.close()
+
     def test_bottom_is_reachable_and_short_rules_shrink_content(self):
         workspace, state, panel, host = self.make_panel()
         host.setFixedSize(354, 480)

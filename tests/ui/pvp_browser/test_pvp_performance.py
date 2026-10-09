@@ -224,6 +224,27 @@ class PvpDecksPerformanceTest(unittest.TestCase):
             elapsed = measure(lambda: callback(asset))
             self.assertLess(elapsed, budget_ms, f"Selection {elapsed:.2f} ms; browser {browser_ms:.2f} ms")
 
+    def test_full_weapon_pricing_inventory_keeps_selection_within_frame_budget(self):
+        source, _roster = _screenshot_scale_source()
+        system, _agents, engines = source
+        for index, asset in enumerate(self.weapons):
+            source_id = f"{25000 + index:024x}"
+            engines.append({"_id": source_id, "enkaId": asset["metadata"]["weapon"]["id"]})
+            system["costs"]["engines"].append({"engine": source_id, "costs": [3, 4, 5, 6, 7, 2]})
+        ws = self.workspace
+        ws._editing_preset = set_deck_preset_rules(ws.active_preset(), AbyssRuleset.from_source(*source))
+        ws.refresh_view()
+        self.panel.refresh()
+        self.settle_allocation()
+        self.assertEqual(len(ws.rules_ui_state()["weapon_rule_lines"]), 140)
+        samples = []
+        for _ in range(20):
+            start = time.perf_counter()
+            ws._on_weapon_card_clicked(self.weapons[0])
+            samples.append((time.perf_counter() - start) * 1000)
+            self.settle_allocation()
+        self.assertLess(statistics.median(samples), 1000 / 60)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,10 +32,13 @@ Physical character roles use the selected preset's DD-ID list, correcting the
 earlier price-field mapping. Role-condition Show/Clear actions filter this deck's
 grid by tier and role; filters reset on deck/rules changes and never alter selection.
 
-Selection now updates one retained card and the open details in place. Inventory
-projection/prices and unchanged allocation inputs are reused until their source
-changes. The [performance receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
-owns synthetic timings, regression tests and the downstream pipeline check.
+Selection updates retained cards/details. The later panel jump is repaired with
+stable geometry across pending/results and settled layout before painting.
+Available weapon pricing has an expandable R1–R5/character-exception section.
+The [repair receipt](#panel-stability-and-weapon-pricing--2026-10-09) owns checks;
+the [performance receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
+owns timings and downstream checks. Persistent catalog reuse is deferred to MVP
+by the user; current catalog loading remains explicit.
 No Computer Use, application launch or real-account import/write. Next is the
 user's create/edit recheck, then source parity and match schedule work. Traveler
 remains the first independent task for another chat. The
@@ -288,3 +291,53 @@ Two 354/650-wide offscreen previews (94,343 bytes) were inspected and removed by
 TemporaryDirectory cleanup. Native acceptance remains user-owned: reopen the
 reported deck, check T4/T3 coverage, remove/re-add T1 and observe T0 groups.
 No CUA/AppShell launch or real account reads/writes; no new source parity claim.
+
+## Panel stability and weapon pricing — 2026-10-09
+
+The user's post-performance report exposed a gap in the 147-check receipt:
+retained widget identity did not establish stable geometry. A 78-character/70-
+weapon synthetic reproduction moved the requirements/issue/count sections during
+pending allocation and moved them back after completion. The expanded card changed
+from 1068 to 1099 pixels, and its scrollbar range changed by 31 pixels. This was
+an offscreen diagnosis, not inspection of the user's account or native window.
+
+Membership updates now settle this panel's layout before enabling painting and
+restore scroll synchronously. Detail sections reserve their established geometry
+for the current width; explicit deck/rules changes and width changes release that
+reservation. Text/icon status markers have one height. Calculation progress is an
+unknown requirement status with an accessible description, not a temporary issue
+that expands the card. Existing replacement-group rows retain their positions
+while pending, with blank member labels and unknown marks rather than stale groups.
+Only completed new results expose new member names. Declared tier bands retain the
+outside-band counter at zero as well. Genuine additional content can grow; this
+repair targets transient collapse/expansion and scroll movement during selection.
+
+The weapon declarations had been normalized but omitted from presentation.
+"Weapon cost rules" below the cost summary expands base R1–R5 values, nonzero
+off-specialty values and character-specific price alternatives for available
+mapped inventory weapons. Definitions remain visible when that weapon is
+deselected, are deduplicated by game ID, and use the selected saved rules snapshot.
+Traveler overrides include their element. This does not assign a weapon to a
+character or turn an alternative into a resolved final price. Free Draft hides
+the section. Russian, English and Portuguese are covered.
+
+55 focused checks PASS: 45 integrated/rules/panel/geometry/performance and ten
+existing Decks create/edit/save/cancel controls. The real handlers are checked
+in new/saved deck editors at 354×480 and 640×760, at top/middle/bottom scroll
+positions. Every recorded painted frame across 48 character/weapon toggles matches
+the baseline geometry through immediate, forced-pending and completed states.
+A separate scarce-T1 fixture checks wrapped T0 group rows during a new allocation.
+Temporary synthetic files use connected cleanup. Native acceptance remains
+user-owned: restart Worker4, repeat selection/removal while scrolled, then expand
+Weapon cost rules and verify the expected R values.
+
+A 70-weapon fixture initially caught a new 20.2 ms median from repeatedly
+formatting unchanged definitions. The active widget now retains only its current
+price text for the immutable rules/inventory names/language, invalidating it on
+those changes. The same 16.7 ms selection guard now passes with 140 pricing lines.
+This presentation reuse adds no catalog persistence or source freshness bypass.
+
+MVP queue proposal: remember already downloaded rules/catalog across restarts,
+with visible version/freshness and explicit refresh. The user defers that work
+and asks for no persistent catalog/rules cache during current repairs. No cache
+files, source-network calls, account migration or archive schema changes here.

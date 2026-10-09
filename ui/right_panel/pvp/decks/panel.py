@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QTimer, Qt
+from collections import defaultdict, deque
+
+from PySide6.QtCore import QCoreApplication, QEvent, QTimer, Qt
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QComboBox,
@@ -46,9 +48,17 @@ class PvpDecksRightPanel(QWidget):
         self._rules_meta_labels: dict[str, QLabel] = {}
         self._rules_line_sections: dict[str, tuple[QFrame, QVBoxLayout, list[QLabel]]] = {}
         self._requirement_rows: list[dict] = []
+        self._settled_requirement_rows: tuple[dict, ...] = ()
+        self._pending_row_heights: list[tuple[QLabel, int]] = []
         self._requirement_table: QGridLayout | None = None
         self._requirement_section: QFrame | None = None
         self._expanded_layout: QVBoxLayout | None = None
+        self._expanded_info: QFrame | None = None
+        self._details_geometry_width = 0
+        self._reserved_geometry: dict[QWidget, tuple[int, bool]] = {}
+        self._weapon_rules_expanded = False
+        self._weapon_rule_lines: tuple[str, ...] = ()
+        self._weapon_rules_button: QPushButton | None = None
         self._row_count_labels: dict[str, QLabel] = {}
         self._status_pixmaps = {
             "pass": tinted_svg_pixmap("check", 14, UI_STATE_SUCCESS),
@@ -168,22 +178,76 @@ class PvpDecksRightPanel(QWidget):
         preset = self.workspace.active_preset()
         if preset is None or self._expanded_layout is None:
             return
-        self._restore_scroll_value = self.deck_list_scroll.verticalScrollBar().value()
-        state = self.workspace.rules_ui_state()
-        self._update_rules_details(state)
-        self.selected_info_labels["counts"].setText(
-            tr("app_shell.pvp.decks.counts").format(
-                characters=len(preset.character_ids), weapons=len(preset.weapon_refs)
+        scroll_value = self.deck_list_scroll.verticalScrollBar().value()
+        self._scroll_restore_timer.stop()
+        updates_enabled = self.updatesEnabled()
+        self.setUpdatesEnabled(False)
+        try:
+            self._reserve_details_geometry()
+            state = self.workspace.rules_ui_state()
+            self._update_rules_details(state)
+            self.selected_info_labels["counts"].setText(
+                tr("app_shell.pvp.decks.counts").format(
+                    characters=len(preset.character_ids), weapons=len(preset.weapon_refs)
+                )
             )
-        )
-        self.selected_info_labels["validation"].setText(self._validation_text())
-        count = self._row_count_labels.get(preset.deck_id)
-        if count is not None:
-            count.setText(f"({len(preset.character_ids) + len(preset.weapon_refs)})")
-        status = self.workspace._last_status
-        self.status_label.setText(status)
-        self.status_label.setVisible(bool(status))
-        self._scroll_restore_timer.start(0)
+            self.selected_info_labels["validation"].setText(self._validation_text())
+            count = self._row_count_labels.get(preset.deck_id)
+            if count is not None:
+                count.setText(f"({len(preset.character_ids) + len(preset.weapon_refs)})")
+            status = self.workspace._last_status
+            self.status_label.setText(status)
+            self.status_label.setVisible(bool(status))
+            self._activate_details_layout()
+            self.deck_list_scroll.verticalScrollBar().setValue(scroll_value)
+        finally:
+            self.setUpdatesEnabled(updates_enabled)
+
+    def _reserve_details_geometry(self) -> None:
+        if not self.isVisible():
+            return
+        width = self.deck_list_scroll.viewport().width()
+        if width != self._details_geometry_width:
+            self._release_details_geometry()
+            self._details_geometry_width = width
+        widgets = [self._expanded_info, self._requirement_section,
+                   *self.selected_info_labels.values()]
+        for section, _layout, labels in self._rules_line_sections.values():
+            widgets.extend((section, *labels))
+        for widget in widgets:
+            if widget is None or not widget.isVisibleTo(self):
+                continue
+            policy = widget.sizePolicy()
+            if widget not in self._reserved_geometry:
+                self._reserved_geometry[widget] = (widget.minimumHeight(), policy.retainSizeWhenHidden())
+            policy.setRetainSizeWhenHidden(True)
+            widget.setSizePolicy(policy)
+            widget.setMinimumHeight(max(widget.minimumHeight(), widget.height()))
+
+    def _release_details_geometry(self) -> None:
+        for widget, (height, retain) in self._reserved_geometry.items():
+            widget.setMinimumHeight(height)
+            policy = widget.sizePolicy()
+            policy.setRetainSizeWhenHidden(retain)
+            widget.setSizePolicy(policy)
+        self._reserved_geometry.clear()
+        self._details_geometry_width = 0
+
+    def _activate_details_layout(self) -> None:
+        # Settle only this panel's pending layout work before exposing its frame.
+        for widget in reversed(self.findChildren(QWidget)):
+            if widget.layout() is not None:
+                QCoreApplication.sendPostedEvents(widget, QEvent.Type.LayoutRequest)
+                widget.layout().activate()
+        content = self.deck_list_scroll.widget()
+        content.layout().activate()
+        QCoreApplication.sendPostedEvents(content, QEvent.Type.LayoutRequest)
+        self.layout().activate()
+
+    def resizeEvent(self, event) -> None:
+        if event.size().width() != event.oldSize().width():
+            self._release_details_geometry()
+        super().resizeEvent(event)
 
     def _restore_scroll_position(self) -> None:
         self.deck_list_scroll.verticalScrollBar().setValue(self._restore_scroll_value)
@@ -311,6 +375,8 @@ class PvpDecksRightPanel(QWidget):
             button.sizeHint()
 
     def _rebuild_deck_list(self) -> None:
+        self._release_details_geometry()
+        self._release_pending_row_heights()
         _clear_layout(self.deck_list_layout)
         _clear_layout(self.new_deck_info_layout)
         self.deck_row_frames.clear()
@@ -318,11 +384,15 @@ class PvpDecksRightPanel(QWidget):
         self._rules_meta_labels.clear()
         self._rules_line_sections.clear()
         self._requirement_rows.clear()
+        self._settled_requirement_rows = ()
         self._requirement_table = None
         self._requirement_section = None
         self._requirement_content = None
         self._requirement_row_shape = None
         self._expanded_layout = None
+        self._expanded_info = None
+        self._weapon_rule_lines = ()
+        self._weapon_rules_button = None
         self._row_count_labels.clear()
         self.edit_name_edit = None
         self.ruleset_button = None
@@ -462,7 +532,9 @@ class PvpDecksRightPanel(QWidget):
         layout = QVBoxLayout(info)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._expanded_layout = layout
+        self._expanded_info = info
 
         rules_state = self.workspace.rules_ui_state()
         rules_header = QHBoxLayout()
@@ -522,6 +594,13 @@ class PvpDecksRightPanel(QWidget):
         layout.addWidget(self.rules_update_button)
 
         self._add_rules_lines(layout, "rules_costs_heading", ())
+        self._weapon_rules_button = QPushButton()
+        self._weapon_rules_button.setObjectName("pvp_secondary_button")
+        self._weapon_rules_button.setCheckable(True)
+        self._weapon_rules_button.setChecked(self._weapon_rules_expanded)
+        self._weapon_rules_button.toggled.connect(self._on_weapon_rules_toggled)
+        layout.addWidget(self._weapon_rules_button)
+        self._add_rules_lines(layout, "rules_weapon_prices_heading", ())
         self._add_rules_lines(layout, "rules_requirements_heading", ())
         self._add_requirement_rows(layout, (), None)
         self._add_rules_lines(layout, "rules_issues_heading", ())
@@ -566,6 +645,7 @@ class PvpDecksRightPanel(QWidget):
         content = QVBoxLayout(section)
         content.setContentsMargins(9, 8, 9, 8)
         content.setSpacing(6)
+        content.setAlignment(Qt.AlignmentFlag.AlignTop)
         heading = self._rules_detail_label(tr("app_shell.pvp.decks." + heading_key))
         heading.setObjectName("pvp_rules_heading")
         content.addWidget(heading)
@@ -611,14 +691,35 @@ class PvpDecksRightPanel(QWidget):
         self.rules_update_button.setVisible(freshness == "update" and bool(state.get("update_id")))
         self.rules_update_button.setEnabled(not loading)
         self._update_rules_lines("rules_costs_heading", state.get("summary_lines", ()))
+        self._update_weapon_rules(state.get("weapon_rule_lines", ()))
         rows = tuple(state.get("requirement_rows", ()))
         self._update_rules_lines(
             "rules_requirements_heading", state.get("requirement_lines", ()) if not rows else ()
         )
-        self._update_requirement_rows(rows, state.get("active_character_filter"))
+        self._update_requirement_rows(rows, state.get("active_character_filter"),
+                                      pending=bool(state.get("requirements_pending")))
         self._update_rules_lines("rules_issues_heading", state.get("issue_lines", ()))
         error = str(state.get("error_text", "")).strip()
         self._update_rules_lines("rules_error_heading", (error,) if error else ())
+
+    def _update_weapon_rules(self, lines) -> None:
+        lines = tuple(str(line) for line in lines)
+        if lines != self._weapon_rule_lines:
+            self._update_rules_lines("rules_weapon_prices_heading", lines)
+            self._weapon_rule_lines = lines
+        self._weapon_rules_button.setVisible(bool(lines))
+        self._weapon_rules_button.setText(
+            ("▾ " if self._weapon_rules_expanded else "▸ ")
+            + tr("app_shell.pvp.decks.rules_weapon_prices_heading")
+        )
+        self._rules_line_sections["rules_weapon_prices_heading"][0].setVisible(
+            bool(lines) and self._weapon_rules_expanded
+        )
+
+    def _on_weapon_rules_toggled(self, expanded: bool) -> None:
+        self._release_details_geometry()
+        self._weapon_rules_expanded = bool(expanded)
+        self._update_weapon_rules(self._weapon_rule_lines)
 
     def _add_requirement_rows(self, layout: QVBoxLayout, rows, active_filter=None) -> None:
         section = QFrame()
@@ -627,6 +728,7 @@ class PvpDecksRightPanel(QWidget):
         content = QVBoxLayout(section)
         content.setContentsMargins(9, 8, 9, 8)
         content.setSpacing(6)
+        content.setAlignment(Qt.AlignmentFlag.AlignTop)
         heading = self._rules_detail_label(
             tr("app_shell.pvp.decks.rules_requirements_heading")
         )
@@ -646,12 +748,37 @@ class PvpDecksRightPanel(QWidget):
             for entry in rows
         )
 
-    def _update_requirement_rows(self, rows, active_filter=None) -> None:
+    def _update_requirement_rows(self, rows, active_filter=None, *, pending=False) -> None:
+        if pending and self._settled_requirement_rows:
+            available = defaultdict(deque)
+            for entry in rows:
+                available[self._requirement_identity(entry)].append(entry)
+            retained = []
+            for entry in self._settled_requirement_rows:
+                matches = available[self._requirement_identity(entry)]
+                if matches:
+                    retained.append(matches.popleft())
+                elif entry.get("allocation_group"):
+                    if not self._pending_row_heights and self._requirement_rows:
+                        # Retain wrapped group row heights while their new members
+                        # are unknown; show blank labels rather than stale names.
+                        for row in self._requirement_rows:
+                            label = row["label"]
+                            self._pending_row_heights.append((label, label.minimumHeight()))
+                            label.setMinimumHeight(max(label.minimumHeight(), label.height()))
+                    retained.append(dict(entry, label="", current="—", status="unknown"))
+            for remaining in available.values():
+                retained.extend(remaining)
+            rows = tuple(retained)
+        elif not pending:
+            self._release_pending_row_heights()
+            self._settled_requirement_rows = tuple(rows)
         self._requirement_section.setVisible(bool(rows))
         if not rows:
             return
         shape = self._requirement_shape(rows)
         if shape != getattr(self, "_requirement_row_shape", None):
+            self._release_pending_row_heights()
             if self._requirement_table is not None:
                 self._requirement_content.removeItem(self._requirement_table)
                 _clear_layout(self._requirement_table)
@@ -672,9 +799,20 @@ class PvpDecksRightPanel(QWidget):
                 button.setChecked(active)
                 button.setText(tr("app_shell.pvp.rules.filter_reset" if active else "app_shell.pvp.rules.filter_show"))
                 button.setAccessibleName(button.text() + ": " + label.text())
-            self._set_requirement_status(widgets["marker"], str(entry.get("status", "info")))
+            self._set_requirement_status(widgets["marker"], str(entry.get("status", "info")),
+                                         str(entry.get("status_detail", "")))
 
-    def _set_requirement_status(self, marker: QLabel, status: str) -> None:
+    @staticmethod
+    def _requirement_identity(entry) -> tuple:
+        return (entry.get("label", ""), tuple(entry.get("character_filter") or ()), entry.get("depth", 0))
+
+    def _release_pending_row_heights(self) -> None:
+        for label, height in self._pending_row_heights:
+            label.setMinimumHeight(height)
+        self._pending_row_heights.clear()
+
+    def _set_requirement_status(self, marker: QLabel, status: str, detail: str = "") -> None:
+        marker.setAccessibleDescription(detail)
         if status not in ("pass", "fail", "unknown", "info"):
             status = "info"
         if marker.property("requirementStatus") == status:
@@ -751,8 +889,10 @@ class PvpDecksRightPanel(QWidget):
             marker = QLabel()
             marker.setObjectName("pvp_requirement_status")
             marker.setFixedWidth(54)
+            marker.setFixedHeight(max(14, marker.fontMetrics().lineSpacing()))
             marker.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
-            self._set_requirement_status(marker, str(entry.get("status", "info")))
+            self._set_requirement_status(marker, str(entry.get("status", "info")),
+                                         str(entry.get("status_detail", "")))
             table.addWidget(marker, next_row, 2)
             next_row += 1
 

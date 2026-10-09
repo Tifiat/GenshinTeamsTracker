@@ -637,7 +637,10 @@ class PvpDecksWorkspace(QWidget):
         preset = self.active_preset()
         rules = self.active_rules()
         deck = self._draft_for_preset(preset) if preset and rules else None
-        state = self.rules_controller.ui_state(preset, editable=self.is_editing, rules=rules, deck=deck)
+        state = self.rules_controller.ui_state(
+            preset, editable=self.is_editing, rules=rules, deck=deck,
+            weapon_inventory=self._inventory_draft.weapons if deck else (),
+        )
         state["active_character_filter"] = self._character_requirement_filter
         return state
 

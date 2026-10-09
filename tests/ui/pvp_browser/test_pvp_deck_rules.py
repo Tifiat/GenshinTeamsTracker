@@ -14,9 +14,10 @@ from PySide6.QtWidgets import QApplication, QPushButton
 from localization import get_language, set_language, tr
 from run_workspace.pvp.abyss_client import AbyssRulesChoice
 from run_workspace.pvp.abyss_rules import AbyssRuleset, evaluate_deck
+from run_workspace.pvp.deck import FREE_DRAFT_V0_RULESET_ID
 from run_workspace.pvp.deck_preset import load_deck_presets
 from tests.run_workspace.pvp.test_abyss_rules import _character, _deck, _source, _weapon, _screenshot_scale_source
-from tests.ui.pvp_browser.test_pvp_browser import _character_asset
+from tests.ui.pvp_browser.test_pvp_browser import _character_asset, _weapon_asset
 from ui.pvp_browser.deck_rules import DeckRulesController, format_report
 from ui.pvp_browser.window import PvpDecksWorkspace
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
@@ -80,6 +81,40 @@ class PvpDeckRulesTest(unittest.TestCase):
         self.assertEqual(self.workspace.active_rules().system_id, self.rules.system_id)
         self.workspace.delete_selected()
         self.assertEqual(list(Path(self.temp.name).glob("*.json")), [])
+
+    def test_weapon_pricing_section_survives_selection_and_rules_switch(self):
+        inventory = [_weapon_asset("2001", "Test sword")]
+        self.workspace._weapon_assets_provider = lambda: inventory
+        self.workspace.refresh_account_data()
+        self.load_rules()
+        panel = PvpDecksRightPanel(self.workspace)
+        self.addCleanup(panel.deleteLater)
+        self.addCleanup(panel.close)
+        button = panel._weapon_rules_button
+        section, _layout, labels = panel._rules_line_sections["rules_weapon_prices_heading"]
+        self.assertTrue(button.isVisibleTo(panel))
+        self.assertFalse(section.isVisibleTo(panel))
+        button.click()
+        self.assertTrue(section.isVisibleTo(panel))
+        self.assertEqual(len(labels), 3)
+        text = "\n".join(label.text() for label in labels)
+        self.assertIn("Test sword", text)
+        self.assertIn("R1: 3", text)
+        self.assertIn("R5: 7", text)
+        self.assertIn("R5: 12", text)
+        original_lines = self.workspace.rules_ui_state()["weapon_rule_lines"]
+        self.workspace._on_weapon_card_clicked(inventory[0])
+        self.assertEqual(self.workspace.selected_counts()[1], 1)
+        self.workspace._on_weapon_card_clicked(inventory[0])
+        self.assertEqual(self.workspace.selected_counts()[1], 0)
+        self.assertEqual(self.workspace.rules_ui_state()["weapon_rule_lines"], original_lines)
+        self.assertIs(panel._weapon_rules_button, button)
+        self.assertTrue(button.isChecked())
+        self.assertTrue(section.isVisibleTo(panel))
+        self.assertEqual(tuple(label.text() for label in labels), original_lines)
+        self.assertTrue(self.workspace.select_ruleset("free_draft_v0"))
+        self.assertFalse(panel._weapon_rules_button.isVisibleTo(panel))
+        self.assertFalse(panel._rules_line_sections["rules_weapon_prices_heading"][0].isVisibleTo(panel))
 
     def test_new_version_only_and_explicit_update_preserves_selection(self):
         self.load_rules()
@@ -330,13 +365,124 @@ class DeckRulesPresentationTest(unittest.TestCase):
         combination_rows = [row for row in pending["requirement_rows"] if row.get("detail") == tr("app_shell.pvp.rules.coverage_legend") or row.get("depth") == 1]
         self.assertTrue(all(row["status"] == "unknown" for row in combination_rows))
         self.assertTrue(all(row["current"].startswith("— /") for row in combination_rows))
+        self.assertIn(tr("app_shell.pvp.rules.allocation_budget"), pending["issue_lines"])
         equivalent = next(row for row in pending["requirement_rows"] if row["label"].startswith("T0 + T0 + T0"))
         self.assertEqual((equivalent["current"], equivalent["status"]), ("—", "unknown"))
+        calculating = format_report(snapshot, report, deck, allocation={
+            "status": "unknown", "complete": False, "reason": "pending",
+        })
+        self.assertNotIn(tr("app_shell.pvp.rules.allocation_pending"), calculating["issue_lines"])
+        pending_coverage = [row for row in calculating["requirement_rows"]
+                            if row.get("detail") == tr("app_shell.pvp.rules.coverage_legend")
+                            or row.get("depth") == 1]
+        self.assertTrue(pending_coverage)
+        self.assertTrue(all(row["status"] == "unknown" for row in pending_coverage))
+        policy = next(row for row in calculating["requirement_rows"]
+                      if row["label"] == tr("app_shell.pvp.rules.allocation_policy"))
+        self.assertEqual(policy["status"], "unknown")
+        self.assertEqual(policy["status_detail"], tr("app_shell.pvp.rules.allocation_pending"))
         report["character_rows"][0]["tier"] = None
         uncertain = format_report(snapshot, report, deck)
         parents = [row for row in uncertain["requirement_rows"]
                    if row.get("detail") == tr("app_shell.pvp.rules.coverage_legend")]
         self.assertTrue(all((row["current"], row["status"]) == ("— / ?", "unknown") for row in parents))
+
+    def test_weapon_rule_lines_show_owned_declarations_independent_of_membership(self):
+        language = get_language()
+        self.addCleanup(set_language, language, persist=False)
+        system, agents, engines = _source()
+        system["costs"]["engines"][0]["bis"].append({
+            "agent": next(row["_id"] for row in agents if row["attribute"] == 13),
+            "costs": [20, 21, 22, 23, 24, 0],
+        })
+        rules = AbyssRuleset.from_source(system, agents, engines)
+        snapshot = rules.to_dict()
+        inventory = (
+            replace(_weapon("2001", 2), display_name="Test sword"),
+            replace(_weapon("2002"), display_name="Plain sword"),
+            replace(_weapon("2002", 2), display_name="Duplicate stack"),
+            replace(_weapon("9999"), display_name="Unmapped weapon"),
+        )
+        deck_without_weapons = _deck(_character("1001", "PYRO"))
+        report = evaluate_deck(deck_without_weapons, rules).to_dict()
+        controller = DeckRulesController()
+        preset = SimpleNamespace(ruleset_id="abyss:" + rules.system_id, character_ids=())
+        controller_state = controller.ui_state(
+            preset, editable=True, rules=rules, weapon_inventory=inventory,
+        )
+        self.assertEqual(len(controller_state["weapon_rule_lines"]), 5)
+
+        for language in ("ru", "en", "pt-br"):
+            set_language(language, persist=False)
+            state = format_report(snapshot, report, deck_without_weapons,
+                                 weapon_inventory=inventory)
+            lines = state["weapon_rule_lines"]
+            self.assertEqual(len(lines), 5)  # 2002 is deduplicated; 9999 has no rule.
+            expected_base = " · ".join(
+                tr("app_shell.pvp.rules.weapon_refinement_price").format(refinement=index, value=value)
+                for index, value in enumerate((3, 4, 5, 6, 7), 1)
+            )
+            self.assertIn(
+                tr("app_shell.pvp.rules.weapon_rule_base").format(
+                    weapon="Test sword", values=expected_base,
+                ),
+                lines,
+            )
+            self.assertIn(
+                tr("app_shell.pvp.rules.weapon_rule_off_specialty").format(
+                    weapon="Test sword", value="2",
+                ),
+                lines,
+            )
+            pyro_name = "Пиро А" if language == "ru" else "Pyro A"
+            pyro_values = " · ".join(
+                tr("app_shell.pvp.rules.weapon_refinement_price").format(refinement=index, value=value)
+                for index, value in enumerate((8, 9, 10, 11, 12), 1)
+            )
+            self.assertIn(
+                tr("app_shell.pvp.rules.weapon_rule_override").format(
+                    weapon="Test sword", character=pyro_name, values=pyro_values,
+                ),
+                lines,
+            )
+            traveler_values = " · ".join(
+                tr("app_shell.pvp.rules.weapon_refinement_price").format(refinement=index, value=value)
+                for index, value in enumerate((20, 21, 22, 23, 24), 1)
+            )
+            traveler = "Traveler (" + tr("filter.element.dendro") + ")"
+            self.assertIn(
+                tr("app_shell.pvp.rules.weapon_rule_override").format(
+                    weapon="Test sword", character=traveler, values=traveler_values,
+                ),
+                lines,
+            )
+            plain_values = " · ".join(
+                tr("app_shell.pvp.rules.weapon_refinement_price").format(refinement=index, value=value)
+                for index, value in enumerate((2, 3, 4, 5, 6), 1)
+            )
+            self.assertIn(
+                tr("app_shell.pvp.rules.weapon_rule_base").format(
+                    weapon="Plain sword", values=plain_values,
+                ),
+                lines,
+            )
+            self.assertFalse(any("Unmapped weapon" in line for line in lines))
+
+            selected_deck = _deck(_character("1001", "PYRO"),
+                                  weapons=(replace(_weapon("2001", 2), display_name="Test sword"),))
+            selected_report = evaluate_deck(selected_deck, rules).to_dict()
+            self.assertEqual(
+                format_report(snapshot, selected_report, selected_deck,
+                              weapon_inventory=inventory)["weapon_rule_lines"],
+                lines,
+            )
+
+        free_state = controller.ui_state(
+            SimpleNamespace(ruleset_id=FREE_DRAFT_V0_RULESET_ID, character_ids=()),
+            editable=True,
+            weapon_inventory=inventory,
+        )
+        self.assertEqual(free_state["weapon_rule_lines"], ())
 
     def test_weapon_issues_use_names_and_unknown_conditions_have_readable_fallback(self):
         language = get_language()
@@ -390,7 +536,11 @@ class DeckRulesAsyncTest(unittest.TestCase):
             controller.ui_state(preset, editable=True, rules=rules, deck=_deck(_character("1002", "HYDRO")))
             current = controller.ui_state(preset, editable=True, rules=rules, deck=_deck())
             self.assertEqual(len(calls), 1)
-            self.assertIn(tr("app_shell.pvp.rules.allocation_pending"), current["issue_lines"])
+            self.assertNotIn(tr("app_shell.pvp.rules.allocation_pending"), current["issue_lines"])
+            policy = next(row for row in current["requirement_rows"]
+                          if row["label"] == tr("app_shell.pvp.rules.allocation_policy"))
+            self.assertEqual(policy["status"], "unknown")
+            self.assertEqual(policy["status_detail"], tr("app_shell.pvp.rules.allocation_pending"))
             release.set()
             self.wait_for(lambda: not controller.requirements_loading)
         self.assertEqual(calls, [("1001",), ()])

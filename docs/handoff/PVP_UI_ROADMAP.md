@@ -27,7 +27,8 @@ remains in `PVP_BACKEND_STATUS.md`.
   conversion, starts an in-memory `FreeDraftController`, and switches to the
   Draft board page.
 - [Draft runtime](PVP_DRAFT_RUNTIME.md) owns automatic cost-difference prebans,
-  rule-default/custom match controls, per-action/seat reserve clocks and pause.
+  rule-default/custom match controls, per-action/seat reserve clocks, pause,
+  explicit first actor and fresh alternating drafts within an in-memory series.
 - Draft board v0 is implemented in `ui/pvp_browser/window.py` as a local
   hot-seat board over the backend Free Draft board projection. The right Draft
   panel is `ui.right_panel.pvp.draft.panel.PvpDraftRightPanel`; shared draft UI
@@ -48,8 +49,8 @@ remains in `PVP_BACKEND_STATUS.md`.
   Scoped Artifact Browser, GCSIM dispatch and local period admission are
   implemented; current acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`.
   Deck rules/costs, supported pinned Abyss local flows, immunity and restart scoring
-  now connect under `PVP_DECK_RULES.md`. Single-game result PNG is implemented
-  under [Export / Result](#export--result). Online play, tournament series,
+  now connect under `PVP_DECK_RULES.md`. Single-game and series PNG are implemented
+  under [Export / Result](#export--result). Online play, remaining tournament policy,
   source session-bundle verification and PvP History remain open. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
 
@@ -387,8 +388,9 @@ Current v0 scope:
 - Current v0 includes artifact equipment and scoped GCSIM dispatch through
   normal services; real-engine/user acceptance remains open in `PVP_BUILD_SERVICES.md`.
 - Supported pinned Abyss local matches now execute immunity and restart scoring;
-  current limits live in `PVP_DECK_RULES.md`. Online mode, tournament series,
-  source session verification, PvP History writes and result export remain open. The separate
+  current limits live in `PVP_DECK_RULES.md`. Fresh alternating series drafts and
+  PNG totals live in `PVP_DRAFT_RUNTIME.md`. Online mode, remaining tournament policy,
+  source session verification and PvP History writes remain open. The separate
   portable profile implementation is still awaiting real-account/user-path
   acceptance; see `PVP_PROFILE_PACKAGE.md`.
 
@@ -600,13 +602,16 @@ Hot-seat layout direction:
   Export PNG button permits retry. If either name is still Player/Игрок/Jogador
   1/2, an optional two-name dialog offers nicknames; blanks retain the defaults.
   Cancel leaves the finalized result available. Display names live only in the
-  current match and reset on clearing/restarting it; they do not rename profiles.
+  current series and reset on clearing it; they do not rename profiles.
 - `ui/pvp_browser/result_export.py` paints an independent 1400-wide image of the
   actual single local game: both names, three chamber times, raw totals, source
   adjusted totals/restart penalties when present, winner/draw and difference.
-  Long names wrap; screen/window dimensions do not squeeze the export. No second
-  game, tournament series, source hash, authentication or local account path is
-  added to the picture. Team/build artwork and History persistence remain future.
+  Long names wrap; screen/window dimensions do not squeeze the export. Completed
+  multi-game series use a separate 1000-wide renderer with each game's three
+  chambers/totals/penalties and the adjusted series total, difference and winner.
+  Player columns stay fixed when the first actor changes. Source hash,
+  authentication and local account paths are omitted. Team/build artwork and
+  History persistence remain future; `PVP_DRAFT_RUNTIME.md` owns series behavior.
 - The user chooses the PNG destination through the standard save dialog. The
   exported file belongs to the user until deletion. The renderer keeps no file,
   image cache or automatic output folder. Synthetic preview PNGs are owned by a

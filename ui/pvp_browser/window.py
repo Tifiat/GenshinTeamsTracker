@@ -68,6 +68,7 @@ from run_workspace.pvp.abyss_match_rules import (
 )
 from run_workspace.pvp.draft_options import DraftMatchOptions
 from run_workspace.pvp.draft_clock import DraftClock
+from run_workspace.pvp.tournament_series import TournamentSeries
 from ui.pvp_browser.deck_rules import DeckRulesController
 from run_workspace.pvp.free_draft_controller import (
     FreeDraftController,
@@ -2196,6 +2197,9 @@ class PvpWorkspace(QWidget):
         self._abyss_source_data: AbyssFloorSourceData | None = None
         self.active_page_id = PVP_PAGE_DECKS
         self.active_draft_session: PvpActiveDraftSession | None = None
+        self.tournament_series: TournamentSeries | None = None
+        self._series_options: DraftMatchOptions | None = None
+        self._series_game_index = 1
         self._last_play_status = ""
         self._last_draft_status = ""
         self._draft_clock: DraftClock | None = None
@@ -2700,7 +2704,8 @@ class PvpWorkspace(QWidget):
                 options = (match_options or DraftMatchOptions()).resolve(rules)
                 report = validate_abyss_match_pair(first_status.draft_deck, second_status.draft_deck,
                                                  rules, preban_report=prebans,
-                                                 require_ban_targets=not (options.auto_on_expire and options.pick_time_ms))
+                                                 require_ban_targets=not (options.auto_on_expire and options.pick_time_ms),
+                                                 first_seat=options.first_seat)
                 if not report.ready:
                     issue = report.errors[0]
                     if issue.code == "abyss_shared_immune_candidates_insufficient":
@@ -2796,6 +2801,13 @@ class PvpWorkspace(QWidget):
             self.state_changed.emit()
             return False
 
+        self._series_options = controller.state.match_options
+        self._series_game_index = 1
+        self.tournament_series = TournamentSeries(
+            configured_games=self._series_options.games_count,
+            initial_first_seat=self._series_options.first_seat,
+            alternate_first=self._series_options.alternate_first,
+        )
         self.active_draft_session = PvpActiveDraftSession(
             player_1_deck_id=player_1_status.preset.deck_id,
             player_1_deck_name=player_1_status.preset.name,
@@ -2819,12 +2831,60 @@ class PvpWorkspace(QWidget):
         if self.active_draft_session is None:
             return
         self.active_draft_session = None
+        self.tournament_series = None
+        self._series_options = None
+        self._series_game_index = 1
         self._last_draft_status = ""
         self._reset_post_draft_state()
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.active_draft_changed.emit()
         self.state_changed.emit()
+
+    def start_next_series_game(self) -> bool:
+        series = self.tournament_series
+        previous = self.active_draft_session
+        if (series is None or previous is None or series.complete
+                or self.draft_stage != PVP_DRAFT_STAGE_COMPLETED_RESULT
+                or len(series.games) != self._series_game_index or self._series_options is None):
+            return False
+        period = self.period_admission()
+        if not period.ready or period.period_id != previous.abyss_period_id:
+            self._last_draft_status = tr("app_shell.pvp.series.period_changed")
+            self.state_changed.emit()
+            return False
+        index = series.next_game_index
+        options = replace(self._series_options, first_seat=series.first_seat_for_game(index))
+        old_state = previous.controller.state
+        if old_state.abyss_rules is None:
+            controller = FreeDraftController.from_decks(old_state.player_1_deck, old_state.player_2_deck,
+                                                        match_options=options, source_mode="local_hot_seat")
+        else:
+            controller = FreeDraftController.from_abyss_decks(old_state.player_1_deck, old_state.player_2_deck,
+                old_state.abyss_rules, match_options=options, source_mode="local_hot_seat")
+        if not controller.state.setup_ready:
+            return False
+        self._dispose_build_flow_context()
+        names = getattr(self, "_result_export_names", None)
+        self._reset_post_draft_state()
+        self._result_export_names = names
+        self._series_game_index = index
+        self.active_draft_session = replace(previous, controller=controller)
+        self._last_draft_status = ""
+        self._last_play_status = ""
+        self._start_draft_clock()
+        self._sync_play_workspace()
+        self._sync_draft_workspace()
+        self.set_page(PVP_PAGE_DRAFT)
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+        return True
+
+    def series_view_state(self):
+        if self.tournament_series is None or self.tournament_series.configured_games <= 1:
+            return None
+        return {**self.tournament_series.to_dict(), "current_game_index": self._series_game_index,
+                "current_first_seat": self.tournament_series.first_seat_for_game(self._series_game_index)}
 
     def apply_draft_card_click(self, action_payload: Mapping[str, Any]) -> bool:
         session = self.active_draft_session
@@ -3160,7 +3220,7 @@ class PvpWorkspace(QWidget):
             self.export_match_result()
 
     def export_match_result(self) -> bool:
-        from ui.pvp_browser.result_export import render_result_image, save_result_png
+        from ui.pvp_browser.result_export import render_result_image, render_series_image, save_result_png
         from ui.pvp_browser.result_export_dialog import (
             is_default_player_name, localized_result_labels, request_export_names,
         )
@@ -3190,7 +3250,11 @@ class PvpWorkspace(QWidget):
         if not path:
             return False
         try:
-            image = render_result_image(result, *names, localized_result_labels())
+            if self.tournament_series is not None and self.tournament_series.complete and self.tournament_series.configured_games > 1:
+                image = render_series_image(self.tournament_series, *names, localized_result_labels(),
+                    game_label=tr("app_shell.pvp.series.game_label"), total_label=tr("app_shell.pvp.series.total"))
+            else:
+                image = render_result_image(result, *names, localized_result_labels())
             save_result_png(image, path)
         except (ValueError, OSError) as exc:
             self._last_draft_status = tr("app_shell.pvp.export.failed").format(error=str(exc))
@@ -3207,6 +3271,8 @@ class PvpWorkspace(QWidget):
         session = self.active_draft_session
         if session is None:
             return False
+        if self.draft_stage == PVP_DRAFT_STAGE_COMPLETED_RESULT and session.controller.state.match_result is not None:
+            return True
         if not self.weapons_ready():
             self._last_draft_status = tr("app_shell.pvp.post.weapon_invalid")
             self._sync_draft_workspace()
@@ -3249,6 +3315,9 @@ class PvpWorkspace(QWidget):
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
+        if self.tournament_series is not None:
+            self.tournament_series = self.tournament_series.with_game_result(
+                self._series_game_index, session.controller.state.match_result)
         self.draft_stage = PVP_DRAFT_STAGE_COMPLETED_RESULT
         self._last_draft_status = ""
         self._sync_play_workspace()

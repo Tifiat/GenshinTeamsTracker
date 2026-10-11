@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-10-11 (draft uniqueness, selectable local systems and result PNG).
+Last updated: 2026-10-11 (first actor, fresh series drafts and result totals).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -36,6 +36,10 @@ Shared source immunity claims remain once per seat. The runtime contract owns
 Ascend MIRROR, Reverse and French signed-cost comparison. Explicit Free Draft in Play
 projects saved membership without changing its rules snapshot; source mode keeps
 the equal-snapshot gate. [Result export](PVP_UI_ROADMAP.md#export--result) owns PNG.
+The [runtime contract](PVP_DRAFT_RUNTIME.md#first-actor-and-series--11-october)
+owns explicit first-actor rotation, compatible Free replay metadata and the
+immutable in-memory series ledger with fresh drafts and adjusted totals. Failed
+rooms, technical-loss policy and durable recovery remain open.
 
 ## AppShell UI Status
 

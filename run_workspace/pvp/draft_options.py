@@ -4,6 +4,7 @@ from math import isfinite
 import re
 
 from .abyss_rules import AbyssRuleset
+from .schedule import PVP_SEATS, SEAT_PLAYER_1
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,10 +15,19 @@ class DraftMatchOptions:
     auto_on_expire: bool = True
     free_restarts: int | None = None
     paid_restarts: tuple[int | float, ...] | None = None
+    first_seat: str = SEAT_PLAYER_1
+    games_count: int = 1
+    alternate_first: bool = True
 
     def __post_init__(self):
         if type(self.auto_on_expire) is not bool:
             raise ValueError("Invalid auto_on_expire")
+        if type(self.first_seat) is not str or self.first_seat not in PVP_SEATS:
+            raise ValueError("Invalid first_seat")
+        if type(self.games_count) is not int or not 1 <= self.games_count <= 9:
+            raise ValueError("Invalid games_count")
+        if type(self.alternate_first) is not bool:
+            raise ValueError("Invalid alternate_first")
         for name, maximum in (("preban_cost_step", 10000), ("pick_time_ms", 86400000),
                               ("reserve_time_ms", 86400000), ("free_restarts", 100)):
             value = getattr(self, name)
@@ -44,7 +54,13 @@ class DraftMatchOptions:
                                       else match.get("free_restarts", 0))
         resolved["paid_restarts"] = (self.paid_restarts if self.paid_restarts is not None
                                       else tuple(match.get("paid_restarts", ())))
-        return DraftMatchOptions(**resolved, auto_on_expire=self.auto_on_expire)
+        return DraftMatchOptions(
+            **resolved,
+            auto_on_expire=self.auto_on_expire,
+            first_seat=self.first_seat,
+            games_count=self.games_count,
+            alternate_first=self.alternate_first,
+        )
 
     def to_dict(self):
         return {name: getattr(self, name) for name in self.__dataclass_fields__}

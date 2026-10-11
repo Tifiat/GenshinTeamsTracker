@@ -27,13 +27,14 @@ branches use equivalent target classes. Only proven impossibility blocks an
 action; exhausted budgets and remaining MIRROR are unknown. Automatic timed
 modes admit future ban skips; manual/untimed modes reserve real ban targets.
 
-113 focused fake-clock and synthetic setup→28-action→result compatibility checks
-pass. Native acceptance is user-owned; no AppShell/CUA or live profile access.
-Ascend MIRROR, Reverse and French flows now execute locally. Their actor-scoped
-selection and signed capped-cost semantics are described below. Next: remaining
-legality and future-pick feasibility for overlapping rosters.
-No persisted rules cache or durable match snapshot was introduced. The user
-chose a new draft before each game of a series; series implementation follows.
+Play explicitly selects the first actor and 1–9 games; by default the first
+actor alternates. Physical players/decks keep their identity. Every next game
+starts a fresh draft from the pinned decks/rules and original match options.
+The immutable ledger retains sealed results, sums adjusted seconds and reports
+a draw for equal totals. Final series PNG includes both games and the total.
+Failed-room/technical-loss policy and recovery remain open. No persisted rules
+cache or durable match storage was introduced. Native acceptance is user-owned;
+no AppShell/CUA or live profile access. Dated verification receipts follow.
 <!-- /handoff-current -->
 
 ## Source evidence
@@ -143,3 +144,35 @@ Bundle helper observations are scoped to team displays. Its separate creation/
 preban caller was not reverified after a CDN 403; earlier scoped evidence is
 preserved. These unresolved items keep the shared legality task open. No guessed
 Joker marker or universal unlimited-bound interpretation was enabled.
+
+## First actor and series — 11 October
+
+The user chose a new draft before every game and reverse order for the second.
+Play exposes first actor, game count and alternating order beside rules/timers;
+a retained vertical scroll keeps Start reachable on short windows. Compensation
+stays with the cheaper physical seat before the rotated main flow. Clocks follow
+the actual actor. Free bundles carry optional first-seat metadata and verify the
+rotated replay; the default payload shape is unchanged. Source bundles remain
+unsupported until pinned rules can be verified.
+
+`tournament_series.py` detaches and freezes recorded results. Recording is
+sequential/idempotent and rejects overwrites. Next game creates a fresh controller
+from the original decks, pinned rules and options; draft choices, build state,
+restarts, chamber inputs and clocks reset, while confirmed nicknames remain.
+A changed/unready Abyss period refuses the transition. Sealed results cannot be
+recalculated by editing hidden inputs. Totals sum adjusted seconds, incomplete
+series have no winner and equal final totals are a draw. Unsupported technical
+losses are rejected rather than assigned an invented score.
+
+Series PNG preserves the same player columns across alternating drafts. It shows
+three chamber rows and totals/penalties for every game, then series totals,
+difference and winner/draw. Export remains explicit user-owned output with the
+existing optional nickname dialog; no match/history/cache file is created.
+
+100 distinct focused checks passed: starter rotation, compensation ownership,
+Free bundle replay/tampering, source clocks, immutable exact totals, two real
+synthetic Play→draft→assignment→timers→result loops, fresh next draft, sealed
+result protection, short-panel scrolling and single-game/source-flow regressions.
+RU/PT-BR setup and aligned series PNG previews were inspected; disposable owners
+were cleaned. Native user smoke: Play → first actor + two games → finalize first
+→ new draft for next game → opposite actor/same players → finalize → series PNG.

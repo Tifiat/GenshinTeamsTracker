@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 )
 
 from localization import tr
+from PySide6.QtCore import Qt
+from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from run_workspace.pvp.deck_preset import PvpDeckPreset
 from run_workspace.pvp.deck import FREE_DRAFT_V0_RULESET_ID
 from run_workspace.pvp.draft_options import DraftMatchOptions, parse_restart_penalties
@@ -46,7 +48,16 @@ class PvpPlayRightPanel(QWidget):
         self.setObjectName("RightPanelPrototypeContent")
         self.setStyleSheet(PVP_DECKS_RIGHT_PANEL_STYLE)
 
-        root = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        self.setup_scroll = OverlayVerticalScrollArea()
+        self.setup_scroll.setWidgetResizable(True)
+        self.setup_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.setup_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setup_content = QWidget()
+        self.setup_scroll.setWidget(self.setup_content)
+        outer.addWidget(self.setup_scroll)
+        root = QVBoxLayout(self.setup_content)
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(8)
 
@@ -132,6 +143,28 @@ class PvpPlayRightPanel(QWidget):
         )
         self.draft_system_combo.currentIndexChanged.connect(self._on_system_changed)
         root.addWidget(self.draft_system_combo)
+
+        series_form = QFormLayout()
+        self.first_seat_label = QLabel()
+        self.first_seat_label.setObjectName("pvp_deck_info_line")
+        self.first_seat_combo = QComboBox()
+        self.first_seat_combo.addItem("", "player_1")
+        self.first_seat_combo.addItem("", "player_2")
+        self.first_seat_combo.currentIndexChanged.connect(self._on_options_changed)
+        series_form.addRow(self.first_seat_label, self.first_seat_combo)
+        self.games_count_label = QLabel()
+        self.games_count_label.setObjectName("pvp_deck_info_line")
+        self.games_count_spin = QSpinBox()
+        self.games_count_spin.setObjectName("pvp_setup_value")
+        self.games_count_spin.setRange(1, 9)
+        self.games_count_spin.valueChanged.connect(self._on_options_changed)
+        series_form.addRow(self.games_count_label, self.games_count_spin)
+        root.addLayout(series_form)
+        self.alternate_first_check = QCheckBox()
+        self.alternate_first_check.setObjectName("pvp_setup_defaults")
+        self.alternate_first_check.setChecked(True)
+        self.alternate_first_check.toggled.connect(self._on_options_changed)
+        root.addWidget(self.alternate_first_check)
 
         self.source_settings_check = QCheckBox()
         self.source_settings_check.setObjectName("pvp_setup_defaults")
@@ -255,6 +288,9 @@ class PvpPlayRightPanel(QWidget):
             has_decks = has_player_1_decks and has_player_2_decks
             active = self.workspace.active_draft_session is not None
             self.source_settings_check.setEnabled(not active)
+            self.first_seat_combo.setEnabled(not active)
+            self.games_count_spin.setEnabled(not active)
+            self.alternate_first_check.setEnabled(not active and self.games_count_spin.value() > 1)
             self.timer_enabled_check.setEnabled(not active)
             self.auto_on_expire_check.setEnabled(not active and self.timer_enabled_check.isChecked())
             for spin in (self.pick_time_spin, self.reserve_time_spin):
@@ -356,6 +392,12 @@ class PvpPlayRightPanel(QWidget):
         self.player_1_local_button.setText(tr("app_shell.pvp.profile.use_local"))
         self.player_2_local_button.setText(tr("app_shell.pvp.profile.use_local"))
         self.draft_system_label.setText(tr("app_shell.pvp.decks.rules_label"))
+        self.first_seat_label.setText(tr("app_shell.pvp.setup.first_seat"))
+        self.first_seat_combo.setToolTip(tr("app_shell.pvp.setup.first_seat_hint"))
+        self.games_count_label.setText(tr("app_shell.pvp.setup.games_count"))
+        self.alternate_first_check.setText(tr("app_shell.pvp.setup.alternate_first"))
+        for index, seat in enumerate(("player_1", "player_2")):
+            self.first_seat_combo.setItemText(index, tr("app_shell.pvp.draft." + seat))
         self.source_settings_check.setText(tr("app_shell.pvp.setup.source_settings"))
         self.timer_enabled_check.setText(tr("app_shell.pvp.setup.timer_enabled"))
         self.auto_on_expire_check.setText(tr("app_shell.pvp.setup.auto_on_expire"))
@@ -448,7 +490,9 @@ class PvpPlayRightPanel(QWidget):
 
     def match_options(self):
         self._options_error = ""
-        if self.source_settings_check.isChecked() and self.auto_on_expire_check.isChecked():
+        if (self.source_settings_check.isChecked() and self.auto_on_expire_check.isChecked()
+                and self.first_seat_combo.currentData() == "player_1"
+                and self.games_count_spin.value() == 1 and self.alternate_first_check.isChecked()):
             return None
         try:
             penalties = parse_restart_penalties(self.paid_restarts_edit.text())
@@ -456,6 +500,9 @@ class PvpPlayRightPanel(QWidget):
             self._options_error = tr("app_shell.pvp.setup.penalties_invalid")
             return None
         return DraftMatchOptions(
+            first_seat=self.first_seat_combo.currentData(),
+            games_count=self.games_count_spin.value(),
+            alternate_first=self.alternate_first_check.isChecked(),
             preban_cost_step=(self.preban_step_spin.value() if self.draft_system_id != FREE_DRAFT_V0_RULESET_ID
                              and not self.source_settings_check.isChecked() else None),
             pick_time_ms=(None if self.source_settings_check.isChecked() else

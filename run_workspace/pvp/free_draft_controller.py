@@ -66,6 +66,7 @@ from .schedule import (
     PVP_SEATS,
     SEAT_PLAYER_1,
     SEAT_PLAYER_2,
+    with_first_seat,
     DraftSchedule,
 )
 from .session import (
@@ -254,7 +255,8 @@ class FreeDraftController:
         match_options: DraftMatchOptions | None = None,
     ) -> "FreeDraftController":
         system = draft_system or require_draft_system(system_id)
-        schedule = system.build_schedule()
+        options = (match_options or DraftMatchOptions()).resolve(None)
+        schedule = with_first_seat(system.build_schedule(), options.first_seat)
         player_1_validation = validate_draft_deck(player_1_deck)
         player_2_validation = validate_draft_deck(player_2_deck)
         session_state = create_draft_session(
@@ -274,7 +276,7 @@ class FreeDraftController:
                 session_state=session_state,
                 source_mode=source_mode,
                 issues=issues,
-                match_options=(match_options or DraftMatchOptions()).resolve(None),
+                match_options=options,
             )
         )
 
@@ -291,7 +293,7 @@ class FreeDraftController:
         options = (match_options or DraftMatchOptions()).resolve(rules)
         prebans = calculate_abyss_prebans(player_1_deck, player_2_deck, rules,
                                         preban_cost_step=options.preban_cost_step)
-        system = build_abyss_match_definition(rules, preban_report=prebans)
+        system = build_abyss_match_definition(rules, preban_report=prebans, first_seat=options.first_seat)
         player_1_validation = validate_abyss_match_deck(player_1_deck, rules)
         player_2_validation = validate_abyss_match_deck(player_2_deck, rules)
         immune_eligible, absolute_immune = abyss_immune_context(
@@ -299,7 +301,8 @@ class FreeDraftController:
         )
         pair_validation = validate_abyss_match_pair(player_1_deck, player_2_deck, rules,
                                                    preban_report=prebans,
-                                                   require_ban_targets=not (options.auto_on_expire and options.pick_time_ms))
+                                                   require_ban_targets=not (options.auto_on_expire and options.pick_time_ms),
+                                                   first_seat=options.first_seat)
         if not pair_validation.ready:
             player_1_validation = DeckValidationReport(
                 player_1_validation.issues + pair_validation.issues
@@ -412,6 +415,7 @@ class FreeDraftController:
             parsed.decks[SEAT_PLAYER_2],
             system_id=parsed.draft_system.system_id,
             source_mode=str(parsed.source.get("source_mode", "bundle")),
+            match_options=DraftMatchOptions(first_seat=parsed.source.get("first_seat", SEAT_PLAYER_1)),
         )
         try:
             replayed = replay_draft_actions(
@@ -778,6 +782,7 @@ class FreeDraftController:
                 "controller_projection_status": dict(self.to_projection().status),
             },
             draft_system=self.state.draft_system,
+            first_seat=self.state.match_options.first_seat,
             session_id=session_id,
             created_at_utc=created_at_utc,
         )
@@ -945,7 +950,7 @@ class FreeDraftController:
         initial = create_draft_session(
             self.state.player_1_deck,
             self.state.player_2_deck,
-            schedule=self.state.draft_system.build_schedule(),
+            schedule=self.session_state.schedule,
             validate_decks=False,
             rules_content_hash=self.session_state.rules_content_hash,
             immune_eligible_character_ids=self.session_state.immune_eligible_character_ids,

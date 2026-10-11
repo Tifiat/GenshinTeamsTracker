@@ -41,6 +41,7 @@ from .schedule import (
     PHASE_PREBAN,
     SEAT_PLAYER_1,
     SEAT_PLAYER_2,
+    with_first_seat,
 )
 from .session import PlayerWeaponAssignment, create_draft_session
 
@@ -89,7 +90,7 @@ _COSTLESS_VARIANT_EXCEPTIONS = frozenset({
 })
 
 
-def build_abyss_match_schedule(rules: AbyssRuleset) -> DraftSchedule:
+def build_abyss_match_schedule(rules: AbyssRuleset, *, first_seat: str = SEAT_PLAYER_1) -> DraftSchedule:
     """Accept only the source flow shape the local reducer can execute."""
     phase = rules.to_dict().get("phase_picks")
     if not isinstance(phase, dict):
@@ -129,7 +130,7 @@ def build_abyss_match_schedule(rules: AbyssRuleset) -> DraftSchedule:
             raise AbyssMatchRulesError(
                 "abyss_pick_flow_unsupported", f"Unsupported action counts for {seat}."
             )
-    return DraftSchedule(ruleset_id=f"abyss:{rules.system_id}", steps=tuple(steps))
+    return with_first_seat(DraftSchedule(ruleset_id=f"abyss:{rules.system_id}", steps=tuple(steps)), first_seat)
 
 
 def calculate_abyss_prebans(
@@ -174,6 +175,7 @@ def calculate_abyss_prebans(
 
 def build_abyss_match_definition(
     rules: AbyssRuleset, *, preban_report: AbyssPrebanReport | None = None,
+    first_seat: str = SEAT_PLAYER_1,
 ) -> DraftSystemDefinition:
     """Bind a source version to one local hot-seat draft system instance."""
     data = rules.to_dict()
@@ -187,7 +189,7 @@ def build_abyss_match_definition(
         raise AbyssMatchRulesError("abyss_stage_phase_missing", "Pinned rules have no stage phase declaration.")
     if data["phase_stage"]["enabled"]:
         raise AbyssMatchRulesError("abyss_stage_phase_unsupported", "Enabled stage phases are unsupported.")
-    schedule = build_abyss_match_schedule(rules)
+    schedule = build_abyss_match_schedule(rules, first_seat=first_seat)
     if preban_report is not None and preban_report.count:
         if preban_report.count < 0 or preban_report.seat not in (SEAT_PLAYER_1, SEAT_PLAYER_2):
             raise AbyssMatchRulesError("abyss_preban_report_invalid", "Invalid preban report.")
@@ -342,6 +344,7 @@ def validate_abyss_match_pair(
     *,
     preban_report: AbyssPrebanReport | None = None,
     require_ban_targets: bool = True,
+    first_seat: str = SEAT_PLAYER_1,
 ) -> DeckValidationReport:
     """Ensure the pair can complete its four distinct preparatory choices."""
     try:
@@ -383,7 +386,8 @@ def validate_abyss_match_pair(
     if not issues:
         initial = create_draft_session(
             player_1_deck, player_2_deck,
-            schedule=build_abyss_match_definition(rules, preban_report=preban_report).build_schedule(),
+            schedule=build_abyss_match_definition(rules, preban_report=preban_report,
+                                                   first_seat=first_seat).build_schedule(),
             validate_decks=False, rules_content_hash=rules.content_hash,
             immune_eligible_character_ids=eligible, absolute_immune_character_ids=absolute_ids,
         )

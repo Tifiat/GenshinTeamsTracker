@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .deck import FREE_DRAFT_V0_RULESET_ID, FREE_DRAFT_V0_RULESET_NAME
@@ -111,6 +111,20 @@ class DraftSchedule:
             "ruleset_id": self.ruleset_id,
             "steps": [step.to_dict() for step in self.steps],
         }
+
+
+def with_first_seat(schedule: DraftSchedule, first_seat: str) -> DraftSchedule:
+    """Swap actor seats in a base flow when Player 2 starts the draft."""
+    if type(first_seat) is not str or first_seat not in PVP_SEATS:
+        raise ValueError("Invalid first_seat")
+    if first_seat == SEAT_PLAYER_1:
+        return schedule
+    swapped = {SEAT_PLAYER_1: SEAT_PLAYER_2, SEAT_PLAYER_2: SEAT_PLAYER_1}
+    if any(step.seat not in swapped for step in schedule.steps):
+        raise ValueError("Invalid draft schedule seat")
+    return replace(schedule, steps=tuple(
+        replace(step, seat=swapped[step.seat]) for step in schedule.steps
+    ))
 
 
 def default_free_draft_v0_config() -> FreeDraftV0Config:

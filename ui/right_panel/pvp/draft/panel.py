@@ -103,6 +103,15 @@ class PvpDraftRightPanel(QWidget):
         self.empty_label.setObjectName("small_muted")
         self.empty_label.setWordWrap(True)
         root.addWidget(self.empty_label)
+        self.series_label = QLabel()
+        self.series_label.setObjectName("pvp_deck_info_line")
+        self.series_label.setWordWrap(True)
+        self.series_label.setMinimumHeight(50)
+        root.addWidget(self.series_label)
+        self.next_game_button = QPushButton()
+        self.next_game_button.setObjectName("pvp_primary_button")
+        self.next_game_button.clicked.connect(self.workspace.start_next_series_game)
+        root.addWidget(self.next_game_button)
         self.clock_widget = DraftClockWidget(workspace)
         root.addWidget(self.clock_widget)
 
@@ -228,6 +237,22 @@ class PvpDraftRightPanel(QWidget):
         self.clock_widget.set_clock(self.workspace.draft_clock_snapshot())
         session = self.workspace.active_draft_session
         has_session = session is not None
+        series = self.workspace.series_view_state()
+        self.series_label.setVisible(series is not None)
+        self.next_game_button.setVisible(bool(series and not series["complete"]
+            and self.workspace.draft_stage == PVP_DRAFT_STAGE_COMPLETED_RESULT))
+        self.next_game_button.setText(tr("app_shell.pvp.series.next_game"))
+        if series:
+            text = tr("app_shell.pvp.series.progress").format(
+                current=series["current_game_index"], total=series["configured_games"],
+                first=tr("app_shell.pvp.draft." + series["current_first_seat"]))
+            if series["games"]:
+                text += "\n" + tr("app_shell.pvp.series.totals").format(**series["totals"])
+            if series["complete"]:
+                text += "\n" + (tr("app_shell.pvp.series.winner").format(
+                    seat=tr("app_shell.pvp.draft." + series["winner_seat"]))
+                    if series["winner_seat"] else tr("app_shell.pvp.export.draw"))
+            self.series_label.setText(text)
         self.title_label.setVisible(not has_session)
         self.empty_label.setVisible(not has_session)
         self.action_frame.setVisible(False)

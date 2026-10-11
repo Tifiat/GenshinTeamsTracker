@@ -19,8 +19,10 @@ Seven variants now persist with independent observations and standard-star
 membership. Missing variants copy character/talent/constellation data only.
 Later element imports replace copied active talents, preserve incomplete source
 groups, and reuse existing gear under the usual revision/capacity/replay checks.
-AppShell/PvP use a neutral portrait and the selected element layer. All seven
-fallback element icons are tracked; a missing import cache does not hide variants.
+AppShell/PvP use a neutral portrait and the selected element layer. AppShell's
+Character Browser groups them behind one card's chevron; PvP keeps seven cards.
+The [card asset contract](CHARACTER_CARD_ASSETS.md) owns that selector and the
+fixed application-supplied element/rarity artwork.
 
 Worker4's imported profile was expanded 78→84 characters, inside its supervisor,
 operation and registry leases and one SQLite transaction. Six copies were added;
@@ -90,12 +92,11 @@ outside Git. Native consumer/engine and Theory/search are outside scope.
 
 ## Icons and UI
 
-`asset_layers.py` still downloads shared layers for observed elements only.
-`assets/filters/element_{anemo,geo,electro,dendro,hydro,pyro,cryo}.png` are all
-tracked source assets and already feed the shared card-layer fallback. There
-is no discovered missing-icon distribution conflict requiring a new shared TODO.
-The normal release must continue including these existing assets; downloaded
-profile cache files are not claimed as release content.
+The [card asset contract](CHARACTER_CARD_ASSETS.md) supersedes the initial
+downloaded-layer fallback: exact imported element/rarity art is now tracked
+application source and shared art is never downloaded during import. It owns
+resource delivery, ordinary Cn rendering, the one-card Character Browser
+selector and pre-MVP acceptance. PvP retains its seven separate cards.
 
 `ui/character_assets.py` looks up the source's neutral portrait, then side icon,
 then the selected element glyph. It never reuses another element's baked crop.
@@ -145,8 +146,9 @@ Neither native consumer/engine nor Theory/search code was changed.
   receipt, raw JSON, images, equipment, presets, other characters and the draft
   profile remain unchanged; foreign-key check passed. Original rows are retained
   as above; migration required no reimport or authentication.
-- User smoke remains: open AppShell character browser; confirm seven variants,
-  standard include/exclude and element filters; inspect original Cryo gear and
+- User smoke remains: open AppShell character browser; confirm one Traveler card
+  and its six-option chevron, standard include/exclude and element filters;
+  inspect original Cryo gear and
   empty clone gear; select Pyro in Decks and inspect price/required status.
   Native visual acceptance, authenticated repeated import, cross-account match
   and GCSIM execution are unverified. Propose shared queue closure only for the

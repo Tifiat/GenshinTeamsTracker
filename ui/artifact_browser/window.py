@@ -53,7 +53,6 @@ from ui.character_assets import (
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
     filter_icon_path,
-    refresh_imported_element_filter_icons,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
@@ -1501,8 +1500,6 @@ class ArtifactBrowserWindow(QWidget):
         button.setObjectName("target_filter_button")
         button.setCheckable(True)
         button.setStyleSheet(TARGET_FILTER_BUTTON_STYLE)
-        if icon_name.startswith("element_"):
-            button.setProperty("elementIconName", icon_name)
         button.setIcon(QIcon(str(filter_icon_path(icon_name))))
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
         button.clicked.connect(
@@ -2550,7 +2547,6 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_panel()
 
     def refresh_account_data(self, character_asset_items: list[dict]) -> None:
-        refresh_imported_element_filter_icons(self)
         self._preloaded_character_asset_items = list(character_asset_items)
         self.reload_from_database()
 

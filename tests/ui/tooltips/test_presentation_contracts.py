@@ -21,7 +21,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QWidget
 
 from hoyolab_export.auth import AuthStatus
-from localization import tr, tr_for_language
+from localization import get_language, set_language, tr, tr_for_language
 from localization.i18n import LOCALES_DIR
 from ui.artifact_browser.filter_popup import SetsFilterPopup
 from ui.artifact_browser.models import ArtifactItem
@@ -107,6 +107,27 @@ def _artifact(item_id: int, position: int = 1) -> ArtifactItem:
 
 
 class TooltipPresentationContracts(unittest.TestCase):
+    def test_traveler_selector_hint_describes_element_choice_in_all_languages(self) -> None:
+        from ui.character_browser.traveler_selector import TravelerVariantGrid
+        from ui.utils.pixel_icon_grid import PixelIconGridItem
+
+        language = get_language()
+        self.addCleanup(set_language, language)
+        grid = TravelerVariantGrid(surface="test_selector")
+        self.addCleanup(grid.close)
+        items = (PixelIconGridItem("one", ""), PixelIconGridItem("two", ""))
+        grid.set_items(items[:1])
+        grid.set_variant_groups({"one": items})
+        button = grid._variant_buttons["one"]
+        expected = {"ru": "Выбрать элемент Путешественника", "en": "Choose the Traveler's element", "pt-br": "Escolher o elemento do Viajante"}
+        for language, text in expected.items():
+            with self.subTest(language=language):
+                set_language(language)
+                grid.retranslate_ui()
+                self.assertEqual(_controller(button).text(), text)
+                self.assertEqual(button.accessibleName(), text)
+                self.assertEqual(button.toolTip(), "")
+
     def test_shared_popup_renders_plain_and_rich_text_and_hides_on_owner_events(self) -> None:
         owner = QWidget()
         self.addCleanup(owner.close)

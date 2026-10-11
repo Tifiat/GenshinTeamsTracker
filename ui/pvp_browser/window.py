@@ -85,7 +85,6 @@ from ui.character_assets import (
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
     filter_icon_path,
-    refresh_imported_element_filter_icons,
     pvp_character_asset_item,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
@@ -734,7 +733,6 @@ class PvpDecksWorkspace(QWidget):
         reload_presets: bool = False,
         emit_signal: bool = True,
     ) -> None:
-        refresh_imported_element_filter_icons(self)
         self.character_assets = self._load_character_assets()
         self.weapon_assets = self._load_weapon_assets()
         if reload_presets:
@@ -1330,8 +1328,6 @@ class PvpDecksWorkspace(QWidget):
         button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
         button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
-        if icon_name.startswith("element_"):
-            button.setProperty("elementIconName", icon_name)
 
         icon_path = filter_icon_path(icon_name)
         if icon_path.exists():

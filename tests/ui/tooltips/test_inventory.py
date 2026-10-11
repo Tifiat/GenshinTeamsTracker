@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[3]
 # Family -> independent content test in this package. Shared widgets may host
 # several families; registration is an explicit code-review checkpoint.
 FAMILIES = {
+    "Traveler element selector": ("test_presentation_contracts", "test_traveler_selector_hint_describes_element_choice_in_all_languages"),
     "set bonuses: 2p, 4p, localized fallback": ("test_catalog_tooltips", "test_each_known_witness_survives_parser_storage_and_both_renderers_in_all_languages"),
     "first present imported set": ("test_catalog_tooltips", "test_first_available_imported_set"),
     "account character": ("test_content_contracts", "test_account_character_summary_identifies_level_constellation_and_element"),
@@ -56,6 +57,7 @@ REGISTERED_BINDINGS = {
         "ArtifactBrowserWindow.update_build_create_controls", "ArtifactBrowserWindow.update_build_slot_row",
     },
     "ui/character_browser/filter_bar.py": {"CharacterFilterBar._make_filter_button", "CharacterFilterBar._make_standard_filter_button"},
+    "ui/character_browser/traveler_selector.py": {"TravelerVariantGrid.set_variant_groups", "TravelerVariantGrid.retranslate_ui"},
     "ui/gcsim_browser/optimizer_result.py": {"CompactOptimizerArtifactCard.__init__", "OptimizerResultBuildsWidget._render_current_page"},
     "ui/gcsim_browser/virtual_slot_editor.py": {"VirtualGcsimCardEditor.__init__"},
     "ui/gcsim_browser/window.py": {"GcsimBrowserWorkspace.set_run_admission"},

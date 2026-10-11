@@ -45,7 +45,6 @@ from ui.character_assets import (
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
     filter_icon_path,
-    refresh_imported_element_filter_icons,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
@@ -450,7 +449,6 @@ class App(QWidget):
         if self._run_history_window is not None:
             self._run_history_window.reload()
         self.safe_update_grids()
-        refresh_imported_element_filter_icons(self)
         self.refresh_hoyolab_auth_status()
 
     def run_hoyolab_export(self, images_only: bool = False):
@@ -577,7 +575,6 @@ class App(QWidget):
                 self._hoyolab_loader.finish()
 
             self.safe_update_grids()
-            refresh_imported_element_filter_icons(self)
             self._close_hoyolab_loader()
             self.refresh_hoyolab_auth_status()
             return
@@ -666,8 +663,6 @@ class App(QWidget):
         button.setFixedSize(30, 30)
         button.setIconSize(QSize(24, 24))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
-        if icon_name.startswith("element_"):
-            button.setProperty("elementIconName", icon_name)
 
         icon_path = filter_icon_path(icon_name)
         if icon_path.exists():

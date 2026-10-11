@@ -13,7 +13,7 @@ investigation. Within one chat, reread only changed sections or diffs.
 | Normal GCSIM / engine updates | [engine integration](GCSIM_ENGINE_INTEGRATION_PLAN.md) current section | [optimizer rules](OPTIMIZER_WORK_RULES.md) only if optimizer is touched |
 | AppShell / History / live run | [workspace](APP_SHELL_WORKSPACE_PLAN.md), [History](HISTORY_BROWSER.md), or [snapshot contract](RUN_WORKSPACE_SNAPSHOT_CONTRACT.md) as appropriate | [UI rules](UI_WORK_RULES.md) |
 | Display / system scaling | [display contract](DISPLAY_SCALING.md) | [UI rules](UI_WORK_RULES.md); [data rules](DATA_WORK_RULES.md) for saved settings |
-| Account / catalogs / imports | [profiles/defaults](ACCOUNT_PROFILES.md), [storage](ACCOUNT_SQLITE_STORAGE.md), [Traveler](TRAVELER_VARIANTS.md), [import](HOYOLAB_IMPORT_RELIABILITY.md), or [data lifecycle](DATA_RUNTIME_BOUNDARIES.md) | [data rules](DATA_WORK_RULES.md) |
+| Account / catalogs / imports | [profiles/defaults](ACCOUNT_PROFILES.md), [storage](ACCOUNT_SQLITE_STORAGE.md), [Traveler](TRAVELER_VARIANTS.md), [card assets](CHARACTER_CARD_ASSETS.md), [import](HOYOLAB_IMPORT_RELIABILITY.md), or [data lifecycle](DATA_RUNTIME_BOUNDARIES.md) | [data rules](DATA_WORK_RULES.md) |
 | Artifacts / equipment | [artifact browser](ARTIFACT_BROWSER.md) or [equipment](ACCOUNT_EQUIPMENT_STATE_DESIGN.md) | [data rules](DATA_WORK_RULES.md); [UI rules](UI_WORK_RULES.md) for visual work |
 | Abyss data / mechanics | [enemy data](ABYSS_ENEMY_DATA.md) or [mechanics](ABYSS_MECHANICS_NOTES.md) | [data rules](DATA_WORK_RULES.md) when storing outputs |
 | PvP | [deck rules](PVP_DECK_RULES.md), [build services](PVP_BUILD_SERVICES.md), [profile](PVP_PROFILE_PACKAGE.md), or [backend status](PVP_BACKEND_STATUS.md) | relevant UI/data rules |

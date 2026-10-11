@@ -1,8 +1,8 @@
-"""Download unique HoYoLAB card layers and render local display variants.
+"""Download unique HoYoLAB icons and render neutral local card images.
 
-The inventory API owns portrait/weapon URLs. The live card DOM only supplies
-the small shared element and rarity layer URLs; no browser-rendered bitmap is
-used as an image source. Versioned output names avoid stale Qt pixmap caches.
+Shared element artwork and rarity backgrounds are shipped with the app. Only
+the inventory API's unique portrait and weapon icons enter download jobs.
+Versioned output names avoid stale Qt pixmap caches.
 """
 
 from __future__ import annotations
@@ -20,16 +20,20 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from urllib.parse import urlparse
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
+from .bundled_assets import (
+    BUNDLED_ASSET_PATHS, ELEMENT_ASSETS, background_asset_relative, bundled_asset_path,
+    element_asset_relative,
+)
 from .crop_manifest import IGNORED_CHARACTER_IDS, IGNORED_WEAPON_RARITIES, character_asset_key, icon_key
-from .paths import HOYOLAB_CHARACTER_ASSETS_DIR, HOYOLAB_WEAPON_ASSETS_DIR, HOYOLAB_SHARED_ASSETS_DIR, PROJECT_ROOT
+from .paths import HOYOLAB_CHARACTER_ASSETS_DIR, HOYOLAB_WEAPON_ASSETS_DIR, PROJECT_ROOT
 from .paths import ACCOUNT_ROOT
 
 
-SHARED_ASSETS_DIR = HOYOLAB_SHARED_ASSETS_DIR
 RENDER_VERSION = "v2"
-ELEMENTS = {"pyro", "hydro", "electro", "cryo", "anemo", "geo", "dendro"}
+CARD_RENDER_VERSION = "v3"
+ELEMENTS = frozenset(ELEMENT_ASSETS)
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_IMAGE_PIXELS = 4_000_000
 MAX_ASSET_WORKERS = 8
@@ -111,63 +115,20 @@ async def _run_asset_thread(function: Callable[..., object], *args, **kwargs):
             worker_task.cancel()
         raise
 
-# Public frontend assets observed in HoYoLAB's saved export layout on
-# 2026-09-26. The character/list API does not include these shared layers and
-# the share-card DOM is absent until the expensive full-image export starts.
-# Live card URLs, when available, supersede these defaults below.
-_STATIC_BASE = "https://act.hoyolab.com/app/community-game-records-sea/images/"
-STATIC_ELEMENTS = {
-    "pyro": _STATIC_BASE + "UI_Buff_Element_Fire.065c510d.png",
-    "hydro": _STATIC_BASE + "UI_Buff_Element_Water.5b620394.png",
-    "electro": _STATIC_BASE + "UI_Buff_Element_Elect.4c08c57a.png",
-    "cryo": _STATIC_BASE + "UI_Buff_Element_Frost.95c777ac.png",
-    "anemo": _STATIC_BASE + "UI_Buff_Element_Wind.bf653cfd.png",
-    "geo": _STATIC_BASE + "UI_Buff_Element_Roach.bb164efa.png",
-    "dendro": _STATIC_BASE + "UI_Buff_Element_Grass.dd061cc0.png",
-}
-STATIC_RARITY_BACKGROUNDS = {
-    1: _STATIC_BASE + "roleStarBg1.8c3ec3b6.png",
-    2: _STATIC_BASE + "roleStarBg2.5da2d605.png",
-    3: _STATIC_BASE + "roleStarBg3.251efcc0.png",
-    4: _STATIC_BASE + "roleStarBg4.0b20569c.png",
-    5: _STATIC_BASE + "roleStarBg5.30180c91.png",
-}
-
-
-async def capture_card_layer_sources(page) -> list[dict[str, str]]:
-    """Read only image URLs and rarity classes from the live share cards."""
-    cards = await page.evaluate(
-        """() => [...document.querySelectorAll('.role-share')].map(card => {
-          const cssUrl = el => {
-            if (!el) return '';
-            const value = getComputedStyle(el).backgroundImage;
-            const match = value && value.match(/url\\([\"']?(https:\\/\\/[^\"')]+)/);
-            return match ? match[1] : '';
-          };
-          const src = el => el ? (el.currentSrc || el.src || '') : '';
-          const avatar = card.querySelector('.role-avatar');
-          const weapon = card.querySelector('.role-weapon-info');
-          const weaponImg = weapon && weapon.querySelector('img');
-          return {
-            portrait: src(card.querySelector('img.role-img')),
-            element: src(card.querySelector('img.role-element')),
-            characterBackground: cssUrl(avatar),
-            weaponBackground: cssUrl(weaponImg),
-            weapon: src(weaponImg),
-            characterRarity: (String(card.className).match(/role-rarity-(\\d+)/) || [])[1] || '',
-            weaponRarity: (String(weapon?.className || '').match(/weapon-rarity-(\\d+)/) || [])[1] || ''
-          };
-        })"""
-    )
-    return [dict(card) for card in cards if isinstance(card, dict)]
-
-
 def _fingerprint(*parts: object) -> str:
     return hashlib.sha256("|".join(map(str, parts)).encode("utf-8")).hexdigest()[:16]
 
 
 def _relative(path: Path) -> str:
     return path.relative_to(ACCOUNT_ROOT).as_posix()
+
+
+def _manifest_asset_path(path: Path) -> str:
+    """Use package-relative names for bundled art, account-relative otherwise."""
+    relative = path.relative_to(PROJECT_ROOT).as_posix() if path.is_relative_to(PROJECT_ROOT) else ""
+    if relative in BUNDLED_ASSET_PATHS:
+        return relative
+    return _relative(path)
 
 
 def _save_png_atomic(image: Image.Image, destination: Path) -> None:
@@ -286,31 +247,19 @@ def _download_image(
 
 
 def _layer_file(staging_root: Path, final: Path) -> Path:
+    if not final.is_relative_to(ACCOUNT_ROOT):
+        return final
     staged = staging_root / final.relative_to(ACCOUNT_ROOT)
     return staged if staged.is_file() else final
 
 
 def _render_character(
     staging_root: Path, destination: Path, *, portrait: Path, background: Path,
-    element: Path | None = None, constellation: int | None = None,
 ) -> None:
     with Image.open(_layer_file(staging_root, background)) as source:
         canvas = source.convert("RGBA").resize((296, 296), Image.Resampling.LANCZOS)
     with Image.open(_layer_file(staging_root, portrait)) as source:
         canvas.alpha_composite(source.convert("RGBA").resize((296, 296), Image.Resampling.LANCZOS))
-    if element is not None:
-        with Image.open(_layer_file(staging_root, element)) as source:
-            canvas.alpha_composite(source.convert("RGBA").resize((72, 72), Image.Resampling.LANCZOS), (8, 8))
-    if constellation is not None:
-        badge = Image.new("RGBA", (58, 50), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(badge)
-        draw.rounded_rectangle((0, 0, 57, 49), radius=10, fill=(35, 32, 48, 190))
-        try:
-            font = ImageFont.truetype("arial.ttf", 32)
-        except OSError:
-            font = ImageFont.load_default()
-        draw.text((17, 7), str(constellation), font=font, fill="white")
-        canvas.alpha_composite(badge, (238, 0))
     _save_png_atomic(canvas, destination)
 
 
@@ -371,27 +320,6 @@ async def prepare_layered_assets(
     def card_for(item: Mapping[str, object]) -> dict | None:
         return cards_by_icon.get(_safe_icon_key(item.get("icon")))
 
-    # Learn card-provided layers when present; static public sources remain a
-    # fallback, and a failure for one layer never blocks unrelated assets.
-    element_urls: dict[str, str] = dict(STATIC_ELEMENTS)
-    character_background_urls: dict[int, str] = dict(STATIC_RARITY_BACKGROUNDS)
-    weapon_background_urls: dict[int, str] = dict(STATIC_RARITY_BACKGROUNDS)
-    for character in clean_characters:
-        card = card_for(character)
-        if card is None:
-            continue
-        element = str(character.get("element") or "").strip().lower()
-        rarity = _optional_int(character.get("rarity"))
-        card_rarity = _optional_int(card.get("characterRarity"))
-        rarity = rarity if rarity is not None else card_rarity
-        if element in ELEMENTS and card.get("element"):
-            element_urls[element] = str(card["element"])
-        if rarity is not None and card.get("characterBackground"):
-            character_background_urls[rarity] = str(card["characterBackground"])
-        weapon_rarity = _optional_int(card.get("weaponRarity"))
-        if weapon_rarity is not None and card.get("weaponBackground"):
-            weapon_background_urls[weapon_rarity] = str(card["weaponBackground"])
-
     wanted_chars: list[tuple[dict, int]] = []
     for character in clean_characters:
         character_id = _optional_int(character.get("id"))
@@ -436,6 +364,19 @@ async def prepare_layered_assets(
         })
         return final
 
+    bundled_sources: dict[Path, Path] = {}
+
+    def bundled_source(relative: str | None, *, kind: str, key: object) -> Path | None:
+        if relative is None:
+            add_error(kind, key, "missing_metadata")
+            return None
+        path = bundled_asset_path(relative, project_root=PROJECT_ROOT)
+        if path is None or not _image_is_usable(path):
+            add_error(kind, key, "bundled_unavailable")
+            return None
+        bundled_sources[path] = path
+        return path
+
     needed_elements = {
         str(character.get("element") or "").strip().lower()
         for character, _ in wanted_chars
@@ -443,9 +384,8 @@ async def prepare_layered_assets(
     }
     element_paths: dict[str, Path | None] = {}
     for element in sorted(needed_elements):
-        element_paths[element] = source_path(
-            SHARED_ASSETS_DIR, "element", element, element_urls.get(element),
-            kind="shared_element",
+        element_paths[element] = bundled_source(
+            element_asset_relative(element), kind="shared_element", key=element,
         )
 
     character_background_paths: dict[int, Path | None] = {}
@@ -466,18 +406,14 @@ async def prepare_layered_assets(
             kind="character_portrait",
             require_transparency=True,
         )
-        element_path = element_paths.get(element)
         if element not in ELEMENTS:
             add_error("character_element", key, "missing_metadata")
         background = None
         if rarity is not None:
             if rarity not in character_background_paths:
-                character_background_paths[rarity] = source_path(
-                    SHARED_ASSETS_DIR,
-                    "rarity_bg",
-                    rarity,
-                    character_background_urls.get(rarity),
-                    kind="shared_character_background",
+                character_background_paths[rarity] = bundled_source(
+                    background_asset_relative(rarity),
+                    kind="shared_character_background", key=rarity,
                 )
             background = character_background_paths[rarity]
         else:
@@ -488,7 +424,6 @@ async def prepare_layered_assets(
             "element": element,
             "rarity": rarity,
             "portrait": portrait,
-            "element_path": element_path,
             "background": background,
         })
 
@@ -512,12 +447,9 @@ async def prepare_layered_assets(
         background = None
         if rarity is not None:
             if rarity not in weapon_background_paths:
-                weapon_background_paths[rarity] = source_path(
-                    SHARED_ASSETS_DIR,
-                    "rarity_bg",
-                    rarity,
-                    weapon_background_urls.get(rarity),
-                    kind="shared_weapon_background",
+                weapon_background_paths[rarity] = bundled_source(
+                    background_asset_relative(rarity),
+                    kind="shared_weapon_background", key=rarity,
                 )
             background = weapon_background_paths[rarity]
         else:
@@ -530,7 +462,7 @@ async def prepare_layered_assets(
             "background": background,
         })
 
-    source_results: dict[Path, Path | None] = {}
+    source_results: dict[Path, Path | None] = dict(bundled_sources)
     downloaded_count = 0
     downloaded_response_bytes = 0
     download_request_read_seconds = 0.0
@@ -679,63 +611,35 @@ async def prepare_layered_assets(
 
     character_jobs: list[dict[str, object]] = []
     for prepared in prepared_characters:
-        character = prepared["character"]
         character_id = int(prepared["id"])
         key = str(character_id)
         portrait = prepared["portrait"]
         background = prepared["background"]
-        element_path = prepared["element_path"]
-        paths: dict[str, Path | None] = {"history": None, "pvp": None, "browser": None}
+        neutral: Path | None = None
         if isinstance(portrait, Path) and isinstance(background, Path):
-            base_key = _fingerprint(portrait.name, background.name)
-            paths["history"] = HOYOLAB_CHARACTER_ASSETS_DIR / (
-                f"char_history_{RENDER_VERSION}_{key}_{base_key}.png"
+            neutral = HOYOLAB_CHARACTER_ASSETS_DIR / (
+                f"char_neutral_{CARD_RENDER_VERSION}_{key}_{_fingerprint(portrait.name, background.name)}.png"
             )
-            if isinstance(element_path, Path):
-                element_key = _fingerprint(base_key, element_path.name)
-                paths["pvp"] = HOYOLAB_CHARACTER_ASSETS_DIR / (
-                    f"char_pvp_{RENDER_VERSION}_{key}_{element_key}.png"
-                )
-                constellation = character.get("constellation")
-                paths["browser"] = HOYOLAB_CHARACTER_ASSETS_DIR / (
-                    f"char_{RENDER_VERSION}_{key}_{_fingerprint(element_key, constellation)}.png"
-                )
-        character_jobs.append({**prepared, "paths": paths})
+        character_jobs.append({**prepared, "neutral": neutral})
 
     render_tasks = []
     for prepared in character_jobs:
-        character = prepared["character"]
         key = str(prepared["id"])
         portrait = prepared["portrait"]
         background = prepared["background"]
-        element_path = prepared["element_path"]
-        paths = prepared["paths"]
-        if isinstance(paths["history"], Path):
+        neutral = prepared["neutral"]
+        if isinstance(neutral, Path):
             render_tasks.append(render_output(
-                paths["history"], kind="character_history", key=key,
+                neutral, kind="character_neutral", key=key,
                 render_func=_render_character,
                 kwargs={
                     "staging_root": staging_root, "portrait": portrait,
-                    "background": background, "element": None, "constellation": None,
+                    "background": background,
                 },
                 dependencies=(portrait, background),
             ))
         else:
-            add_error("character_history", key, "dependency_unavailable")
-        for variant in ("pvp", "browser"):
-            if not isinstance(paths[variant], Path):
-                add_error(f"character_{variant}", key, "dependency_unavailable")
-                continue
-            render_tasks.append(render_output(
-                paths[variant], kind=f"character_{variant}", key=key,
-                render_func=_render_character,
-                kwargs={
-                    "staging_root": staging_root, "portrait": portrait,
-                    "background": background, "element": element_path,
-                    "constellation": character.get("constellation") if variant == "browser" else None,
-                },
-                dependencies=(portrait, background, element_path),
-            ))
+            add_error("character_neutral", key, "dependency_unavailable")
 
     weapon_jobs: list[dict[str, object]] = []
     for prepared in prepared_weapons:
@@ -771,7 +675,7 @@ async def prepare_layered_assets(
         # writer. Reopening here would repeat a full decode for every slot.
         if actual is None:
             return ""
-        return _relative(final)
+        return _manifest_asset_path(final)
 
     pending_assets: set[tuple[str, str]] = set()
 
@@ -779,26 +683,25 @@ async def prepare_layered_assets(
         if value:
             return
         pending_assets.add(
-            ("path", _relative(final)) if final is not None else ("slot", identity)
+            ("path", _manifest_asset_path(final)) if final is not None else ("slot", identity)
         )
 
     character_assets = []
     for prepared in character_jobs:
         character = prepared["character"]
-        paths = prepared["paths"]
+        neutral = prepared["neutral"]
+        neutral_manifest = manifest_path(neutral, output_results)
         asset = {
             "assetKey": character_asset_key(character),
             "character": character,
-            "crop": manifest_path(paths["browser"], output_results),
-            "pvp": manifest_path(paths["pvp"], output_results),
-            "history": manifest_path(paths["history"], output_results),
+            "crop": neutral_manifest,
+            "pvp": neutral_manifest,
+            "history": neutral_manifest,
             "portrait": manifest_path(prepared["portrait"], source_results),
         }
         character_assets.append(asset)
         key = str(prepared["id"])
-        note_pending(asset["crop"], paths["browser"], f"character:{key}:crop")
-        note_pending(asset["pvp"], paths["pvp"], f"character:{key}:pvp")
-        note_pending(asset["history"], paths["history"], f"character:{key}:history")
+        note_pending(asset["crop"], neutral, f"character:{key}:neutral")
         note_pending(asset["portrait"], prepared["portrait"], f"character:{key}:portrait")
 
     weapon_assets = []
@@ -891,27 +794,25 @@ async def prepare_layered_assets(
 
 
 def cleanup_unused_v2_assets(manifest: Mapping[str, object]) -> list[str]:
-    """Retire unused raw layers while preserving older display images.
+    """Retire unused account-owned raw icons while preserving display images.
 
     PvP profile slices can still refer to a previously rendered card bitmap.
     They do not carry their own image files, so those composites must survive
-    later imports of the local account.
+    later imports of the local account. Legacy shared art remains untouched:
+    the new shipped resources have no account cleanup owner.
     """
     referenced = set()
     for asset in (*manifest.get("characterAssets", []), *manifest.get("weaponAssets", [])):
         if isinstance(asset, Mapping):
             referenced.update(str(value) for key, value in asset.items() if key in {"crop", "pvp", "history", "portrait", "icon"})
-    shared = manifest.get("sharedAssets", {})
-    if isinstance(shared, Mapping):
-        for group in shared.values():
-            if isinstance(group, Mapping):
-                referenced.update(str(value) for value in group.values())
     failures: list[str] = []
-    for folder in (HOYOLAB_CHARACTER_ASSETS_DIR, HOYOLAB_WEAPON_ASSETS_DIR, SHARED_ASSETS_DIR):
+    for folder in (HOYOLAB_CHARACTER_ASSETS_DIR, HOYOLAB_WEAPON_ASSETS_DIR):
         if not folder.is_dir():
             continue
         for path in folder.glob("*.png"):
-            if path.name.startswith(("char_v2_", "char_pvp_v2_", "char_history_v2_", "weapon_v2_")):
+            if path.name.startswith((
+                "char_v2_", "char_pvp_v2_", "char_history_v2_", "char_neutral_v3_", "weapon_v2_",
+            )):
                 continue
             if f"_{RENDER_VERSION}_" in path.name and _relative(path) not in referenced:
                 try:

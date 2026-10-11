@@ -91,8 +91,6 @@ class CharacterFilterBar(QWidget):
         active_set: set[Any],
     ) -> QPushButton:
         button = _base_filter_button()
-        if icon_name.startswith("element_"):
-            button.setProperty("elementIconName", icon_name)
         icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
             button.setIcon(QIcon(str(icon_path)))

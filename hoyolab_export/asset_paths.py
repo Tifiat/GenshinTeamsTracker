@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from .bundled_assets import background_asset_relative, bundled_asset_path, element_asset_relative
 from .paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 from run_workspace.profile_context import ACCOUNT_ROOT, account_asset_path
 
@@ -36,6 +37,13 @@ def existing_manifest_asset(value: object) -> Path | None:
         return None
     path = Path(str(value))
     if not path.is_absolute():
+        bundled = bundled_asset_path(path, project_root=PROJECT_ROOT)
+        if bundled is not None:
+            return bundled
+        # A missing or unlisted package resource cannot resolve through an
+        # account directory, including the legacy project-root account.
+        if path.parts[:2] in {("assets", "filters"), ("assets", "card_backgrounds")}:
+            return None
         path = account_asset_path(path)
     try:
         path.resolve().relative_to(ACCOUNT_ROOT.resolve())
@@ -70,12 +78,8 @@ def weapon_transparent_icon_path(weapon_id: object, display_path: str | Path) ->
 
 
 def element_icon_path(element: str) -> Path | None:
-    shared = current_manifest().get("sharedAssets") or {}
-    elements = shared.get("elements") or {}
-    return existing_manifest_asset(elements.get(str(element or "").lower()))
+    return bundled_asset_path(element_asset_relative(element), project_root=PROJECT_ROOT)
 
 
 def character_background_path(rarity: int) -> Path | None:
-    shared = current_manifest().get("sharedAssets") or {}
-    backgrounds = shared.get("characterBackgrounds") or {}
-    return existing_manifest_asset(backgrounds.get(str(rarity)))
+    return bundled_asset_path(background_asset_relative(rarity), project_root=PROJECT_ROOT)

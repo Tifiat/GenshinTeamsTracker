@@ -36,7 +36,9 @@ and a durable receipt in one transaction, before optional JSON/image work:
 ```
 
 Missing side icons are cached concurrently after publication from already-known
-HoYoLAB URLs. A core SQLite failure rolls back the entire account unit, retaining
+HoYoLAB URLs; the normal import groups identical URLs into one cache job shared
+by the matching rows. Shared card layers belong to the application bundle under
+the [card asset contract](CHARACTER_CARD_ASSETS.md). A core SQLite failure rolls back the entire account unit, retaining
 staged source for retry; optional file/catalog failures keep the receipt committed.
 The owner is [import reliability](HOYOLAB_IMPORT_RELIABILITY.md).
 

@@ -1,4 +1,5 @@
 {
+  "asset_panel.traveler_elements": "Choose the Traveler's element",
   "app_shell.pvp.rules.groups_not_needed": "Not needed",
   "app_shell.pvp.rules.outside_tiers": "Outside tier ranges",
   "app_shell.pvp.rules.outside_tiers_detail": "Their cost falls outside the selected rules' tier ranges. They do not take part in tier combinations.",

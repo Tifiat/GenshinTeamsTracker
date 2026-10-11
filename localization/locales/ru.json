@@ -1,4 +1,5 @@
 {
+  "asset_panel.traveler_elements": "Выбрать элемент Путешественника",
   "app_shell.pvp.rules.groups_not_needed": "Не нужны",
   "app_shell.pvp.rules.outside_tiers": "Вне диапазонов тиров",
   "app_shell.pvp.rules.outside_tiers_detail": "Их стоимость не попадает в диапазоны выбранных правил. В сочетаниях тиров они не участвуют.",

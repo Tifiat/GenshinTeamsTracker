@@ -12,6 +12,10 @@ Independent assets, catalog/reference, side-icon, Abyss and JSON-projection
 jobs run after core commit with bounded concurrency. Receipts and job states
 allow recovery without repeating observations or overwriting user gear.
 A failed optional job cannot turn a committed account into a failed import.
+The [card asset contract](CHARACTER_CARD_ASSETS.md) now fixes shared element and
+rarity images in the application bundle; card jobs download only unique
+character/weapon icons and deduplicate source side-icon URLs. Historical shared
+download measurements below describe the earlier implementation.
 New references are an ordinary readiness state. Active unresolved set bonuses
 make affected calculations incomplete instead of silently contributing zero.
 
@@ -138,8 +142,9 @@ worker pools. Incomplete catalog entries remain queued for targeted retry.
 An EN detail batch is requested only when source mappings need it. Images use
 bounded asynchronous downloads/renders, transient retries, validated cache
 reuse and per-file atomic replacement. Numeric/string 1/2-star weapons are
-filtered before download jobs. Missing shared layers do not hide usable raw
-portraits/icons. Abyss period still comes from authoritative remote sources,
+filtered before download jobs. Shared elements/backgrounds resolve from the
+application bundle without HTTP fallback; missing bundle layers do not hide
+usable raw portraits/icons. Abyss period still comes from authoritative remote sources,
 with the existing fallback chain and same-period cache reuse.
 
 The loader reads structured, attempt-bound progress for each concurrent job:

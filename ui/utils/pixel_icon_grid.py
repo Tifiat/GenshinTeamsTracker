@@ -58,6 +58,7 @@ class PixelIconGridOutline:
     badge_text_color: str = UI_TEXT_ON_ACCENT
     font_size: int = 10
     right_color: str = ""
+    badge_position: str = "bottom_left"
 
 
 @dataclass(frozen=True)
@@ -696,6 +697,8 @@ class PixelIconGrid(QWidget):
             max(1, int(round(outline.badge_width * self._layout.dpr))),
             max(1, int(round(outline.badge_height * self._layout.dpr))),
         )
+        if outline.badge_position.endswith("right"):
+            badge.moveLeft(frame.right() - badge.width() - int(round(outline.badge_margin * self._layout.dpr)) + 1)
         fill = QColor(outline.color)
         fill.setAlpha(max(0, min(255, int(outline.badge_fill_alpha))))
         painter.setPen(Qt.PenStyle.NoPen)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import tempfile
 import unittest
 import os
@@ -7,7 +8,7 @@ from pathlib import Path
 from unittest.mock import call, patch
 
 from PIL import Image
-from PySide6.QtWidgets import QApplication, QPushButton, QWidget
+from PySide6.QtWidgets import QApplication
 
 from hoyolab_export.account_storage import (
     AccountCharacterRuntimeRecord,
@@ -26,7 +27,6 @@ from ui.character_assets import (
     character_sort_key,
     filter_icon_path,
     pvp_character_asset_item,
-    refresh_imported_element_filter_icons,
 )
 
 
@@ -36,6 +36,41 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         set_language(self._language)
+
+    def test_ordinary_constellation_is_a_runtime_badge_on_the_same_raw_portrait(self) -> None:
+        app = QApplication.instance() or QApplication([])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            baked, raw = root / "char_v2_old.png", root / "raw.png"
+            for path in (baked, raw):
+                Image.new("RGBA", (8, 8), "blue").save(path)
+            record = AccountCharacterRuntimeRecord(character_id="1001", name="Hero", element="Geo", rarity=4,
+                                                   constellation=0, portrait_path=str(baked))
+            with patch("ui.character_assets.character_variant_path", side_effect=lambda _id, variant: {
+                "crop": baked, "portrait": raw,
+            }.get(variant)):
+                first = account_character_asset_item(record)
+                second = account_character_asset_item(replace(record, constellation=6))
+            self.assertEqual(first["path"], raw)
+            self.assertEqual(second["path"], raw)
+            for asset, expected in ((first, "C0"), (second, "C6")):
+                grid_item = build_asset_grid_items([asset], key_for_asset=lambda _asset: "1001").items[0]
+                self.assertEqual([badge.text for badge in grid_item.badges], [expected])
+                self.assertEqual(grid_item.badges[0].position, "top_right")
+                self.assertEqual(len(grid_item.overlay_icons), 1)
+                self.assertIsNotNone(grid_item.background)
+
+    def test_missing_neutral_portrait_never_reuses_a_known_baked_constellation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            baked = Path(temporary) / "char_v2_old.png"
+            Image.new("RGBA", (8, 8), "blue").save(baked)
+            record = AccountCharacterRuntimeRecord(character_id="1001", name="Hero", element="Geo", rarity=4,
+                                                   constellation=4, portrait_path=str(baked))
+            with patch("ui.character_assets.character_variant_path", side_effect=lambda _id, variant: baked if variant == "crop" else None):
+                asset = account_character_asset_item(record)
+            self.assertNotEqual(asset["path"], baked)
+            self.assertEqual(asset["path"], filter_icon_path("element_geo.png"))
+            self.assertTrue(asset["metadata"]["portrait_missing"])
 
     def test_character_asset_item_uses_sqlite_runtime_record_shape(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -179,7 +214,8 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
                 "crop": paths["browser"], "portrait": paths["portrait"], "history": paths["history"],
             }.get(variant)):
                 item = account_character_asset_item(character)
-            self.assertEqual(item["path"], paths["browser"])
+            self.assertEqual(item["path"], paths["portrait"])
+            self.assertTrue(item["metadata"]["portrait_is_neutral"])
             self.assertEqual(item["metadata"]["character"]["portrait_history_path"], str(paths["portrait"]))
             manifest = {"weaponAssets": [{
                 "weapon": {"id": 21},
@@ -199,19 +235,11 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
                 self.assertEqual(guest.to_team_builder_weapon_ref()["icon_transparent_path"], "")
 
 
-    def test_existing_filter_button_updates_to_imported_element(self) -> None:
-        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        app = QApplication.instance() or QApplication([])
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "geo.png"
-            Image.new("RGBA", (16, 16), "gold").save(path)
-            root = QWidget()
-            button = QPushButton(root)
-            button.setProperty("elementIconName", "element_geo.png")
-            with patch("ui.character_assets.filter_icon_path", return_value=path):
-                refresh_imported_element_filter_icons(root)
-            self.assertFalse(button.icon().isNull())
-            root.close()
+    def test_element_filter_always_uses_shipped_asset_even_with_an_old_manifest(self) -> None:
+        with patch.object(asset_paths, "current_manifest", return_value={
+            "sharedAssets": {"elements": {"geo": "assets/hoyolab/shared/old_geo.png"}},
+        }):
+            self.assertEqual(filter_icon_path("element_geo.png"), asset_paths.PROJECT_ROOT / "assets/filters/element_geo.png")
 
     def test_weapon_asset_tooltip_uses_current_ui_language_for_stat_label(self) -> None:
         set_language("en")

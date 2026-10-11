@@ -7,7 +7,6 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPainter, QPixmap
-from PySide6.QtWidgets import QPushButton, QWidget
 
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
 from hoyolab_export.account_storage import (
@@ -91,23 +90,12 @@ WEAPON_RARITY_FILTERS = [
 
 
 def filter_icon_path(icon_name: str) -> Path:
-    """Use imported HoYoLAB element layers after an import; keep preimport icons."""
+    """Filters use shipped assets, independent of account image caches."""
     if icon_name.startswith("element_") and icon_name.endswith(".png"):
-        imported = element_icon_path(icon_name[len("element_"):-4])
-        if imported is not None:
-            return imported
+        bundled = element_icon_path(icon_name[len("element_"):-4])
+        if bundled is not None:
+            return bundled
     return FILTER_ASSETS_DIR / icon_name
-
-
-def refresh_imported_element_filter_icons(root: QWidget) -> None:
-    """Refresh already-visible filter buttons after import or profile switch."""
-    for button in root.findChildren(QPushButton):
-        icon_name = button.property("elementIconName")
-        if not isinstance(icon_name, str) or not icon_name:
-            continue
-        path = filter_icon_path(icon_name)
-        if path.is_file():
-            button.setIcon(QIcon(str(path)))
 
 CHARACTER_TRAIT_FILTERS = [
     (TRAIT_MOONSIGN, "../team_bonus/Moonsign.png", "filter.trait.moonsign"),
@@ -302,42 +290,38 @@ def account_character_asset_item(
         if is_traveler
         else ""
     )
-    traveler_portrait = (
-        _existing_project_path(
-            character_variant_path(source_character_id, "portrait")
-        )
-        if is_traveler
-        else None
+    image_lookup_id = source_character_id if is_traveler else record.character_id
+    manifest_browser = character_variant_path(image_lookup_id, "crop")
+    stored_portrait = _existing_project_path(record.portrait_path)
+    neutral_portrait = _existing_project_path(character_variant_path(image_lookup_id, "portrait"))
+    matching_variants = (
+        manifest_browser is not None
+        and stored_portrait is not None
+        and manifest_browser.resolve() == stored_portrait.resolve()
     )
-    if is_traveler:
-        # Traveler rows share the observed source portrait. Their account
-        # portrait_path may be the baked crop for the anchor element, so never
-        # use it for another element variant.
-        path = traveler_portrait or _existing_project_path(record.side_icon_path)
-        portrait_missing = traveler_portrait is None
-        if path is None:
-            icon_name = (
-                f"element_{element.lower()}.png"
-                if element
-                else CHARACTER_STANDARD_FILTER[1]
-            )
-            fallback = filter_icon_path(icon_name)
-            path = fallback if fallback.is_file() else None
-    else:
-        path = _existing_project_path(record.portrait_path) or _existing_project_path(
-            record.side_icon_path
-        )
-        portrait_missing = False
+    # Current browsers draw rarity, element and Cn from data. An old v2 card
+    # already contains these pixels and cannot serve as a neutral fallback.
+    legacy_card = stored_portrait is not None and stored_portrait.name.startswith(
+        ("char_v2_", "char_pvp_v2_", "char_history_v2_")
+    )
+    path = neutral_portrait or _existing_project_path(record.side_icon_path)
+    if path is None and not (is_traveler or matching_variants or legacy_card):
+        path = stored_portrait
+    if path is None:
+        fallback_element = element if is_traveler else str(record.element or "")
+        icon_name = f"element_{fallback_element.lower()}.png" if fallback_element else CHARACTER_STANDARD_FILTER[1]
+        fallback = filter_icon_path(icon_name)
+        path = fallback if fallback.is_file() else None
     if path is None:
         return None
 
     character_ref = record.to_team_builder_character_ref()
+    character_ref["portrait_path"] = str(path)
     if is_traveler:
         canonical_name = traveler_catalog_name(record.character_id, element)
         character_ref["source_character_id"] = str(source_character_id)
         character_ref["canonical_name"] = canonical_name
         character_ref["element"] = element
-        character_ref["portrait_path"] = str(path)
     metadata = {
         "source": "account_sqlite",
         "character": character_ref,
@@ -348,27 +332,15 @@ def account_character_asset_item(
         "talents": [talent.to_dict() for talent in record.talents],
         "source_metadata": dict(record.source_metadata or {}),
         "warnings": list(record.warnings),
+        "portrait_is_neutral": True,
+        "portrait_missing": neutral_portrait is None,
     }
     if is_traveler:
         metadata["source_character_id"] = str(source_character_id)
         metadata["canonical_name"] = canonical_name
-        metadata["portrait_is_neutral"] = True
-        metadata["portrait_missing"] = portrait_missing
     # PvP reuses transparent source portraits by game id. History freezes the
     # raw portrait only for the account matching the browser crop.
-    image_lookup_id = source_character_id if is_traveler else record.character_id
-    manifest_browser = character_variant_path(image_lookup_id, "crop")
-    comparison_path = (
-        _existing_project_path(record.portrait_path) if is_traveler else path
-    )
-    matching_variants = (
-        manifest_browser is not None
-        and comparison_path is not None
-        and manifest_browser.resolve() == comparison_path.resolve()
-    )
-    pvp_path = traveler_portrait or _existing_project_path(
-        character_variant_path(image_lookup_id, "portrait")
-    )
+    pvp_path = neutral_portrait
     if is_traveler and pvp_path is None:
         # Keep a visible source-side or element-glyph fallback in PVP too.
         pvp_path = path
@@ -377,10 +349,10 @@ def account_character_asset_item(
         if is_traveler:
             # An element-baked history composite would be wrong for the other
             # six variants; only freeze the shared neutral source portrait.
-            history_path = traveler_portrait
+            history_path = neutral_portrait
         else:
             history_path = (
-                character_variant_path(record.character_id, "portrait")
+                neutral_portrait
                 or character_variant_path(record.character_id, "history")
             )
     if pvp_path is not None:

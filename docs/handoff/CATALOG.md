@@ -1,5 +1,7 @@
 # Full handoff catalog
 
+- [Character card assets and browser presentation](CHARACTER_CARD_ASSETS.md)
+
 This file lists the available handoff documents for discovery and structural
 coverage. It is not startup reading. Use `README.md` to choose one area and
 read only that area's current status and relevant contract section. Read

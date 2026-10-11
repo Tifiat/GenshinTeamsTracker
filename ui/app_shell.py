@@ -201,9 +201,11 @@ from ui.utils.owner_icon_badge import (
     owner_badge_size_for_icon,
 )
 from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.selection_outline import inventory_selection_outline
 from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
+    UI_INVENTORY_SELECTION_ACCENT,
     UI_BG_BUTTON,
     UI_BG_BUTTON_HOVER,
     UI_BG_PANEL,
@@ -268,7 +270,7 @@ WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
 WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
-WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_ACCENT_TEAM_1
+WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_INVENTORY_SELECTION_ACCENT
 GRID_SELECTION_OUTLINE_ALPHA = UI_SELECTION_OUTLINE_ALPHA
 GRID_SELECTION_BADGE_FILL_ALPHA = UI_SELECTION_BADGE_FILL_ALPHA
 GRID_SELECTION_OUTLINE_WIDTH = 4
@@ -4471,14 +4473,7 @@ def _roster_selection_outline(
 
 
 def _weapon_occupied_outline(asset: dict[str, Any]) -> PixelIconGridOutline | None:
-    if not _asset_owner_badges(asset):
-        return None
-    return PixelIconGridOutline(
-        color=WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
-        width=4,
-        radius=4,
-        alpha=GRID_SELECTION_OUTLINE_ALPHA,
-    )
+    return inventory_selection_outline(selected=bool(_asset_owner_badges(asset)))
 
 
 def _weapon_owner_overlay_icons(

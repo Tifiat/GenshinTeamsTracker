@@ -13,7 +13,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication
 
 from ui.app_shell import CharacterWeaponWorkspace
-from ui.utils.ui_palette import UI_ACCENT_TEAM_1
+from ui.utils.ui_palette import UI_INVENTORY_SELECTION_ACCENT
 
 
 _APP = QApplication.instance() or QApplication([])
@@ -99,9 +99,10 @@ class WeaponGridStyleTest(unittest.TestCase):
         item = grid.item(grid.item_ids()[0])
         self.assertIsNotNone(item)
         self.assertIsNotNone(item.outline)
-        self.assertEqual(item.outline.color, UI_ACCENT_TEAM_1)
-        self.assertEqual((item.outline.width, item.outline.radius, item.outline.overhang), (4, 4, 0))
-        self.assertEqual((item.outline.alpha, item.outline.fill_alpha), (230, 0))
+        self.assertEqual(item.outline.color, UI_INVENTORY_SELECTION_ACCENT)
+        self.assertEqual(item.outline.color, "#d6b15d")
+        self.assertEqual((item.outline.width, item.outline.radius, item.outline.overhang), (2, 4, 0))
+        self.assertEqual((item.outline.alpha, item.outline.fill_alpha), (255, 0))
         self.assertEqual(len(item.overlay_icons), 1)
         self.assertEqual(item.tooltip, "Weapon 0 details")
         self.assertEqual(item.badges, ())
@@ -155,6 +156,32 @@ class WeaponGridStyleTest(unittest.TestCase):
         self.assertFalse(grid.item_property(key, "has_owner_badges"))
         self.assertTrue(grid.click_item_for_test(key))
         self.assertNotIn("owner_badges", clicks[-1]["metadata"])
+
+    def test_pvp_and_normal_weapons_share_outline_with_context_specific_owner_layers(self) -> None:
+        from tests.ui.pvp_browser._period_fixture import fixture_period_provider_kwargs
+        from ui.pvp_browser.window import PvpDecksWorkspace
+
+        asset = self.workspace._all_weapon_items[0]
+        normal_item = self.workspace.weapon_grid.item(self.workspace.weapon_grid.item_ids()[0])
+        pvp = PvpDecksWorkspace(
+            deck_dir=self.icon.parent / "decks",
+            character_assets_provider=lambda: [],
+            weapon_assets_provider=lambda: [asset],
+            **fixture_period_provider_kwargs(),
+        )
+        self.addCleanup(pvp.close)
+        self.assertTrue(pvp.create_deck("Style"))
+        key = pvp.weapon_grid.item_ids()[0]
+        pvp_item = pvp.weapon_grid.item(key)
+        self.assertEqual(pvp_item.outline, normal_item.outline)
+        self.assertEqual(pvp_item.overlay_icons, ())
+        self.assertEqual(len(normal_item.overlay_icons), 1)
+
+        self.assertTrue(pvp.weapon_grid.click_item_for_test(key))
+        self.assertIsNone(pvp.weapon_grid.item(key).outline)
+        self.assertTrue(pvp.weapon_grid.click_item_for_test(key))
+        self.assertEqual(pvp.weapon_grid.item(key).outline, normal_item.outline)
+        self.assertEqual(pvp.weapon_grid.item(key).overlay_icons, ())
 
 
 if __name__ == "__main__":

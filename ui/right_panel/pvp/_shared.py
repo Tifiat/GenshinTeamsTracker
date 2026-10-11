@@ -1640,21 +1640,6 @@ def _reset_grid_columns(grid: QGridLayout) -> None:
         grid.setColumnStretch(column, 0)
 
 
-def _pvp_deck_outline(
-    *,
-    editing: bool,
-    selected: bool,
-) -> PixelIconGridOutline | None:
-    if not editing or not selected:
-        return None
-    return PixelIconGridOutline(
-        color="#d6b15d",
-        width=2,
-        radius=4,
-        alpha=255,
-    )
-
-
 def _pvp_deck_inactive_fill(
     *,
     editing: bool,

@@ -48,6 +48,12 @@ conflicts; organizer prose is not silently treated as machine validation.
 
 ## Boundaries and implementation
 
+Decks selected-card frames and normal equipped-weapon frames share
+`ui/utils/selection_outline.py`; owner portraits remain caller-owned and absent
+from Decks. [Selection palette](UI_WORK_RULES.md#selection-color-contract) owns
+frame styling and player-default tone; [card assets](CHARACTER_CARD_ASSETS.md)
+owns the independent weapon-owner geometry and follow-up evidence.
+
 - `run_workspace/pvp/abyss_client.py`: bounded unauthenticated public GETs,
   pagination, latest non-archived family selection and exact returned version.
   Catalog/source data is session-memory only. No source JavaScript execution,

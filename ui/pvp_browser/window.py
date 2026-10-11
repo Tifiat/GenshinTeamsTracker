@@ -153,7 +153,6 @@ from ui.right_panel.pvp._shared import (
     _postdraft_source_object_name,
     _pvp_deck_inactive_fill,
     _pvp_deck_item_properties,
-    _pvp_deck_outline,
     _pvp_weapon_sort_key,
     _refresh_postdraft_seat_label_style,
     _refresh_qss,
@@ -163,6 +162,7 @@ from ui.right_panel.pvp._shared import (
     _weapon_assets_by_stack_key,
     _weapon_type_filter_keys,
 )
+from ui.utils.selection_outline import inventory_selection_outline
 from ui.utils.ui_palette import (
     UI_BG_APP,
     UI_BG_BUTTON,
@@ -1122,9 +1122,8 @@ class PvpDecksWorkspace(QWidget):
         result = build_asset_grid_items(
             assets,
             key_for_asset=key_for_asset,
-            outline_for_asset=lambda asset, key: _pvp_deck_outline(
-                editing=self.is_editing,
-                selected=bool(key and key in selected_keys),
+            outline_for_asset=lambda asset, key: inventory_selection_outline(
+                selected=self.is_editing and bool(key and key in selected_keys),
             ),
             overlay_fill_for_asset=lambda asset, key: _pvp_deck_inactive_fill(
                 editing=self.is_editing,
@@ -1220,7 +1219,7 @@ class PvpDecksWorkspace(QWidget):
     def _update_selection_item(self, grid, item_id, selected):
         grid.update_item(
             item_id,
-            outline=_pvp_deck_outline(editing=True, selected=selected),
+            outline=inventory_selection_outline(selected=selected),
             overlay_fill=_pvp_deck_inactive_fill(editing=True, selected=selected),
             properties=_pvp_deck_item_properties(editing=True, selected=selected),
         )

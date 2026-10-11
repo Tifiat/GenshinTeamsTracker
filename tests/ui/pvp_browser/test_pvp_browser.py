@@ -1346,6 +1346,15 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertTrue(
             p2_source.weapon_grid.item_property(p2_weapon_item_id, "has_owner_badges")
         )
+        for source, item_id in ((p1_source, p1_weapon_item_id), (p2_source, p2_weapon_item_id)):
+            item = source.weapon_grid.item(item_id)
+            self.assertEqual(len(item.overlay_icons), 1)
+            owner = item.overlay_icons[0]
+            self.assertAlmostEqual(owner.size_ratio, 45 / 48)
+            self.assertAlmostEqual(owner.right_overhang_ratio, 14 / 45)
+            self.assertAlmostEqual(owner.top_overhang_ratio, 22 / 45)
+            self.assertEqual(item.outline.color, "#d6b15d")
+            self.assertEqual((item.outline.width, item.outline.radius), (2, 4))
 
     def test_pvp_postdraft_right_panel_slot_drop_swaps_slots(self) -> None:
         workspace, _panel = self._started_draft_workspace(

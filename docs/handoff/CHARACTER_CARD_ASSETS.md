@@ -18,7 +18,7 @@ The element/constellation bitmap renderer, shared URL/DOM extraction and
 import-dependent filter-icon refresh code are removed. Historical account image
 files retain their existing lifetime.
 
-Equipped weapon frames share the browser style; owner portraits retain the main
+Equipped weapon frames use the exact shared PvP recipe; owner portraits retain the main
 checkout's accepted geometry. Balanced green/blue team accents accompany the
 same rarity/element/Cn recipe in live and PvP Run
 slots. New History saves freeze these layers inside each bundle; old bundles
@@ -86,14 +86,17 @@ portrait cannot resolve to the project directory. Absolute legacy paths remap to
 the active profile, foreign managed-profile paths are rejected and external
 package paths remain valid. Shared shipped resources stay outside account ownership.
 
-Normal weapon cells retain PvP's 48px size and 6px gaps. Equipped cards use a
-4px rounded frame, alpha 230, without a fill or overhang. The owner canvas keeps
+Normal weapon cells retain PvP's 48px size and 6px gaps. Equipped cards and PvP
+Decks selection call `inventory_selection_outline` from the same utility; the
+[selection color contract](UI_WORK_RULES.md#selection-color-contract) owns its
+exact gold frame and the approved palette/defaults. The owner canvas keeps
 the main checkout's accepted 45×45 size at (+17, −22) relative to the 48×48 weapon
 box. Its ratios are 45/48 for size, 14/45 right overhang and 22/45 top overhang;
 rounding uses the actual weapon rectangle at each scale. Frame thickness/overhang
 cannot move or resize the owner portrait. Full and incremental refreshes use the
-same recipe. Team accents are `#72b18e` green and `#729fd3` blue; character outline
-and slot-badge alpha remain 230/235. PvP prices remain PvP-owned.
+same recipe. Owner overlays exist in the normal browser and PvP scoped equipment
+selection, while Decks selection has no owner portrait layer. PvP prices remain
+PvP-owned. Accepted character colors and transparency are retained.
 
 The former import-time Cn stamp was locally generated with PIL, not downloaded
 as a constellation icon. Its ImageDraw/ImageFont/Arial branch is deleted, along
@@ -257,6 +260,40 @@ cases preserve box-relative proportions. These are synthetic Qt render checks,
 not native hover/click acceptance. The structural closeout retains only the
 previously recorded foreign Worker2 status-size issue.
 
+## Shared inventory frame and player defaults — 2026-10-11
+
+The user retained the accepted character colors/transparency and requested the
+exact PvP weapon frame. `ui/utils/selection_outline.py` now owns that recipe for
+normal equipped weapons and both full/incremental PvP Decks selection. The former
+private PvP recipe and unused equipped-green palette alias are removed. The
+module creates only the outline; owner canvases keep the main-calibrated geometry.
+The workspace regression compares actual normal/PvP grid items, retains the normal
+overlay and prohibits Decks owner overlays, including deselect/reselect. The scoped
+PvP equipment regression verifies both seats' owner overlays and gold frames.
+
+The [shared selection contract](UI_WORK_RULES.md#selection-color-contract) owns
+the tone recipe, accepted HSL bounds, palette roles and alpha. PvP defaults use
+the existing central registry, with no hex-matching migration of saved choices.
+The Settings **По умолчанию** action applies the new pair to saved preferences.
+
+Combined verification: **59 tests passed in 15.477 seconds** across central
+defaults/settings/cache/reset, guarded Settings swatches, normal/PvP frame parity,
+owner pixel geometry/DPR, painted grid, Traveler selector, PvP profile integration
+and existing AppShell checks. The strengthened scoped PvP owner/frame case then
+passed separately in 1.542 seconds; it overlaps the 59-case run. An in-memory
+substitution of the old bright green/blue caused the source-backed palette guard
+to reject both colors without test errors or source edits.
+
+Checks use caller-owned temporary settings/DBs/images with connected cleanup;
+the Settings fixture suppresses HoYoLAB directory/auth initialization. No live
+settings/account/history write, import, network, native restart/control or
+persistent preview output occurred. Native AppShell acceptance remains the user's
+restart/smoke path: compare equipped weapon frames with Decks, retain owner heads
+in normal/scoped equipment selection, and inspect/reset both player swatches.
+Early structural checks reported the existing foreign Worker2 size issue; the
+final full checker passed with no foreign-file edits by this executor.
+Canonical PvP status and the common queue remain untouched by this follow-up.
+
 ## Local Git receipt
 
 Intent 2026-10-11 14:31:05 +03:00: Worker4 scoped Traveler executor will commit this
@@ -324,3 +361,11 @@ profile/runtime mutation, native control or persistent preview output occurred.
 Correction receipt-only intent 2026-10-11 16:10:23 +03:00: commit only this actual
 result from `0c21fb51198212ebe41933ac6b28d0d97c4f7be5`, same executor/branch and
 standing authority. The final chat snapshot supplies receipt hash/clean state.
+
+Shared-frame/defaults intent 2026-10-11 16:39:26 +03:00: Worker4 scoped executor
+will commit 15 reviewed own source/test/contract paths from
+`6b2c0d2d02e578340b25f749bac31d56af0da824` on `codex/pvp-providers`, under standing
+verified-own-stage authority. Initial tree/index were clean; current index is
+empty. No Git operation/index lock/active hook was found. The product, mutation
+and final structural checks above apply. No transfer, push, profile/runtime/
+settings mutation or native control; canonical PvP status and shared queue unchanged.

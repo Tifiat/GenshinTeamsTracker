@@ -107,6 +107,12 @@ registered there; UI call-site fallbacks must not define competing defaults.
 Dynamic defaults receive the saved settings context explicitly. First-launch
 equipment import is enabled, while a saved false value remains false.
 
+PvP color defaults follow the [selection color contract](UI_WORK_RULES.md#selection-color-contract).
+Missing keys use the current pair; saved colors remain explicit choices, including
+values equal to an older factory pair. The PvP Settings **По умолчанию** action
+resets only the two color keys and refreshes both swatches/signals. It preserves
+unrelated preferences. No hex-matching migration or second defaults store exists.
+
 Deleting one account removes its entire owned root, including browser login,
 DB, History, presets, images and derived outputs. Other accounts and global
 preferences remain. Zero imported accounts shows the clean Login/Import flow.

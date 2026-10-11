@@ -19,19 +19,21 @@ The inspected client dispatches expiry actions; server enforcement is unknown.
 Untimed, paused, expired, finished and disposed clocks stop their Qt timer.
 Ticks update a retained clock surface without projecting/rebuilding the board.
 
-Extra prebans are distinct actions, globally exclude their targets from later
-picks and immunity, and contribute to ban totals/history. Admission checks
-opponent roster capacity; a local viability guard preserves four distinct
-shared preparation choices. Small overlapping rosters can still lose all legal
-late picks through choices, including with compensation disabled; full future
-pick feasibility belongs to the ordered legality task in the shared TODO.
+Extra prebans globally exclude their targets and contribute to ban totals/history.
+Admission and accepted/candidate actions now check future completion for flows
+without remaining MIRROR. Matching reserves distinct normal targets and separate
+per-seat protected/absolute copies; a complete witness is replayed. Preparation
+branches use equivalent target classes. Only proven impossibility blocks an
+action; exhausted budgets and remaining MIRROR are unknown. Automatic timed
+modes admit future ban skips; manual/untimed modes reserve real ban targets.
 
 113 focused fake-clock and synthetic setup→28-action→result compatibility checks
 pass. Native acceptance is user-owned; no AppShell/CUA or live profile access.
 Ascend MIRROR, Reverse and French flows now execute locally. Their actor-scoped
 selection and signed capped-cost semantics are described below. Next: remaining
 legality and future-pick feasibility for overlapping rosters.
-No persisted rules cache or durable match snapshot was introduced.
+No persisted rules cache or durable match snapshot was introduced. The user
+chose a new draft before each game of a series; series implementation follows.
 <!-- /handoff-current -->
 
 ## Source evidence
@@ -107,7 +109,7 @@ value. The sign chooses the cheaper seat. Cap zero is literal, including in the
 inspected Test source, whose rows have no exemptions. Bundle adjustments do not
 enter this comparison. Play displays an explanatory cap note.
 
-118 focused checks passed across parsing, cap zero/exemptions/cancellation,
+118 focused test executions (111 distinct checks) passed across parsing, cap zero/exemptions/cancellation,
 MIRROR sharing and uniqueness, source-shaped 22-action replay, disjoint-roster
 admission, Reverse absolute immunity, real Play/clock/assignment dispatch and
 the existing Free/Cup board and retained-grid regressions. Narrow French setup
@@ -115,3 +117,29 @@ and MIRROR order images were inspected; the disposable owner was cleaned.
 An anonymous current-catalog check normalized and built all ten latest families:
 seven 26-action DEFAULT, two 22-action DEFAULT and one 22-action FRENCH_COST.
 This checks source projection/schedule compatibility, not real-roster legality.
+
+## Future completion guard — 11 October
+
+`draft_completion.py` is a bounded pure oracle. After preparation, exact matching
+assigns remaining ordinary bans and PICK/IMMUNE slots to resources. Normal IDs
+have global capacity one; protected/absolute IDs have one copy per eligible seat,
+with protected cards restricted to IMMUNE. Before preparation, reducer-equivalent
+classes reduce the choice search. Complete results carry a reducer-replayed
+witness; failures prove no completion under that ban policy; unsupported future
+MIRROR and the 2,000-state budget return unknown. Only impossible results reject
+setup/actions. Controller memoizes candidate status within one immutable state;
+accepting an action drops the prior state's memo. No files/caches are persisted.
+
+59 distinct focused checks pass, including the former 16/24-overlap first-legal
+stall, non-greedy witness, shared immunity, skipped-ban policy, setup rejection,
+Play dispatch and existing Cup/Reverse/French/Free timing guards. Synthetic source
+handler medians were 21.60ms for bans and 12.73ms for picks (not native/full-panel
+acceptance); pure candidate checks peaked at 30.03ms across all 26 actions.
+
+Zero upper draft bounds remain unknown: no public source validation was found;
+the tier maxCost sentinel is a different field. Joker role/refinement exceptions
+are prose-only; structured Joker identifiers/selection data remain unverified.
+Bundle helper observations are scoped to team displays. Its separate creation/
+preban caller was not reverified after a CDN 403; earlier scoped evidence is
+preserved. These unresolved items keep the shared legality task open. No guessed
+Joker marker or universal unlimited-bound interpretation was enabled.

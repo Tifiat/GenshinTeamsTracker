@@ -441,6 +441,7 @@
   "app_shell.pvp.setup.nobody": "никому",
   "app_shell.pvp.setup.custom_settings": "Свои настройки матча",
   "app_shell.pvp.setup.cost_unknown": "Кост для пребанов пока не определён.",
+  "app_shell.pvp.rules.match_completion_impossible": "После этого выбора не хватит допустимых персонажей, чтобы завершить драфт для обоих игроков.",
   "app_shell.pvp.setup.french_preban_info": "French Cost: разницы по персонажам ограничены до {cap} и затем складываются. Исключения из лимита задают правила.",
   "app_shell.pvp.setup.preban_error": "Пребаны не рассчитаны: {reason}",
   "app_shell.pvp.setup.preban_roster": "После дополнительных пребанов не хватит карт: нужно {minimum}, доступно {actual}.",

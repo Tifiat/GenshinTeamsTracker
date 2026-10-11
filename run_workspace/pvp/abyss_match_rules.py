@@ -12,6 +12,7 @@ from hoyolab_export.traveler import traveler_element, traveler_source_id
 from .abyss_rules import AbyssRuleset, _ELEMENT_ATTRIBUTE, _character_rule_candidates, evaluate_deck
 from .deck import DraftDeck
 from .french_cost import calculate_french_cost_difference
+from .draft_completion import draft_completion
 from .draft_system import DraftSystemDefinition, DRAFT_SYSTEM_RULESET_DATA_REQUIRED
 from .tier_allocation import allocate_requirements
 from .validation import (
@@ -41,7 +42,7 @@ from .schedule import (
     SEAT_PLAYER_1,
     SEAT_PLAYER_2,
 )
-from .session import PlayerWeaponAssignment
+from .session import PlayerWeaponAssignment, create_draft_session
 
 
 class AbyssMatchRulesError(ValueError):
@@ -340,6 +341,7 @@ def validate_abyss_match_pair(
     rules: AbyssRuleset,
     *,
     preban_report: AbyssPrebanReport | None = None,
+    require_ban_targets: bool = True,
 ) -> DeckValidationReport:
     """Ensure the pair can complete its four distinct preparatory choices."""
     try:
@@ -378,6 +380,15 @@ def validate_abyss_match_pair(
                 issues.append(_error("abyss_preban_targets_insufficient", "decks",
                                      details={"minimum": preban_report.count,
                                               "actual": max(0, available), "seat": target_seat}))
+    if not issues:
+        initial = create_draft_session(
+            player_1_deck, player_2_deck,
+            schedule=build_abyss_match_definition(rules, preban_report=preban_report).build_schedule(),
+            validate_decks=False, rules_content_hash=rules.content_hash,
+            immune_eligible_character_ids=eligible, absolute_immune_character_ids=absolute_ids,
+        )
+        if draft_completion(initial, require_ban_targets=require_ban_targets).status == "impossible":
+            issues.append(_error("abyss_draft_completion_impossible", "decks"))
     return DeckValidationReport(tuple(issues))
 
 

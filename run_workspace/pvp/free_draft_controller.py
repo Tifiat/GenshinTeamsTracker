@@ -36,6 +36,7 @@ from .deck import (
     load_draft_deck,
 )
 from .draft_options import DraftMatchOptions
+from .draft_completion import draft_completion
 from .draft_system import (
     DRAFT_SYSTEM_FREE_DRAFT_V0,
     DraftSystemDefinition,
@@ -238,6 +239,8 @@ class FreeDraftController:
 
     def __init__(self, state: FreeDraftControllerState) -> None:
         self.state = state
+        self._completion_cache_state = None
+        self._completion_cache = {}
 
     @classmethod
     def from_decks(
@@ -295,7 +298,8 @@ class FreeDraftController:
             player_1_deck, player_2_deck, rules
         )
         pair_validation = validate_abyss_match_pair(player_1_deck, player_2_deck, rules,
-                                                   preban_report=prebans)
+                                                   preban_report=prebans,
+                                                   require_ban_targets=not (options.auto_on_expire and options.pick_time_ms))
         if not pair_validation.ready:
             player_1_validation = DeckValidationReport(
                 player_1_validation.issues + pair_validation.issues
@@ -469,7 +473,7 @@ class FreeDraftController:
             requirement.action_type,
         ):
             try:
-                apply_draft_action(
+                next_state = apply_draft_action(
                     self.session_state,
                     DraftAction(
                         seat=seat,
@@ -477,6 +481,7 @@ class FreeDraftController:
                         character_id=character.character_id,
                     ),
                 )
+                self._ensure_draft_can_finish(next_state, character.character_id)
             except DraftActionRejected as exc:
                 if include_excluded:
                     targets.append(
@@ -544,6 +549,7 @@ class FreeDraftController:
         )
         try:
             next_state = apply_draft_action(self.session_state, action)
+            self._ensure_draft_can_finish(next_state, character_id if not skip else "__skip__")
         except DraftActionRejected as exc:
             raise FreeDraftControllerActionRejected(
                 exc.code,
@@ -553,6 +559,19 @@ class FreeDraftController:
             ) from exc
         self.state = replace(self.state, session_state=next_state)
         return action
+
+    def _ensure_draft_can_finish(self, proposed: DraftSessionState, cache_key: str):
+        if not self.session_state.is_abyss_match:
+            return
+        if self._completion_cache_state is not self.session_state:
+            self._completion_cache_state = self.session_state
+            self._completion_cache = {}
+        if cache_key not in self._completion_cache:
+            options = self.state.match_options
+            self._completion_cache[cache_key] = draft_completion(
+                proposed, require_ban_targets=not (options.auto_on_expire and options.pick_time_ms)).status
+        if self._completion_cache[cache_key] == "impossible":
+            raise DraftActionRejected("draft_completion_impossible")
 
     def complete_draft_with_first_legal_targets(self) -> tuple[DraftAction, ...]:
         accepted: list[DraftAction] = []

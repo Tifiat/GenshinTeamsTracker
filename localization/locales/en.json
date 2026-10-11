@@ -441,6 +441,7 @@
   "app_shell.pvp.setup.nobody": "neither player",
   "app_shell.pvp.setup.custom_settings": "Custom match settings",
   "app_shell.pvp.setup.cost_unknown": "Preban costs are unresolved.",
+  "app_shell.pvp.rules.match_completion_impossible": "This choice leaves too few legal characters to finish the draft for both players.",
   "app_shell.pvp.setup.french_preban_info": "French Cost: per-character differences are capped at {cap}, then added. Cap exceptions come from the rules.",
   "app_shell.pvp.setup.preban_error": "Could not calculate prebans: {reason}",
   "app_shell.pvp.setup.preban_roster": "Too few cards after extra prebans: need {minimum}, available {actual}.",

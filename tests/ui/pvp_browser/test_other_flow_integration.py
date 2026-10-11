@@ -1,20 +1,23 @@
 """Actual Play/dispatch/clock path with disposable source-shaped rules."""
 import unittest
+from dataclasses import replace
+from localization import tr
+from run_workspace.pvp.deck_preset import save_deck_preset
 
 from run_workspace.pvp.abyss_rules import AbyssRuleset
 from run_workspace.pvp.draft_options import DraftMatchOptions
 from tests.run_workspace.pvp.test_abyss_other_flows import ASCEND, FRENCH, REVERSE
-from tests.ui.pvp_browser.test_preban_clock_flow import PrebanClockFlowTest
+from tests.ui.pvp_browser import test_preban_clock_flow as clock_fixtures
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 
 
 class OtherFlowIntegrationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        PrebanClockFlowTest.setUpClass()
+        clock_fixtures.PrebanClockFlowTest.setUpClass()
 
     def setUp(self):
-        self.fixture = PrebanClockFlowTest('test_timer_can_be_disabled_and_bad_penalties_block_start')
+        self.fixture = clock_fixtures.PrebanClockFlowTest('test_timer_can_be_disabled_and_bad_penalties_block_start')
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         self.workspace = self.fixture.workspace
@@ -73,3 +76,16 @@ class OtherFlowIntegrationTest(unittest.TestCase):
                          'immune_character')
         self.advance(18)
         self.assertTrue(self.workspace.continue_to_assignment())
+
+    def test_pair_with_too_few_distinct_targets_is_blocked_before_start(self):
+        self.set_flow(FRENCH, french=True)
+        for preset in self.workspace.decks_workspace.presets:
+            save_deck_preset(replace(preset, character_ids=preset.character_ids[:11]),
+                             self.workspace.decks_workspace.deck_dir)
+        self.workspace.refresh_account_data(reload_presets=True)
+        panel = PvpPlayRightPanel(self.workspace)
+        self.addCleanup(panel.close)
+        self.assertFalse(panel.start_button.isEnabled())
+        self.assertEqual(panel.status_label.text(), tr('app_shell.pvp.rules.match_completion_impossible'))
+        self.assertFalse(self.workspace.start_local_draft('local', 'second'))
+        self.assertIsNone(self.workspace.active_draft_session)

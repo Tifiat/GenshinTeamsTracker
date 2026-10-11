@@ -2696,12 +2696,17 @@ class PvpWorkspace(QWidget):
                                                      match_options=match_options)
                 except ValueError as exc:
                     return tr("app_shell.pvp.setup.preban_error").format(reason=str(exc))
+                rules = AbyssRuleset.from_dict(first.rules_snapshot)
+                options = (match_options or DraftMatchOptions()).resolve(rules)
                 report = validate_abyss_match_pair(first_status.draft_deck, second_status.draft_deck,
-                                                 AbyssRuleset.from_dict(first.rules_snapshot), preban_report=prebans)
+                                                 rules, preban_report=prebans,
+                                                 require_ban_targets=not (options.auto_on_expire and options.pick_time_ms))
                 if not report.ready:
                     issue = report.errors[0]
                     if issue.code == "abyss_shared_immune_candidates_insufficient":
                         return tr("app_shell.pvp.rules.match_shared_roster").format(**issue.details)
+                    if issue.code == "abyss_draft_completion_impossible":
+                        return tr("app_shell.pvp.rules.match_completion_impossible")
                     return tr("app_shell.pvp.setup.preban_roster").format(**issue.details)
         return ""
 
@@ -2852,9 +2857,9 @@ class PvpWorkspace(QWidget):
             )
         except FreeDraftControllerActionRejected as exc:
             code = getattr(exc, "code", "") or str(exc)
-            self._last_draft_status = tr("app_shell.pvp.draft.action_rejected").format(
-                code=code
-            )
+            self._last_draft_status = (tr("app_shell.pvp.rules.match_completion_impossible")
+                                      if code == "draft_completion_impossible" else
+                                      tr("app_shell.pvp.draft.action_rejected").format(code=code))
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False

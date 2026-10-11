@@ -156,5 +156,13 @@ test/handoff stage on `codex/pvp-providers`, from
 All 28 selected paths belong to this stage. Index is empty; no merge/rebase/
 cherry-pick/revert/sequencer state or index lock is present. No branch transfer,
 push, account migration or canonical PvP worker-status/queue edit is included.
-The source result is reported after the commit; native/release acceptance remains
-at the stated boundary.
+Result 2026-10-11 20:51:32 +03:00: source commit
+`87a7adc6165eaaba4476768e1db4ff510ad3fabb`, parent
+`468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb`. All 28 selected paths committed;
+tree and index were clean afterward. The checks above and stated native/release
+boundaries apply. No transfer/push/runtime or shared-status write occurred.
+
+Receipt-only intent 2026-10-11 20:51:32 +03:00: save this actual result in this
+one contract from `87a7adc6165eaaba4476768e1db4ff510ad3fabb` on the same branch,
+under the same own-stage authority. Its result and final clean-tree state are
+reported in the chat closeout.

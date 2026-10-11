@@ -920,7 +920,7 @@ def _draft_action_from_unified_pool(
     character_id = _text(action_payload.get("character_id"))
     if (
         action_type not in {"ban_character", "preban_character", "pick_character", "immune_ban_character",
-                            "immune_pick_character", "immune_character"}
+                            "immune_pick_character", "immune_character", "mirror_character"}
         or target_type != "character"
         or not character_id
     ):
@@ -1571,6 +1571,8 @@ def _seat_label(seat: str) -> str:
 def _draft_action_label(action_type: str) -> str:
     if action_type == "pick_character":
         return tr("app_shell.pvp.draft.pick")
+    if action_type == "mirror_character":
+        return tr("app_shell.pvp.draft.mirror")
     if action_type == "ban_character":
         return tr("app_shell.pvp.draft.ban")
     if action_type == "preban_character":

@@ -212,7 +212,7 @@ class AbyssMatchRulesTests(unittest.TestCase):
         self.assertTrue(balanced["per_seat"][SEAT_PLAYER_1]["within_limit"])
         with self.assertRaises(AbyssMatchRulesError) as error:
             build_abyss_match_schedule(_rules(first_action="MIRROR"))
-        self.assertEqual(error.exception.code, "abyss_pick_action_unsupported")
+        self.assertEqual(error.exception.code, "abyss_pick_flow_unsupported")
 
     def test_traveler_alias_and_element_select_assigned_weapon_price(self) -> None:
         rules = _rules_with_traveler()

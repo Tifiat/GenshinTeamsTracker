@@ -61,6 +61,7 @@ from .schedule import (
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
+    ACTION_MIRROR_CHARACTER,
     PVP_SEATS,
     SEAT_PLAYER_1,
     SEAT_PLAYER_2,
@@ -455,7 +456,7 @@ class FreeDraftController:
         if requirement is None or seat is None:
             return ()
         if requirement.action_type not in {
-            ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER,
+            ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER, ACTION_MIRROR_CHARACTER,
             ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
             ACTION_IMMUNE_CHARACTER,
         }:
@@ -870,7 +871,8 @@ class FreeDraftController:
                                        (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER)
                                        for action in self.accepted_actions),
                     "expected_picks": (expected_counts[seat].get(ACTION_PICK_CHARACTER, 0)
-                                       + expected_counts[seat].get(ACTION_IMMUNE_CHARACTER, 0)),
+                                       + expected_counts[seat].get(ACTION_IMMUNE_CHARACTER, 0)
+                                       + expected_counts[seat].get(ACTION_MIRROR_CHARACTER, 0)),
                     "actual_picks": len(self.session_state.picked_character_ids_for(seat)),
                 }
                 for seat in PVP_SEATS
@@ -939,7 +941,7 @@ def _candidate_characters(
     seat: str,
     action_type: str,
 ) -> tuple[DraftCharacter, ...]:
-    if action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER):
+    if action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER, ACTION_MIRROR_CHARACTER):
         return tuple(sorted(state.deck_for(seat).characters, key=_character_sort_key))
     if action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER):
         return tuple(sorted(

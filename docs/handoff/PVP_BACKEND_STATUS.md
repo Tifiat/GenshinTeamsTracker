@@ -32,7 +32,8 @@ assigned-weapon budgets and restart-adjusted single-game Shiyu scoring.
 Unsupported modes/flows/stages fail closed. Its session-bundle export remains
 unsupported until the verifier can carry and replay pinned source content.
 Ordinary picks/bans remain global; Free also rejects bans of prior picks.
-Shared source immunity claims remain once per seat. Explicit Free Draft in Play
+Shared source immunity claims remain once per seat. The runtime contract owns
+Ascend MIRROR, Reverse and French signed-cost comparison. Explicit Free Draft in Play
 projects saved membership without changing its rules snapshot; source mode keeps
 the equal-snapshot gate. [Result export](PVP_UI_ROADMAP.md#export--result) owns PNG.
 

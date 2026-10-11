@@ -363,8 +363,28 @@ class AbyssRulesTests(unittest.TestCase):
         self.assertEqual(rules.root_id, rules.system_id)
         self.assertFalse(rules.source["root_id_from_source"])
         system["costs"]["system"] = "FRENCH_COST"
+        french = AbyssRuleset.from_source(system, agents, engines)
+        self.assertEqual(french.source["cost_system"], "FRENCH_COST")
+        self.assertNotIn("cost_system", rules.source)
+        self.assertEqual(AbyssRuleset.from_dict(french.to_dict()).content_hash, french.content_hash)
+        system["costs"]["system"] = "UNKNOWN"
         with self.assertRaisesRegex(AbyssRulesError, "Unsupported Abyss cost mode"):
             AbyssRuleset.from_source(system, agents, engines)
+
+    def test_snapshot_cost_mode_allowlist_and_french_cap(self) -> None:
+        rules = AbyssRuleset.from_source(*_source())
+        payload = rules.to_dict()
+        payload["source"]["cost_system"] = "DEFAULT"
+        self.assertEqual(AbyssRuleset.from_dict(payload).source["cost_system"], "DEFAULT")
+        payload["source"]["cost_system"] = "FRENCH_COST"
+        self.assertEqual(AbyssRuleset.from_dict(payload).source["cost_system"], "FRENCH_COST")
+        payload["french_difference_cap"] = None
+        with self.assertRaises(AbyssRulesError):
+            AbyssRuleset.from_dict(payload)
+        payload["french_difference_cap"] = 4
+        payload["source"]["cost_system"] = "UNKNOWN"
+        with self.assertRaises(AbyssRulesError):
+            AbyssRuleset.from_dict(payload)
 
     def test_snapshot_rejects_cross_reference_and_oversized_names(self) -> None:
         rules = AbyssRuleset.from_source(*_source())

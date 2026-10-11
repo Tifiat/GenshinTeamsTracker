@@ -7,7 +7,8 @@ validated snapshot. Existing decks can retain saved rules and save edits after
 restart without a catalog request. New/replaced rules require currentness;
 known newer versions require explicit adoption. Cancel preserves selection.
 
-Nine DEFAULT families normalize; FRENCH_COST remains unsupported. Cost/tier badges,
+DEFAULT and FRENCH_COST families normalize. [Draft runtime](PVP_DRAFT_RUNTIME.md)
+owns French compensation and supported Ascend/Reverse flows. Cost/tier badges,
 budgets and required characters/combination statuses use the existing grids and
 wrapped table. Allocation shares non-reusing T1/T0 resources and runs off-thread
 with stale-result rejection. Known zero-price members outside tier bands no longer
@@ -28,7 +29,7 @@ owns earlier pipeline measurements.
 Pinned local Abyss matches connect the base flow, cost-compensation prebans and
 [draft clocks/settings](PVP_DRAFT_RUNTIME.md), immunity, existing build services,
 assigned-weapon budgets and restart-adjusted single-game Shiyu scoring. Both decks
-must use equal rules and have enough compatible shared immunity candidates.
+must use equal rules; flows with preparation need enough shared immunity candidates.
 Unsupported flows/modes/stages and incomplete snapshots fail explicitly; old
 snapshots require refresh. Source session-bundle verification and tournament
 series remain open. Current Cup requires Pyro Traveler. The independent

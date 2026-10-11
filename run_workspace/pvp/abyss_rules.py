@@ -213,7 +213,8 @@ def _normalise_source(system: Any, agents: Any, engines: Any,
     agent_catalog = _catalog(agents, "agent catalog")
     engine_catalog = _catalog(engines, "engine catalog")
     costs = _object(system.get("costs"), "costs")
-    if costs.get("system") != "DEFAULT":
+    cost_system = costs.get("system")
+    if cost_system not in ("DEFAULT", "FRENCH_COST"):
         raise AbyssUnsupportedCostError("Unsupported Abyss cost mode")
     draft = _object(system.get("draft"), "draft")
     preset = _object(system.get("preset"), "preset")
@@ -238,6 +239,8 @@ def _normalise_source(system: Any, agents: Any, engines: Any,
     }
     if "mode" in system["main"]:
         source["mode"] = _text(system["main"]["mode"], "source mode")
+    if cost_system == "FRENCH_COST":
+        source["cost_system"] = cost_system
     characters = []
     seen_variants: set[tuple[str, int]] = set()
     seen_sources: set[str] = set()
@@ -398,11 +401,13 @@ class AbyssRuleset:
         if not required <= set(data) or set(data) - required - {"phase_picks", "phase_teams", "phase_stage", "phase_match"}:
             raise AbyssRulesError("Unexpected or missing Abyss snapshot fields")
         source = _object(data["source"], "source")
-        if set(source) - {"mode"} != {"family", "system_id", "root_id", "root_id_from_source", "predecessor_id", "title",
+        if set(source) - {"mode", "cost_system"} != {"family", "system_id", "root_id", "root_id_from_source", "predecessor_id", "title",
                                       "updated_at", "fetched_at", "sha256"} or source["family"] != SOURCE_FAMILY:
             raise AbyssRulesError("Invalid Abyss source metadata")
         if "mode" in source:
             _text(source["mode"], "source mode")
+        if "cost_system" in source and source["cost_system"] not in ("DEFAULT", "FRENCH_COST"):
+            raise AbyssRulesError("Invalid Abyss cost mode")
         for key in ("system_id", "root_id"):
             _source_id(source[key], key)
         if type(source["root_id_from_source"]) is not bool or (
@@ -507,6 +512,10 @@ class AbyssRuleset:
                 raise AbyssRulesError("Invalid tier range")
         if data["french_difference_cap"] is not None:
             _number(data["french_difference_cap"], "French difference cap")
+        if source.get("cost_system") == "FRENCH_COST" and (
+            data["french_difference_cap"] is None or data["french_difference_cap"] < 0
+        ):
+            raise AbyssRulesError("French cost mode requires a nonnegative difference cap")
         bounds = _object(data["bounds"], "bounds")
         if set(bounds) != {"agents", "engines"}:
             raise AbyssRulesError("Invalid bound groups")
@@ -851,7 +860,8 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
             if upper == 0 and not (group == "engines" and metric == "cost"
                                   and weapon_roster["policy"] and weapon_roster["policy"]["maximum"] > 0):
                 add("zero_upper_bound_unverified", "review", group=group, metric=metric)
-    if data["french_difference_cap"] not in (None, 0):
+    if (data["source"].get("cost_system", "DEFAULT") != "FRENCH_COST"
+            and data["french_difference_cap"] not in (None, 0)):
         add("french_difference_cap_unverified", "review", cap=data["french_difference_cap"])
     return AbyssDeckReport(rules.system_id, rules.content_hash, tuple(character_rows),
                            tuple(weapon_rows), character_base_total, bundle_adjustment_total,

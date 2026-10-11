@@ -12,6 +12,7 @@ from .schedule import (
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
+    ACTION_MIRROR_CHARACTER,
     ACTION_PREBAN_CHARACTER,
     DraftActionRequirement,
     DraftSchedule,
@@ -402,7 +403,7 @@ def apply_draft_action(
         state = _apply_immune_preparation(state, action, character_id, ban=False)
     elif action.action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER):
         state = _apply_ban(state, action, character_id)
-    elif action.action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER):
+    elif action.action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER, ACTION_MIRROR_CHARACTER):
         state = _apply_pick(state, action, character_id)
     else:
         raise DraftActionRejected(REJECT_WRONG_ACTION_TYPE)
@@ -716,7 +717,11 @@ def _apply_pick(
         raise DraftActionRejected(REJECT_CHARACTER_GLOBALLY_BANNED)
     if character_id in own_picks:
         raise DraftActionRejected(REJECT_CHARACTER_PICKED_BY_SELF)
-    if (state.is_abyss_match and action.action_type == ACTION_PICK_CHARACTER
+    if (character_id not in state.absolute_immune_character_ids
+            and any(item.action_type == ACTION_MIRROR_CHARACTER and item.character_id == character_id
+                    for item in state.accepted_actions)):
+        raise DraftActionRejected(REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT)
+    if (state.is_abyss_match and action.action_type in (ACTION_PICK_CHARACTER, ACTION_MIRROR_CHARACTER)
             and character_id in state.immune_pick_character_ids):
         raise DraftActionRejected(REJECT_CHARACTER_RESERVED_FOR_IMMUNE)
     if character_id in opponent_picks and not (
@@ -724,6 +729,11 @@ def _apply_pick(
             character_id in state.absolute_immune_character_ids
             or (action.action_type == ACTION_IMMUNE_CHARACTER
                 and character_id in state.immune_pick_character_ids)
+            or (action.action_type == ACTION_MIRROR_CHARACTER and any(
+                item.seat == state.opponent_seat(action.seat)
+                and item.action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER)
+                and item.character_id == character_id
+                for item in state.accepted_actions))
         )
     ):
         raise DraftActionRejected(REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT)

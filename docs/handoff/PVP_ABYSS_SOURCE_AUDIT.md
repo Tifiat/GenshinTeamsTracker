@@ -6,6 +6,10 @@ This receipt supersedes the June finding that no usable public
 Abyss rules payload had been confirmed. Research only: no product importer,
 rule enforcement, application launch, Computer Use or account access.
 
+11 October implementation follow-up: [draft runtime](PVP_DRAFT_RUNTIME.md)
+owns newly executable Ascend/Reverse/French flows and compensation/clocks. The
+earlier unsupported-flow findings below retain their original dated scope.
+
 ## Follow-up: weapon limits and executable client semantics — 9 October
 
 10 October follow-up: unauthenticated current Cup reads still expose

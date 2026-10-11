@@ -11,6 +11,7 @@ from hoyolab_export.traveler import traveler_element, traveler_source_id
 
 from .abyss_rules import AbyssRuleset, _ELEMENT_ATTRIBUTE, _character_rule_candidates, evaluate_deck
 from .deck import DraftDeck
+from .french_cost import calculate_french_cost_difference
 from .draft_system import DraftSystemDefinition, DRAFT_SYSTEM_RULESET_DATA_REQUIRED
 from .tier_allocation import allocate_requirements
 from .validation import (
@@ -28,6 +29,7 @@ from .schedule import (
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
+    ACTION_MIRROR_CHARACTER,
     ACTION_PREBAN_CHARACTER,
     ACTION_SET_READY,
     ACTION_SET_TIMER,
@@ -56,6 +58,7 @@ class AbyssPrebanReport:
     cost_step: int
     count: int
     seat: str | None
+    cost_method: str = "DEFAULT"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -65,6 +68,7 @@ class AbyssPrebanReport:
             "cost_step": self.cost_step,
             "count": self.count,
             "seat": self.seat,
+            "cost_method": self.cost_method,
         }
 
 
@@ -74,10 +78,11 @@ _SOURCE_ACTIONS = {
     "IMMUNE_BAN": ACTION_IMMUNE_BAN_CHARACTER,
     "IMMUNE_PICK": ACTION_IMMUNE_PICK_CHARACTER,
     "IMMUNE": ACTION_IMMUNE_CHARACTER,
+    "MIRROR": ACTION_MIRROR_CHARACTER,
 }
 _SOURCE_SEATS = {"player0": SEAT_PLAYER_1, "player1": SEAT_PLAYER_2}
 _PREPARATORY_ACTIONS = frozenset({ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER})
-_PICK_ACTIONS = frozenset({ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER})
+_PICK_ACTIONS = frozenset({ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER, ACTION_MIRROR_CHARACTER})
 _COSTLESS_VARIANT_EXCEPTIONS = frozenset({
     "10000005", "10000007", "10000023", "10000025", "10000031", "10000032", "10000043",
 })
@@ -111,10 +116,15 @@ def build_abyss_match_schedule(rules: AbyssRuleset) -> DraftSchedule:
         counts[seat][action_type] += 1
         steps.append(DraftScheduleStep(phase_name, seat, (DraftActionRequirement(action_type),)))
     for seat, seat_counts in counts.items():
-        if (seat_counts[ACTION_IMMUNE_BAN_CHARACTER] != 1
-                or seat_counts[ACTION_IMMUNE_PICK_CHARACTER] != 1
-                or seat_counts[ACTION_BAN_CHARACTER] != 3
-                or sum(seat_counts[action] for action in _PICK_ACTIONS) != 8):
+        preparation = (seat_counts[ACTION_IMMUNE_BAN_CHARACTER],
+                       seat_counts[ACTION_IMMUNE_PICK_CHARACTER])
+        main_counts = (seat_counts[ACTION_PICK_CHARACTER],
+                       seat_counts[ACTION_IMMUNE_CHARACTER], seat_counts[ACTION_MIRROR_CHARACTER])
+        supported_shape = (
+            preparation == (1, 1) and main_counts[2] == 0 and sum(main_counts) == 8
+            or preparation == (0, 0) and main_counts in ((8, 0, 0), (7, 0, 1), (6, 2, 0))
+        )
+        if seat_counts[ACTION_BAN_CHARACTER] != 3 or not supported_shape:
             raise AbyssMatchRulesError(
                 "abyss_pick_flow_unsupported", f"Unsupported action counts for {seat}."
             )
@@ -147,15 +157,18 @@ def calculate_abyss_prebans(
         if not total.is_finite():
             raise AbyssMatchRulesError("abyss_preban_cost_unknown", "A roster has a nonfinite character cost.")
         totals.append(total)
-    difference = abs(totals[0] - totals[1])
+    cost_method = rules.to_dict()["source"].get("cost_system", "DEFAULT")
+    signed = (calculate_french_cost_difference(player_1_deck, player_2_deck, rules).signed_difference
+              if cost_method == "FRENCH_COST" else totals[0] - totals[1])
+    difference = abs(signed)
     count = int(difference // step) if step else 0
-    seat = (SEAT_PLAYER_1 if totals[0] < totals[1] else SEAT_PLAYER_2
-            if totals[1] < totals[0] else None) if count else None
+    seat = (SEAT_PLAYER_1 if signed < 0 else SEAT_PLAYER_2
+            if signed > 0 else None) if count else None
     if count:
         expensive = player_2_deck if seat == SEAT_PLAYER_1 else player_1_deck
         if count > len(expensive.character_ids):
             raise AbyssMatchRulesError("abyss_preban_roster_insufficient", "The price gap requires more prebans than the opposing roster contains.")
-    return AbyssPrebanReport(totals[0], totals[1], difference, step, count, seat)
+    return AbyssPrebanReport(totals[0], totals[1], difference, step, count, seat, cost_method)
 
 
 def build_abyss_match_definition(
@@ -196,6 +209,7 @@ def build_abyss_match_definition(
             ACTION_IMMUNE_PICK_CHARACTER,
             ACTION_BAN_CHARACTER,
             ACTION_PICK_CHARACTER,
+            ACTION_MIRROR_CHARACTER,
             ACTION_IMMUNE_CHARACTER,
             ACTION_ASSIGN_TEAM_SLOT,
             ACTION_ASSIGN_WEAPON,
@@ -209,7 +223,8 @@ def build_abyss_match_definition(
         bans_per_player=3,
         weapons_required=True,
         immunes_supported=True,
-        mirror_supported=False,
+        mirror_supported=any(action.action_type == ACTION_MIRROR_CHARACTER
+                             for step in schedule.steps for action in step.actions),
         ruleset_data_requirement=DRAFT_SYSTEM_RULESET_DATA_REQUIRED,
         deterministic_smoke_planner_supported=False,
     )

@@ -522,6 +522,10 @@ class PvpPlayRightPanel(QWidget):
         text = tr("app_shell.pvp.setup.preban_preview").format(
             p1=report.total_player_1, p2=report.total_player_2, difference=report.difference,
             step=report.cost_step, count=report.count, seat=seat)
+        if report.cost_method == "FRENCH_COST":
+            preset = self.workspace._seat_preset_by_id("player_1", self.player_1_deck_id)
+            cap = (preset.rules_snapshot or {}).get("french_difference_cap") if preset else "?"
+            text += "\n" + tr("app_shell.pvp.setup.french_preban_info").format(cap=cap)
         if not self.source_settings_check.isChecked():
             text += "\n" + tr("app_shell.pvp.setup.custom_settings")
         self.preban_preview_label.setText(text)

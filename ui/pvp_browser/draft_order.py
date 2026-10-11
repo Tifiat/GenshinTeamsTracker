@@ -15,6 +15,7 @@ from run_workspace.pvp.schedule import (
     ACTION_IMMUNE_BAN_CHARACTER,
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
+    ACTION_MIRROR_CHARACTER,
 )
 from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.ui_palette import (
@@ -606,12 +607,14 @@ def _position_visual(row: Mapping[str, Any]) -> dict[str, Any]:
         "draw_action_label": skipped or str(row["action_type"]) in {
             ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
             ACTION_IMMUNE_CHARACTER, ACTION_PREBAN_CHARACTER,
+            ACTION_MIRROR_CHARACTER,
         },
         "label_key": "app_shell.pvp.clock.skipped" if skipped else {
             ACTION_IMMUNE_BAN_CHARACTER: "app_shell.pvp.draft.slot_immune_ban",
             ACTION_IMMUNE_PICK_CHARACTER: "app_shell.pvp.draft.slot_immune_pick",
             ACTION_IMMUNE_CHARACTER: "app_shell.pvp.draft.slot_immune",
             ACTION_PREBAN_CHARACTER: "app_shell.pvp.draft.preban",
+            ACTION_MIRROR_CHARACTER: "app_shell.pvp.draft.slot_mirror",
         }.get(str(row["action_type"]), ""),
     }
 
@@ -712,6 +715,8 @@ def _draft_action_turn_label(action_type: str) -> str:
         return tr("app_shell.pvp.draft.immune").upper()
     if action_type == ACTION_PREBAN_CHARACTER:
         return tr("app_shell.pvp.draft.preban").upper()
+    if action_type == ACTION_MIRROR_CHARACTER:
+        return tr("app_shell.pvp.draft.mirror").upper()
     if action_type == ACTION_BAN_CHARACTER:
         return tr("app_shell.pvp.draft.turn_ban").upper()
     return tr("app_shell.pvp.draft.turn_pick").upper()

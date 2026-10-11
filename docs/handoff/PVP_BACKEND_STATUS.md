@@ -26,7 +26,8 @@ The original no-rules Free Draft v0 remains available:
 Legacy generic ruleset/balance modules remain report-only research support.
 Abyss has a separate pinned deck adapter with price/constraint presentation;
 `PVP_DECK_RULES.md` owns current limits and the user smoke. A dynamic pinned
-source definition now executes supported 26-action Abyss flows with immunity,
+source definition now executes supported base Abyss flows with cost-compensation
+prebans and [draft clocks/settings](PVP_DRAFT_RUNTIME.md), immunity,
 assigned-weapon budgets and restart-adjusted single-game Shiyu scoring.
 Unsupported modes/flows/stages fail closed. Its session-bundle export remains
 unsupported until the verifier can carry and replay pinned source content.

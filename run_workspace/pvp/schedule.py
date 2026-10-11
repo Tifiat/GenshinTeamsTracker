@@ -14,6 +14,7 @@ PHASE_PREBAN = "preban"
 PHASE_PICK = "pick"
 
 ACTION_BAN_CHARACTER = "ban_character"
+ACTION_PREBAN_CHARACTER = "preban_character"
 ACTION_PICK_CHARACTER = "pick_character"
 ACTION_IMMUNE_BAN_CHARACTER = "immune_ban_character"
 ACTION_IMMUNE_PICK_CHARACTER = "immune_pick_character"

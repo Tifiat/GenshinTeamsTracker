@@ -822,14 +822,7 @@ def _schedule_from_mapping(payload: Mapping[str, Any]) -> DraftSchedule:
 
 
 def _action_from_mapping(payload: Mapping[str, Any]) -> DraftAction:
-    return DraftAction(
-        seat=_text(payload.get("seat")),
-        action_type=_text(payload.get("type")),
-        character_id=_text(payload.get("character_id")),
-        action_id=_text(payload.get("action_id")),
-        sequence=_optional_int(payload.get("sequence")),
-        payload=dict(_mapping(payload.get("payload"))),
-    )
+    return DraftAction.from_dict(payload)
 
 
 def _team_assignment_from_mapping(payload: Mapping[str, Any]) -> PlayerTeamAssignment:

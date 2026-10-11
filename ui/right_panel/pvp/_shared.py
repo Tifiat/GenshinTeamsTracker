@@ -99,6 +99,20 @@ WEAPON_TYPE_FILTER_ALIASES = {
 }
 
 PVP_DECKS_RIGHT_PANEL_STYLE = f"""
+QCheckBox#pvp_setup_defaults {{
+    color: {UI_TEXT_PRIMARY};
+}}
+QSpinBox#pvp_setup_value {{
+    color: {UI_TEXT_PRIMARY};
+    background: {UI_BG_APP};
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 4px;
+    padding: 3px;
+}}
+QSpinBox#pvp_setup_value:disabled {{
+    color: {UI_TEXT_SECONDARY};
+    background: {UI_BG_PANEL};
+}}
 QLineEdit {{
     min-height: 28px;
     padding: 4px 8px;
@@ -401,11 +415,15 @@ def _active_draft_summary_lines(
     progress = _mapping(board.get("progress"))
     action_log = board.get("action_log")
     action_log_count = len(action_log) if isinstance(action_log, list) else 0
+    from run_workspace.pvp.draft_options import DraftMatchOptions
+    system_name = _text(draft_system.get("display_name"))
+    if session.controller.state.match_options != DraftMatchOptions().resolve(session.controller.state.abyss_rules):
+        system_name += " · " + tr("app_shell.pvp.setup.custom_settings")
     return [
         tr("app_shell.pvp.play.summary_p1").format(name=session.player_1_deck_name),
         tr("app_shell.pvp.play.summary_p2").format(name=session.player_2_deck_name),
         tr("app_shell.pvp.play.summary_system").format(
-            system_id=_text(draft_system.get("display_name")),
+            system_id=system_name,
         ),
         tr("app_shell.pvp.play.summary_requirement").format(
             requirement=requirement_text,
@@ -582,7 +600,7 @@ def _draft_action_log_lines(
             seat=_seat_label(_text(_mapping(row).get("seat"))),
             action=_draft_action_label(_text(_mapping(row).get("action_type"))),
             target=_text(_mapping(row).get("target_display_name"))
-            or _text(_mapping(row).get("target_id")),
+            or _text(_mapping(row).get("target_id")) or tr("app_shell.pvp.clock.skipped"),
         )
         for row in rows
     ]
@@ -901,7 +919,7 @@ def _draft_action_from_unified_pool(
     target_type = _text(action_payload.get("target_type"))
     character_id = _text(action_payload.get("character_id"))
     if (
-        action_type not in {"ban_character", "pick_character", "immune_ban_character",
+        action_type not in {"ban_character", "preban_character", "pick_character", "immune_ban_character",
                             "immune_pick_character", "immune_character"}
         or target_type != "character"
         or not character_id
@@ -1555,6 +1573,8 @@ def _draft_action_label(action_type: str) -> str:
         return tr("app_shell.pvp.draft.pick")
     if action_type == "ban_character":
         return tr("app_shell.pvp.draft.ban")
+    if action_type == "preban_character":
+        return tr("app_shell.pvp.draft.preban")
     for action, key in (("immune_ban_character", "immune_ban"),
                         ("immune_pick_character", "immune_pick"),
                         ("immune_character", "immune")):

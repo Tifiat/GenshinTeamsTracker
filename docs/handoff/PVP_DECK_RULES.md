@@ -25,7 +25,8 @@ activation was removed. The [current receipt](#weapon-roster-requirements--2026-
 owns verification and the [prior performance receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
 owns earlier pipeline measurements.
 
-Pinned 26-action local Abyss matches now connect immunity, existing build services,
+Pinned local Abyss matches connect the base flow, cost-compensation prebans and
+[draft clocks/settings](PVP_DRAFT_RUNTIME.md), immunity, existing build services,
 assigned-weapon budgets and restart-adjusted single-game Shiyu scoring. Both decks
 must use equal rules and have enough compatible shared immunity candidates.
 Unsupported flows/modes/stages and incomplete snapshots fail explicitly; old

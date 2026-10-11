@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QWidget
 from localization import tr
 from run_workspace.pvp.schedule import (
     ACTION_BAN_CHARACTER,
+    ACTION_PREBAN_CHARACTER,
     ACTION_IMMUNE_BAN_CHARACTER,
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
@@ -559,7 +560,7 @@ class PvpDraftOrderStrip(QWidget):
             font.setBold(True)
             font.setPointSize(7)
             painter.setFont(font)
-            painter.setPen(QColor(PVP_DRAFT_IMMUNE_ACCENT))
+            painter.setPen(QColor(_draft_action_color(str(row["action_type"]), seat_color=UI_TEXT_PRIMARY)))
             painter.drawText(label_rect, Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
                              tr(str(visual["label_key"])))
 
@@ -582,7 +583,7 @@ def _draft_action_color(action_type: str, *, seat_color: str) -> str:
     if action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
                        ACTION_IMMUNE_CHARACTER):
         return PVP_DRAFT_IMMUNE_ACCENT
-    if action_type == ACTION_BAN_CHARACTER:
+    if action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER):
         return PVP_DRAFT_BAN_ACCENT
     return seat_color
 
@@ -590,6 +591,8 @@ def _draft_action_color(action_type: str, *, seat_color: str) -> str:
 def _position_visual(row: Mapping[str, Any]) -> dict[str, Any]:
     seat_color = pvp_player_color(str(row["seat"]))
     status = str(row["status"])
+    skipped = (status == "complete" and not row.get("character_id")
+               and row["action_type"] in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER))
     action_color = _draft_action_color(
         str(row["action_type"]),
         seat_color=seat_color,
@@ -600,14 +603,15 @@ def _position_visual(row: Mapping[str, Any]) -> dict[str, Any]:
         "border_color": (
             action_color if status in {"active", "complete"} else UI_BORDER_DEFAULT
         ),
-        "draw_action_label": str(row["action_type"]) in {
+        "draw_action_label": skipped or str(row["action_type"]) in {
             ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
-            ACTION_IMMUNE_CHARACTER,
+            ACTION_IMMUNE_CHARACTER, ACTION_PREBAN_CHARACTER,
         },
-        "label_key": {
+        "label_key": "app_shell.pvp.clock.skipped" if skipped else {
             ACTION_IMMUNE_BAN_CHARACTER: "app_shell.pvp.draft.slot_immune_ban",
             ACTION_IMMUNE_PICK_CHARACTER: "app_shell.pvp.draft.slot_immune_pick",
             ACTION_IMMUNE_CHARACTER: "app_shell.pvp.draft.slot_immune",
+            ACTION_PREBAN_CHARACTER: "app_shell.pvp.draft.preban",
         }.get(str(row["action_type"]), ""),
     }
 
@@ -706,6 +710,8 @@ def _draft_action_turn_label(action_type: str) -> str:
         return tr("app_shell.pvp.draft.immune_pick").upper()
     if action_type == ACTION_IMMUNE_CHARACTER:
         return tr("app_shell.pvp.draft.immune").upper()
+    if action_type == ACTION_PREBAN_CHARACTER:
+        return tr("app_shell.pvp.draft.preban").upper()
     if action_type == ACTION_BAN_CHARACTER:
         return tr("app_shell.pvp.draft.turn_ban").upper()
     return tr("app_shell.pvp.draft.turn_pick").upper()

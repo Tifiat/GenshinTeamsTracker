@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Mapping
 from .deck import DraftCharacter, DraftDeck
 from .schedule import (
     ACTION_BAN_CHARACTER,
+    ACTION_PREBAN_CHARACTER,
     ACTION_IMMUNE_BAN_CHARACTER,
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
@@ -393,7 +394,7 @@ def build_free_draft_board_projection(
     banned_meta_by_id = {
         item.target_id: item
         for item in action_metas
-        if item.action_type == ACTION_BAN_CHARACTER and item.target_id
+        if item.action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER) and item.target_id
     }
     pick_meta_by_seat = {
         seat: {
@@ -600,7 +601,7 @@ def _validate_unified_pool_entry_action(
 ) -> None:
     action_type = action.get("type")
     if action_type not in {
-        ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER,
+        ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER,
         ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
         ACTION_IMMUNE_CHARACTER,
     }:
@@ -719,8 +720,11 @@ def _progress_dict(
         "legal_target_count": legal_target_count,
         "per_seat": {
             seat: {
-                "expected_bans": expected_counts[seat].get(ACTION_BAN_CHARACTER, 0),
-                "actual_bans": len(state.banned_character_ids_for(seat)),
+                "expected_bans": (expected_counts[seat].get(ACTION_BAN_CHARACTER, 0)
+                                  + expected_counts[seat].get(ACTION_PREBAN_CHARACTER, 0)),
+                "actual_bans": sum(action.seat == seat and action.action_type in
+                                   (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER)
+                                   for action in state.accepted_actions),
                 "expected_picks": (expected_counts[seat].get(ACTION_PICK_CHARACTER, 0)
                                    + expected_counts[seat].get(ACTION_IMMUNE_CHARACTER, 0)),
                 "actual_picks": len(state.picked_character_ids_for(seat)),
@@ -856,7 +860,7 @@ def _is_abyss_preparation_blocked(state: DraftSessionState, character_id: str) -
     if requirement.action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER):
         return (character_id in state.immune_ban_character_ids
                 or character_id in state.immune_pick_character_ids)
-    if requirement.action_type in (ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER):
+    if requirement.action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER):
         return character_id in state.immune_pick_character_ids
     return False
 
@@ -1110,7 +1114,7 @@ def _unified_pool_action(
         not is_legal
         or requirement is None
         or requirement.action_type not in {
-            ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER,
+            ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER,
             ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
             ACTION_IMMUNE_CHARACTER,
         }

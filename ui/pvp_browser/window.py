@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timezone
 from pathlib import Path
+from random import choice
 from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, QSize, QTimer, Qt, Signal
@@ -62,7 +63,11 @@ from run_workspace.pvp.deck_preset import (
 from run_workspace.pvp.account_deck_copy import copy_deck_for_player_2
 from run_workspace.pvp.deck import DraftDeck, DraftDeckRulesetRef, FREE_DRAFT_V0_RULESET_ID, FREE_DRAFT_V0_RULESET_NAME
 from run_workspace.pvp.abyss_rules import AbyssRuleset, evaluate_deck
-from run_workspace.pvp.abyss_match_rules import validate_abyss_match_deck, validate_abyss_match_pair
+from run_workspace.pvp.abyss_match_rules import (
+    validate_abyss_match_deck, validate_abyss_match_pair, calculate_abyss_prebans,
+)
+from run_workspace.pvp.draft_options import DraftMatchOptions
+from run_workspace.pvp.draft_clock import DraftClock
 from ui.pvp_browser.deck_rules import DeckRulesController
 from run_workspace.pvp.free_draft_controller import (
     FreeDraftController,
@@ -2161,6 +2166,7 @@ class PvpWorkspace(QWidget):
     state_changed = Signal()
     page_changed = Signal(str)
     active_draft_changed = Signal()
+    draft_clock_changed = Signal(object)
 
     def __init__(
         self,
@@ -2174,6 +2180,7 @@ class PvpWorkspace(QWidget):
         abyss_period_provider: Callable[[], CachedAbyssPeriodRef | None] | None = None,
         today_provider: Callable[[], date] | None = None,
         abyss_cache_dir: str | Path = DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR,
+        draft_time_provider: Callable[[], float] | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpWorkspace")
@@ -2191,6 +2198,13 @@ class PvpWorkspace(QWidget):
         self.active_draft_session: PvpActiveDraftSession | None = None
         self._last_play_status = ""
         self._last_draft_status = ""
+        self._draft_clock: DraftClock | None = None
+        self._draft_time_provider = draft_time_provider
+        self._handling_clock_expiry = False
+        self._handled_expiry_key = None
+        self._draft_tick_timer = QTimer(self)
+        self._draft_tick_timer.setInterval(200)
+        self._draft_tick_timer.timeout.connect(self._tick_draft_clock)
         self.draft_stage = PVP_DRAFT_STAGE_DRAFT
         self.build_flow_context: Any | None = None
         self._local_profile_provider = LocalPvpProfileProvider(
@@ -2514,6 +2528,35 @@ class PvpWorkspace(QWidget):
         preset = self._seat_preset_by_id("player_1", player_1_deck_id)
         return preset.ruleset_id if preset else FREE_DRAFT_V0_RULESET_ID
 
+    def play_match_options(self, player_1_deck_id: str, draft_system_id: str | None = None):
+        preset = self._seat_preset_by_id("player_1", player_1_deck_id)
+        if preset is None or (draft_system_id or preset.ruleset_id) == FREE_DRAFT_V0_RULESET_ID:
+            return DraftMatchOptions().resolve(None)
+        return DraftMatchOptions().resolve(AbyssRuleset.from_dict(preset.rules_snapshot or {}))
+
+    def play_preban_report(self, player_1_deck_id: str, player_2_deck_id: str,
+                          *, draft_system_id: str | None = None,
+                          match_options: DraftMatchOptions | None = None):
+        first = self.deck_start_status(player_1_deck_id, player_label="Player 1", seat="player_1",
+                                       draft_system_id=draft_system_id)
+        second = self.deck_start_status(player_2_deck_id, player_label="Player 2", seat="player_2",
+                                        draft_system_id=draft_system_id)
+        if (first.preset is None or second.preset is None or first.draft_deck is None
+                or second.draft_deck is None):
+            return None
+        if (draft_system_id or first.preset.ruleset_id) == FREE_DRAFT_V0_RULESET_ID:
+            return None
+        context = (first.draft_deck, second.draft_deck, first.preset.rules_snapshot, match_options)
+        cached = getattr(self, "_preban_preview_cache", None)
+        if cached is not None and cached[0] == context:
+            return cached[1]
+        rules = AbyssRuleset.from_dict(first.preset.rules_snapshot or {})
+        options = (match_options or DraftMatchOptions()).resolve(rules)
+        report = calculate_abyss_prebans(first.draft_deck, second.draft_deck, rules,
+                                       preban_cost_step=options.preban_cost_step)
+        self._preban_preview_cache = (context, report)
+        return report
+
     def deck_start_status(
         self,
         deck_id: str,
@@ -2609,24 +2652,25 @@ class PvpWorkspace(QWidget):
         return status
 
     def match_rules_status(self, player_1_deck_id: str, player_2_deck_id: str,
-                           *, draft_system_id: str | None = None) -> str:
+                           *, draft_system_id: str | None = None,
+                           match_options: DraftMatchOptions | None = None) -> str:
         """Both seats execute the same rules, ignoring retrieval-only provenance."""
         if draft_system_id == FREE_DRAFT_V0_RULESET_ID:
             return ""
         presets = (self._seat_preset_by_id("player_1", player_1_deck_id),
                    self._seat_preset_by_id("player_2", player_2_deck_id))
         cached = getattr(self, "_match_rules_cache", None)
-        context = (presets, draft_system_id)
+        context = (presets, draft_system_id, match_options)
         if cached is not None and cached[0] == context:
             return cached[1]
         if draft_system_id and any(p is not None and p.ruleset_id != draft_system_id for p in presets):
             text = tr("app_shell.pvp.rules.match_rules_mismatch")
         else:
-            text = self._match_rules_status_for(presets, player_1_deck_id, player_2_deck_id)
+            text = self._match_rules_status_for(presets, player_1_deck_id, player_2_deck_id, match_options)
         self._match_rules_cache = (context, text)
         return text
 
-    def _match_rules_status_for(self, presets, player_1_deck_id, player_2_deck_id) -> str:
+    def _match_rules_status_for(self, presets, player_1_deck_id, player_2_deck_id, match_options=None) -> str:
         if any(preset is None for preset in presets):
             return ""
         first, second = presets
@@ -2647,17 +2691,27 @@ class PvpWorkspace(QWidget):
             first_status = self.deck_start_status(player_1_deck_id, player_label="Player 1", seat="player_1")
             second_status = self.deck_start_status(player_2_deck_id, player_label="Player 2", seat="player_2")
             if first_status.ready and second_status.ready:
+                try:
+                    prebans = self.play_preban_report(player_1_deck_id, player_2_deck_id,
+                                                     match_options=match_options)
+                except ValueError as exc:
+                    return tr("app_shell.pvp.setup.preban_error").format(reason=str(exc))
                 report = validate_abyss_match_pair(first_status.draft_deck, second_status.draft_deck,
-                                                 AbyssRuleset.from_dict(first.rules_snapshot))
+                                                 AbyssRuleset.from_dict(first.rules_snapshot), preban_report=prebans)
                 if not report.ready:
-                    return tr("app_shell.pvp.rules.match_shared_roster").format(**report.errors[0].details)
+                    issue = report.errors[0]
+                    if issue.code == "abyss_shared_immune_candidates_insufficient":
+                        return tr("app_shell.pvp.rules.match_shared_roster").format(**issue.details)
+                    return tr("app_shell.pvp.setup.preban_roster").format(**issue.details)
         return ""
 
     def can_start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str,
-                              *, draft_system_id: str | None = None) -> bool:
+                              *, draft_system_id: str | None = None,
+                              match_options: DraftMatchOptions | None = None) -> bool:
         return (
             self.period_admission().ready
-            and not self.match_rules_status(player_1_deck_id, player_2_deck_id, draft_system_id=draft_system_id)
+            and not self.match_rules_status(player_1_deck_id, player_2_deck_id,
+                                           draft_system_id=draft_system_id, match_options=match_options)
             and
             self.deck_start_status(
                 player_1_deck_id,
@@ -2674,14 +2728,15 @@ class PvpWorkspace(QWidget):
         )
 
     def start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str,
-                          *, draft_system_id: str | None = None) -> bool:
+                          *, draft_system_id: str | None = None,
+                          match_options: DraftMatchOptions | None = None) -> bool:
         period = self.period_admission()
         if not period.ready:
             self._last_play_status = _pvp_period_message(period)
             self.state_changed.emit()
             return False
         rules_status = self.match_rules_status(player_1_deck_id, player_2_deck_id,
-                                             draft_system_id=draft_system_id)
+                                             draft_system_id=draft_system_id, match_options=match_options)
         if rules_status:
             self._last_play_status = rules_status
             self.state_changed.emit()
@@ -2723,11 +2778,13 @@ class PvpWorkspace(QWidget):
         if (draft_system_id or player_1_status.preset.ruleset_id) == FREE_DRAFT_V0_RULESET_ID:
             controller = FreeDraftController.from_decks(
                 player_1_deck, player_2_deck, source_mode="local_hot_seat",
+                match_options=match_options,
             )
         else:
             rules = AbyssRuleset.from_dict(player_1_status.preset.rules_snapshot)
             controller = FreeDraftController.from_abyss_decks(
                 player_1_deck, player_2_deck, rules, source_mode="local_hot_seat",
+                match_options=match_options,
             )
         if not controller.state.setup_ready:
             self._last_play_status = tr("app_shell.pvp.play.start_blocked")
@@ -2745,6 +2802,7 @@ class PvpWorkspace(QWidget):
         self._last_play_status = ""
         self._last_draft_status = ""
         self._reset_post_draft_state()
+        self._start_draft_clock()
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.set_page(PVP_PAGE_DRAFT)
@@ -2768,6 +2826,10 @@ class PvpWorkspace(QWidget):
         if session is None:
             self._last_draft_status = tr("app_shell.pvp.draft.no_active_title")
             self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        if self._draft_clock is not None and self._draft_clock.snapshot().paused:
+            self._last_draft_status = tr("app_shell.pvp.clock.paused")
             self.state_changed.emit()
             return False
         board = self.draft_board_dict()
@@ -2798,6 +2860,7 @@ class PvpWorkspace(QWidget):
             return False
 
         self._last_draft_status = ""
+        self._advance_draft_clock()
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.active_draft_changed.emit()
@@ -3196,6 +3259,10 @@ class PvpWorkspace(QWidget):
         return self._last_draft_status
 
     def _reset_post_draft_state(self) -> None:
+        self._draft_tick_timer.stop()
+        self._draft_clock = None
+        self._handled_expiry_key = None
+        self.draft_clock_changed.emit(None)
         self._result_export_names = None
         self.restart_counts_by_seat = {seat: 0 for seat in PVP_SEATS}
         self._abyss_budget_context = None
@@ -3208,6 +3275,90 @@ class PvpWorkspace(QWidget):
         }
         self._abyss_source_data_loaded = False
         self._abyss_source_data = None
+
+    def _start_draft_clock(self) -> None:
+        session = self.active_draft_session
+        if session is None:
+            return
+        options = session.controller.state.match_options
+        kwargs = {"now": self._draft_time_provider} if self._draft_time_provider is not None else {}
+        self._draft_clock = DraftClock(options.pick_time_ms or 0, options.reserve_time_ms or 0, **kwargs)
+        self._draft_clock.start(0, session.controller.session_state.current_seat)
+        if options.pick_time_ms:
+            self._draft_tick_timer.start()
+        self._tick_draft_clock()
+
+    def _advance_draft_clock(self) -> None:
+        session = self.active_draft_session
+        if self._draft_clock is None or session is None:
+            return
+        state = session.controller.session_state
+        if state.is_complete:
+            self._draft_clock.finish()
+            self._draft_tick_timer.stop()
+        else:
+            self._draft_clock.advance(len(state.accepted_actions), state.current_seat)
+            if self._draft_clock.snapshot().running:
+                self._draft_tick_timer.start()
+        self._tick_draft_clock()
+
+    def draft_clock_snapshot(self):
+        return self._draft_clock.snapshot() if self._draft_clock is not None else None
+
+    def toggle_draft_clock_pause(self) -> None:
+        if self._draft_clock is None:
+            return
+        if self._draft_clock.snapshot().paused:
+            self._draft_clock.resume()
+        else:
+            self._draft_clock.pause()
+        if self._draft_clock.snapshot().running:
+            self._draft_tick_timer.start()
+        self._tick_draft_clock()
+
+    def _tick_draft_clock(self) -> None:
+        snapshot = self.draft_clock_snapshot()
+        if snapshot is None or not snapshot.running:
+            self._draft_tick_timer.stop()
+        self.draft_clock_changed.emit(snapshot)
+        if (snapshot is not None and snapshot.expired and not snapshot.paused
+                and not self._handling_clock_expiry and snapshot.action_key != self._handled_expiry_key
+                and self.active_draft_session is not None
+                and self.active_draft_session.controller.state.match_options.auto_on_expire):
+            self._handled_expiry_key = snapshot.action_key
+            self._handling_clock_expiry = True
+            try:
+                self._apply_expired_draft_action()
+            finally:
+                self._handling_clock_expiry = False
+
+    def _apply_expired_draft_action(self):
+        session = self.active_draft_session
+        if session is None:
+            return
+        requirement = session.controller.session_state.current_requirement
+        if requirement is None:
+            return
+        if requirement.action_type in ("ban_character", "preban_character"):
+            session.controller.apply_current_action("", skip=True)
+            self._last_draft_status = ""
+            self._advance_draft_clock()
+            self._sync_play_workspace()
+            self._sync_draft_workspace()
+            self.active_draft_changed.emit()
+            self.state_changed.emit()
+            return
+        board = self.draft_board_dict()
+        actions = [row["action"] for row in board["unified_pool"]["entries"] if row["is_current_legal_target"]]
+        if not actions:
+            self._last_draft_status = tr("app_shell.pvp.clock.no_auto_target")
+            self.state_changed.emit()
+            return
+        state = session.controller.session_state
+        own = getattr(state, state.current_seat + "_immune_pick_character_ids")
+        preferred = [action for cid in own + tuple(cid for cid in state.immune_pick_character_ids if cid not in own)
+                     for action in actions if action["character_id"] == cid]
+        self.apply_draft_card_click(preferred[0] if preferred else choice(actions))
 
     def _dispose_build_flow_context(self) -> None:
         context = self.build_flow_context
@@ -3236,6 +3387,7 @@ class PvpWorkspace(QWidget):
             raise cleanup_error
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        self._draft_tick_timer.stop()
         try:
             self._dispose_build_flow_context()
         finally:
@@ -3243,6 +3395,7 @@ class PvpWorkspace(QWidget):
             super().closeEvent(event)
 
     def _on_application_quit(self) -> None:
+        self._draft_tick_timer.stop()
         from run_workspace.pvp.gcsim_execution import close_pvp_gcsim_sessions
 
         try:
@@ -3337,7 +3490,8 @@ class PvpWorkspace(QWidget):
             },
             "build_status": build_status,
             "restart_counts": dict(self.restart_counts_by_seat),
-            "restart_rules": (self.active_draft_session.controller.state.abyss_rules.to_dict().get("phase_match")
+            "restart_rules": ({"free_restarts": self.active_draft_session.controller.state.match_options.free_restarts,
+                               "paid_restarts": self.active_draft_session.controller.state.match_options.paid_restarts}
                               if self.active_draft_session and self.active_draft_session.controller.state.abyss_rules else None),
             "result": (
                 self.active_draft_session.controller.state.match_result.to_dict()

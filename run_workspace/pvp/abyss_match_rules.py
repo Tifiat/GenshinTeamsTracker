@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import dataclass
 from decimal import Decimal, ROUND_CEILING
 from typing import Any
 
@@ -27,6 +28,7 @@ from .schedule import (
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
+    ACTION_PREBAN_CHARACTER,
     ACTION_SET_READY,
     ACTION_SET_TIMER,
     DraftActionRequirement,
@@ -44,6 +46,26 @@ class AbyssMatchRulesError(ValueError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+@dataclass(frozen=True, slots=True)
+class AbyssPrebanReport:
+    total_player_1: Decimal
+    total_player_2: Decimal
+    difference: Decimal
+    cost_step: int
+    count: int
+    seat: str | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "total_player_1": float(self.total_player_1),
+            "total_player_2": float(self.total_player_2),
+            "difference": float(self.difference),
+            "cost_step": self.cost_step,
+            "count": self.count,
+            "seat": self.seat,
+        }
 
 
 _SOURCE_ACTIONS = {
@@ -99,7 +121,46 @@ def build_abyss_match_schedule(rules: AbyssRuleset) -> DraftSchedule:
     return DraftSchedule(ruleset_id=f"abyss:{rules.system_id}", steps=tuple(steps))
 
 
-def build_abyss_match_definition(rules: AbyssRuleset) -> DraftSystemDefinition:
+def calculate_abyss_prebans(
+    player_1_deck: DraftDeck,
+    player_2_deck: DraftDeck,
+    rules: AbyssRuleset,
+    *,
+    preban_cost_step: int | None = None,
+) -> AbyssPrebanReport:
+    """Assign one extra global ban per full source character-cost step."""
+    phase = rules.to_dict().get("phase_picks")
+    if phase is None:
+        raise AbyssMatchRulesError("abyss_pick_phase_missing", "Pinned rules have no pick phase.")
+    step = phase["preban_cost_step"] if preban_cost_step is None else preban_cost_step
+    if type(step) is not int or step < 0:
+        raise AbyssMatchRulesError("abyss_preban_step_invalid", "Preban cost step must be a nonnegative integer.")
+    totals: list[Decimal] = []
+    for deck in (player_1_deck, player_2_deck):
+        rows = evaluate_deck(deck, rules).character_rows
+        prices = [row["cost"] for row in rows]
+        if any(price is None for price in prices):
+            raise AbyssMatchRulesError("abyss_preban_cost_unknown", "A roster has an unknown character cost.")
+        # The source's normal-array reduce returns the agent sum before its
+        # nullish fallback, so matched bundle adjustments do not enter prebans.
+        total = sum((Decimal(str(price)) for price in prices), Decimal(0))
+        if not total.is_finite():
+            raise AbyssMatchRulesError("abyss_preban_cost_unknown", "A roster has a nonfinite character cost.")
+        totals.append(total)
+    difference = abs(totals[0] - totals[1])
+    count = int(difference // step) if step else 0
+    seat = (SEAT_PLAYER_1 if totals[0] < totals[1] else SEAT_PLAYER_2
+            if totals[1] < totals[0] else None) if count else None
+    if count:
+        expensive = player_2_deck if seat == SEAT_PLAYER_1 else player_1_deck
+        if count > len(expensive.character_ids):
+            raise AbyssMatchRulesError("abyss_preban_roster_insufficient", "The price gap requires more prebans than the opposing roster contains.")
+    return AbyssPrebanReport(totals[0], totals[1], difference, step, count, seat)
+
+
+def build_abyss_match_definition(
+    rules: AbyssRuleset, *, preban_report: AbyssPrebanReport | None = None,
+) -> DraftSystemDefinition:
     """Bind a source version to one local hot-seat draft system instance."""
     data = rules.to_dict()
     if "mode" not in data["source"]:
@@ -113,6 +174,14 @@ def build_abyss_match_definition(rules: AbyssRuleset) -> DraftSystemDefinition:
     if data["phase_stage"]["enabled"]:
         raise AbyssMatchRulesError("abyss_stage_phase_unsupported", "Enabled stage phases are unsupported.")
     schedule = build_abyss_match_schedule(rules)
+    if preban_report is not None and preban_report.count:
+        if preban_report.count < 0 or preban_report.seat not in (SEAT_PLAYER_1, SEAT_PLAYER_2):
+            raise AbyssMatchRulesError("abyss_preban_report_invalid", "Invalid preban report.")
+        extra = tuple(DraftScheduleStep(
+            PHASE_PREBAN, preban_report.seat,
+            (DraftActionRequirement(ACTION_PREBAN_CHARACTER),),
+        ) for _ in range(preban_report.count))
+        schedule = DraftSchedule(schedule.ruleset_id, extra + schedule.steps)
     if "phase_match" not in data:
         raise AbyssMatchRulesError("abyss_match_phase_missing", "Pinned rules have no match scoring phase.")
     return DraftSystemDefinition(
@@ -122,6 +191,7 @@ def build_abyss_match_definition(rules: AbyssRuleset) -> DraftSystemDefinition:
         description="Local Abyss source flow bound to a pinned public rules version.",
         schedule_builder=lambda: schedule,
         supported_action_types=(
+            ACTION_PREBAN_CHARACTER,
             ACTION_IMMUNE_BAN_CHARACTER,
             ACTION_IMMUNE_PICK_CHARACTER,
             ACTION_BAN_CHARACTER,
@@ -253,6 +323,8 @@ def validate_abyss_match_pair(
     player_1_deck: DraftDeck,
     player_2_deck: DraftDeck,
     rules: AbyssRuleset,
+    *,
+    preban_report: AbyssPrebanReport | None = None,
 ) -> DeckValidationReport:
     """Ensure the pair can complete its four distinct preparatory choices."""
     try:
@@ -263,8 +335,35 @@ def validate_abyss_match_pair(
         action.action_type in _PREPARATORY_ACTIONS
         for step in schedule.steps for action in step.actions
     )
-    eligible, _ = abyss_immune_context(player_1_deck, player_2_deck, rules)
-    return _pair_report_from_eligible(eligible, required, rules)
+    eligible, absolute_ids = abyss_immune_context(player_1_deck, player_2_deck, rules)
+    issues = list(_pair_report_from_eligible(eligible, required, rules).issues)
+    for target_seat, target in ((SEAT_PLAYER_1, player_1_deck),
+                                (SEAT_PLAYER_2, player_2_deck)):
+        opponent_seat = SEAT_PLAYER_2 if target_seat == SEAT_PLAYER_1 else SEAT_PLAYER_1
+        ordinary_bans = sum(
+            action.action_type == ACTION_BAN_CHARACTER
+            for step in schedule.steps if step.seat == opponent_seat
+            for action in step.actions
+        )
+        extra_bans = (preban_report.count if preban_report is not None
+                      and preban_report.seat == opponent_seat else 0)
+        minimum = 8 + ordinary_bans + extra_bans
+        if len(target.character_ids) < minimum:
+            issues.append(_error("abyss_roster_too_small_for_draft", "characters",
+                                 details={"seat": target_seat, "minimum": minimum,
+                                          "actual": len(target.character_ids)}))
+    if preban_report is not None and preban_report.count:
+        if preban_report.seat not in (SEAT_PLAYER_1, SEAT_PLAYER_2) or preban_report.count < 0:
+            issues.append(_error("abyss_preban_report_invalid", "phase_picks"))
+        else:
+            target = player_2_deck if preban_report.seat == SEAT_PLAYER_1 else player_1_deck
+            target_seat = SEAT_PLAYER_2 if preban_report.seat == SEAT_PLAYER_1 else SEAT_PLAYER_1
+            available = len(target.character_ids - set(absolute_ids)) - required
+            if available < preban_report.count:
+                issues.append(_error("abyss_preban_targets_insufficient", "decks",
+                                     details={"minimum": preban_report.count,
+                                              "actual": max(0, available), "seat": target_seat}))
+    return DeckValidationReport(tuple(issues))
 
 
 def _pair_report_from_eligible(

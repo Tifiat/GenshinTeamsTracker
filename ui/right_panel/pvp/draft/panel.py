@@ -44,6 +44,7 @@ from ui.right_panel.pvp._shared import (
     _refresh_postdraft_seat_toggle_style,
 )
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidget
+from ui.pvp_browser.draft_clock_widget import DraftClockWidget
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 
 
@@ -102,6 +103,8 @@ class PvpDraftRightPanel(QWidget):
         self.empty_label.setObjectName("small_muted")
         self.empty_label.setWordWrap(True)
         root.addWidget(self.empty_label)
+        self.clock_widget = DraftClockWidget(workspace)
+        root.addWidget(self.clock_widget)
 
         self.action_frame = QFrame()
         self.action_frame.setObjectName("pvp_draft_action_card")
@@ -222,6 +225,7 @@ class PvpDraftRightPanel(QWidget):
         self.refresh()
 
     def refresh(self) -> None:
+        self.clock_widget.set_clock(self.workspace.draft_clock_snapshot())
         session = self.workspace.active_draft_session
         has_session = session is not None
         self.title_label.setVisible(not has_session)
@@ -466,6 +470,7 @@ class PvpDraftRightPanel(QWidget):
             left_layout.activate()
 
     def retranslate_ui(self) -> None:
+        self.clock_widget.retranslate_ui()
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
         self.empty_label.setText(tr("app_shell.pvp.draft.no_active_body"))
         self._refresh_log_toggle_text()

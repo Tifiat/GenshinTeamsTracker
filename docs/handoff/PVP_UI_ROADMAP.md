@@ -26,6 +26,8 @@ remains in `PVP_BACKEND_STATUS.md`.
   Player 2 local deck presets, validates both through backend `DraftDeck`
   conversion, starts an in-memory `FreeDraftController`, and switches to the
   Draft board page.
+- [Draft runtime](PVP_DRAFT_RUNTIME.md) owns automatic cost-difference prebans,
+  rule-default/custom match controls, per-action/seat reserve clocks and pause.
 - Draft board v0 is implemented in `ui/pvp_browser/window.py` as a local
   hot-seat board over the backend Free Draft board projection. The right Draft
   panel is `ui.right_panel.pvp.draft.panel.PvpDraftRightPanel`; shared draft UI

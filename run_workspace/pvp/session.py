@@ -12,6 +12,7 @@ from .schedule import (
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
+    ACTION_PREBAN_CHARACTER,
     DraftActionRequirement,
     DraftSchedule,
     PVP_SEATS,
@@ -45,6 +46,10 @@ REJECT_CHARACTER_NOT_IN_OPPONENT_DECK = "character_not_in_opponent_deck"
 REJECT_CHARACTER_NOT_IMMUNE_ELIGIBLE = "character_not_immune_eligible"
 REJECT_CHARACTER_RESERVED_FOR_IMMUNE = "character_reserved_for_immune"
 REJECT_CHARACTER_ABSOLUTELY_IMMUNE = "character_absolutely_immune"
+REJECT_IMMUNE_CHOICES_INSUFFICIENT = "immune_choices_insufficient_after_preban"
+REJECT_SKIP_INVALID = "skip_invalid"
+REJECT_SKIP_ACTION_UNSUPPORTED = "skip_action_unsupported"
+REJECT_SKIP_TARGET_PRESENT = "skip_target_present"
 
 ISSUE_DRAFT_NOT_COMPLETE = "draft_not_complete"
 ISSUE_DRAFT_PICK_COUNT_INVALID = "draft_pick_count_invalid"
@@ -108,9 +113,10 @@ class DraftAction:
     action_id: str = ""
     sequence: int | None = None
     payload: Mapping[str, Any] = field(default_factory=dict)
+    skip: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "action_id": self.action_id,
             "sequence": self.sequence,
             "seat": self.seat,
@@ -118,6 +124,36 @@ class DraftAction:
             "character_id": self.character_id,
             "payload": dict(sorted(self.payload.items())),
         }
+        if self.skip:
+            result["skip"] = True
+        return result
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "DraftAction":
+        """Read an action log row, including the optional ban-skip marker."""
+        if not isinstance(value, Mapping):
+            raise ValueError("Draft action must be an object.")
+        skip = value.get("skip", False)
+        if type(skip) is not bool:
+            raise ValueError("Draft action skip must be a boolean.")
+        sequence = value.get("sequence")
+        if sequence is not None and type(sequence) is not int:
+            raise ValueError("Draft action sequence must be an integer or null.")
+        payload = value.get("payload", {})
+        if not isinstance(payload, Mapping):
+            raise ValueError("Draft action payload must be an object.")
+        fields = ("seat", "type", "character_id", "action_id")
+        if any(type(value.get(field, "")) is not str for field in fields):
+            raise ValueError("Draft action text fields must be strings.")
+        return cls(
+            seat=value.get("seat", ""),
+            action_type=value.get("type", ""),
+            character_id=value.get("character_id", ""),
+            action_id=value.get("action_id", ""),
+            sequence=sequence,
+            payload=dict(payload),
+            skip=skip,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -348,7 +384,15 @@ def apply_draft_action(
     }:
         raise DraftActionRejected(REJECT_DUPLICATE_SEQUENCE)
 
+    if type(action.skip) is not bool:
+        raise DraftActionRejected(REJECT_SKIP_INVALID)
     character_id = action.character_id.strip()
+    if action.skip:
+        if action.action_type not in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER):
+            raise DraftActionRejected(REJECT_SKIP_ACTION_UNSUPPORTED)
+        if action.character_id:
+            raise DraftActionRejected(REJECT_SKIP_TARGET_PRESENT)
+        return _advance_after_accepting(state, action)
     if not character_id:
         raise DraftActionRejected(REJECT_MISSING_CHARACTER_ID)
 
@@ -356,7 +400,7 @@ def apply_draft_action(
         state = _apply_immune_preparation(state, action, character_id, ban=True)
     elif action.action_type == ACTION_IMMUNE_PICK_CHARACTER:
         state = _apply_immune_preparation(state, action, character_id, ban=False)
-    elif action.action_type == ACTION_BAN_CHARACTER:
+    elif action.action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER):
         state = _apply_ban(state, action, character_id)
     elif action.action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER):
         state = _apply_pick(state, action, character_id)
@@ -596,6 +640,8 @@ def _apply_immune_preparation(
 ) -> DraftSessionState:
     if not state.is_abyss_match or character_id not in state.immune_eligible_character_ids:
         raise DraftActionRejected(REJECT_CHARACTER_NOT_IMMUNE_ELIGIBLE)
+    if character_id in state.banned_character_ids:
+        raise DraftActionRejected(REJECT_CHARACTER_GLOBALLY_BANNED)
     if character_id in state.immune_ban_character_ids or character_id in state.immune_pick_character_ids:
         raise DraftActionRejected(REJECT_CHARACTER_RESERVED_FOR_IMMUNE)
     if character_id in state.absolute_immune_character_ids:
@@ -630,6 +676,14 @@ def _apply_ban(
             raise DraftActionRejected(REJECT_CHARACTER_ABSOLUTELY_IMMUNE)
         if character_id in state.immune_pick_character_ids:
             raise DraftActionRejected(REJECT_CHARACTER_RESERVED_FOR_IMMUNE)
+        if action.action_type == ACTION_PREBAN_CHARACTER and character_id in state.immune_eligible_character_ids:
+            required = sum(
+                item.action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER)
+                for step in state.schedule.steps for item in step.actions
+            )
+            remaining = len(set(state.immune_eligible_character_ids) - set(state.banned_character_ids))
+            if remaining <= required:
+                raise DraftActionRejected(REJECT_IMMUNE_CHOICES_INSUFFICIENT)
     if action.seat == SEAT_PLAYER_1:
         return replace(
             state,

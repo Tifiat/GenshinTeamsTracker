@@ -14,10 +14,11 @@ from typing import Any, Mapping
 
 from .abyss_rules import AbyssRuleset
 from .abyss_match_rules import (
-    _pair_report_from_eligible,
     abyss_immune_context,
     build_abyss_match_definition,
     calculate_abyss_weapon_budget,
+    calculate_abyss_prebans,
+    validate_abyss_match_pair,
     validate_abyss_match_deck,
 )
 from .account_deck_export import (
@@ -34,6 +35,7 @@ from .deck import (
     draft_deck_from_mapping,
     load_draft_deck,
 )
+from .draft_options import DraftMatchOptions
 from .draft_system import (
     DRAFT_SYSTEM_FREE_DRAFT_V0,
     DraftSystemDefinition,
@@ -54,6 +56,7 @@ from .match_result import (
 )
 from .schedule import (
     ACTION_BAN_CHARACTER,
+    ACTION_PREBAN_CHARACTER,
     ACTION_IMMUNE_BAN_CHARACTER,
     ACTION_IMMUNE_CHARACTER,
     ACTION_IMMUNE_PICK_CHARACTER,
@@ -209,6 +212,8 @@ class FreeDraftControllerState:
     match_result: MatchResult | None = None
     issues: tuple[FreeDraftControllerIssue, ...] = ()
     abyss_rules: AbyssRuleset | None = None
+    match_options: DraftMatchOptions = field(default_factory=DraftMatchOptions)
+    preban_report: Any | None = None
 
     @property
     def setup_ready(self) -> bool:
@@ -242,6 +247,7 @@ class FreeDraftController:
         draft_system: DraftSystemDefinition | None = None,
         system_id: str = DRAFT_SYSTEM_FREE_DRAFT_V0,
         source_mode: str = "synthetic",
+        match_options: DraftMatchOptions | None = None,
     ) -> "FreeDraftController":
         system = draft_system or require_draft_system(system_id)
         schedule = system.build_schedule()
@@ -264,6 +270,7 @@ class FreeDraftController:
                 session_state=session_state,
                 source_mode=source_mode,
                 issues=issues,
+                match_options=(match_options or DraftMatchOptions()).resolve(None),
             )
         )
 
@@ -275,18 +282,19 @@ class FreeDraftController:
         rules: AbyssRuleset,
         *,
         source_mode: str = "local_hot_seat",
+        match_options: DraftMatchOptions | None = None,
     ) -> "FreeDraftController":
-        system = build_abyss_match_definition(rules)
+        options = (match_options or DraftMatchOptions()).resolve(rules)
+        prebans = calculate_abyss_prebans(player_1_deck, player_2_deck, rules,
+                                        preban_cost_step=options.preban_cost_step)
+        system = build_abyss_match_definition(rules, preban_report=prebans)
         player_1_validation = validate_abyss_match_deck(player_1_deck, rules)
         player_2_validation = validate_abyss_match_deck(player_2_deck, rules)
         immune_eligible, absolute_immune = abyss_immune_context(
             player_1_deck, player_2_deck, rules
         )
-        preparatory_count = sum(
-            action.action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER)
-            for step in system.build_schedule().steps for action in step.actions
-        )
-        pair_validation = _pair_report_from_eligible(immune_eligible, preparatory_count, rules)
+        pair_validation = validate_abyss_match_pair(player_1_deck, player_2_deck, rules,
+                                                   preban_report=prebans)
         if not pair_validation.ready:
             player_1_validation = DeckValidationReport(
                 player_1_validation.issues + pair_validation.issues
@@ -313,6 +321,8 @@ class FreeDraftController:
             source_mode=source_mode,
             issues=_deck_issues(player_1_validation, player_2_validation),
             abyss_rules=rules,
+            match_options=options,
+            preban_report=prebans,
         ))
 
     @classmethod
@@ -445,7 +455,7 @@ class FreeDraftController:
         if requirement is None or seat is None:
             return ()
         if requirement.action_type not in {
-            ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER,
+            ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER,
             ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
             ACTION_IMMUNE_CHARACTER,
         }:
@@ -490,6 +500,7 @@ class FreeDraftController:
         target_id: str,
         *,
         expected_action_type: str | None = None,
+        skip: bool = False,
     ) -> DraftAction:
         requirement = self.session_state.current_requirement
         seat = self.session_state.current_seat
@@ -511,6 +522,7 @@ class FreeDraftController:
             seat=seat,
             action_type=requirement.action_type,
             character_id=target_id,
+            skip=skip,
         )
 
     def apply_manual_action(
@@ -519,6 +531,7 @@ class FreeDraftController:
         seat: str,
         action_type: str,
         character_id: str,
+        skip: bool = False,
     ) -> DraftAction:
         action = DraftAction(
             seat=seat,
@@ -526,6 +539,7 @@ class FreeDraftController:
             character_id=character_id,
             action_id=f"free-draft-controller-{len(self.accepted_actions) + 1}",
             sequence=len(self.accepted_actions) + 1,
+            skip=skip,
         )
         try:
             next_state = apply_draft_action(self.session_state, action)
@@ -676,14 +690,14 @@ class FreeDraftController:
                     "abyss_restart_counts_missing",
                     "Abyss scoring requires a restart count for both seats.",
                 )
-            policy = self.state.abyss_rules.to_dict()["phase_match"]
+            policy = self.state.match_options
             try:
                 result = calculate_abyss_match_result(
                     player_1_timers,
                     player_2_timers,
                     restarts_by_seat=restarts_by_seat,
-                    free_restarts=policy["free_restarts"],
-                    paid_restarts=tuple(policy["paid_restarts"]),
+                    free_restarts=policy.free_restarts,
+                    paid_restarts=policy.paid_restarts,
                     source_hash=self.state.abyss_rules.content_hash,
                 )
             except ValueError as exc:
@@ -850,8 +864,11 @@ class FreeDraftController:
             "actions_accepted": len(self.accepted_actions),
             "per_seat": {
                 seat: {
-                    "expected_bans": expected_counts[seat].get(ACTION_BAN_CHARACTER, 0),
-                    "actual_bans": len(self.session_state.banned_character_ids_for(seat)),
+                    "expected_bans": (expected_counts[seat].get(ACTION_BAN_CHARACTER, 0)
+                                      + expected_counts[seat].get(ACTION_PREBAN_CHARACTER, 0)),
+                    "actual_bans": sum(action.seat == seat and action.action_type in
+                                       (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER)
+                                       for action in self.accepted_actions),
                     "expected_picks": (expected_counts[seat].get(ACTION_PICK_CHARACTER, 0)
                                        + expected_counts[seat].get(ACTION_IMMUNE_CHARACTER, 0)),
                     "actual_picks": len(self.session_state.picked_character_ids_for(seat)),
@@ -930,7 +947,7 @@ def _candidate_characters(
              if character.character_id in state.immune_eligible_character_ids),
             key=_character_sort_key,
         ))
-    if action_type == ACTION_BAN_CHARACTER:
+    if action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER):
         characters: list[DraftCharacter] = []
         seen: set[str] = set()
         decks = ((state.deck_for(state.opponent_seat(seat)),) if state.is_abyss_match else

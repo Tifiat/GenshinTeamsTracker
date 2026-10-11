@@ -30,6 +30,7 @@ from ui.right_panel.common.metrics import (
     _set_object_name,
 )
 from ui.utils.hidpi_pixmap import effective_pixmap_dpr
+from ui.utils.character_card_pixmap import character_card_pixmap
 from ui.utils.pixmap_utils import draw_count_badge, make_diagonal_split_pixmap
 
 
@@ -99,11 +100,7 @@ class RightPanelPixmapMiniBoxLabel(QLabel):
             _set_object_name(self, object_name)
         self.clear()
         self.setText(self._fallback_text)
-        pixmap = _fit_pixmap(
-            self._image_path,
-            self._pixmap_size,
-            dpr=self.devicePixelRatioF(),
-        )
+        pixmap = self._load_pixmap()
         loaded = pixmap is not None
         self.setProperty(self._has_pixmap_property, loaded)
         if loaded:
@@ -115,8 +112,15 @@ class RightPanelPixmapMiniBoxLabel(QLabel):
         )
         return loaded
 
+    def _load_pixmap(self) -> QPixmap | None:
+        return _fit_pixmap(self._image_path, self._pixmap_size, dpr=self.devicePixelRatioF())
+
 
 class RightPanelPortraitMiniBox(RightPanelPixmapMiniBoxLabel):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._portrait_layers: dict = {}
+
     def set_portrait(
         self,
         *,
@@ -124,13 +128,28 @@ class RightPanelPortraitMiniBox(RightPanelPixmapMiniBoxLabel):
         fallback_text: str,
         empty: bool = False,
         surface: str = "right_panel_portrait_mini_box",
+        rarity: int | None = None,
+        element: str = "",
+        constellation: int | None = None,
+        background_path: str = "",
+        element_icon_path: str = "",
     ) -> bool:
+        self._portrait_layers = {
+            "rarity": rarity, "element": element, "constellation": constellation,
+            "background_path": background_path, "element_icon_path": element_icon_path,
+        }
         return self.set_visual(
             image_path=image_path,
             fallback_text=fallback_text,
             empty=empty,
             surface=surface,
         )
+
+    def _load_pixmap(self) -> QPixmap | None:
+        if not self._empty and (self._portrait_layers.get("background_path") or self._portrait_layers.get("element_icon_path")):
+            return character_card_pixmap(self._image_path, self._pixmap_size, dpr=self.devicePixelRatioF(),
+                                         **self._portrait_layers)
+        return super()._load_pixmap()
 
 
 class RightPanelWeaponMiniBox(RightPanelPixmapMiniBoxLabel):

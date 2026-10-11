@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import unittest
 from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
 
 from localization import get_language, set_language
 from run_workspace.right_panel_prototype_view_model import (
@@ -77,6 +79,69 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertIn("имеющиеся артефакты всё равно считаются", slot.warning_tooltip)
         self.assertNotIn("warnings", slot_dict)
         self.assertNotIn("warnings", slot_dict["artifact_summary"])
+
+    def test_each_live_slot_carries_its_own_portrait_layers(self) -> None:
+        state = create_empty_team_builder_state(team_count=1)
+        state = state.set_character(0, 0, {
+            "id": "1", "name": "First", "rarity": 4,
+            "element": "Pyro", "constellation": 0,
+        })
+        state = state.set_character(0, 1, {
+            "id": "2", "name": "Second", "rarity": 5,
+            "element": "Hydro", "constellation": 6,
+        })
+        with (
+            patch(
+                "run_workspace.right_panel_prototype_view_model.character_background_path",
+                side_effect=lambda rarity: Path(f"art/rarity_{rarity}.png"),
+            ),
+            patch(
+                "run_workspace.right_panel_prototype_view_model.element_icon_path",
+                side_effect=lambda element: Path(f"art/element_{element.lower()}.png"),
+            ),
+        ):
+            model = build_right_panel_prototype_view_model(state)
+
+        first, second = model.teams[0].slots[:2]
+        self.assertEqual(
+            (first.portrait_rarity, first.portrait_element, first.portrait_constellation),
+            (4, "Pyro", 0),
+        )
+        self.assertEqual(Path(first.portrait_background_path), Path("art/rarity_4.png"))
+        self.assertEqual(Path(first.portrait_element_icon_path), Path("art/element_pyro.png"))
+        self.assertEqual(
+            (second.portrait_rarity, second.portrait_element, second.portrait_constellation),
+            (5, "Hydro", 6),
+        )
+        self.assertEqual(Path(second.portrait_background_path), Path("art/rarity_5.png"))
+        self.assertEqual(Path(second.portrait_element_icon_path), Path("art/element_hydro.png"))
+        self.assertEqual(second.to_dict()["portrait_constellation"], 6)
+
+    def test_explicit_empty_portrait_layer_paths_suppress_live_defaults(self) -> None:
+        character = {
+            "id": "1", "name": "First", "rarity": 5,
+            "element": "Hydro", "constellation": 3,
+        }
+        state = create_empty_team_builder_state(team_count=1).set_character(0, 0, character)
+        state = state.attach_character_details_data(0, 0, {
+            "account_character": character,
+            "portrait_background_path": "",
+            "portrait_element_icon_path": "",
+        })
+        with (
+            patch(
+                "run_workspace.right_panel_prototype_view_model.character_background_path",
+                side_effect=AssertionError("Explicit empty background must win"),
+            ),
+            patch(
+                "run_workspace.right_panel_prototype_view_model.element_icon_path",
+                side_effect=AssertionError("Explicit empty element icon must win"),
+            ),
+        ):
+            slot = build_right_panel_prototype_view_model(state).teams[0].slots[0]
+
+        self.assertEqual((slot.portrait_rarity, slot.portrait_element, slot.portrait_constellation), (5, "Hydro", 3))
+        self.assertEqual((slot.portrait_background_path, slot.portrait_element_icon_path), ("", ""))
 
     def test_empty_slot_placeholder_exists(self) -> None:
         state = build_fake_right_panel_prototype_state()

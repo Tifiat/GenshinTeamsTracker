@@ -31,7 +31,7 @@ UI_TEXT_MUTED = "#aab0bd"
 UI_TEXT_ON_ACCENT = "#ffffff"
 
 # Semantic states
-UI_ACCENT_TEAM_1 = "#3ed47b"
+UI_ACCENT_TEAM_1 = "#64967c"
 UI_ACCENT_TEAM_2 = "#4e91ff"
 UI_ACCENT_PVP_BAN = "#d96570"
 UI_ACCENT_PVP_IMMUNE = "#c9ab5d"

@@ -56,7 +56,7 @@ REGISTERED_BINDINGS = {
         "ArtifactBrowserWindow._set_json_action_button", "ArtifactBrowserWindow.retranslate_ui",
         "ArtifactBrowserWindow.update_build_create_controls", "ArtifactBrowserWindow.update_build_slot_row",
     },
-    "ui/character_browser/filter_bar.py": {"CharacterFilterBar._make_filter_button", "CharacterFilterBar._make_standard_filter_button"},
+    "ui/character_browser/filter_bar.py": {"CharacterFilterBar._make_filter_button", "CharacterFilterBar._make_standard_filter_button", "CharacterFilterBar.retranslate_ui"},
     "ui/character_browser/traveler_selector.py": {"TravelerVariantGrid.set_variant_groups", "TravelerVariantGrid.retranslate_ui"},
     "ui/gcsim_browser/optimizer_result.py": {"CompactOptimizerArtifactCard.__init__", "OptimizerResultBuildsWidget._render_current_page"},
     "ui/gcsim_browser/virtual_slot_editor.py": {"VirtualGcsimCardEditor.__init__"},

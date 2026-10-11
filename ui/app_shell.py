@@ -206,7 +206,6 @@ from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_2,
     UI_BG_BUTTON,
     UI_BG_BUTTON_HOVER,
-    UI_EQUIPPED_WEAPON_ACCENT,
     UI_BG_PANEL,
     UI_BG_PANEL_RAISED,
     UI_BORDER_DEFAULT,
@@ -261,15 +260,15 @@ WEAPON_OWNER_OVERLAY_TRACE = os.environ.get(
     "yes",
     "on",
 }
-# Calibrated after fixing the previous double-downscale bug: the accepted visual
-# placed a 45px side-icon at x=17/y=-22 relative to a 48px weapon card.
-WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 45 / 48
-WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 14 / 45
-WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
+# Keep the owner visible without covering the weapon or crossing into the next card.
+# Negative overhang ratios inset the portrait by two pixels at the 48px reference size.
+WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 22 / 48
+WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = -2 / 22
+WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = -2 / 22
 WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
-WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_EQUIPPED_WEAPON_ACCENT
+WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_ACCENT_TEAM_1
 GRID_SELECTION_OUTLINE_ALPHA = UI_SELECTION_OUTLINE_ALPHA
 GRID_SELECTION_BADGE_FILL_ALPHA = UI_SELECTION_BADGE_FILL_ALPHA
 GRID_SELECTION_OUTLINE_WIDTH = 4
@@ -3907,6 +3906,7 @@ class CharacterWeaponWorkspace(QWidget):
         if self.character_title_label is not None:
             self.character_title_label.setText(tr("asset_panel.characters"))
         self.char_grid.retranslate_ui()
+        self.character_filter_bar.retranslate_ui()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -4475,12 +4475,9 @@ def _weapon_occupied_outline(asset: dict[str, Any]) -> PixelIconGridOutline | No
         return None
     return PixelIconGridOutline(
         color=WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
-        width=GRID_SELECTION_OUTLINE_WIDTH,
-        radius=GRID_SELECTION_OUTLINE_RADIUS,
-        overhang=GRID_SELECTION_OUTLINE_OVERHANG,
-        alpha=GRID_SELECTION_OUTLINE_ALPHA,
-        fill_color=WEAPON_PICKER_OCCUPIED_FILL_COLOR,
-        fill_alpha=WEAPON_PICKER_OCCUPIED_FILL_ALPHA,
+        width=2,
+        radius=4,
+        alpha=255,
     )
 
 
@@ -5020,10 +5017,8 @@ def _existing_project_file_path(value: Any) -> str:
     raw = _text(value)
     if not raw:
         return ""
-    path = Path(raw)
-    if not path.is_absolute():
-        path = account_asset_path(path)
-    if not path.exists():
+    path = account_asset_path(Path(raw))
+    if not path.is_file():
         return ""
     try:
         return str(path.resolve())

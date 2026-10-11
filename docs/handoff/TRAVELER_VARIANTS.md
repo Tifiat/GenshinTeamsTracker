@@ -22,7 +22,8 @@ groups, and reuse existing gear under the usual revision/capacity/replay checks.
 AppShell/PvP use a neutral portrait and the selected element layer. AppShell's
 Character Browser groups them behind one card's chevron; PvP keeps seven cards.
 The [card asset contract](CHARACTER_CARD_ASSETS.md) owns that selector and the
-fixed application-supplied element/rarity artwork.
+fixed application-supplied element/rarity artwork, plus the follow-up for normal/
+PvP right-panel layers, new frozen History, weapon styling and filter regressions.
 
 Worker4's imported profile was expanded 78→84 characters, inside its supervisor,
 operation and registry leases and one SQLite transaction. Six copies were added;
@@ -32,8 +33,9 @@ inside the anchor metadata. An earlier in-memory backup exercise passed the
 same checks and found seven distinct grid identities with usable element layers.
 
 Source tests cover imports, rollback/replay, equipment, missing cache, filters,
-PvP costs/Pyro requirement and profile exchange. No authenticated import, native
-UI or engine/search ran. Runtime calculation remains explicitly deferred for
+PvP costs/Pyro requirement and profile exchange. No authenticated import or
+engine/search ran; the card contract owns native inspection and remaining gates.
+Runtime calculation remains explicitly deferred for
 all Traveler variants; local registry has six elements but no Cryo key. Legacy
 image-only UI and cross-account shared-draft identity remain separate limitations
 below. Next: user AppShell smoke; no transfer or push is authorized here.

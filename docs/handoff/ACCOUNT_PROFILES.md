@@ -51,6 +51,13 @@ History, PvP and account-derived simulation outputs live under ACCOUNT_ROOT.
 Portable image paths stay account-relative. Offline ZIP imports restore into a
 new root before activation; an error preserves the active account.
 
+Absolute UI image paths also pass through `account_asset_path`, including
+browser/weapon adapters and selection normalization: migrated legacy paths remap
+to the active profile, another managed profile is rejected, and external package
+files remain valid. Image candidates must be files. The 11 October Worker4
+[card receipt](CHARACTER_CARD_ASSETS.md#portrait-weapon-and-filter-follow-up--2026-10-11)
+owns synthetic regression evidence; real multi-account acceptance stays open.
+
 AppShell is launched through `python -m ui.app_shell_smoke`. Its supervisor
 waits for UI process exit before switching/deleting/resetting, then creates a
 new process. Profile actions are unavailable during login/import/calculation.

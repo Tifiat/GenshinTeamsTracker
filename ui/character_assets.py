@@ -150,10 +150,7 @@ def asset_path_from_manifest_crop(crop: str | None) -> Path | None:
     if not crop:
         return None
 
-    path = Path(crop)
-    if not path.is_absolute():
-        path = account_asset_path(path)
-    return path
+    return account_asset_path(Path(crop))
 
 
 def folder_asset_items(directory: str | Path) -> list[dict]:
@@ -373,6 +370,8 @@ def pvp_character_asset_item(asset: dict[str, Any]) -> dict[str, Any]:
     metadata = dict(asset.get("metadata") or {})
     metadata["portrait_is_neutral"] = True
     pvp_path = _existing_project_path(metadata.get("portrait_pvp_path"))
+    if pvp_path is None and (asset.get("metadata") or {}).get("portrait_is_neutral"):
+        pvp_path = _existing_project_path(asset.get("path"))
     if pvp_path is None and metadata.get("source") != "account_sqlite":
         return {**asset, "metadata": metadata}
     character = dict(metadata.get("character") or {})
@@ -440,7 +439,7 @@ def _weapon_owner_badges(
 
 def _existing_project_path(value: str | Path | None) -> Path | None:
     path = asset_path_from_manifest_crop(str(value or ""))
-    if path is None or not path.exists():
+    if path is None or not path.is_file():
         return None
     return path
 

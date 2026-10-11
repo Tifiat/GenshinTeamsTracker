@@ -4813,9 +4813,11 @@ class AppShellTest(unittest.TestCase):
         small_target = _weapon_owner_target_rect(small_weapon_rect, small_side_icon_size)
         large_target = _weapon_owner_target_rect(large_weapon_rect, large_side_icon_size)
 
-        self.assertEqual(small_side_icon_size, QSize(45, 45))
-        self.assertEqual(small_target, QRect(117, 28, 45, 45))
-        self.assertEqual(large_side_icon_size, QSize(90, 90))
+        self.assertEqual(small_side_icon_size, QSize(22, 22))
+        self.assertEqual(small_target, QRect(124, 52, 22, 22))
+        self.assertTrue(small_weapon_rect.contains(small_target))
+        self.assertTrue(large_weapon_rect.contains(large_target))
+        self.assertEqual(large_side_icon_size, QSize(44, 44))
         self.assertEqual(large_target.width(), small_target.width() * 2)
         self.assertEqual(large_target.height(), small_target.height() * 2)
 

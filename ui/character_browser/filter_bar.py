@@ -45,6 +45,7 @@ class CharacterFilterBar(QWidget):
         self.trait_filters: set[str] = set()
         self.standard_filter = STANDARD_FILTER_ALL
         self.buttons: list[QPushButton] = []
+        self._tooltip_keys_by_button: dict[QPushButton, str] = {}
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -68,6 +69,11 @@ class CharacterFilterBar(QWidget):
         self.buttons.append(self.standard_button)
         layout.addWidget(self.standard_button)
         layout.addStretch(1)
+
+    def retranslate_ui(self) -> None:
+        for button, tooltip_key in self._tooltip_keys_by_button.items():
+            install_custom_tooltip(button, tr(tooltip_key))
+        self._refresh_standard_button()
 
     def reset(self) -> None:
         self.element_filters.clear()
@@ -96,6 +102,7 @@ class CharacterFilterBar(QWidget):
             button.setIcon(QIcon(str(icon_path)))
         else:
             button.setText(str(value))
+        self._tooltip_keys_by_button[button] = tooltip_key
         install_custom_tooltip(button, tr(tooltip_key))
 
         def toggle_filter(checked: bool) -> None:
@@ -111,6 +118,7 @@ class CharacterFilterBar(QWidget):
     def _make_standard_filter_button(self) -> QPushButton:
         _value, _icon_name, tooltip_key = CHARACTER_STANDARD_FILTER
         button = _base_filter_button(checkable=False)
+        self._tooltip_keys_by_button[button] = tooltip_key
         install_custom_tooltip(button, tr(tooltip_key))
 
         def cycle_standard_filter() -> None:

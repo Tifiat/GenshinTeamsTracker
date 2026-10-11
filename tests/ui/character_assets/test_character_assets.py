@@ -15,6 +15,7 @@ from hoyolab_export.account_storage import (
     AccountWeaponObservedStack,
 )
 from hoyolab_export import asset_paths
+from run_workspace import profile_context
 from hoyolab_export.traveler import TRAVELER_ELEMENTS, traveler_variant_id
 from localization import get_language, set_language
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
@@ -22,6 +23,7 @@ from ui.character_assets import (
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
     account_character_asset_item,
+    asset_path_from_manifest_crop,
     account_weapon_stack_asset_item,
     character_matches_filters,
     character_sort_key,
@@ -36,6 +38,40 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
 
     def tearDown(self) -> None:
         set_language(self._language)
+
+    def test_absolute_browser_and_weapon_assets_follow_managed_profile_boundaries(self) -> None:
+        from ui.app_shell import _existing_project_file_path, _normalized_character_image_paths
+
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            active_id, other_id = "a"*32, "b"*32
+            active = project/"data/profiles"/active_id
+            foreign = project/"data/profiles"/other_id/"assets/hoyolab/portrait.png"
+            legacy = project/"assets/hoyolab/portrait.png"
+            external = Path(temporary)/"guest-package/portrait.png"
+            for path in (foreign, active/"assets/hoyolab/portrait.png", external):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"fixture")
+            with (
+                patch.object(profile_context, "PROJECT_ROOT", project),
+                patch.object(profile_context, "ACCOUNT_ROOT", active),
+                patch.object(profile_context, "PROFILE_ID", active_id),
+                patch("ui.character_assets.character_variant_path", return_value=None),
+            ):
+                self.assertEqual(asset_path_from_manifest_crop(str(legacy)), active/"assets/hoyolab/portrait.png")
+                self.assertEqual(asset_path_from_manifest_crop(str(external)), external)
+                self.assertFalse(asset_path_from_manifest_crop(str(foreign)).is_file())
+                self.assertEqual(_existing_project_file_path(str(legacy)), str(active/"assets/hoyolab/portrait.png"))
+                self.assertEqual(_existing_project_file_path(str(external)), str(external))
+                self.assertEqual(_existing_project_file_path(str(foreign)), "")
+                self.assertEqual(_existing_project_file_path(str(project)), "")
+                normalized = _normalized_character_image_paths({"portrait_path": str(external)}, asset_path=str(foreign))
+                self.assertEqual(normalized["portrait_path"], str(external))
+                hero = account_character_asset_item(AccountCharacterRuntimeRecord(
+                    character_id="1001", name="Hero", element="Pyro", portrait_path=str(foreign)))
+                self.assertNotEqual(hero["path"], foreign)
+                self.assertIsNone(account_weapon_stack_asset_item(AccountWeaponObservedStack(
+                    id=1, weapon_fingerprint="foreign", weapon_id="1001", name="Weapon", rarity=4, icon_path=str(foreign))))
 
     def test_ordinary_constellation_is_a_runtime_badge_on_the_same_raw_portrait(self) -> None:
         app = QApplication.instance() or QApplication([])
@@ -197,6 +233,31 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
             self.assertEqual(converted["metadata"]["character"]["side_icon_path"], "")
             self.assertEqual(converted["metadata"]["character"]["icon_path"], "")
             self.assertEqual(converted["metadata"]["character"]["constellation"], 6)
+
+    def test_pvp_preserves_known_neutral_side_portrait_without_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            portrait = Path(tmp) / "side.png"
+            portrait.write_bytes(b"png")
+            record = AccountCharacterRuntimeRecord(
+                character_id="1001", name="Hero", element="Pyro", rarity=5,
+                constellation=3, side_icon_path=str(portrait),
+            )
+            with patch("ui.character_assets.character_variant_path", return_value=None):
+                item = account_character_asset_item(record)
+            converted = pvp_character_asset_item(item)
+            self.assertEqual(converted["path"], portrait)
+            self.assertEqual(converted["metadata"]["character"]["portrait_path"], str(portrait))
+            self.assertEqual(converted["metadata"]["character"]["constellation"], 3)
+
+    def test_pvp_never_treats_a_directory_as_a_missing_portrait(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            converted = pvp_character_asset_item({
+                "path": Path(tmp), "metadata": {
+                    "source": "account_sqlite", "portrait_is_neutral": True,
+                    "portrait_pvp_path": tmp, "character": {"id": "1"},
+                },
+            })
+            self.assertEqual(converted["metadata"]["character"]["portrait_path"], "")
 
     def test_history_uses_raw_portrait_and_weapon_only_for_matching_import(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

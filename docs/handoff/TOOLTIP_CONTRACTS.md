@@ -22,6 +22,12 @@ controlled main tests from that earlier real-catalog witness. Main now covers
 PvP run-admission block/update/clear through the same shared custom surface,
 with its own semantic regression and binding registration. No fresh main
 real-account witness or visible hover acceptance is claimed.
+
+2026-10-11 Worker4 filter follow-up: semantic EN/RU/PT-BR expectations reject
+question-mark and literal Unicode-escape text, cover the standard all/only/exclude
+cycle and verify same-controller language refresh in normal/PvP filter bars.
+[Current card receipt](CHARACTER_CARD_ASSETS.md#portrait-weapon-and-filter-follow-up--2026-10-11)
+owns the rerun and native boundary. Filter state survives retranslation.
 <!-- /handoff-current -->
 
 ## Required workflow

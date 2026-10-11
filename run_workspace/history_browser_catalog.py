@@ -49,6 +49,9 @@ class HistorySlotVisual:
     set_counts: tuple[int, ...] = ()
     stat_rows: tuple[HistoryStatRowSnapshot, ...] = ()
     bonuses: tuple[HistoryBonusVisual, ...] = ()
+    rarity: int | None = None
+    rarity_background_path: str = ""
+    element_icon_path: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,6 +286,15 @@ def _team_visual(team: Any, bundle_dir: Path) -> HistoryTeamVisual:
                 ),
                 side_icon_path=_bundle_asset_path(bundle_dir, "" if character is None else character.side_icon_ref),
                 element="" if character is None else character.element,
+                rarity=None if character is None else character.rarity,
+                rarity_background_path=_bundle_asset_path(
+                    bundle_dir,
+                    "" if character is None else character.rarity_background_ref,
+                ),
+                element_icon_path=_bundle_asset_path(
+                    bundle_dir,
+                    "" if character is None else character.element_icon_ref,
+                ),
                 weapon_level=None if weapon is None else weapon.level,
                 stat_badge=history_build_stat_badge(build),
                 set_counts=tuple(item.piece_count for item in bonuses),

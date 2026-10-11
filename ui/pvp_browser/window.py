@@ -1765,6 +1765,8 @@ class PvpDraftWorkspace(QWidget):
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
+        if self.character_filter_bar is not None:
+            self.character_filter_bar.retranslate_ui()
         self.build_browser_back_button.setText(tr("app_shell.workspace.characters_weapons"))
         self.empty_title_label.setText(tr("app_shell.pvp.draft.no_active_title"))
         self.empty_body_label.setText(tr("app_shell.pvp.draft.no_active_body"))

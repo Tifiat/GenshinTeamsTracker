@@ -16,12 +16,20 @@ art download jobs; duplicate side-icon URLs share one job/cache entry.
 
 The element/constellation bitmap renderer, shared URL/DOM extraction and
 import-dependent filter-icon refresh code are removed. Historical account image
-files remain protected by their existing lifetime; no live cache deletion or
-account migration is required. Automated checks and visual review are recorded
-below. Native AppShell clicks, a real authenticated import and release-package
-acceptance remain open. Before MVP, the packaged application must pass the
-resource/smoke checklist below. `main.py` still starts the legacy image-only UI;
-this change does not migrate that launcher.
+files retain their existing lifetime.
+
+The follow-up aligns equipped weapon frames/owner portraits with PvP, softens the
+shared green and applies the same rarity/element/Cn recipe to live and PvP Run
+slots. New History saves freeze these layers inside each bundle; old bundles
+retain their existing display. Absolute browser/selection paths now pass through
+the managed-profile resolver. Filter tooltips have semantic locale checks and
+refresh in place when UI language changes.
+
+The dated follow-up below owns automated evidence and the native boundary:
+the existing window was inspected before the fix; user Escape stopped further
+Computer Use. Native after-fix acceptance, authenticated import and release
+packaging remain open. Before MVP, run the resource/smoke checklist below.
+`main.py` still starts the legacy image-only UI; this does not migrate that launcher.
 <!-- /handoff-current -->
 
 ## Application resource contract
@@ -62,6 +70,26 @@ the fixed rarity/element art and the Cn badge from the selected row: top-right,
 24×18 logical pixels, 2-pixel margin, 8-point bold white text on `UI_BG_PANEL`.
 No Cn pixels are downloaded or written to an account bitmap. Artifact Browser's
 compact text badge remains its own existing style.
+
+`character_card_pixmap` prepares the same recipe in memory for the shared Run
+slot widget, including PvP postdraft. Slot metadata comes from that character's
+row, independently of selection. Cn/element changes invalidate the prepared
+visual; selection-only changes reuse it. Explicit layer paths override live
+lookups, and explicit empty paths suppress them for old History. No composed
+portrait file/cache is introduced.
+
+PvP preserves an already resolved neutral side/source portrait or glyph when a
+separate manifest variant is absent. Known baked cards still cannot supply that
+fallback. Asset adapters and selection normalization accept files only; a missing
+portrait cannot resolve to the project directory. Absolute legacy paths remap to
+the active profile, foreign managed-profile paths are rejected and external
+package paths remain valid. Shared shipped resources stay outside account ownership.
+
+Normal weapon cells retain PvP's 48px size and 6px gaps. Equipped cards use a
+2px rounded frame without a fill or overhang, and a 22px owner portrait inset
+2px inside the upper-right corner. Full and incremental refreshes use the same
+recipe. `UI_ACCENT_TEAM_1` is now the muted `#64967c`, so equipped/team/selection
+surfaces using this shared accent change together. PvP prices remain PvP-owned.
 
 The former import-time Cn stamp was locally generated with PIL, not downloaded
 as a constellation icon. Its ImageDraw/ImageFont/Arial branch is deleted, along
@@ -143,9 +171,55 @@ profile and an existing imported profile:
 5. PvP still displays seven separately selectable Traveler variants with its
    existing seat/price/badge behavior. Offline profile restore on another
    installation resolves shared art from that installation's bundle.
+6. Add ordinary/Traveler characters through normal and PvP routes; each occupied
+   Run slot shows its rarity background, element and own Cn. Save a new History
+   entry, remove its original source images in an isolated fixture, and verify
+   compact/expanded/right-panel/PNG rendering from bundle-local layers. Old
+   entries retain their existing display. Check filter hints and language changes.
 
 Native clicks and authenticated requests are separate acceptance evidence from
 offscreen Qt fixtures. No engine/GCSIM calculation boundary changes here.
+
+## Portrait, weapon and filter follow-up — 2026-10-11
+
+The requested right-panel loss came from the raw-image-only shared mini-box.
+The repaired view-model/widget route is used by normal Run, PvP postdraft and
+the frozen History adapter. New snapshots declare `rarity_background_ref` and
+`element_icon_ref`; production materialization copies/reuses these declared
+assets within the bundle. History prepares styled compact/expanded portraits
+and default team art only when frozen layer references exist. Custom artwork
+retains its existing cover crop; styled default art uses containment to preserve
+badges. Snapshot schema v2 remains compatible through optional empty defaults.
+
+Regressions also exposed PvP clearing a known neutral fallback without a manifest,
+then treating `Path("")` as the project directory. The fallback now survives and
+directory inputs fail file validation. Literal question marks in RU trait/standard
+and PT-BR standard filter hints were corrected; EN/RU/PT-BR standard hints explain
+the all/only/exclude cycle. Retranslation reuses existing custom-tooltip controllers
+and preserves filter state in normal and PvP workspaces.
+
+Final combined verification: **175 tests passed in 21.128 seconds** across slot
+pixels/DPR/invalidation, all 16 actual PvP assignment slots, immutable History
+roundtrip/materialization and legacy behavior, character/profile asset routing,
+weapons, Traveler selector, painted grid, PvP profile integration, tooltip semantics
+and eight existing AppShell geometry/marker checks. `tools/check_tooltips.py`
+passed **69 checks in 4.244 seconds**, including a read-only EmblemOfSeveredFate
+2p/4p witness on both hover surfaces. These suites overlap; do not sum the counts.
+
+Computer Use restored and inspected the existing PyCharm-launched AppShell window
+before the repair. User physical Escape stopped the next operation; no subsequent
+native control, restart or after-fix visual acceptance occurred. Offscreen pixel
+checks do not replace that acceptance. No authenticated import, account database
+write, old History rewrite, engine execution or network request occurred in this
+follow-up. No persistent preview outputs were created. By the user's explicit
+queue instruction, completed Traveler, absolute asset routing and the earlier
+PvP selection source work are crossed out in the shared queue; runtime/native/
+integration gates remain separate. Canonical PvP worker status is preserved.
+
+Structural closeout: `tools/check_handoffs.py` found no issues in changed local
+contracts or shared queue edits, but its full result is FAIL for one unrelated
+`coordination-oversize-file` in `GTT coordination/workers/worker2.md` (over 8000
+bytes). That foreign owner's status was not edited; this boundary is retained.
 
 ## Local Git receipt
 
@@ -170,3 +244,13 @@ Receipt-only follow-up intent 2026-10-11 14:33:25 +03:00: the same scoped execut
 commit only this actual Git result, from `b98fee2ffe3cd445e5bf51bfb28b23084f8f3275`
 on the same branch under the same own-stage authority. Its resulting hash and
 final clean-tree result are reported in the final chat snapshot.
+
+Follow-up intent 2026-10-11 15:48:26 +03:00: Worker4 scoped Traveler executor will
+commit the reviewed portrait/History/weapon/filter/path package (36 own source,
+test and contract paths), from `e58c508d3257f9c2731009cab69b633b12532c0f` on
+`codex/pvp-providers`, under standing verified-own-stage authority. The task began
+with a clean tree/index; current index is empty. No merge/rebase/cherry-pick/
+revert/sequencer state, index lock or active hook was found. Shared queue edits
+were explicitly requested by the user and remain outside this Git worktree.
+Product checks pass; the structural checker has only the foreign Worker2 issue
+recorded above. No transfer, push, profile/runtime change or further native input.

@@ -731,7 +731,7 @@
   "right_panel.fact_dps.tooltip.info_table_selection_ambiguous": "{enemy}: HP table selection is ambiguous",
   "right_panel.fact_dps.tooltip.info_some_table_ambiguous": "Some Fandom HP table selections are ambiguous",
   "right_panel.fact_dps.tooltip.warning": "Warning: {warning}",
-  "filter.standard_5_star": "Standard 5-star",
+  "filter.standard_5_star": "Standard 5-star characters: all → only them → exclude them.",
   "filter.region.title": "Region",
   "filter.region.clear": "Clear regions",
   "filter.region.empty": "No character regions found.",

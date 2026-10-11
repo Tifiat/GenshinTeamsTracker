@@ -27,13 +27,15 @@ def with_character_card_layers(
     *,
     show_constellation: bool = True,
     layer_path_cache: MutableMapping[tuple[str, str], str] | None = None,
+    background_path: str | None = None,
+    element_icon_path: str | None = None,
 ) -> PixelIconGridItem:
     rarity = metadata_int(character.get("rarity"))
     colors = UI_CHARACTER_RARITY_BACKGROUNDS.get(rarity)
     background = None
     if colors is not None:
         rarity_key = ("character_background", str(rarity))
-        icon_path = (
+        icon_path = background_path if background_path is not None else (
             layer_path_cache.get(rarity_key)
             if layer_path_cache is not None and rarity_key in layer_path_cache
             else None
@@ -43,12 +45,13 @@ def with_character_card_layers(
             icon_path = str(path) if path else ""
             if layer_path_cache is not None:
                 layer_path_cache[rarity_key] = icon_path
-        background = PixelIconGridBackground(*colors, icon_path=icon_path)
+        if background_path != "":
+            background = PixelIconGridBackground(*colors, icon_path=icon_path)
     element = str(character.get("element") or "").strip().lower()
     overlays = item.overlay_icons
     if element in UI_ELEMENT_ACCENTS:
         element_key = ("element_icon", element)
-        icon_path = (
+        icon_path = element_icon_path if element_icon_path is not None else (
             layer_path_cache.get(element_key)
             if layer_path_cache is not None and element_key in layer_path_cache
             else None
@@ -57,13 +60,14 @@ def with_character_card_layers(
             icon_path = str(filter_icon_path(f"element_{element}.png"))
             if layer_path_cache is not None:
                 layer_path_cache[element_key] = icon_path
-        overlays += (PixelIconGridOverlayIcon(
-            icon_path=icon_path,
-            size_ratio=72 / 296,
-            right_overhang_ratio=-8 / 72,
-            top_overhang_ratio=-8 / 72,
-            position="top_left",
-        ),)
+        if icon_path:
+            overlays += (PixelIconGridOverlayIcon(
+                icon_path=icon_path,
+                size_ratio=72 / 296,
+                right_overhang_ratio=-8 / 72,
+                top_overhang_ratio=-8 / 72,
+                position="top_left",
+            ),)
     badges = item.badges
     constellation = character.get("constellation")
     if show_constellation and constellation is not None:

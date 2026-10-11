@@ -26,6 +26,7 @@ from tests.run_workspace.history.test_history_snapshot_builder import (
     _context, _right_panel_model, _slot_vm, _teams_vm,
 )
 from ui.character_assets import account_character_asset_item
+from hoyolab_export.paths import PROJECT_ROOT
 
 
 class TransparentHistoryPipelineTest(unittest.TestCase):
@@ -100,7 +101,10 @@ class TransparentHistoryPipelineTest(unittest.TestCase):
             account_character=character_input, account_weapon=weapon_input,
         ).to_dict()
         self.assertEqual((character_input, weapon_input), input_before)
-        self.assertEqual(details["account_character"]["portrait_path"], str(character_bitmap))
+        # Modern browsers expose the neutral source; a missing source uses the
+        # fixed element glyph rather than a legacy card with baked badges.
+        expected_input = self.layers["raw_portrait"] if self.layers["raw_portrait"].is_file() else PROJECT_ROOT / "assets/filters/element_pyro.png"
+        self.assertEqual(details["account_character"]["portrait_path"], str(expected_input))
         self.assertEqual(details["account_character"].get("portrait_history_path", ""),
                          str(expanded) if expanded else "")
         self.assertEqual(details["account_weapon"]["icon_path"], str(weapon_bitmap))

@@ -283,6 +283,8 @@ class HistoryCharacterSnapshot:
     expanded_portrait_ref: str = ""
     side_icon_ref: str = ""
     provenance: Mapping[str, Any] = field(default_factory=dict)
+    rarity_background_ref: str = ""
+    element_icon_ref: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -296,6 +298,8 @@ class HistoryCharacterSnapshot:
             "expanded_portrait_ref": self.expanded_portrait_ref,
             "side_icon_ref": self.side_icon_ref,
             "provenance": dict(sorted(self.provenance.items())),
+            "rarity_background_ref": self.rarity_background_ref,
+            "element_icon_ref": self.element_icon_ref,
         }
 
     @classmethod
@@ -312,6 +316,8 @@ class HistoryCharacterSnapshot:
             expanded_portrait_ref=_text(data.get("expanded_portrait_ref")),
             side_icon_ref=_text(data.get("side_icon_ref")),
             provenance=dict(_mapping(data.get("provenance"))),
+            rarity_background_ref=_text(data.get("rarity_background_ref")),
+            element_icon_ref=_text(data.get("element_icon_ref")),
         )
 
 

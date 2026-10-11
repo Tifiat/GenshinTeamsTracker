@@ -731,7 +731,7 @@
   "right_panel.fact_dps.tooltip.info_table_selection_ambiguous": "{enemy}: sele\u00e7\u00e3o da tabela de HP Fandom amb\u00edgua",
   "right_panel.fact_dps.tooltip.info_some_table_ambiguous": "Algumas sele\u00e7\u00f5es de tabela de HP Fandom est\u00e3o amb\u00edguas",
   "right_panel.fact_dps.tooltip.warning": "Aviso: {warning}",
-  "filter.standard_5_star": "5? padr?o",
+  "filter.standard_5_star": "Personagens padr\u00e3o 5\u2605: todos \u2192 somente eles \u2192 exclu\u00ed-los.",
   "filter.region.title": "Regi\u00e3o",
   "filter.region.clear": "Limpar regi\u00f5es",
   "filter.region.empty": "Nenhuma regi\u00e3o de personagem encontrada.",

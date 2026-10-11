@@ -348,6 +348,24 @@ def _build_character_snapshot(
             provenance={"team_slot_source": SOURCE_RUN_SESSION_STATE},
         )
         slot_asset_refs.append(ref)
+    rarity_background_ref = _text(getattr(right_slot, "portrait_background_path", ""))
+    if rarity_background_ref:
+        ref = asset_collector.add(
+            rarity_background_ref,
+            role="character_rarity_background",
+            label=name,
+            provenance={"team_slot_source": SOURCE_RIGHT_PANEL_VIEW_MODEL},
+        )
+        slot_asset_refs.append(ref)
+    element_icon_ref = _text(getattr(right_slot, "portrait_element_icon_path", ""))
+    if element_icon_ref:
+        ref = asset_collector.add(
+            element_icon_ref,
+            role="character_element_icon",
+            label=name,
+            provenance={"team_slot_source": SOURCE_RIGHT_PANEL_VIEW_MODEL},
+        )
+        slot_asset_refs.append(ref)
 
     provenance = {}
     source = _text(data.get("source"))
@@ -365,17 +383,25 @@ def _build_character_snapshot(
             _first_present(data, "level", "character_level"),
             selected_details.character_level,
         ),
-        element=_text(_first_present(data, "element"))
-        or _text(getattr(selected_details, "element", "")),
-        rarity=_optional_int(data.get("rarity")),
+        element=(
+            _text(_first_present(data, "element"))
+            or _text(getattr(right_slot, "portrait_element", ""))
+            or _text(getattr(selected_details, "element", ""))
+        ),
+        rarity=_coalesce_optional_int(
+            data.get("rarity"), getattr(right_slot, "portrait_rarity", None)
+        ),
         constellation=_coalesce_optional_int(
             _first_present(data, "constellation", "actived_constellation_num"),
+            getattr(right_slot, "portrait_constellation", None),
             getattr(selected_details, "constellation", None),
         ),
         portrait_ref=portrait_ref,
         expanded_portrait_ref=expanded_portrait_ref,
         side_icon_ref=side_icon_ref,
         provenance=provenance,
+        rarity_background_ref=rarity_background_ref,
+        element_icon_ref=element_icon_ref,
     )
 
 

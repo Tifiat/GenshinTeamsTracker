@@ -31,6 +31,9 @@ from ui.character_assets import (
     CHARACTER_STANDARD_FILTER,
     CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
+    STANDARD_FILTER_ALL,
+    STANDARD_FILTER_EXCLUDE,
+    STANDARD_FILTER_ONLY,
     WEAPON_TYPE_FILTERS,
 )
 from ui.character_browser.filter_bar import CharacterFilterBar
@@ -44,7 +47,7 @@ from ui.gcsim_browser.optimizer_result import (
 from ui.gcsim_browser.virtual_slot_editor import VirtualGcsimCardEditor
 from ui.gcsim_browser.window import GcsimBrowserWorkspace
 from ui.main_window import App
-from ui.pvp_browser.window import PvpDecksWorkspace
+from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace
 from ui.right_panel.common.run_summary import CompactSlotSummaryWidget
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 from ui.right_panel.settings.account_data import AccountDataPage
@@ -57,6 +60,38 @@ from run_workspace.history_browser_catalog import HistorySlotVisual
 
 _APP = QApplication.instance() or QApplication([])
 _LANGUAGES = ("ru", "en", "pt-br")
+_FILTER_HINT_EXPECTATIONS = {
+    "ru": {
+        "filter.rarity.5": "Редкость 5★",
+        "filter.rarity.4": "Редкость 4★",
+        "filter.rarity.3": "Редкость 3★",
+        "filter.trait.moonsign": "Персонажи Moonsign",
+        "filter.trait.hexerei": "Ведьмовство",
+        "filter.standard_5_star": (
+            "Стандартные персонажи 5★: все → только они → исключить их."
+        ),
+    },
+    "en": {
+        "filter.rarity.5": "Rarity 5★",
+        "filter.rarity.4": "Rarity 4★",
+        "filter.rarity.3": "Rarity 3★",
+        "filter.trait.moonsign": "Moonsign",
+        "filter.trait.hexerei": "Hexerei",
+        "filter.standard_5_star": (
+            "Standard 5-star characters: all → only them → exclude them."
+        ),
+    },
+    "pt-br": {
+        "filter.rarity.5": "Raridade 5★",
+        "filter.rarity.4": "Raridade 4★",
+        "filter.rarity.3": "Raridade 3★",
+        "filter.trait.moonsign": "Moonsign",
+        "filter.trait.hexerei": "Hexerei",
+        "filter.standard_5_star": (
+            "Personagens padrão 5★: todos → somente eles → excluí-los."
+        ),
+    },
+}
 _ACTION_HELP_KEYS = (
     "gcsim.optimizer.save_tooltip",
     "gcsim.optimizer.replacement_delta_help",
@@ -191,8 +226,16 @@ class TooltipPresentationContracts(unittest.TestCase):
         self.assertEqual(_controller(icon).text(), "")
 
     def test_filter_buttons_attach_localized_custom_hints(self) -> None:
-        bar = CharacterFilterBar()
-        self.addCleanup(bar.close)
+        original_language = get_language()
+        self.addCleanup(set_language, original_language)
+        set_language(_LANGUAGES[0])
+        normal_bar = CharacterFilterBar()
+        pvp_workspace = PvpDraftWorkspace()
+        pvp_workspace._build_unified_pool({}, draft_complete=False)
+        pvp_bar = pvp_workspace.character_filter_bar
+        self.assertIsNotNone(pvp_bar)
+        self.addCleanup(normal_bar.close)
+        self.addCleanup(pvp_workspace.close)
         keys = [
             key
             for choices in (
@@ -203,11 +246,59 @@ class TooltipPresentationContracts(unittest.TestCase):
             )
             for _value, _icon, key in choices
         ] + [CHARACTER_STANDARD_FILTER[2]]
-        self.assertEqual(len(bar.buttons), len(keys))
-        for button, key in zip(bar.buttons, keys):
-            with self.subTest(key=key):
-                self.assertEqual(_controller(button).text(), tr(key))
-                self.assertEqual(button.toolTip(), "")
+
+        for language in _LANGUAGES:
+            with self.subTest(language=language):
+                set_language(language)
+                for surface, bar in (("normal", normal_bar), ("pvp", pvp_bar)):
+                    with self.subTest(surface=surface):
+                        previous_mode = bar.standard_filter
+                        controllers_before = [_controller(button) for button in bar.buttons]
+                        bar.retranslate_ui()
+                        self.assertEqual(bar.standard_filter, previous_mode)
+                        for button, previous_controller in zip(bar.buttons, controllers_before):
+                            self.assertIs(_controller(button), previous_controller)
+
+                        self.assertEqual(len(bar.buttons), len(keys))
+                        for button, key in zip(bar.buttons, keys):
+                            with self.subTest(key=key):
+                                text = _controller(button).text()
+                                self.assertEqual(text, tr(key))
+                                self.assertNotIn("?", text)
+                                self.assertNotIn("\\u", text)
+                                if key in _FILTER_HINT_EXPECTATIONS[language]:
+                                    self.assertEqual(
+                                        text,
+                                        _FILTER_HINT_EXPECTATIONS[language][key],
+                                    )
+                                self.assertEqual(button.toolTip(), "")
+
+                        standard_button = bar.standard_button
+                        expected_hint = _FILTER_HINT_EXPECTATIONS[language][
+                            CHARACTER_STANDARD_FILTER[2]
+                        ]
+                        states = (
+                            (STANDARD_FILTER_ALL, False, False),
+                            (STANDARD_FILTER_ONLY, True, False),
+                            (STANDARD_FILTER_EXCLUDE, False, True),
+                        )
+                        start_index = next(
+                            index
+                            for index, (mode, _only, _exclude) in enumerate(states)
+                            if mode == bar.standard_filter
+                        )
+                        for offset in range(len(states)):
+                            mode, only, exclude = states[
+                                (start_index + offset) % len(states)
+                            ]
+                            for _attempt in range(len(states)):
+                                if bar.standard_filter == mode:
+                                    break
+                                standard_button.click()
+                            self.assertEqual(bar.standard_filter, mode)
+                            self.assertEqual(standard_button.property("standardOnly"), only)
+                            self.assertEqual(standard_button.property("standardExclude"), exclude)
+                            self.assertEqual(_controller(standard_button).text(), expected_hint)
 
     def test_optimizer_save_status_and_replacement_help_are_distinct(self) -> None:
         widget = OptimizerResultBuildsWidget()
@@ -470,6 +561,13 @@ class TooltipPresentationContracts(unittest.TestCase):
                     self.assertIn(key, catalog)
                     self.assertTrue(catalog[key].strip())
                     self.assertNotEqual(catalog[key], key)
+            for key in filter_keys:
+                with self.subTest(language=language, filter_key=key):
+                    self.assertNotIn("?", catalog[key])
+                    self.assertNotIn("\\u", catalog[key])
+            for key, expected in _FILTER_HINT_EXPECTATIONS[language].items():
+                with self.subTest(language=language, semantic_filter_key=key):
+                    self.assertEqual(catalog[key], expected)
 
         english = json.loads((LOCALES_DIR / "en.json").read_text(encoding="utf-8"))
         self.assertIn("Save this build", english["gcsim.optimizer.save_tooltip"])

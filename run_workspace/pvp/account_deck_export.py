@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Protocol
 
+from hoyolab_export.traveler import is_traveler_id
+
 from .deck import (
     DRAFT_DECK_KIND,
     DRAFT_DECK_SCHEMA_VERSION,
@@ -29,7 +31,7 @@ from .deck import (
 )
 from .validation import (
     DeckValidationReport,
-    UNSUPPORTED_TRAVELER_CHARACTER_IDS,
+    is_unsupported_traveler,
     validate_draft_deck,
 )
 from run_workspace.profile_context import ACCOUNT_ROOT
@@ -445,7 +447,8 @@ def _export_characters(
                 )
             )
             continue
-        if _is_unsupported_traveler(character_id, display_name):
+        element = _canonical_element(row.element)
+        if _is_unsupported_traveler(character_id, display_name, element):
             skipped_traveler += 1
             issues.append(
                 _issue(
@@ -458,7 +461,8 @@ def _export_characters(
             )
             continue
 
-        element = _canonical_element(row.element)
+        if is_traveler_id(character_id) and row.catalog_english_name:
+            display_name = _text(row.catalog_english_name)
         weapon_type = _canonical_weapon_type(row.weapon_type, row.weapon_type_name)
         if not display_name:
             issues.append(
@@ -716,10 +720,10 @@ def _issue(
     )
 
 
-def _is_unsupported_traveler(character_id: str, display_name: str) -> bool:
-    if character_id in UNSUPPORTED_TRAVELER_CHARACTER_IDS:
-        return True
-    return "traveler" in display_name.strip().casefold()
+def _is_unsupported_traveler(
+    character_id: str, display_name: str, element: str = ""
+) -> bool:
+    return is_unsupported_traveler(character_id, display_name, element)
 
 
 def _utc_now() -> str:

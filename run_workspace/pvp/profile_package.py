@@ -16,7 +16,9 @@ from threading import RLock
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
+from hoyolab_export.traveler import is_traveler_id
 from .deck_preset import DEFAULT_PVP_DECK_PRESET_DIR, PvpDeckPreset, deck_preset_from_mapping, load_deck_presets
+from .abyss_rules import AbyssRuleset
 from .profile_assets import ASSET_MANIFEST_NAME, ASSET_MEMBER_PATTERN, ProfileAssetError, build_profile_assets, validate_profile_assets
 from .profile_schema import (
     ProfileSchemaError,
@@ -206,11 +208,14 @@ def export_pvp_profile_package(
             )
             files = {PVP_PROFILE_DB_NAME: portable, **bitmaps}
             for member, payload in (
-                (PVP_PROFILE_DECKS_NAME, {"schema_version": PVP_PROFILE_VERSION, "kind": PVP_PROFILE_DECKS_KIND, "decks": [preset.to_dict() for preset in presets]}),
+                (PVP_PROFILE_DECKS_NAME, _deck_collection_payload(presets)),
                 (PVP_PROFILE_ASSETS_NAME, asset_map),
             ):
                 target = root / member
-                target.write_bytes(_json_bytes(payload))
+                target.write_bytes(
+                    json.dumps(payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
+                    if member == PVP_PROFILE_DECKS_NAME else _json_bytes(payload)
+                )
                 files[member] = target
             records = {
                 name: {"size": target.stat().st_size, "sha256": _file_hash(target)}
@@ -356,16 +361,70 @@ def _validate_manifest(
             raise PvpProfilePackageError("Invalid PvP file hash/size record.")
 
 
+def _deck_collection_payload(presets) -> dict[str, Any]:
+    """Keep one allowlisted snapshot per content hash in the exchange package."""
+    decks, snapshots = [], {}
+    for preset in presets:
+        deck = preset.to_dict()
+        snapshot = deck.pop("rules_snapshot", None)
+        if snapshot:
+            rules = _exchange_rules_snapshot(snapshot)
+            snapshots[rules.content_hash] = rules.to_dict()
+            deck["rules_snapshot_ref"] = rules.content_hash
+        decks.append(deck)
+    payload = {"schema_version": PVP_PROFILE_VERSION, "kind": PVP_PROFILE_DECKS_KIND, "decks": decks}
+    if snapshots:
+        payload["rules_snapshots"] = snapshots
+    return payload
+
+
+def _exchange_rules_snapshot(snapshot) -> AbyssRuleset:
+    rules = AbyssRuleset.from_dict(snapshot)
+    values = [rules.to_dict()]
+    while values:
+        value = values.pop()
+        if isinstance(value, dict):
+            values.extend(value.values())
+        elif isinstance(value, list):
+            values.extend(value)
+        elif isinstance(value, str) and ("\x00" in value or contains_absolute_local_path(value)):
+            raise PvpProfilePackageError("Local paths are not allowed in portable rules.")
+    return rules
+
+
 def _load_decks(payload: Mapping[str, Any]) -> tuple[PvpDeckPreset, ...]:
-    if set(payload) != {"schema_version", "kind", "decks"} or type(payload.get("schema_version")) is not int or payload["schema_version"] != PVP_PROFILE_VERSION or payload["kind"] != PVP_PROFILE_DECKS_KIND:
+    if (set(payload) - {"rules_snapshots"}) != {"schema_version", "kind", "decks"} or type(payload.get("schema_version")) is not int or payload["schema_version"] != PVP_PROFILE_VERSION or payload["kind"] != PVP_PROFILE_DECKS_KIND:
         raise PvpProfilePackageError("Unsupported PvP decks payload.")
+    snapshots = payload.get("rules_snapshots", {})
+    if not isinstance(snapshots, dict) or len(snapshots) > 128:
+        raise PvpProfilePackageError("Invalid rules snapshot collection.")
+    for key, snapshot in snapshots.items():
+        try:
+            rules = _exchange_rules_snapshot(snapshot)
+            if key != rules.content_hash:
+                raise ValueError("Rules hash mismatch")
+        except (ValueError, TypeError) as exc:
+            raise PvpProfilePackageError("Invalid rules snapshot.") from exc
     decks = payload["decks"]
     if not isinstance(decks, list) or not 1 <= len(decks) <= 128:
         raise PvpProfilePackageError("Invalid PvP deck collection.")
     presets = []
+    used_snapshots = set()
     for deck in decks:
-        if not isinstance(deck, dict) or set(deck) != _DECK_KEYS:
+        if not isinstance(deck, dict) or (set(deck) - {"rules_snapshot", "rules_snapshot_ref"}) != _DECK_KEYS:
             raise PvpProfilePackageError("Unexpected PvP deck fields.")
+        if "rules_snapshot_ref" in deck:
+            ref = deck["rules_snapshot_ref"]
+            if "rules_snapshot" in deck or not isinstance(ref, str) or ref not in snapshots:
+                raise PvpProfilePackageError("Invalid deck rules reference.")
+            used_snapshots.add(ref)
+            deck = {key: value for key, value in deck.items() if key != "rules_snapshot_ref"}
+            deck["rules_snapshot"] = snapshots[ref]
+        elif "rules_snapshot" in deck:
+            try:
+                _exchange_rules_snapshot(deck["rules_snapshot"])
+            except (ValueError, TypeError) as exc:
+                raise PvpProfilePackageError("Invalid inline rules snapshot.") from exc
         for key in ("deck_id", "name", "ruleset_id", "created_at_utc", "updated_at_utc", "kind"):
             if (
                 not isinstance(deck[key], str)
@@ -377,7 +436,7 @@ def _load_decks(payload: Mapping[str, Any]) -> tuple[PvpDeckPreset, ...]:
         if type(deck["schema_version"]) is not int:
             raise PvpProfilePackageError("Invalid PvP deck schema version.")
         ids, refs = deck["character_ids"], deck["weapon_refs"]
-        if not isinstance(ids, list) or len(ids) > 512 or any(not isinstance(item, str) or not re.fullmatch(r"[1-9][0-9]{0,9}", item) for item in ids) or len(set(ids)) != len(ids):
+        if not isinstance(ids, list) or len(ids) > 512 or any(not _valid_deck_character_id(item) for item in ids) or len(set(ids)) != len(ids):
             raise PvpProfilePackageError("Invalid or duplicate PvP deck character ids.")
         if not isinstance(refs, list) or len(refs) > 2048:
             raise PvpProfilePackageError("Invalid PvP deck weapon references.")
@@ -404,7 +463,25 @@ def _load_decks(payload: Mapping[str, Any]) -> tuple[PvpDeckPreset, ...]:
         presets.append(preset)
     if len({preset.deck_id for preset in presets}) != len(presets):
         raise PvpProfilePackageError("Duplicate PvP deck ids.")
+    if used_snapshots != set(snapshots):
+        raise PvpProfilePackageError("Unreferenced rules snapshot.")
     return tuple(presets)
+
+
+def _valid_deck_character_id(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    if re.fullmatch(r"[1-9][0-9]{0,9}", value):
+        return True
+    try:
+        numeric_id = int(value)
+    except ValueError:
+        return False
+    return (
+        numeric_id < 0
+        and str(numeric_id) == value
+        and is_traveler_id(numeric_id)
+    )
 
 
 def _select_deck_presets(

@@ -1,0 +1,106 @@
+{
+  "schema": "gtt_chasca_preparation_v1",
+  "completed_utc": "2026-10-08T10:01:28Z",
+  "scope": "offline synthetic fixture and current-main optimizer input preparation only",
+  "receipt_policy": "immutable compact success or failure; no retry",
+  "status": "prepared_both_modes",
+  "main_writes_authorized": false,
+  "engine_calls": 0,
+  "native_builds": 0,
+  "native_validation_preflights": 0,
+  "ui_or_qt_started": false,
+  "main_source_pointer_binary_unchanged": true,
+  "prototype_sources_unchanged": true,
+  "main_snapshot_before": {
+    "main_head": "6c6d6b8dbf375706b5243215188d6fbad2fff6df",
+    "active_engine_id": "gcsim-v2.45.0-20260927011932",
+    "active_pointer_sha256": "388e28fe2c88122be8690d46fcb603d4228c0f3307d1f1110c1e39f6293f8efb",
+    "native_binary_sha256": "dd84139e21ea24af5a08c0e0ba4eb4ce8410459f31dfdb8513bd77045fed4f13",
+    "engine_manifest_sha256": "85ed068ba0b6ef8902f4bf887096f91c9eacecebfb9b09dcf50ec4988d5b0764",
+    "engine_manifest_tree_sha256": "3d2441f2970978a352a77809ff91d9518c4d1649bc46bbe93445d25ccaa4a074",
+    "engine_artifact_relative_path": "build/gtt-gcsim.exe",
+    "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "source_hashes": [
+      {"path":"run_workspace/gcsim/optimizer_go_inputs.py","sha256":"b4bc8c3007ce3a02c70fcf4e78308eec352c9fc2810677af44ca21f8c878030c"},
+      {"path":"run_workspace/gcsim/optimizer_go_requests.py","sha256":"d35fe4ee251d3db5a44f759ebf1be18f034404117255e9fa94f13acf31b27e8a"},
+      {"path":"run_workspace/gcsim/optimizer_go_selected.py","sha256":"06b36b6dd1a24aab41cd0e94ed011ae41b6f4b724944a8c56e447df4d0ee34d5"},
+      {"path":"run_workspace/gcsim/optimizer_go_all.py","sha256":"c444695afb5033f4f9c9fc24283ba92c58d4187a9e4807d9fa192a81b1f43d5d"},
+      {"path":"run_workspace/gcsim/optimizer_go_contracts.py","sha256":"9fd550f7a96df3d251182cf983f46100bc2688ad0d6f8b6c31be717ced103a65"},
+      {"path":"run_workspace/gcsim/selected_team_config.py","sha256":"78f84cb048b6ef1e579cf6ef056765d6e54f50d37ad3ddf4cb01fbeb8d301e37"},
+      {"path":"run_workspace/gcsim/virtual_roster.py","sha256":"f4de011e5ca469c2b395b7268918b61f98ae625f72678d95d88659aef443b7ea"},
+      {"path":"run_workspace/gcsim/optimizer_engine_context.py","sha256":"3baf834159ccee177688311e144641d1e7a2752cd3d169ba501a0db402e01e96"},
+      {"path":"run_workspace/gcsim/engine_store.py","sha256":"c6af2e2d0f53385541d6868a5d4e67ca2c749db6dcf31a24e7db3b74dd3db053"},
+      {"path":"run_workspace/gcsim/artifact_set_catalog.py","sha256":"6003e7f230c1e2f9f2e20b7cf1e82ee4fdd1e7b877450c0cd5687c41fb78bd67"},
+      {"path":"hoyolab_export/artifact_db.py","sha256":"421101e5388019a750316fa893bcd7fa3a40840dc29bef4d5f74101637336038"},
+      {"path":"hoyolab_export/artifact_fingerprint.py","sha256":"04ae707143663e3671a18cbaa14074df8a9fe1639c7d78691dbbb50a7b96aa94"},
+      {"path":"hoyolab_export/stat_normalization.py","sha256":"4a325af3b009698e41ab04cad58dc95dabfa0a9ce22eb9cbfc8cb1d69c0bf609"}
+    ]
+  },
+  "main_snapshot_after": {
+    "main_head": "6c6d6b8dbf375706b5243215188d6fbad2fff6df",
+    "active_engine_id": "gcsim-v2.45.0-20260927011932",
+    "active_pointer_sha256": "388e28fe2c88122be8690d46fcb603d4228c0f3307d1f1110c1e39f6293f8efb",
+    "native_binary_sha256": "dd84139e21ea24af5a08c0e0ba4eb4ce8410459f31dfdb8513bd77045fed4f13",
+    "engine_manifest_sha256": "85ed068ba0b6ef8902f4bf887096f91c9eacecebfb9b09dcf50ec4988d5b0764",
+    "engine_manifest_tree_sha256": "3d2441f2970978a352a77809ff91d9518c4d1649bc46bbe93445d25ccaa4a074",
+    "engine_artifact_relative_path": "build/gtt-gcsim.exe",
+    "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "source_hashes": [
+      {"path":"run_workspace/gcsim/optimizer_go_inputs.py","sha256":"b4bc8c3007ce3a02c70fcf4e78308eec352c9fc2810677af44ca21f8c878030c"},
+      {"path":"run_workspace/gcsim/optimizer_go_requests.py","sha256":"d35fe4ee251d3db5a44f759ebf1be18f034404117255e9fa94f13acf31b27e8a"},
+      {"path":"run_workspace/gcsim/optimizer_go_selected.py","sha256":"06b36b6dd1a24aab41cd0e94ed011ae41b6f4b724944a8c56e447df4d0ee34d5"},
+      {"path":"run_workspace/gcsim/optimizer_go_all.py","sha256":"c444695afb5033f4f9c9fc24283ba92c58d4187a9e4807d9fa192a81b1f43d5d"},
+      {"path":"run_workspace/gcsim/optimizer_go_contracts.py","sha256":"9fd550f7a96df3d251182cf983f46100bc2688ad0d6f8b6c31be717ced103a65"},
+      {"path":"run_workspace/gcsim/selected_team_config.py","sha256":"78f84cb048b6ef1e579cf6ef056765d6e54f50d37ad3ddf4cb01fbeb8d301e37"},
+      {"path":"run_workspace/gcsim/virtual_roster.py","sha256":"f4de011e5ca469c2b395b7268918b61f98ae625f72678d95d88659aef443b7ea"},
+      {"path":"run_workspace/gcsim/optimizer_engine_context.py","sha256":"3baf834159ccee177688311e144641d1e7a2752cd3d169ba501a0db402e01e96"},
+      {"path":"run_workspace/gcsim/engine_store.py","sha256":"c6af2e2d0f53385541d6868a5d4e67ca2c749db6dcf31a24e7db3b74dd3db053"},
+      {"path":"run_workspace/gcsim/artifact_set_catalog.py","sha256":"6003e7f230c1e2f9f2e20b7cf1e82ee4fdd1e7b877450c0cd5687c41fb78bd67"},
+      {"path":"hoyolab_export/artifact_db.py","sha256":"421101e5388019a750316fa893bcd7fa3a40840dc29bef4d5f74101637336038"},
+      {"path":"hoyolab_export/artifact_fingerprint.py","sha256":"04ae707143663e3671a18cbaa14074df8a9fe1639c7d78691dbbb50a7b96aa94"},
+      {"path":"hoyolab_export/stat_normalization.py","sha256":"4a325af3b009698e41ab04cad58dc95dabfa0a9ce22eb9cbfc8cb1d69c0bf609"}
+    ]
+  },
+  "prototype_snapshot": {
+    "prototype_head": "08e502a5b728f2b1d207f36c5b1de0e6a3e70ec2",
+    "source_hashes": [
+      {"path":"tools/experiments/gcsim/chasca_regression/spec.json","sha256":"8dbc0f998209274bab6503e7dcb03cbffa5aa21838710f1d643cf6bb1e208cde"},
+      {"path":"tools/experiments/gcsim/chasca_regression/fixture.py","sha256":"5ca4820a3bb414c425f4ebfaf22276431f44fb6e8c75dac4f8ca2506b6e80707"},
+      {"path":"tools/experiments/gcsim/chasca_regression/prepare_check.py","sha256":"673ad2b13f9ee388a0457efb077631363fd874f9e25d70f954100577ae275be2"},
+      {"path":"tools/managed_optimizer_experiment.py","sha256":"3af3f53bae44a37f1e6fff53d43182d337c7b84813531355b2735ebfd99c0d01"}
+    ]
+  },
+  "managed_job": {
+    "name": "job-a9wowid0",
+    "removed_bytes": null,
+    "cleaned": true,
+    "path_absent": true,
+    "environment_paths_inside_job": true
+  },
+  "fixture_summary": {
+    "engine_id": "gcsim-v2.45.0-20260927011932",
+    "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "engine_binding_sha256": "8d143c742ac9501df45be2a6832cadb1ac337ccb2253069f51fe9a67978e4c4d",
+    "seed": 20261008,
+    "artifact_count": 600,
+    "set_uid_count": 24,
+    "selected_profile_count": 4,
+    "content_fingerprints_sha256": "27a9da734aceb3aa7bb0203a1cbf4c82e9414fbea2e50b3f9623e933682ec501",
+    "rotation_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee"
+  },
+  "prepared_modes": [
+    {"mode":"all_sets","request_sha256":"7cd6bec8ae225bd10bfec2481f641a751323d8d89f063272ea030e83c970ad83","artifact_count":600,"wearer_count":4},
+    {"mode":"selected","request_sha256":"5348bb7300ae0a2474c8f103116685d78301413fe1e1ee078083eb9a555c0bec","artifact_count":600,"wearer_count":4}
+  ],
+  "generated_file_hashes": [
+    {"path":"chasca-fixture/chasca-public-600.db","bytes":888832,"sha256":"095f78e260834f8b7cb2758683b25e96181f2340bae1758c6a3bab561070ce2a"},
+    {"path":"prepared-all_sets/request.json","bytes":174459,"sha256":"12ea74742d56ddf14df92963d2c536126718d398dc1d29c4e4c4d23ef0f404a6"},
+    {"path":"prepared-all_sets/rotation.from-ui.txt","bytes":361,"sha256":"754065150adee07598c22d91561a9117f88f5586ea169ead66815731de1c8a0f"},
+    {"path":"prepared-selected/request.json","bytes":174527,"sha256":"528628b34c09493437a341489ecd408b03874b94951545f5859acca5074e2b72"},
+    {"path":"prepared-selected/rotation.from-ui.txt","bytes":361,"sha256":"754065150adee07598c22d91561a9117f88f5586ea169ead66815731de1c8a0f"}
+  ],
+  "child_exit_code": 0,
+  "child_stderr": "",
+  "errors": [],
+  "raw_database_or_request_contents_retained": false
+}

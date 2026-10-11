@@ -28,11 +28,14 @@ def pvp_player_color(
     settings_file: str | Path | None = None,
 ) -> str:
     normalized_seat = _normalized_seat(seat)
-    path = Path(settings_file or SETTINGS_FILE).resolve()
-    cache_key = (str(path), normalized_seat)
+    # Most callers are card builders/paint paths. Resolve the filesystem only
+    # on a cache miss, not once per badge on every click or repaint.
+    requested_path = Path(settings_file or SETTINGS_FILE).absolute()
+    cache_key = (str(requested_path), normalized_seat)
     cached = _color_cache.get(cache_key)
     if cached is not None:
         return cached
+    path = requested_path.resolve()
     value = _normalize_color(
         get_app_setting(
             PVP_PLAYER_COLOR_SETTING_KEYS[normalized_seat],
@@ -62,6 +65,9 @@ def set_pvp_player_color(
         value,
         settings_file=path,
     )
+    # A relative path or junction may have populated another key for this file.
+    # Writes are rare; invalidate aliases rather than returning an old colour.
+    _color_cache.clear()
     _color_cache[(str(path), normalized_seat)] = value
     return value
 

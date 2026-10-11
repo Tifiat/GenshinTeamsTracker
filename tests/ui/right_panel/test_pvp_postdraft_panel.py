@@ -42,7 +42,9 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
         db_path = Path(temp_dir.name) / "right-panel-postdraft.sqlite"
         pvp_fixtures._seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
 
-        workspace = PvpWorkspace(db_path=db_path, deck_dir=temp_dir.name)
+        from tests.ui.pvp_browser._period_fixture import fixture_period_provider_kwargs
+        workspace = PvpWorkspace(db_path=db_path, deck_dir=temp_dir.name,
+                                 **fixture_period_provider_kwargs())
         self.assertTrue(workspace.decks_workspace.create_deck("Mirror"))
         self.assertTrue(workspace.decks_workspace.save_edit(name="Mirror"))
         play_panel = PvpPlayRightPanel(workspace)
@@ -58,6 +60,25 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
         self.addCleanup(draft_panel.close)
         return workspace, draft_panel
 
+    def test_postdraft_slots_receive_character_layers_from_the_seat_controller(self) -> None:
+        from ui.right_panel.common.metrics import _fit_pixmap, SLOT_PORTRAIT_SIZE
+        from PySide6.QtCore import QSize
+
+        workspace, panel = self._build_assignment_panel()
+        pvp_fixtures.PvpBrowserTest()._assign_all_picks_to_teams(workspace)
+        cards = [card for card in panel.findChildren(RightPanelSlotCardWidget) if not card._model.is_empty]
+        self.assertEqual(len(cards), 16)
+        for card in cards:
+            model = card._model
+            self.assertEqual(model.portrait_rarity, 5)
+            self.assertEqual(model.portrait_element, "Pyro")
+            self.assertEqual(model.portrait_constellation, 6)
+            self.assertTrue(model.portrait_background_path.endswith("rarity_5.png"))
+            self.assertTrue(model.portrait_element_icon_path)
+            self.assertEqual(card._portrait._portrait_layers["element"], model.portrait_element)
+            bare = _fit_pixmap(model.portrait_path, QSize(SLOT_PORTRAIT_SIZE, SLOT_PORTRAIT_SIZE), dpr=card.devicePixelRatioF())
+            self.assertIsNotNone(bare, model.portrait_path)
+            self.assertNotEqual(card._portrait.pixmap().toImage(), bare.toImage())
     def test_expanded_and_collapsed_postdraft_seat_geometry(self) -> None:
         workspace, draft_panel = self._build_assignment_panel()
 

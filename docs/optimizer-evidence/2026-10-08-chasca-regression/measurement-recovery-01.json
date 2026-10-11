@@ -1,0 +1,115 @@
+{
+  "schema": "gtt_chasca_measurement_recovery_v1",
+  "status": "receipt_export_repaired_from_retained_evidence",
+  "product_result": "two_cases_completed",
+  "baseline_accepted": false,
+  "scope": {
+    "modes": ["all_sets", "selected"],
+    "normal_iterations": 500,
+    "expected_file_backed_attempts": 16,
+    "file_backed_attempt_cap": 20,
+    "engine_builds": 0,
+    "native_builds": 0,
+    "installation_writes": 0
+  },
+  "retained_candidate": {
+    "path": "tools/experiments/gcsim/chasca_regression/measurement_candidate.json",
+    "sha256": "47861ee1364b3585eb225ca046721a32deca83f20c319388370660c8aa3fd37a",
+    "bytes": 7777,
+    "status": "unreviewed_measurement_candidate",
+    "engine_id": "gcsim-v2.45.0-20260927011932",
+    "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "native_optimizer_sha256": "dd84139e21ea24af5a08c0e0ba4eb4ce8410459f31dfdb8513bd77045fed4f13",
+    "expected_engine_calls": 16,
+    "engine_call_cap": 20
+  },
+  "cases": [
+    {
+      "mode": "all_sets",
+      "button_to_ready_seconds": 123.265,
+      "backend_total_elapsed_ms": 122797,
+      "formula_dps": "139125.97888868145",
+      "measured_dps": "140462.9041798014",
+      "standard_error": "130.9836716702314",
+      "iterations": 500,
+      "winner_count": 20,
+      "warnings": [
+        "all_sets_bounded_search",
+        "all_sets_inventory_budget_limited",
+        "all_sets_search_budget_limited",
+        "formula_rank_not_measurement_authority",
+        "opaque_formula_boundaries_present"
+      ],
+      "progress_observation": {
+        "file_backed_attempts": 11,
+        "matching_result_outputs": 11
+      }
+    },
+    {
+      "mode": "selected",
+      "button_to_ready_seconds": 25.563,
+      "backend_total_elapsed_ms": 25047,
+      "formula_dps": "137465.0538867352",
+      "measured_dps": "139086.52032394247",
+      "standard_error": "131.39142971004517",
+      "iterations": 500,
+      "winner_count": 20,
+      "warnings": [
+        "formula_rank_not_measurement_authority",
+        "measured_top_confidence_overlap",
+        "opaque_formula_boundaries_present",
+        "selected_bounded_search"
+      ],
+      "progress_observation": {
+        "file_backed_attempts_cumulative": 16,
+        "matching_result_outputs_cumulative": 16
+      }
+    }
+  ],
+  "file_backed_invocation_observation": {
+    "python_selected_compact_requests": 2,
+    "matching_python_compact_results": 2,
+    "native_all_sets_capture_requests": 2,
+    "matching_native_capture_results": 2,
+    "normal_finalist_config_directories": 12,
+    "matching_normal_result_files": 12,
+    "total_attempts": 16,
+    "total_matching_result_outputs": 16,
+    "interpretation": "Request/config/result counts are file-backed observations mapped to the reviewed one-launch call sites; they are not OS process-start telemetry."
+  },
+  "evidence_provenance": {
+    "candidate_metrics": "read from the retained candidate without modifying it",
+    "backend_elapsed_and_progress_counts": "captured in the live supervisor progress output",
+    "cleanup": "managed runner reported 73366438 bytes removed and job path absent",
+    "post_run_check": "fresh read-only snapshot matched preparation-03 identity and source hashes",
+    "process_start_telemetry": "not retained; no process-start count is claimed"
+  },
+  "original_run_receipt": {
+    "path": "docs/optimizer-evidence/2026-10-08-chasca-regression/measurement-run-01.json",
+    "written": false,
+    "reason": "The completed supervisor draft exceeded its 32 KiB evidence guard because it included an unbounded nested search field. The managed job had already been cleaned; detailed stage counters were discarded with cleanup and are not reconstructed here."
+  },
+  "post_run_snapshot": {
+    "kind": "fresh_post_run_read_only_check_only",
+    "main_head": "ceabea4f7fc96c461f44543c00a67f920b9b9fcc",
+    "preparation_head": "6c6d6b8dbf375706b5243215188d6fbad2fff6df",
+    "preparation_head_delta": "parent-reviewed documentation-only commit",
+    "documentation_paths": [
+      "docs/handoff/CATALOG.md",
+      "docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md",
+      "docs/handoff/READABLE_ROTATION_EDITOR.md",
+      "docs/rotation-evidence/2026-10-08_dictionary.md"
+    ],
+    "active_engine_id": "gcsim-v2.45.0-20260927011932",
+    "active_pointer_sha256": "388e28fe2c88122be8690d46fcb603d4228c0f3307d1f1110c1e39f6293f8efb",
+    "native_binary_sha256": "dd84139e21ea24af5a08c0e0ba4eb4ce8410459f31dfdb8513bd77045fed4f13",
+    "engine_manifest_sha256": "85ed068ba0b6ef8902f4bf887096f91c9eacecebfb9b09dcf50ec4988d5b0764",
+    "engine_manifest_tree_sha256": "3d2441f2970978a352a77809ff91d9518c4d1649bc46bbe93445d25ccaa4a074",
+    "engine_artifact_relative_path": "build/gtt-gcsim.exe",
+    "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "preparation_identity_fields_match": true,
+    "preparation_source_hashes_match": "13 of 13",
+    "main_working_tree_clean": true,
+    "managed_job_removed": true
+  }
+}

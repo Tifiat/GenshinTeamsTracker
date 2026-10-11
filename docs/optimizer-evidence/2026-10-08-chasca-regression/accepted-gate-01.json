@@ -1,0 +1,94 @@
+{
+  "schema_kind": "chasca_accepted_button_gate_v1",
+  "status": "completed_timing_recheck_required",
+  "gate_exit_code": 1,
+  "decision": "All Sets exceeded the accepted button-to-ready reference by more than 5000 ms. The gate correctly requested idle confirmation and an isolated --case all_sets recheck; no rerun or baseline update was performed.",
+  "scope": {
+    "fixture": "public synthetic Chasca fixture, 600 artifacts",
+    "cases": ["all_sets", "selected"],
+    "normal_iterations": 500,
+    "expected_file_backed_attempts": 16,
+    "attempt_cap": 20,
+    "watchdog_seconds": 900,
+    "engine_builds": 0,
+    "native_builds": 0,
+    "installation_writes": 0,
+    "reruns": 0,
+    "baseline_updated": false
+  },
+  "pins": {
+    "spec_sha256": "8dbc0f998209274bab6503e7dcb03cbffa5aa21838710f1d643cf6bb1e208cde",
+    "reviewed_candidate_sha256": "47861ee1364b3585eb225ca046721a32deca83f20c319388370660c8aa3fd37a",
+    "engine_id": "gcsim-v2.45.0-20260927011932",
+    "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "native_binary_sha256": "dd84139e21ea24af5a08c0e0ba4eb4ce8410459f31dfdb8513bd77045fed4f13",
+    "active_pointer_sha256": "388e28fe2c88122be8690d46fcb603d4228c0f3307d1f1110c1e39f6293f8efb"
+  },
+  "cases": [
+    {
+      "mode": "all_sets",
+      "button_to_ready_ms": 129094,
+      "reference_ms": 123265,
+      "delta_ms": 5829,
+      "measured_dps": "140456.03947552937",
+      "standard_error": "134.05320819994884",
+      "iterations": 500,
+      "timing_decision": "TIMING_RECHECK_REQUIRED"
+    },
+    {
+      "mode": "selected",
+      "button_to_ready_ms": 27703,
+      "reference_ms": 25563,
+      "delta_ms": 2140,
+      "measured_dps": "139140.62825908628",
+      "standard_error": "133.68293069609132",
+      "iterations": 500,
+      "timing_decision": "within_plus_5000ms_reference"
+    }
+  ],
+  "execution": {
+    "child_exit_code": 0,
+    "file_backed_attempts": 16,
+    "result_backed_invocations": 16,
+    "attempt_cap": 20,
+    "process_sampling_available": false,
+    "sampled_descendant_processes_lower_bound": 0,
+    "interpretation": "File-backed request/config and result counts; not exhaustive operating-system process-start telemetry.",
+    "managed_job_id": "job-_d0wp7hq",
+    "managed_job_removed": true,
+    "managed_cleanup_bytes": 73382887,
+    "managed_orphan_jobs_after": 0,
+    "active_engine_processes_after": 0
+  },
+  "preservation": {
+    "runtime_inputs_unchanged": true,
+    "post_run_runtime_matches_preparation03": true,
+    "post_run_artifact_matches_accepted_baseline": true,
+    "preparation03_scoped_source_hashes_matching": 13,
+    "preparation03_scoped_source_hashes_total": 13,
+    "post_run_main_head": "0ee97f48a4b963d4db321419bbc2dec01e6c4175",
+    "head_delta_from_preparation03": "documentation-only across the four previously identified rotation handoff/evidence paths; scoped source hashes match"
+  },
+  "machine_load_observations": {
+    "pre_run_host_cpu_load_percent": 37,
+    "pre_run_samples": 1,
+    "post_run_host_cpu_load_percent_samples": [16, 10, 30],
+    "post_run_sample_interval_seconds": 1.5,
+    "top_non_test_process_cpu_seconds_delta": [
+      {"name": "ChatGPT", "cpu_seconds": 1.281},
+      {"name": "codex", "cpu_seconds": 0.859},
+      {"name": "HYPHelper", "cpu_seconds": 0.641},
+      {"name": "HYPHelper", "cpu_seconds": 0.625},
+      {"name": "ChatGPT", "cpu_seconds": 0.562}
+    ],
+    "interpretation": "Short load samples only; they do not establish that the machine was idle."
+  },
+  "preflight": {
+    "offline_tests_passed": 7,
+    "source_files_ast_parsed": 5,
+    "active_engine_processes_before": 0,
+    "managed_orphan_jobs_before": 0,
+    "pinned_pointer_native_and_engine_match": true
+  },
+  "evidence_limit": "The checker returned bounded per-case observations and preservation status. No raw fixture database, request, config, or simulator output was retained."
+}

@@ -80,6 +80,14 @@ receipts are linked from the current checkpoint. Offscreen buttons are not
 physical app-window acceptance, and changed results never update the baseline
 silently.
 
+Search/ranking changes also use the accepted representative Chasca gate:
+`tools/check_chasca_optimizer.py --app-root <checkout>`. Its fixed public600
+inventory/profiles/rotation and reviewed normal-mode references are owned by
+`docs/optimizer-evidence/2026-10-08-chasca-regression/README.md`. Keep the small
+four-mode gate for fast-mode/launch coverage. A runtime above reference+5s
+requests an idle-machine check and one isolated `--case` rerun, never an
+automatic slower baseline. Different inventory or rotation is a different test.
+
 ## Parallel development boundary
 
 The user-approved split keeps a reviewed checkpoint on `master`;

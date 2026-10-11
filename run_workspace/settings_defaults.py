@@ -23,8 +23,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "gcsim_optimizer_expanded_limits": False,
     "gcsim_optimizer_set_group_limit": 3,
     "gcsim_optimizer_builds_per_group": 3,
-    "pvp_player_1_color": "#42d9f5",
-    "pvp_player_2_color": "#d9f25c",
+    "pvp_player_1_color": "#75adbd",
+    "pvp_player_2_color": "#a5b474",
 }
 
 _DYNAMIC_OPTIMIZER_LIMITS = {

@@ -1,0 +1,39 @@
+{
+  "schema_kind": "public_chasca_full_account_probe_v1",
+  "scope": "public synthetic account; no live account, character, weapon, or artifact DB rows",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "seed": 20261008,
+  "rarity": 5,
+  "level": 20,
+  "variants_per_set_slot": 5,
+  "set_keys": [
+    "archaicpetra", "blizzardstrayer", "deepwoodmemories",
+    "emblemofseveredfate", "flowerofparadiselost", "fragmentofharmonicwhimsy", "gildeddreams",
+    "gladiatorsfinale", "goldentroupe", "heartofdepth",
+    "huskofopulentdreams", "maidenbeloved", "marechausseehunter",
+    "nighttimewhispersintheechoingwoods",
+    "noblesseoblige", "nymphsdream", "obsidiancodex", "paleflame",
+    "scrolloftheheroofcindercity", "shimenawasreminiscence",
+    "tenacityofthemillelith",
+    "viridescentvenerer", "vourukashasglow", "wandererstroupe"
+  ],
+  "set_selection_limit": "Pinned modeled five-star 4p catalog subset for first timing probe; excludes Ocean-Hued Clam and Song of Days Past (healing-linked extra damage) and Desert Pavilion Chronicle (attack speed) to avoid obvious hit/schedule changes. This is not universal set-response coverage.",
+  "profiles": [
+    {"name": "Chasca", "character_key": "chasca", "weapon_key": "astralvulturescrimsonplumage", "refinement": 1, "constellation": 1, "talents": [1, 10, 9], "selected_set_name": "Obsidian Codex", "selected_set_key": "obsidiancodex", "baseline_variants": [0, 0, 0, 0, 0]},
+    {"name": "Furina", "character_key": "furina", "weapon_key": "wolffang", "refinement": 5, "constellation": 2, "talents": [2, 10, 10], "selected_set_name": "Golden Troupe", "selected_set_key": "goldentroupe", "baseline_variants": [1, 1, 1, 1, 1]},
+    {"name": "Bennett", "character_key": "bennett", "weapon_key": "sapwoodblade", "refinement": 3, "constellation": 6, "talents": [3, 5, 10], "selected_set_name": "Noblesse Oblige", "selected_set_key": "noblesseoblige", "baseline_variants": [2, 2, 3, 4, 2]},
+    {"name": "Ororon", "character_key": "ororon", "weapon_key": "thestringless", "refinement": 5, "constellation": 6, "talents": [1, 1, 9], "selected_set_name": "Scroll of the Hero of Cinder City", "selected_set_key": "scrolloftheheroofcindercity", "baseline_variants": [3, 3, 0, 2, 1]}
+  ],
+  "rotation_source": "run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt",
+  "rotation": "options swap_delay=12 iteration=500 ignore_burst_energy=true;\ntarget lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;\nactive furina;\nfor let i=0; i<4; i=i+1 {\n  if is_even(i) { furina skill, dash, burst; }\n  ororon burst, skill;\n  bennett skill, burst;\n  chasca skill;\n  chasca aim:4;\n  chasca aim[bullets=4];\n  if is_even(i) { chasca burst; }\n}\n",
+  "cases": [
+    {"mode": "all_sets", "set_groups": 3, "total_rows_per_group": 3},
+    {"mode": "selected", "set_groups": 1, "total_rows_per_group": 3}
+  ],
+  "normal_iteration": 500,
+  "managed_watchdog_seconds": 900,
+  "internal_watchdog_seconds": 870,
+  "engine_call_cap": 20,
+  "baseline_policy": "measure_only; no golden write or automatic baseline update"
+}

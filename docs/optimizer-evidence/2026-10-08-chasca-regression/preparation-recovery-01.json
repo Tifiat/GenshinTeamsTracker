@@ -1,0 +1,34 @@
+{
+  "schema": "gtt_chasca_preparation_recovery_v1",
+  "captured_utc": "2026-10-08T09:53:35Z",
+  "scope": "pre-cleanup hash snapshot of one owned synthetic managed job; no fixture or request contents",
+  "prior_receipt": {
+    "path": "docs/optimizer-evidence/2026-10-08-chasca-regression/preparation-02.json",
+    "sha256": "d4c883471273de39f4034288635180fe10bd4c0799b948f64e27f189907e4a3c"
+  },
+  "managed_root": "C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer",
+  "job": "C:\\Users\\user\\.codex\\worktrees\\optimizer-schedule-repair\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-eloa65q0",
+  "job_parent_matches_managed_root": true,
+  "linked_path_components": 0,
+  "active_owned_processes": 0,
+  "files": [
+    {
+      "path": "chasca-fixture/chasca-public-600.db",
+      "bytes": 888832,
+      "sha256": "9f8d20873206092c02c96fc89be5f2622524c6cd9a42e11fa560d2c8bbd6e708"
+    },
+    {
+      "path": "prepared-all_sets/request.json",
+      "bytes": 174459,
+      "sha256": "12ea74742d56ddf14df92963d2c536126718d398dc1d29c4e4c4d23ef0f404a6"
+    },
+    {
+      "path": "prepared-all_sets/rotation.from-ui.txt",
+      "bytes": 361,
+      "sha256": "754065150adee07598c22d91561a9117f88f5586ea169ead66815731de1c8a0f"
+    }
+  ],
+  "cleanup_action": "remove_owned_job for this exact job only",
+  "cleanup_state_at_capture": "pending",
+  "original_inner_failure": "not present in preparation-02.json or available saved terminal output; not inferred from cleanup error"
+}

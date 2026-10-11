@@ -7,6 +7,8 @@ and right-panel slot swaps are implemented. `main.py` still launches the legacy
 app; its switch remains explicitly user-approved work. Dated performance/probe
 notes below are historical evidence, not current benchmark or task priority.
 Open work is tracked in `TODO.md`; per-feature details remain in their handoffs.
+Character Browser's one-card Traveler selector and runtime Cn presentation are
+owned by [card assets and browser presentation](CHARACTER_CARD_ASSETS.md).
 
 ## Target Shape
 

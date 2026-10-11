@@ -782,8 +782,8 @@ Stage H: deck builder/exporter UI.
 Stage I: iterate toward offline PvP MVP.
 
 - Improve UX.
-- Add richer ruleset adapters only after real usable tournament source files
-  exist.
+- Add richer ruleset adapters against real usable sources. This prerequisite is
+  met for Abyss; `PVP_ABYSS_SOURCE_AUDIT.md` owns current evidence and limitations.
 - Decide when to pull existing `TournamentRulesetV1` forward.
 
 Online relay and History remain later major stages after the offline PvP loop is

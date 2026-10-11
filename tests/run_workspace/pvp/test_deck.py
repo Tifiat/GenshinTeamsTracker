@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 
+from hoyolab_export.traveler import traveler_variant_id
 from run_workspace.pvp.deck import (
     DeckLoadError,
     DraftCharacter,
@@ -90,21 +91,36 @@ class DraftDeckTests(unittest.TestCase):
         self.assertFalse(report.ready)
         self.assertIn(ISSUE_NOT_ENOUGH_CHARACTERS_FREE_DRAFT, report.issue_codes())
 
-    def test_unsupported_traveler_is_rejected_conservatively(self) -> None:
+    def test_explicit_traveler_variant_is_valid_and_counts_toward_roster(self) -> None:
+        base = synthetic_deck("p1", character_count=11)
         deck = replace(
-            synthetic_deck("p1"),
+            base,
             characters=(
                 DraftCharacter(
-                    "10000007",
-                    "Traveler",
-                    "ANEMO",
+                    str(traveler_variant_id(10000007, "Pyro")),
+                    "Traveler (Pyro)",
+                    "PYRO",
                     "SWORD",
                     5,
                     90,
                     6,
                 ),
             )
-            + synthetic_deck("p1").characters[1:],
+            + base.characters[1:],
+        )
+
+        report = validate_draft_deck(deck)
+
+        self.assertTrue(report.ready)
+        self.assertNotIn(ISSUE_UNSUPPORTED_TRAVELER_CHARACTER, report.issue_codes())
+
+    def test_source_id_traveler_without_explicit_element_remains_blocked(self) -> None:
+        base = synthetic_deck("p1")
+        deck = replace(
+            base,
+            characters=(DraftCharacter(
+                "10000007", "Traveler", "", "SWORD", 5, 90, 6,
+            ),) + base.characters[1:],
         )
 
         report = validate_draft_deck(deck)

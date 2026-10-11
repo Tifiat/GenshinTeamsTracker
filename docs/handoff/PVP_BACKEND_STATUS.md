@@ -1,18 +1,19 @@
 # PvP Backend Status
 
-Last updated: 2026-10-04 (scoped services and local period admission only).
+Last updated: 2026-10-11 (first actor, fresh series drafts and result totals).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
-mapping boundaries live in `PVP_RULESET_SOURCE_MATRIX.md` and are paused until
-real usable tournament files are provided.
+mapping boundaries live in `PVP_RULESET_SOURCE_MATRIX.md`. Public Abyss rules
+feed the deck editor through a product adapter. [Deck rules](PVP_DECK_RULES.md)
+owns its implementation/acceptance limits and supported local match adapter.
 
 The PvP UI roadmap is intentionally separate: see `PVP_UI_ROADMAP.md` for the
 AppShell/Decks/Play/Draft/assignment/result UI direction.
 
 ## Active Direction
 
-The active backend direction is no-rules Free Draft v0:
+The original no-rules Free Draft v0 remains available:
 
 - local hot-seat / ghost-deck sessions;
 - two `DraftDeck` payloads;
@@ -22,9 +23,23 @@ The active backend direction is no-rules Free Draft v0:
 - post-draft team/weapon/timer/result summaries;
 - session bundle snapshot/verifier.
 
-Ruleset/balance modules remain report-only research support. They are not the
-active implementation direction until real tournament Excel/Sheets/Discord docs
-or JSON examples exist.
+Legacy generic ruleset/balance modules remain report-only research support.
+Abyss has a separate pinned deck adapter with price/constraint presentation;
+`PVP_DECK_RULES.md` owns current limits and the user smoke. A dynamic pinned
+source definition now executes supported base Abyss flows with cost-compensation
+prebans and [draft clocks/settings](PVP_DRAFT_RUNTIME.md), immunity,
+assigned-weapon budgets and restart-adjusted single-game Shiyu scoring.
+Unsupported modes/flows/stages fail closed. Its session-bundle export remains
+unsupported until the verifier can carry and replay pinned source content.
+Ordinary picks/bans remain global; Free also rejects bans of prior picks.
+Shared source immunity claims remain once per seat. The runtime contract owns
+Ascend MIRROR, Reverse and French signed-cost comparison. Explicit Free Draft in Play
+projects saved membership without changing its rules snapshot; source mode keeps
+the equal-snapshot gate. [Result export](PVP_UI_ROADMAP.md#export--result) owns PNG.
+The [runtime contract](PVP_DRAFT_RUNTIME.md#first-actor-and-series--11-october)
+owns explicit first-actor rotation, compatible Free replay metadata and the
+immutable in-memory series ledger with fresh drafts and adjusted totals. Failed
+rooms, technical-loss policy and durable recovery remain open.
 
 ## AppShell UI Status
 
@@ -255,8 +270,9 @@ Still out of scope / not implemented:
   `PVP_BUILD_SERVICES.md`;
 - online/P2P/relay transport;
 - PvP History persistence;
-- result PNG/export UI;
-- real Gentor/Abyss importer;
+- native result PNG acceptance and team/build artwork;
+- Gentor importer and complete Abyss rule matching/match execution (deck editor
+  is implemented under `PVP_DECK_RULES.md`);
 - XLSX/Google Sheets/Discord importer;
 - ruleset identity mapping / alias layer;
 - automatic draft schedule derivation;

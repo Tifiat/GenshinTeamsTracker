@@ -34,6 +34,7 @@ from .schedule import (
     DraftActionRequirement,
     DraftSchedule,
     DraftScheduleStep,
+    with_first_seat,
 )
 from .session import (
     CharacterWeaponAssignment,
@@ -233,9 +234,10 @@ def build_session_bundle(
     balance_ref: Mapping[str, Any] | None = None,
     session_id: str = "",
     created_at_utc: str = "",
+    first_seat: str = SEAT_PLAYER_1,
 ) -> PvpSessionBundle:
     system = draft_system or require_draft_system(system_id)
-    schedule = system.build_schedule()
+    schedule = with_first_seat(system.build_schedule(), first_seat)
     schedule_hash = calculate_schedule_hash(schedule)
     player_1_deck = decks[SEAT_PLAYER_1]
     session_id = session_id or f"pvp-session-{source_mode}-{final_state_hash[:12]}"
@@ -249,6 +251,7 @@ def build_session_bundle(
             "module": "run_workspace.pvp.session_bundle",
             "source_mode": source_mode,
             "privacy": "embedded_decks_no_artifacts_auth_raw_dumps_paths_or_sqlite_ids",
+            **({"first_seat": first_seat} if first_seat != SEAT_PLAYER_1 else {}),
         },
         draft_system=PvpSessionBundleDraftSystemRef(
             system_id=system.system_id,
@@ -433,7 +436,11 @@ def verify_session_bundle(
     if system is None or len(decks) != len(PVP_SEATS):
         return _verification_report(payload, issues, system, action_count=0)
 
-    expected_schedule = system.build_schedule()
+    first_seat = _mapping(payload.get("source")).get("first_seat", SEAT_PLAYER_1)
+    if type(first_seat) is not str or first_seat not in PVP_SEATS:
+        issues.append(_issue(ISSUE_BUNDLE_SCHEDULE_MISMATCH, "Invalid first seat.", path="source.first_seat"))
+        return _verification_report(payload, issues, system, action_count=0)
+    expected_schedule = with_first_seat(system.build_schedule(), first_seat)
     expected_schedule_hash = calculate_schedule_hash(expected_schedule)
     stored_schedule_hash = _text(payload.get("schedule_hash"))
     if _mapping(payload.get("schedule")) != expected_schedule.to_dict():
@@ -822,14 +829,7 @@ def _schedule_from_mapping(payload: Mapping[str, Any]) -> DraftSchedule:
 
 
 def _action_from_mapping(payload: Mapping[str, Any]) -> DraftAction:
-    return DraftAction(
-        seat=_text(payload.get("seat")),
-        action_type=_text(payload.get("type")),
-        character_id=_text(payload.get("character_id")),
-        action_id=_text(payload.get("action_id")),
-        sequence=_optional_int(payload.get("sequence")),
-        payload=dict(_mapping(payload.get("payload"))),
-    )
+    return DraftAction.from_dict(payload)
 
 
 def _team_assignment_from_mapping(payload: Mapping[str, Any]) -> PlayerTeamAssignment:

@@ -61,6 +61,7 @@ from ui.artifact_browser.queries import (
 )
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from ui.character_browser.filter_bar import CharacterFilterBar
+from ui.character_browser.traveler_selector import TravelerVariantGrid, collapse_traveler_assets
 from run_workspace.right_panel_prototype_view_model import (
     FACT_DPS_HP_MODE_MULTI_TARGET,
     FACT_DPS_HP_MODE_SOLO,
@@ -96,12 +97,10 @@ from run_workspace.team_builder import TeamBuilderState
 from ui.character_assets import (
     FILTER_ASSETS_DIR,
     filter_icon_path,
-    refresh_imported_element_filter_icons,
     STANDARD_FILTER_ALL,
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
     character_matches_filters,
-    character_sort_key,
     load_account_character_asset_items,
     load_account_weapon_stack_asset_items,
     load_weapon_owner_badges_for_fingerprints,
@@ -201,12 +200,13 @@ from ui.utils.owner_icon_badge import (
     owner_badge_size_for_icon,
 )
 from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.selection_outline import inventory_selection_outline
 from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
+    UI_INVENTORY_SELECTION_ACCENT,
     UI_BG_BUTTON,
     UI_BG_BUTTON_HOVER,
-    UI_EQUIPPED_WEAPON_ACCENT,
     UI_BG_PANEL,
     UI_BG_PANEL_RAISED,
     UI_BORDER_DEFAULT,
@@ -261,15 +261,15 @@ WEAPON_OWNER_OVERLAY_TRACE = os.environ.get(
     "yes",
     "on",
 }
-# Calibrated after fixing the previous double-downscale bug: the accepted visual
-# placed a 45px side-icon at x=17/y=-22 relative to a 48px weapon card.
+# Preserve the accepted main-checkout geometry relative to the weapon box:
+# a 45px owner canvas at x=17/y=-22 on a 48px weapon, independent of its outline.
 WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 45 / 48
 WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 14 / 45
 WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
 WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
-WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_EQUIPPED_WEAPON_ACCENT
+WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_INVENTORY_SELECTION_ACCENT
 GRID_SELECTION_OUTLINE_ALPHA = UI_SELECTION_OUTLINE_ALPHA
 GRID_SELECTION_BADGE_FILL_ALPHA = UI_SELECTION_BADGE_FILL_ALPHA
 GRID_SELECTION_OUTLINE_WIDTH = 4
@@ -2696,7 +2696,6 @@ class AppShell(QWidget):
             self.controller.invalidate_persistent_equipment_cache()
 
         self.left_host.refresh_account_data()
-        refresh_imported_element_filter_icons(self)
         self.right_panel.refresh_asset_pixmaps()
         self._refresh_character_selection_markers()
         self._sync_artifact_browser_operation_target()
@@ -3863,6 +3862,8 @@ class CharacterWeaponWorkspace(QWidget):
         self._last_weapon_grid_keys: tuple[str, ...] = ()
         self._weapon_cards_by_key: dict[str, Any] = {}
         self._character_grid_assets_by_id: dict[str, dict[str, Any]] = {}
+        self._character_variant_assets_by_id: dict[str, dict[str, Any]] = {}
+        self._selected_traveler_ids: dict[int, str] = {}
         self._weapon_grid_assets_by_id: dict[str, dict[str, Any]] = {}
         self._weapon_type_buttons: dict[str, QPushButton] = {}
         self._auto_weapon_type_filter: str = ""
@@ -3914,7 +3915,10 @@ class CharacterWeaponWorkspace(QWidget):
         root.addSpacing(6)
         self.char_area, self.char_widget, self.char_grid = self._make_grid_area(
             surface="app_shell_character_grid",
+            grid_type=TravelerVariantGrid,
         )
+        self.char_grid.variant_selected.connect(self._select_traveler_variant)
+        self.char_area.verticalScrollBar().valueChanged.connect(self.char_grid.close_variants)
         self.char_grid.item_clicked.connect(
             lambda item_id: self._emit_grid_asset_click(
                 self._character_grid_assets_by_id,
@@ -3929,6 +3933,8 @@ class CharacterWeaponWorkspace(QWidget):
             self.weapon_title_label.setText(tr("asset_panel.weapons"))
         if self.character_title_label is not None:
             self.character_title_label.setText(tr("asset_panel.characters"))
+        self.char_grid.retranslate_ui()
+        self.character_filter_bar.retranslate_ui()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -3979,6 +3985,8 @@ class CharacterWeaponWorkspace(QWidget):
     def refresh_asset_cache(self) -> None:
         self._all_character_items = None
         self._all_weapon_items = None
+        self._character_variant_assets_by_id = {}
+        self.char_grid.set_variant_groups({})
         self._last_character_grid_keys = ()
         self._last_weapon_grid_keys = ()
 
@@ -4073,7 +4081,7 @@ class CharacterWeaponWorkspace(QWidget):
             return
 
         if affected_character_ids is None:
-            ids_to_update = set(self._character_cards_by_id)
+            ids_to_update = set(self._character_cards_by_id) | set(self._character_variant_assets_by_id)
         else:
             ids_to_update = {
                 _text(character_id)
@@ -4093,6 +4101,7 @@ class CharacterWeaponWorkspace(QWidget):
                 character_id,
                 outline=_roster_selection_outline(marker),
             )
+            self.char_grid.update_variant_outline(character_id, _roster_selection_outline(marker))
             card = self._character_cards_by_id.get(character_id)
             if card is not None and hasattr(card, "set_selection_marker"):
                 card.set_selection_marker(marker)
@@ -4125,7 +4134,9 @@ class CharacterWeaponWorkspace(QWidget):
         ]
         predicate_ms = perf_ms(predicate_start)
         sort_start = perf_now()
-        assets.sort(key=character_sort_key)
+        presentation = collapse_traveler_assets(assets, self._selected_traveler_ids)
+        assets = list(presentation.assets)
+        assets.sort(key=self.character_filter_bar.sort_key)
         sort_ms = perf_ms(sort_start)
         self._last_character_grid_keys = tuple(_asset_character_id(asset) for asset in assets)
         rebuild_ms = self._reload_icon_grid(
@@ -4141,6 +4152,19 @@ class CharacterWeaponWorkspace(QWidget):
             card_registry=self._character_cards_by_id,
             vertical_safe_top_margin=CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
         )
+        variants = build_asset_grid_items(
+            [asset for group in presentation.groups.values() for asset in group],
+            key_for_asset=_asset_character_id,
+            outline_for_asset=lambda asset, item_id: _roster_selection_outline(
+                self._character_selection_markers.get(item_id)
+            ),
+        )
+        self._character_variant_assets_by_id = variants.assets_by_id
+        variants_by_id = {item.item_id: item for item in variants.items}
+        self.char_grid.set_variant_groups({
+            item_id: tuple(variants_by_id[_asset_character_id(asset)] for asset in group)
+            for item_id, group in presentation.groups.items()
+        })
         log_perf(
             "filter_characters",
             total=perf_ms(total_start),
@@ -4155,6 +4179,16 @@ class CharacterWeaponWorkspace(QWidget):
 
     def _on_character_filters_changed(self) -> None:
         self._character_standard_filter = self.character_filter_bar.standard_filter
+        self.reload_characters()
+
+    def _select_traveler_variant(self, item_id: str) -> None:
+        from hoyolab_export.traveler import traveler_source_id
+
+        asset = self._character_variant_assets_by_id.get(item_id)
+        source = traveler_source_id(item_id)
+        if asset is None or source is None:
+            return
+        self._selected_traveler_ids[source] = item_id
         self.reload_characters()
 
     def reload_weapons(self) -> None:
@@ -4194,7 +4228,40 @@ class CharacterWeaponWorkspace(QWidget):
             count=len(assets),
         )
 
-    def set_auto_weapon_type_filter(self, weapon_type_key: str | None) -> bool:
+    def refresh_weapons_incremental(self) -> None:
+        """Refresh scoped weapon payloads without rebuilding unchanged grid images."""
+        assets, _load_ms, _load_source = self._weapon_asset_items()
+        assets = [asset for asset in assets if self._weapon_matches_filters(asset)]
+        assets.sort(key=self._weapon_sort_key)
+        result = build_asset_grid_items(
+            assets,
+            key_for_asset=_asset_grid_key,
+            outline_for_asset=lambda asset, _item_id: _weapon_occupied_outline(asset),
+            overlay_icons_for_asset=lambda asset, _item_id: _weapon_owner_overlay_icons(asset),
+            properties_for_asset=lambda asset, _item_id: {
+                "base_size": WEAPON_PICKER_ICON_SIZE,
+                "has_owner_badges": bool(_asset_owner_badges(asset)),
+            },
+        )
+        self.weapon_grid.set_items_incremental(result.items)
+        self._weapon_grid_assets_by_id = result.assets_by_id
+        self._last_weapon_grid_keys = tuple(_asset_grid_key(asset) for asset in assets)
+        previous_cards = self._weapon_cards_by_key
+        cards = {}
+        for item in result.items:
+            asset = result.assets_by_id[item.item_id]
+            card = previous_cards.get(item.item_id)
+            if card is None:
+                card = AssetGridItemHandle(self.weapon_grid, item.item_id, asset)
+            else:
+                card.asset = dict(asset)
+                card.owner_badges = _asset_owner_badges(asset)
+            cards[item.item_id] = card
+        self._weapon_cards_by_key = cards
+
+    def set_auto_weapon_type_filter(
+        self, weapon_type_key: str | None, *, reload_grid: bool = True
+    ) -> bool:
         key = _text(weapon_type_key)
         known_keys = {str(value) for value, _icon_name, _tooltip_key in WEAPON_TYPE_FILTERS}
         if key not in known_keys:
@@ -4209,7 +4276,7 @@ class CharacterWeaponWorkspace(QWidget):
             button.setChecked(bool(key and value == key))
             button.blockSignals(False)
         changed = previous_filters != self._weapon_type_filters
-        if changed:
+        if changed and reload_grid:
             self.reload_weapons()
         log_perf(
             "weapon_auto_filter",
@@ -4218,11 +4285,13 @@ class CharacterWeaponWorkspace(QWidget):
         )
         return changed
 
-    def _make_grid_area(self, *, surface: str) -> tuple[QScrollArea, PixelIconGrid, PixelIconGrid]:
+    def _make_grid_area(
+        self, *, surface: str, grid_type: type[PixelIconGrid] = PixelIconGrid,
+    ) -> tuple[QScrollArea, PixelIconGrid, PixelIconGrid]:
         area = OverlayVerticalScrollArea(auto_hide_ms=850)
         area.setWidgetResizable(True)
         area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        grid = PixelIconGrid(surface=surface)
+        grid = grid_type(surface=surface)
         area.setWidget(grid)
         return area, grid, grid
 
@@ -4239,8 +4308,6 @@ class CharacterWeaponWorkspace(QWidget):
         button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
         button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
-        if icon_name.startswith("element_"):
-            button.setProperty("elementIconName", icon_name)
 
         icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
@@ -4432,17 +4499,7 @@ def _roster_selection_outline(
 
 
 def _weapon_occupied_outline(asset: dict[str, Any]) -> PixelIconGridOutline | None:
-    if not _asset_owner_badges(asset):
-        return None
-    return PixelIconGridOutline(
-        color=WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
-        width=GRID_SELECTION_OUTLINE_WIDTH,
-        radius=GRID_SELECTION_OUTLINE_RADIUS,
-        overhang=GRID_SELECTION_OUTLINE_OVERHANG,
-        alpha=GRID_SELECTION_OUTLINE_ALPHA,
-        fill_color=WEAPON_PICKER_OCCUPIED_FILL_COLOR,
-        fill_alpha=WEAPON_PICKER_OCCUPIED_FILL_ALPHA,
-    )
+    return inventory_selection_outline(selected=bool(_asset_owner_badges(asset)))
 
 
 def _weapon_owner_overlay_icons(
@@ -4981,10 +5038,8 @@ def _existing_project_file_path(value: Any) -> str:
     raw = _text(value)
     if not raw:
         return ""
-    path = Path(raw)
-    if not path.is_absolute():
-        path = account_asset_path(path)
-    if not path.exists():
+    path = account_asset_path(Path(raw))
+    if not path.is_file():
         return ""
     try:
         return str(path.resolve())

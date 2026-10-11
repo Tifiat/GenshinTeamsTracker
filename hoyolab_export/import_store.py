@@ -34,6 +34,7 @@ from .character_stats_catalog import (
 )
 from .character_trait_catalog import load_character_trait_catalog
 from .crop_manifest import IGNORED_CHARACTER_IDS
+from .traveler_variants import account_traveler_id
 from .weapon_stats_catalog import WEAPON_STATS_CACHE_PATH, read_weapon_stats_cache
 
 
@@ -635,9 +636,17 @@ def commit_import_snapshot(
                 else:
                     details = unwrap_hoyolab_payload(source["account_character_details"])
                     detail_rows = (details.get("data") or {}).get("list") or []
-                    weapons = weapon_equipment_from_detail_rows(detail_rows)
+                    variant_ids = {
+                        int(item["base"]["id"]): account_traveler_id(
+                            conn, int(item["base"]["id"]), item["base"].get("element"),
+                        ) for item in detail_rows
+                    }
+                    weapons = {
+                        variant_ids.get(character_id, character_id): fingerprint
+                        for character_id, fingerprint in weapon_equipment_from_detail_rows(detail_rows).items()
+                    }
                     artifacts = [
-                        (int(item["character_id"]), int(item["artifact_id"]))
+                        (variant_ids.get(int(item["character_id"]), int(item["character_id"])), int(item["artifact_id"]))
                         for item in conn.execute(
                             "SELECT character_id, artifact_id FROM artifact_equipment"
                         )

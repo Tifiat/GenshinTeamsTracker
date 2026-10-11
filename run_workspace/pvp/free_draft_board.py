@@ -13,7 +13,12 @@ from typing import TYPE_CHECKING, Any, Mapping
 from .deck import DraftCharacter, DraftDeck
 from .schedule import (
     ACTION_BAN_CHARACTER,
+    ACTION_PREBAN_CHARACTER,
+    ACTION_IMMUNE_BAN_CHARACTER,
+    ACTION_IMMUNE_CHARACTER,
+    ACTION_IMMUNE_PICK_CHARACTER,
     ACTION_PICK_CHARACTER,
+    ACTION_MIRROR_CHARACTER,
     PVP_SEATS,
     SEAT_PLAYER_1,
     SEAT_PLAYER_2,
@@ -35,7 +40,7 @@ from .validation import (
     ISSUE_MISSING_CHARACTER_WEAPON_TYPE,
     ISSUE_UNSUPPORTED_TRAVELER_CHARACTER,
     DeckValidationReport,
-    UNSUPPORTED_TRAVELER_CHARACTER_IDS,
+    is_unsupported_traveler,
 )
 
 if TYPE_CHECKING:
@@ -390,13 +395,13 @@ def build_free_draft_board_projection(
     banned_meta_by_id = {
         item.target_id: item
         for item in action_metas
-        if item.action_type == ACTION_BAN_CHARACTER and item.target_id
+        if item.action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER) and item.target_id
     }
     pick_meta_by_seat = {
         seat: {
             item.target_id: item
             for item in action_metas
-            if item.action_type == ACTION_PICK_CHARACTER
+            if item.action_type in (ACTION_PICK_CHARACTER, ACTION_IMMUNE_CHARACTER, ACTION_MIRROR_CHARACTER)
             and item.seat == seat
             and item.target_id
         }
@@ -596,7 +601,11 @@ def _validate_unified_pool_entry_action(
     issues: list[str],
 ) -> None:
     action_type = action.get("type")
-    if action_type not in {ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER}:
+    if action_type not in {
+        ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER, ACTION_MIRROR_CHARACTER,
+        ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
+        ACTION_IMMUNE_CHARACTER,
+    }:
         issues.append(f"unified_pool_action_type_unknown:{index}:{action_type}")
     if action.get("target_type") != "character":
         issues.append(
@@ -712,9 +721,14 @@ def _progress_dict(
         "legal_target_count": legal_target_count,
         "per_seat": {
             seat: {
-                "expected_bans": expected_counts[seat].get(ACTION_BAN_CHARACTER, 0),
-                "actual_bans": len(state.banned_character_ids_for(seat)),
-                "expected_picks": expected_counts[seat].get(ACTION_PICK_CHARACTER, 0),
+                "expected_bans": (expected_counts[seat].get(ACTION_BAN_CHARACTER, 0)
+                                  + expected_counts[seat].get(ACTION_PREBAN_CHARACTER, 0)),
+                "actual_bans": sum(action.seat == seat and action.action_type in
+                                   (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER)
+                                   for action in state.accepted_actions),
+                "expected_picks": (expected_counts[seat].get(ACTION_PICK_CHARACTER, 0)
+                                   + expected_counts[seat].get(ACTION_IMMUNE_CHARACTER, 0)
+                                   + expected_counts[seat].get(ACTION_MIRROR_CHARACTER, 0)),
                 "actual_picks": len(state.picked_character_ids_for(seat)),
             }
             for seat in PVP_SEATS
@@ -806,13 +820,15 @@ def _board_card(
         reasons.append(REJECT_CHARACTER_PICKED_BY_SELF)
         picked_by = own_pick_meta.seat
         action_index = own_pick_meta.log_index
+    elif is_legal:
+        status = CARD_STATUS_LEGAL_TARGET
     elif opponent_pick_meta is not None:
         status = CARD_STATUS_BLOCKED_BY_OPPONENT_PICK
         reasons.append(REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT)
         picked_by = opponent_pick_meta.seat
         action_index = opponent_pick_meta.log_index
-    elif is_legal:
-        status = CARD_STATUS_LEGAL_TARGET
+    elif state.is_abyss_match and _is_abyss_preparation_blocked(state, character_id):
+        status = CARD_STATUS_UNAVAILABLE
     else:
         status = CARD_STATUS_AVAILABLE
 
@@ -837,6 +853,19 @@ def _board_card(
         banned_by=banned_by,
         action_index=action_index,
     )
+
+
+def _is_abyss_preparation_blocked(state: DraftSessionState, character_id: str) -> bool:
+    requirement = state.current_requirement
+    if requirement is None:
+        return False
+    if requirement.action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER):
+        return (character_id in state.immune_ban_character_ids
+                or character_id in state.immune_pick_character_ids)
+    if requirement.action_type in (ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER,
+                                   ACTION_PICK_CHARACTER, ACTION_MIRROR_CHARACTER):
+        return character_id in state.immune_pick_character_ids
+    return False
 
 
 def _global_pools_dict(
@@ -1050,10 +1079,13 @@ def _unified_pool_zone_status(
         return UNIFIED_POOL_ZONE_INVALID, UNIFIED_POOL_STATUS_INVALID
     if ban_meta is not None:
         return UNIFIED_POOL_ZONE_BANNED, UNIFIED_POOL_STATUS_BANNED
-    if pick_meta is not None:
-        return UNIFIED_POOL_ZONE_PICKED, UNIFIED_POOL_STATUS_PICKED
     if is_legal:
         return UNIFIED_POOL_ZONE_POOL, UNIFIED_POOL_STATUS_LEGAL_TARGET
+    if pick_meta is not None:
+        return UNIFIED_POOL_ZONE_PICKED, UNIFIED_POOL_STATUS_PICKED
+    if any(cards_by_seat[seat][character_id].status == CARD_STATUS_UNAVAILABLE
+           for seat in owner_seats):
+        return UNIFIED_POOL_ZONE_BLOCKED, UNIFIED_POOL_STATUS_BLOCKED
     if state.current_requirement is None or state.current_seat not in owner_seats:
         return UNIFIED_POOL_ZONE_BLOCKED, UNIFIED_POOL_STATUS_BLOCKED
     return UNIFIED_POOL_ZONE_POOL, UNIFIED_POOL_STATUS_AVAILABLE
@@ -1084,7 +1116,11 @@ def _unified_pool_action(
     if (
         not is_legal
         or requirement is None
-        or requirement.action_type not in {ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER}
+        or requirement.action_type not in {
+            ACTION_BAN_CHARACTER, ACTION_PREBAN_CHARACTER, ACTION_PICK_CHARACTER, ACTION_MIRROR_CHARACTER,
+            ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
+            ACTION_IMMUNE_CHARACTER,
+        }
     ):
         return None
     return {
@@ -1238,13 +1274,16 @@ def _result_summary(controller: "FreeDraftController") -> dict[str, Any] | None:
     if result is None:
         return None
     payload = result.to_dict()
-    return {
+    summary = {
         "status": payload["status"],
         "winner_seat": payload["winner_seat"],
         "seconds_difference": payload["seconds_difference"],
         "totals": dict(payload["totals"]),
         "technical_loss_count": len(payload["technical_losses"]),
     }
+    if "source_scoring" in payload:
+        summary["source_scoring"] = payload["source_scoring"]
+    return summary
 
 
 def _action_log_row(meta: _ActionMeta) -> FreeDraftActionLogRow:
@@ -1350,9 +1389,9 @@ def _invalid_character_reason_codes(character: DraftCharacter) -> tuple[str, ...
 
 
 def _is_unsupported_traveler(character: DraftCharacter) -> bool:
-    if character.character_id in UNSUPPORTED_TRAVELER_CHARACTER_IDS:
-        return True
-    return "traveler" in character.display_name.strip().casefold()
+    return is_unsupported_traveler(
+        character.character_id, character.display_name, character.element
+    )
 
 
 def _assignments_ready(controller: "FreeDraftController") -> bool:
@@ -1364,7 +1403,8 @@ def _assignments_ready(controller: "FreeDraftController") -> bool:
 
 def _bundle_ready(controller: "FreeDraftController") -> bool:
     return (
-        controller.session_state.is_complete
+        controller.state.abyss_rules is None
+        and controller.session_state.is_complete
         and _assignments_ready(controller)
         and controller.state.match_result is not None
     )

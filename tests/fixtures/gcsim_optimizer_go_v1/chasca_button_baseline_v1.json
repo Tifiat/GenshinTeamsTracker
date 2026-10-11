@@ -1,0 +1,43 @@
+{
+  "schema": "gtt_chasca_full_account_button_baseline_v1",
+  "reviewed_evidence": "tools/experiments/gcsim/chasca_regression/measurement_candidate.json",
+  "reviewed_evidence_sha256": "47861ee1364b3585eb225ca046721a32deca83f20c319388370660c8aa3fd37a",
+  "scope": "public synthetic 600-item Chasca team; normal n=500 All Sets 3 groups x 3 total rows and Selected 1 group x 3 total rows; infinite energy; offscreen real button path",
+  "policy": "6 combined standard errors for independent measured means; lower outside bound is a regression, higher outside bound requires review; runtime over reference plus 5000 ms requires idle confirmation and --case rerun; never update automatically",
+  "fixture": {
+    "spec_sha256": "8dbc0f998209274bab6503e7dcb03cbffa5aa21838710f1d643cf6bb1e208cde",
+    "content_fingerprints_sha256": "27a9da734aceb3aa7bb0203a1cbf4c82e9414fbea2e50b3f9623e933682ec501",
+    "rotation_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+    "selected_builds_sha256": "24e895ab5e0692626e766f5b915f3f34aae808f3582e7069d25650ace491c5ae",
+    "set_uids_sha256": "4a9a3daf4eb1a8ffcc923a9d100b6599c4d8545694a63e91e2a7afb4a42b1e2a",
+    "artifact_count": 600,
+    "seed": 20261008
+  },
+  "engine": {
+    "engine_id": "gcsim-v2.45.0-20260927011932",
+    "artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+    "binding_sha256": "8d143c742ac9501df45be2a6832cadb1ac337ccb2253069f51fe9a67978e4c4d"
+  },
+  "cases": {
+    "all_sets": {
+      "set_groups": 3,
+      "total_rows_per_group": 3,
+      "elapsed_ms": 123265,
+      "measured": {
+        "dps": "140462.9041798014",
+        "standard_error": "130.9836716702314",
+        "iterations": 500
+      }
+    },
+    "selected": {
+      "set_groups": 1,
+      "total_rows_per_group": 3,
+      "elapsed_ms": 25563,
+      "measured": {
+        "dps": "139086.52032394247",
+        "standard_error": "131.39142971004517",
+        "iterations": 500
+      }
+    }
+  }
+}

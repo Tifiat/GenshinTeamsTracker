@@ -41,6 +41,7 @@ from ui.utils.ui_palette import (
     UI_BORDER_DEFAULT,
     UI_STATE_DANGER,
     UI_STATE_SUCCESS,
+    UI_STATE_WARNING,
     UI_TEXT_MUTED,
     UI_TEXT_PRIMARY,
     UI_TEXT_SECONDARY,
@@ -68,6 +69,8 @@ ELEMENT_MAIN_STAT_ICONS = {
 _CARD_MIN_WIDTH = 170
 _CARD_HEIGHT = 146
 _REPLACEMENT_CARD_HEIGHT = 171
+_REPLACEMENT_NEAR_EQUAL_MAX_LOSS_DPS = 250
+_REPLACEMENT_CAUTION_MAX_LOSS_DPS = 600
 _ACTION_WIDTH = 116
 
 
@@ -777,15 +780,29 @@ class CompactOptimizerArtifactCard(QFrame):
         root.addWidget(_MainStatWidget(artifact))
         if replacement is not None:
             delta = replacement.dps_delta
-            text = f"{delta:+,.0f} DPS".replace(",", " ")
+            if delta > 0:
+                text = f"{delta:+,.0f} DPS".replace(",", " ")
+                color = UI_STATE_SUCCESS
+            elif delta >= -_REPLACEMENT_NEAR_EQUAL_MAX_LOSS_DPS:
+                text = tr("gcsim.optimizer.replacement_near_equal")
+                color = UI_STATE_SUCCESS
+            elif delta >= -_REPLACEMENT_CAUTION_MAX_LOSS_DPS:
+                formatted_delta = f"{delta:+,.0f}".replace(",", " ")
+                text = tr("gcsim.optimizer.replacement_small_difference").format(
+                    delta=formatted_delta
+                )
+                color = UI_STATE_WARNING
+            else:
+                text = f"{delta:+,.0f} DPS".replace(",", " ")
+                color = UI_STATE_DANGER
             if replacement.ranking_basis == "formula":
                 text = "≈ " + text
             label = QLabel(text)
             label.setObjectName("OptimizerReplacementDelta")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setWordWrap(True)
             label.setStyleSheet(
-                f"color: {UI_STATE_DANGER if delta < 0 else UI_STATE_SUCCESS}; "
-                "font-size: 14px; font-weight: 700;"
+                f"color: {color}; font-size: 14px; font-weight: 700;"
             )
             root.addWidget(label)
             install_custom_tooltip(

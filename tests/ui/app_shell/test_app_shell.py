@@ -139,7 +139,7 @@ from tests.run_workspace.abyss.test_source_data import (
     nanoka_report,
     nanoka_row,
 )
-from ui.utils.ui_palette import UI_ACCENT_TEAM_1
+from ui.utils.ui_palette import UI_INVENTORY_SELECTION_ACCENT
 from ui.right_panel.common.metrics import (
     ABYSS_CHAMBER_BADGE_WIDTH,
     ABYSS_CHAMBER_GRID_SPACING,
@@ -2034,9 +2034,16 @@ class AppShellTest(unittest.TestCase):
             )
 
     def test_account_page_persists_and_resets_pvp_player_colors(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("ui.right_panel.settings.account_data.ensure_hoyolab_dirs"),
+            patch.object(AccountDataPage, "refresh_hoyolab_auth_status"),
+        ):
             settings_file = Path(tmp) / "settings.json"
             page = AccountDataPage(settings_file=settings_file)
+            self.addCleanup(page.close)
+            self.assertEqual(page.pvp_color_buttons["player_1"].text(), "#75ADBD")
+            self.assertEqual(page.pvp_color_buttons["player_2"].text(), "#A5B474")
             changes: list[tuple[str, str]] = []
             page.pvp_player_colors_changed.connect(
                 lambda player_1, player_2: changes.append((player_1, player_2))
@@ -2064,6 +2071,8 @@ class AppShellTest(unittest.TestCase):
                 settings["pvp_player_2_color"],
                 PVP_PLAYER_2_COLOR_DEFAULT,
             )
+            self.assertEqual(page.pvp_color_buttons["player_1"].text(), "#75ADBD")
+            self.assertEqual(page.pvp_color_buttons["player_2"].text(), "#A5B474")
 
     def test_app_shell_gcsim_boosted_energy_change_clears_sim_results(self) -> None:
         shell = AppShell()
@@ -4762,8 +4771,8 @@ class AppShellTest(unittest.TestCase):
             QRect(99, 49, 50, 50),
         )
 
-    def test_weapon_occupied_outline_uses_team_one_selection_color(self) -> None:
-        self.assertEqual(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR, UI_ACCENT_TEAM_1)
+    def test_weapon_occupied_outline_uses_pvp_inventory_selection_color(self) -> None:
+        self.assertEqual(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR, UI_INVENTORY_SELECTION_ACCENT)
 
     def test_character_selection_marker_is_painted_by_grid_item_state(self) -> None:
         workspace = CharacterWeaponWorkspace()
@@ -4816,6 +4825,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(small_side_icon_size, QSize(45, 45))
         self.assertEqual(small_target, QRect(117, 28, 45, 45))
         self.assertEqual(large_side_icon_size, QSize(90, 90))
+        self.assertEqual(large_target, QRect(134, 6, 90, 90))
         self.assertEqual(large_target.width(), small_target.width() * 2)
         self.assertEqual(large_target.height(), small_target.height() * 2)
 

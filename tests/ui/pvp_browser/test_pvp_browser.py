@@ -132,6 +132,38 @@ class PvpBrowserTest(unittest.TestCase):
             self.assertFalse(workspace.create_deck("Empty"))
             self.assertEqual(workspace.presets, [])
 
+    def test_pvp_deck_neutral_portraits_show_rarity_element_and_current_constellation(self) -> None:
+        characters = [
+            _character_asset("10000050", "Thoma", rarity=4),
+            _character_asset("10000089", "Furina", rarity=5),
+        ]
+        characters[1]["metadata"]["character"].update(element="Hydro", constellation=0)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                **fixture_period_provider_kwargs(), deck_dir=temp_dir,
+                character_assets_provider=lambda: characters, weapon_assets_provider=lambda: [],
+            )
+            self.addCleanup(workspace.close)
+            self.assertTrue(workspace.create_deck("Layers"))
+            first = workspace.character_grid.item("10000050")
+            second = workspace.character_grid.item("10000089")
+            self.assertNotEqual(first.background, second.background)
+            self.assertNotEqual(first.overlay_icons[0].icon_path, second.overlay_icons[0].icon_path)
+            self.assertEqual(first.overlay_icons[0].position, "top_left")
+            self.assertEqual([badge.text for badge in first.badges], ["C6"])
+            self.assertEqual([badge.text for badge in second.badges], ["C0"])
+            workspace.character_cards_by_id["10000089"].clicked.emit(characters[1])
+            inactive = workspace.character_grid.item("10000089")
+            self.assertIsNotNone(inactive.overlay_fill)
+            self.assertEqual(inactive.background, second.background)
+            self.assertEqual(inactive.badges, second.badges)
+            characters[0]["metadata"]["character"]["constellation"] = 2
+            workspace.refresh_view()
+            current = workspace.character_grid.item("10000050")
+            self.assertEqual(current.icon_path, first.icon_path)
+            self.assertEqual([badge.text for badge in current.badges], ["C2"])
+        self.assertNotIn("portrait_is_neutral", characters[0]["metadata"])
+
     def test_pvp_decks_show_event_skips_unchanged_viewport_refresh(self) -> None:
         characters = [_character_asset("10000050", "Thoma")]
         weapons = [_weapon_asset("13407", "Favonius Lance", weapon_type=13)]
@@ -1314,6 +1346,15 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertTrue(
             p2_source.weapon_grid.item_property(p2_weapon_item_id, "has_owner_badges")
         )
+        for source, item_id in ((p1_source, p1_weapon_item_id), (p2_source, p2_weapon_item_id)):
+            item = source.weapon_grid.item(item_id)
+            self.assertEqual(len(item.overlay_icons), 1)
+            owner = item.overlay_icons[0]
+            self.assertAlmostEqual(owner.size_ratio, 45 / 48)
+            self.assertAlmostEqual(owner.right_overhang_ratio, 14 / 45)
+            self.assertAlmostEqual(owner.top_overhang_ratio, 22 / 45)
+            self.assertEqual(item.outline.color, "#d6b15d")
+            self.assertEqual((item.outline.width, item.outline.radius), (2, 4))
 
     def test_pvp_postdraft_right_panel_slot_drop_swaps_slots(self) -> None:
         workspace, _panel = self._started_draft_workspace(

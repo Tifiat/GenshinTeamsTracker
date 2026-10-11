@@ -305,7 +305,9 @@ Current character/weapon key boundary:
 
 Needs follow-up:
 
-- Decide Traveler handling for GCSIM separately; account Traveler cannot be blindly mapped to one elemental Traveler variant.
+- [Traveler account variants](TRAVELER_VARIANTS.md) now carry explicit elements,
+  but elemental talent/stat/GCSIM acceptance remains separate. All variants are
+  explicitly not-ready; never substitute a supported element for an unsupported one.
 
 MVP recommendation:
 

@@ -26,6 +26,9 @@ remains in `PVP_BACKEND_STATUS.md`.
   Player 2 local deck presets, validates both through backend `DraftDeck`
   conversion, starts an in-memory `FreeDraftController`, and switches to the
   Draft board page.
+- [Draft runtime](PVP_DRAFT_RUNTIME.md) owns automatic cost-difference prebans,
+  rule-default/custom match controls, per-action/seat reserve clocks, pause,
+  explicit first actor and fresh alternating drafts within an in-memory series.
 - Draft board v0 is implemented in `ui/pvp_browser/window.py` as a local
   hot-seat board over the backend Free Draft board projection. The right Draft
   panel is `ui.right_panel.pvp.draft.panel.PvpDraftRightPanel`; shared draft UI
@@ -45,8 +48,10 @@ remains in `PVP_BACKEND_STATUS.md`.
   with validated portable v3 slices/assets and pending real-account acceptance.
   Scoped Artifact Browser, GCSIM dispatch and local period admission are
   implemented; current acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`.
-  Online play, ruleset costs, immune picks, result PNG/export, and PvP History
-  are still not implemented. Package/provider truth lives in
+  Deck rules/costs, supported pinned Abyss local flows, immunity and restart scoring
+  now connect under `PVP_DECK_RULES.md`. Single-game and series PNG are implemented
+  under [Export / Result](#export--result). Online play, remaining tournament policy,
+  source session-bundle verification and PvP History remain open. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
 
 ## Core Model
@@ -160,7 +165,8 @@ Left/main area:
   dimmed.
 - Clicking in edit mode toggles membership in the deck preset.
 - Characters and weapons should be separate sections.
-- Costs/ruleset visuals are reserved for later.
+- Costs and tier badges use separate lower card zones; `PVP_DECK_RULES.md` owns
+  current source/version selection, calculation and acceptance boundaries.
 
 Right panel:
 
@@ -174,11 +180,11 @@ Right panel:
   lower rows down and contains compact info/actions instead of a separate form.
 - Selected preset info owns:
   - ruleset/cost system selector;
-  - initially only `No rules / Free Draft`;
+  - `No rules / Free Draft` and latest Abyss source families;
   - character count;
   - weapon count;
   - automatic compact validation/status;
-  - future character/weapon cost summary;
+  - character/weapon cost summary and rules requirements;
   - edit actions;
   - later export actions.
 - The ruleset/cost selector belongs inside expanded deck preset info, not as an
@@ -234,9 +240,9 @@ Current identity status:
 
 ## Cost / Ruleset Roadmap
 
-- The first Decks implementation does not implement ruleset costs.
+- The initial Free Draft-only stage is superseded by `PVP_DECK_RULES.md` for costs.
 - Free Draft / No Rules treats costs as disabled or `0`.
-- Future rulesets/cost systems should show character costs, weapon costs,
+- Implemented Abyss deck rules show character costs, weapon base costs,
   tier/cost summaries in the right preset panel, and a cost line on cards.
 - Cost display on cards should reserve a separate lower text row/zone.
 - Level likely belongs in a lower corner/row rather than competing with the
@@ -381,8 +387,10 @@ Current v0 scope:
   hot-seat play.
 - Current v0 includes artifact equipment and scoped GCSIM dispatch through
   normal services; real-engine/user acceptance remains open in `PVP_BUILD_SERVICES.md`.
-- Online mode, ruleset cost rendering, immune picks, session files, PvP History
-  writes, and result export are not implemented in current v0. The separate
+- Supported pinned Abyss local matches now execute immunity and restart scoring;
+  current limits live in `PVP_DECK_RULES.md`. Fresh alternating series drafts and
+  PNG totals live in `PVP_DRAFT_RUNTIME.md`. Online mode, remaining tournament policy,
+  source session verification and PvP History writes remain open. The separate
   portable profile implementation is still awaiting real-account/user-path
   acceptance; see `PVP_PROFILE_PACKAGE.md`.
 
@@ -512,6 +520,12 @@ Hot-seat layout direction:
   the stage changes or the panel is being created. Collapsed player zones should
   shrink to a compact full-width toggle row, including when both players are
   collapsed.
+- Deck membership changes retain both painted grids and the open requirement
+  panel. Draft readers reuse a projection per controller state; hidden Play
+  validation is not part of a pick/ban click. Weapon ownership refreshes retain
+  unchanged pixmaps, and timer edits do not refresh build panels. The
+  [9 October receipt](performance_measurements/2026-10-09_pvp_selection_pipeline.md)
+  owns measured scope, regressions and the pending user-native recheck.
 - Weapon assignment identity must use the scoped backend stack key selected from
   the draft deck. UI display/type names are not authority; numeric Hoyo weapon
   type ids and localized names must resolve to the same canonical stack key the
@@ -584,8 +598,24 @@ Hot-seat layout direction:
 - The MVP result view should show scoped PvP teams/builds, assigned weapons,
   per-player chamber timers/totals, winner/draw, and time difference without
   bringing back the disposable two-player source/target slot layout.
-- PNG/export, history persistence, and polished result-card design remain
-  future work.
+- Finalize result opens PNG export after the match is saved in memory. A visible
+  Export PNG button permits retry. If either name is still Player/Игрок/Jogador
+  1/2, an optional two-name dialog offers nicknames; blanks retain the defaults.
+  Cancel leaves the finalized result available. Display names live only in the
+  current series and reset on clearing it; they do not rename profiles.
+- `ui/pvp_browser/result_export.py` paints an independent 1400-wide image of the
+  actual single local game: both names, three chamber times, raw totals, source
+  adjusted totals/restart penalties when present, winner/draw and difference.
+  Long names wrap; screen/window dimensions do not squeeze the export. Completed
+  multi-game series use a separate 1000-wide renderer with each game's three
+  chambers/totals/penalties and the adjusted series total, difference and winner.
+  Player columns stay fixed when the first actor changes. Source hash,
+  authentication and local account paths are omitted. Team/build artwork and
+  History persistence remain future; `PVP_DRAFT_RUNTIME.md` owns series behavior.
+- The user chooses the PNG destination through the standard save dialog. The
+  exported file belongs to the user until deletion. The renderer keeps no file,
+  image cache or automatic output folder. Synthetic preview PNGs are owned by a
+  TemporaryDirectory context and removed immediately after inspection.
 
 ## Reference-Site Conclusions
 
@@ -703,9 +733,9 @@ Current v0 limitations / later work:
   second-account decks under `PVP_PROFILE_PACKAGE.md`;
 - online;
 - History;
-- PNG/export result card;
-- ruleset cost rendering;
-- Gentor/Abyss importer;
+- native acceptance and team/build artwork for the result PNG;
+- native acceptance of deck rules/costs under `PVP_DECK_RULES.md`;
+- Gentor importer and complete Abyss matching/match schedule;
 - user acceptance of scoped artifact equipment and GCSIM preparation;
 - extended GTT JSON artifact+preset import/export QoL;
 - scoped PvP GCSIM scoring;

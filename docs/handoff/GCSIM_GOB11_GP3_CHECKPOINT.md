@@ -7,6 +7,17 @@ button-regression gate: [source evidence](../optimizer-evidence/2026-10-08-optim
 [main installation and button result](integration_receipts/2026-10-08_optimizer_launch_hotfix.md).
 This scope does not authorize a patch-stack change or replace broader acceptance.
 
+Source-only replacement proximity labels and the latest Chasca timing/cube
+audit: [display receipt](../optimizer-evidence/2026-10-08-replacement-display/README.md).
+The [representative public benchmark](../optimizer-evidence/2026-10-08-chasca-regression/README.md)
+has a human-accepted immutable600-artifact reference and a reusable numerical/
+reference+5s gate. The human authorized publication and coordinated Worker2
+uptake of this independent package; the linked receipt owns validation and
+actual transfer boundaries. It does not accept the detached safeguard below.
+The [isolated transfer receipt](integration_receipts/2026-10-08_minimal_optimizer_publication.md)
+records the prepared main-based commits and target-only checks; publication and
+runtime installation require their own recorded outcomes.
+
 <!-- handoff-current: gcsim-optimizer -->
 Reviewed 2026-10-08 after the launch-only transfer and installed public gate.
 Consumer dd84139e is installed with 76f8a52c retained in the verified

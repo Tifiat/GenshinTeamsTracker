@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from hoyolab_export.traveler import TRAVELER_ELEMENTS, traveler_variant_id
 from run_workspace.pvp.account_deck_export import (
     ISSUE_CHARACTER_DISPLAY_NAME_MISSING,
     ISSUE_CHARACTER_MISSING_ID,
@@ -55,13 +56,26 @@ class AccountDeckExportTests(unittest.TestCase):
         self.assertEqual(character.constellation, 1)
         self.assertEqual(character.weapon_type, "SWORD")
 
-    def test_traveler_and_missing_character_id_are_skipped_and_reported(self) -> None:
+    def test_all_explicit_traveler_elements_export_and_legacy_rows_are_skipped(self) -> None:
+        traveler_rows = tuple(
+            AccountDeckCharacterRow(
+                str(10000007 if element == "Anemo" else traveler_variant_id(10000007, element)),
+                "Traveler",
+                element=element.upper(),
+                weapon_type=1,
+                rarity=5,
+                level=90,
+                constellation=6,
+                catalog_english_name=f"Traveler ({element})",
+            )
+            for element in TRAVELER_ELEMENTS
+        )
         provider = _provider(
-            extra_characters=(
+            extra_characters=traveler_rows + (
                 AccountDeckCharacterRow(
-                    "10000007",
+                    "12345",
                     "Traveler",
-                    element="ANEMO",
+                    element="GEO",
                     weapon_type=1,
                     rarity=5,
                     level=90,
@@ -84,7 +98,16 @@ class AccountDeckExportTests(unittest.TestCase):
         self.assertTrue(report.validation_report.ready)
         self.assertEqual(report.counts.traveler_entries_skipped, 1)
         self.assertEqual(report.counts.entries_skipped_missing_id, 1)
-        self.assertNotIn("10000007", report.deck.character_ids)
+        self.assertEqual(
+            {character.element for character in report.deck.characters if character.character_id == "10000007"
+             or character.character_id.startswith("-10000007")},
+            {element.upper() for element in TRAVELER_ELEMENTS},
+        )
+        self.assertEqual(
+            {character.display_name for character in report.deck.characters
+             if character.character_id == "10000007" or character.character_id.startswith("-10000007")},
+            {f"Traveler ({element})" for element in TRAVELER_ELEMENTS},
+        )
         self.assertIn(ISSUE_CHARACTER_TRAVELER_SKIPPED, report.issue_codes())
         self.assertIn(ISSUE_CHARACTER_MISSING_ID, report.issue_codes())
 

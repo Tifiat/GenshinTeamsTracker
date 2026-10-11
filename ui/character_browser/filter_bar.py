@@ -6,13 +6,12 @@ from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
-from localization import tr
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
     CHARACTER_STANDARD_FILTER,
     CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
-    FILTER_ASSETS_DIR,
+    character_sort_key,
     filter_icon_path,
     STANDARD_FILTER_ALL,
     STANDARD_FILTER_EXCLUDE,
@@ -20,6 +19,7 @@ from ui.character_assets import (
     WEAPON_TYPE_FILTERS,
     standard_character_filter_icon,
 )
+from ui.character_browser.sort_controls import CharacterSortControls, character_filter_hint
 from ui.utils.filter_button_style import (
     FILTER_BUTTON_ICON_SIZE,
     FILTER_BUTTON_SIZE,
@@ -36,7 +36,7 @@ class CharacterFilterBar(QWidget):
 
     filters_changed = Signal()
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, *, sort_context_hint_key: str | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("character_filter_bar")
         self.element_filters: set[str] = set()
@@ -45,6 +45,7 @@ class CharacterFilterBar(QWidget):
         self.trait_filters: set[str] = set()
         self.standard_filter = STANDARD_FILTER_ALL
         self.buttons: list[QPushButton] = []
+        self._tooltip_keys_by_button: dict[QPushButton, str] = {}
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -67,7 +68,19 @@ class CharacterFilterBar(QWidget):
         self.standard_button = self._make_standard_filter_button()
         self.buttons.append(self.standard_button)
         layout.addWidget(self.standard_button)
+        self.sort_controls = CharacterSortControls(self, context_hint_key=sort_context_hint_key)
+        self.sort_controls.sort_changed.connect(self.filters_changed.emit)
+        layout.addWidget(self.sort_controls)
         layout.addStretch(1)
+
+    def retranslate_ui(self) -> None:
+        for button, tooltip_key in self._tooltip_keys_by_button.items():
+            install_custom_tooltip(button, character_filter_hint(tooltip_key))
+        self._refresh_standard_button()
+        self.sort_controls.retranslate_ui()
+
+    def sort_key(self, asset: dict):
+        return character_sort_key(asset, self.sort_controls.state)
 
     def reset(self) -> None:
         self.element_filters.clear()
@@ -75,6 +88,7 @@ class CharacterFilterBar(QWidget):
         self.rarity_filters.clear()
         self.trait_filters.clear()
         self.standard_filter = STANDARD_FILTER_ALL
+        self.sort_controls.reset(emit=False)
         for button in self.buttons:
             button.blockSignals(True)
             button.setChecked(False)
@@ -91,14 +105,13 @@ class CharacterFilterBar(QWidget):
         active_set: set[Any],
     ) -> QPushButton:
         button = _base_filter_button()
-        if icon_name.startswith("element_"):
-            button.setProperty("elementIconName", icon_name)
         icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
             button.setIcon(QIcon(str(icon_path)))
         else:
             button.setText(str(value))
-        install_custom_tooltip(button, tr(tooltip_key))
+        self._tooltip_keys_by_button[button] = tooltip_key
+        install_custom_tooltip(button, character_filter_hint(tooltip_key))
 
         def toggle_filter(checked: bool) -> None:
             if checked:
@@ -113,7 +126,8 @@ class CharacterFilterBar(QWidget):
     def _make_standard_filter_button(self) -> QPushButton:
         _value, _icon_name, tooltip_key = CHARACTER_STANDARD_FILTER
         button = _base_filter_button(checkable=False)
-        install_custom_tooltip(button, tr(tooltip_key))
+        self._tooltip_keys_by_button[button] = tooltip_key
+        install_custom_tooltip(button, character_filter_hint(tooltip_key))
 
         def cycle_standard_filter() -> None:
             if self.standard_filter == STANDARD_FILTER_ALL:

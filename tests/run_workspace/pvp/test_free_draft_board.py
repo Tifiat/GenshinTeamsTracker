@@ -8,6 +8,7 @@ from contextlib import redirect_stdout
 from dataclasses import replace
 from pathlib import Path
 
+from hoyolab_export.traveler import traveler_variant_id
 from run_workspace.pvp.free_draft_board import (
     CARD_STATUS_BLOCKED_BY_OPPONENT_PICK,
     CARD_STATUS_GLOBALLY_BANNED,
@@ -112,6 +113,23 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
         self.assertFalse(opponent_card["is_active_seat_card"])
         self.assertEqual(active_seat_card["status"], CARD_STATUS_LEGAL_TARGET)
         self.assertTrue(active_seat_card["is_active_seat_card"])
+
+    def test_explicit_traveler_variant_is_selectable_on_the_board(self) -> None:
+        player_1 = synthetic_deck("p1")
+        traveler_id = str(traveler_variant_id(10000007, "Pyro"))
+        traveler = replace(
+            player_1.characters[0],
+            character_id=traveler_id,
+            display_name="Traveler (Pyro)",
+            element="PYRO",
+        )
+        player_1 = replace(player_1, characters=(traveler,) + player_1.characters[1:])
+        controller = FreeDraftController.from_decks(player_1, synthetic_deck("p2"))
+
+        card = _card(controller.to_board_dict(), SEAT_PLAYER_1, traveler_id)
+        self.assertEqual(card["status"], CARD_STATUS_LEGAL_TARGET)
+        action = controller.apply_ban_character(traveler_id)
+        self.assertEqual(action.character_id, traveler_id)
 
     def test_initial_unified_pool_exposes_unique_legal_entries(self) -> None:
         board = _sample_controller().to_board_dict()

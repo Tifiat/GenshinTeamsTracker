@@ -54,7 +54,41 @@ guardrails, not another product roadmap.
   and filter-button (`ui/utils/filter_button_style.py`) helpers rather than
   local copies.
 
+## Selection color contract
+
+Use the accepted character accents as the visual reference. Application-owned
+selection colors belong in `ui/utils/ui_palette.py`; PvP factory values belong
+only in `run_workspace/settings_defaults.py`.
+
+| Role | Reference color |
+| --- | --- |
+| Character team 1 / team 2 | `#72b18e` / `#729fd3` |
+| PvP player 1 / player 2 defaults | `#75adbd` / `#a5b474` |
+| Selected/equipped inventory frame | `#d6b15d` |
+
+For new or changed selection colors, choose hue for the role, then start near
+HSL saturation 30-50% and lightness 58-62%. Accepted limits are **S 25-60%,
+L 56-64%**, including the established gold inventory accent. Use HSL lightness,
+not HSV value: `colorsys.rgb_to_hls` returns hue, lightness, saturation. The
+settings-default regression measures these production role/default values;
+extend that guard when introducing another application selection role.
+Check the result on the shared dark panel with the role's existing alpha;
+numeric HSL similarity alone does not prove equal perceived brightness. Avoid
+neon colors, very dark accents, or brightening a selection by raising opacity.
+
+Character outline/badge alpha remains 230/235. Inventory frames keep the exact
+PvP recipe: gold, 2px, radius 4, alpha 255, no fill or overhang, supplied by
+`ui/utils/selection_outline.py`. Callers decide selected/equipped state; the
+module owns no character images, owner overlays or player-role policy. Owner
+portraits stay anchored to the weapon box independently of its frame.
+
+These bounds govern application defaults, not user-selected custom colors.
+Missing PvP color settings and explicit color reset use current factory values;
+saved choices remain unchanged on read, even when equal to old factory values.
+
 ## Text and performance
+
+Character predicates and sort controls follow [the filter contract](CHARACTER_FILTERS.md).
 
 - New user-visible text goes through `localization/locales/{ru,en,pt-br}.json`
   and `tr`/`tr_for_language`. New tooltips use the in-app custom surface, not

@@ -96,6 +96,13 @@ class PvpProfileIntegrationTest(unittest.TestCase):
         self.assertEqual(Path(local_asset["path"]), Path(remote_asset["path"]))
         self.assertEqual(remote_asset["metadata"]["portrait_pvp_path"], str(local_asset["path"]))
         self.assertEqual(remote_asset["metadata"]["character"]["level"], 80)
+        from ui.character_browser.icon_grid_adapter import build_asset_grid_items
+
+        for asset, expected in ((local_asset, "C0"), (remote_asset, "C6")):
+            item = build_asset_grid_items([asset], key_for_asset=_asset_character_id).items[0]
+            self.assertIsNotNone(item.background)
+            self.assertEqual(item.overlay_icons[0].position, "top_left")
+            self.assertEqual([badge.text for badge in item.badges], [expected])
         self.assertTrue(self.workspace.start_local_draft("local", "remote"))
         draft = self.workspace.draft_workspace
         expected_portrait = str(local_asset["path"])
@@ -103,6 +110,8 @@ class PvpProfileIntegrationTest(unittest.TestCase):
             draft._set_pool_scope(scope)
             item = draft.pool_items_by_character_id[character_id]
             self.assertEqual(item.icon_path, expected_portrait)
+            self.assertIsNotNone(item.background)
+            self.assertEqual(item.overlay_icons[0].position, "top_left")
             self.assertEqual({badge.text for badge in item.badges}, {"C0", "C6"})
         remote_only_id = _asset_character_id(self.remote_characters[-1])
         remote_only = draft.pool_items_by_character_id[remote_only_id]

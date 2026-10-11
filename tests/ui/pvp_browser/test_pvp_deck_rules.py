@@ -141,6 +141,38 @@ class PvpDeckRulesTest(unittest.TestCase):
         self.assertEqual(len(self.workspace.rules_ui_state()["options"]), 1)
         self.assertFalse(self.workspace.save_edit())
 
+    def test_restart_can_edit_and_save_retained_rules_without_catalog(self):
+        self.load_rules()
+        self.assertTrue(self.workspace.save_edit())
+        before = load_deck_presets(self.temp.name)[0]
+        restarted = PvpDecksWorkspace(
+            deck_dir=self.temp.name, character_assets_provider=lambda: self.characters,
+            weapon_assets_provider=lambda: [],
+        )
+        self.addCleanup(restarted.close)
+        self.assertFalse(restarted.rules_controller.catalog_loaded)
+        self.assertTrue(restarted.begin_edit())
+        restarted._on_character_card_clicked(self.characters[1])
+        self.assertEqual(restarted.rules_ui_state()["freshness"], "unknown")
+        self.assertTrue(restarted.save_edit(name="Edited offline"))
+        saved = load_deck_presets(self.temp.name)[0]
+        self.assertEqual(saved.name, "Edited offline")
+        self.assertEqual(saved.character_ids, ("1001",))
+        self.assertEqual(saved.rules_snapshot, before.rules_snapshot)
+
+    def test_existing_deck_cannot_save_unchecked_replacement_rules(self):
+        self.load_rules()
+        self.assertTrue(self.workspace.save_edit())
+        self.assertTrue(self.workspace.begin_edit())
+        changed = self.rules.to_dict()
+        changed["source"]["system_id"] = "f" * 24
+        self.workspace._rules_received(
+            (self.workspace._rules_edit_generation, self.workspace.active_preset().deck_id),
+            AbyssRuleset.from_dict(changed),
+        )
+        self.workspace.rules_controller.catalog_current = False
+        self.assertFalse(self.workspace.save_edit())
+
     def test_integrated_panel_can_show_and_save_an_abyss_edit(self):
         self.load_rules()
         panel = PvpDecksRightPanel(self.workspace)

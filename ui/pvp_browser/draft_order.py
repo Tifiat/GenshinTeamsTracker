@@ -9,6 +9,12 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QWidget
 
 from localization import tr
+from run_workspace.pvp.schedule import (
+    ACTION_BAN_CHARACTER,
+    ACTION_IMMUNE_BAN_CHARACTER,
+    ACTION_IMMUNE_CHARACTER,
+    ACTION_IMMUNE_PICK_CHARACTER,
+)
 from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.ui_palette import (
     UI_BORDER_DEFAULT,
@@ -30,7 +36,7 @@ PVP_DRAFT_ORDER_MARGIN = 2
 PVP_DRAFT_ORDER_TURN_WIDTH = 210
 PVP_DRAFT_ORDER_TURN_MIN_WIDTH = 126
 PVP_DRAFT_ORDER_TURN_HEIGHT = 86
-PVP_DRAFT_ORDER_MAX_SIDE_ROWS = 4
+PVP_DRAFT_ORDER_PROTECTION_LABEL_HEIGHT = 24
 
 
 @dataclass(frozen=True)
@@ -39,19 +45,23 @@ class _DraftOrderLayout:
     left_group_rect: QRect
     right_group_rect: QRect
     turn_rect: QRect
+    protection_rect: QRect
+    protection_slot_rects: tuple[QRect, ...]
     position_rects: tuple[QRect, ...]
 
 
 class PvpDraftOrderStrip(QWidget):
-    """Painted 22-action Draft order; portraits fill accepted positions."""
+    """Painted Draft order with shared Abyss protection shown centrally."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("pvp_draft_order_strip")
         self._positions: tuple[dict[str, Any], ...] = ()
+        self._protected_ids: tuple[str, ...] = ()
+        self._protection_count = 0
         self._portrait_paths: dict[str, str] = {}
         self._pixmap_cache: dict[tuple[object, ...], QPixmap | None] = {}
-        self._prepared: dict[int, QPixmap] = {}
+        self._prepared: dict[object, QPixmap] = {}
         self._prepared_signature: tuple[object, ...] | None = None
         self.setMinimumHeight(self._layout_geometry(max(1, self.width())).height)
 
@@ -91,6 +101,16 @@ class PvpDraftOrderStrip(QWidget):
                         "character_id": str(accepted_row.get("target_id") or ""),
                     }
                 )
+        self._protection_count = sum(
+            row["action_type"] == ACTION_IMMUNE_PICK_CHARACTER for row in positions
+        )
+        self._protected_ids = tuple(dict.fromkeys(
+            str(action.get("target_id") or "")
+            for action in actions
+            if isinstance(action, Mapping)
+            and action.get("action_type") == ACTION_IMMUNE_PICK_CHARACTER
+            and action.get("target_id")
+        ))
         self._positions = tuple(positions)
         self._portrait_paths = dict(portrait_paths)
         self._prepared_signature = None
@@ -127,9 +147,11 @@ class PvpDraftOrderStrip(QWidget):
             "left_group_rect": geometry.left_group_rect,
             "right_group_rect": geometry.right_group_rect,
             "turn_rect": geometry.turn_rect,
+            "protection_rect": geometry.protection_rect,
+            "protection_slot_rects": geometry.protection_slot_rects,
             "position_rects": tuple(geometry.position_rects),
             "has_overlap": _rects_overlap(
-                (geometry.turn_rect, *geometry.position_rects),
+                (geometry.turn_rect, geometry.protection_rect, *geometry.position_rects),
             ),
         }
 
@@ -179,6 +201,7 @@ class PvpDraftOrderStrip(QWidget):
             geometry.left_group_rect,
         )
         self._draw_current_action_card(painter, geometry.turn_rect)
+        self._draw_shared_protection(painter, geometry)
         self._draw_position_group(
             painter,
             right_rows,
@@ -207,6 +230,45 @@ class PvpDraftOrderStrip(QWidget):
             )
             self._draw_position(painter, index, row, rect)
 
+    def _draw_shared_protection(self, painter: QPainter, geometry: _DraftOrderLayout) -> None:
+        if not self._protection_count:
+            return
+        bounds = geometry.protection_rect
+        painter.setPen(QPen(QColor(PVP_DRAFT_IMMUNE_ACCENT), 2))
+        fill = QColor(UI_BG_INSET)
+        fill.setAlpha(178)
+        painter.setBrush(fill)
+        painter.drawRoundedRect(QRectF(bounds), 8, 8)
+        font = painter.font()
+        font.setBold(True)
+        font.setPointSize(9)
+        heading = tr("app_shell.pvp.draft.shared_protection")
+        while font.pointSize() > 7:
+            painter.setFont(font)
+            if painter.fontMetrics().horizontalAdvance(heading) <= bounds.width() - 10:
+                break
+            font.setPointSize(font.pointSize() - 1)
+        painter.setFont(font)
+        painter.setPen(QColor(PVP_DRAFT_IMMUNE_ACCENT))
+        painter.drawText(
+            QRect(bounds.left() + 5, bounds.top() + 2, bounds.width() - 10,
+                  PVP_DRAFT_ORDER_PROTECTION_LABEL_HEIGHT - 4),
+            Qt.AlignmentFlag.AlignCenter,
+            heading,
+        )
+        for index, rect in enumerate(geometry.protection_slot_rects):
+            character_id = self._protected_ids[index] if index < len(self._protected_ids) else ""
+            painter.setPen(QPen(QColor(PVP_DRAFT_IMMUNE_ACCENT), 2))
+            painter.setBrush(QColor(UI_BG_INSET))
+            painter.drawRoundedRect(QRectF(rect), 5, 5)
+            pixmap = self._prepared.get(("protected", character_id))
+            if pixmap is not None:
+                source = QRectF(0, 0, pixmap.width(), pixmap.height())
+                painter.drawPixmap(_aspect_fit_rect(source, QRectF(rect.adjusted(2, 2, -2, -2))), pixmap, source)
+            elif character_id:
+                painter.setPen(QColor(UI_TEXT_PRIMARY))
+                painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, character_id[-4:])
+
     def _draw_current_action_card(self, painter: QPainter, rect: QRect) -> None:
         visual = _current_action_visual(self._positions)
         title = visual["title"]
@@ -233,6 +295,11 @@ class PvpDraftOrderStrip(QWidget):
         detail_font = painter.font()
         detail_font.setBold(True)
         detail_font.setPointSize(max(15, min(24, rect.width() // 8)))
+        while detail_font.pointSize() > 9:
+            painter.setFont(detail_font)
+            if painter.fontMetrics().horizontalAdvance(detail) <= rect.width() - 16:
+                break
+            detail_font.setPointSize(detail_font.pointSize() - 1)
         painter.setFont(detail_font)
         painter.setPen(QColor(action_color))
         painter.drawText(
@@ -307,26 +374,36 @@ class PvpDraftOrderStrip(QWidget):
                     group_width,
                     group_height,
                 )
+                protection_rect, protection_slots = self._protection_geometry(
+                    turn_rect.left(), turn_rect.bottom() + 1 + PVP_DRAFT_ORDER_GAP,
+                    turn_width,
+                )
                 return _DraftOrderLayout(
-                    height=max(group_height, PVP_DRAFT_ORDER_TURN_HEIGHT)
+                    height=max(group_height, protection_rect.bottom() + 1 - top)
                     + PVP_DRAFT_ORDER_MARGIN * 2,
                     left_group_rect=left_rect,
                     right_group_rect=right_rect,
                     turn_rect=turn_rect,
+                    protection_rect=protection_rect,
+                    protection_slot_rects=protection_slots,
                     position_rects=_position_rects(left_rect, left_count)
                     + _position_rects(right_rect, right_count),
                 )
 
         turn_width = min(
             PVP_DRAFT_ORDER_TURN_WIDTH,
-            max(
-                PVP_DRAFT_ORDER_TURN_MIN_WIDTH,
-                available_width - PVP_DRAFT_ORDER_MARGIN * 2,
-            ),
+            max(1, available_width - PVP_DRAFT_ORDER_MARGIN * 2),
         )
 
-        rows = PVP_DRAFT_ORDER_MAX_SIDE_ROWS
-        columns = _columns_for_count(max_count, rows)
+        usable_width = max(1, available_width - PVP_DRAFT_ORDER_MARGIN * 2)
+        side_columns = max(1, (usable_width - PVP_DRAFT_ORDER_GAP * 2 + PVP_DRAFT_ORDER_GAP)
+                           // (2 * (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP)))
+        side_by_side = usable_width >= 2 * PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP * 2
+        columns = min(max_count, side_columns if side_by_side else max(
+            1, (usable_width + PVP_DRAFT_ORDER_GAP)
+            // (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP)
+        ))
+        rows = _rows_for_count(max_count, columns)
         group_width = _group_width(columns)
         group_height = _group_height(rows)
         side_by_side_width = group_width * 2 + PVP_DRAFT_ORDER_GAP * 2
@@ -337,8 +414,12 @@ class PvpDraftOrderStrip(QWidget):
             turn_width,
             PVP_DRAFT_ORDER_TURN_HEIGHT,
         )
-        group_top = turn_rect.bottom() + 1 + PVP_DRAFT_ORDER_GAP * 2
-        if side_by_side_width + PVP_DRAFT_ORDER_MARGIN * 2 <= available_width:
+        protection_rect, protection_slots = self._protection_geometry(
+            turn_rect.left(), turn_rect.bottom() + 1 + PVP_DRAFT_ORDER_GAP,
+            turn_width,
+        )
+        group_top = max(turn_rect.bottom(), protection_rect.bottom()) + 1 + PVP_DRAFT_ORDER_GAP * 2
+        if side_by_side and side_by_side_width + PVP_DRAFT_ORDER_MARGIN * 2 <= available_width:
             left = max(PVP_DRAFT_ORDER_MARGIN, (available_width - side_by_side_width) // 2)
             left_rect = QRect(left, group_top, group_width, group_height)
             right_rect = QRect(
@@ -352,6 +433,8 @@ class PvpDraftOrderStrip(QWidget):
                 left_group_rect=left_rect,
                 right_group_rect=right_rect,
                 turn_rect=turn_rect,
+                protection_rect=protection_rect,
+                protection_slot_rects=protection_slots,
                 position_rects=_position_rects(left_rect, left_count)
                 + _position_rects(right_rect, right_count),
             )
@@ -365,9 +448,28 @@ class PvpDraftOrderStrip(QWidget):
             left_group_rect=left_rect,
             right_group_rect=right_rect,
             turn_rect=turn_rect,
+            protection_rect=protection_rect,
+            protection_slot_rects=protection_slots,
             position_rects=_position_rects(left_rect, left_count)
             + _position_rects(right_rect, right_count),
         )
+
+    def _protection_geometry(self, left: int, top: int, width: int) -> tuple[QRect, tuple[QRect, ...]]:
+        if not self._protection_count:
+            return QRect(), ()
+        columns = max(1, min(self._protection_count,
+            (width - 8 + PVP_DRAFT_ORDER_GAP) // (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP)))
+        rows = _rows_for_count(self._protection_count, columns)
+        height = PVP_DRAFT_ORDER_PROTECTION_LABEL_HEIGHT + rows * PVP_DRAFT_ORDER_SLOT_SIZE + (rows - 1) * PVP_DRAFT_ORDER_GAP + 5
+        bounds = QRect(left, top, width, height)
+        slots_width = _group_width(columns)
+        slots_left = left + max(0, (width - slots_width) // 2)
+        slots = tuple(QRect(
+            slots_left + (i % columns) * (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP),
+            top + PVP_DRAFT_ORDER_PROTECTION_LABEL_HEIGHT + (i // columns) * (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP),
+            PVP_DRAFT_ORDER_SLOT_SIZE, PVP_DRAFT_ORDER_SLOT_SIZE,
+        ) for i in range(self._protection_count))
+        return bounds, slots
 
     def _prepare_pixmaps(self) -> None:
         signature = (
@@ -377,11 +479,15 @@ class PvpDraftOrderStrip(QWidget):
                 for index, row in enumerate(self._positions)
                 if row["character_id"]
             ),
+            tuple((character_id, self._portrait_paths.get(character_id, ""))
+                  for character_id in self._protected_ids),
         )
         if signature == self._prepared_signature:
             return
         self._prepared = {}
         for index, row in enumerate(self._positions):
+            if row["action_type"] == ACTION_IMMUNE_PICK_CHARACTER:
+                continue
             path = self._portrait_paths.get(row["character_id"], "")
             if not path:
                 continue
@@ -397,6 +503,21 @@ class PvpDraftOrderStrip(QWidget):
             )
             if result.pixmap is not None and not result.pixmap.isNull():
                 self._prepared[index] = result.pixmap
+        for character_id in self._protected_ids:
+            path = self._portrait_paths.get(character_id, "")
+            if not path:
+                continue
+            result = load_hidpi_pixmap(
+                path, QSize(PVP_DRAFT_ORDER_SLOT_SIZE, PVP_DRAFT_ORDER_SLOT_SIZE),
+                dpr=self.devicePixelRatioF(),
+                aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+                transform_mode=Qt.TransformationMode.SmoothTransformation,
+                cache=self._pixmap_cache,
+                cache_key_parts=("pvp_draft_order_protected", character_id),
+                surface="pvp_draft_order",
+            )
+            if result.pixmap is not None and not result.pixmap.isNull():
+                self._prepared[("protected", character_id)] = result.pixmap
         self._prepared_signature = signature
 
     def _draw_position(
@@ -431,6 +552,16 @@ class PvpDraftOrderStrip(QWidget):
             painter.setFont(font)
             painter.setPen(QColor(UI_TEXT_PRIMARY if status == "active" else UI_TEXT_MUTED))
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(row["number"]))
+        if visual["draw_action_label"]:
+            label_rect = QRect(rect.left() + 2, rect.bottom() - 25, rect.width() - 4, 24)
+            painter.fillRect(label_rect, QColor(UI_BG_INSET))
+            font = painter.font()
+            font.setBold(True)
+            font.setPointSize(7)
+            painter.setFont(font)
+            painter.setPen(QColor(PVP_DRAFT_IMMUNE_ACCENT))
+            painter.drawText(label_rect, Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap,
+                             tr(str(visual["label_key"])))
 
 
 def _aspect_fit_rect(source: QRectF, bounds: QRectF) -> QRectF:
@@ -448,11 +579,11 @@ def _aspect_fit_rect(source: QRectF, bounds: QRectF) -> QRectF:
 
 
 def _draft_action_color(action_type: str, *, seat_color: str) -> str:
-    value = str(action_type or "").casefold()
-    if "ban" in value:
-        return PVP_DRAFT_BAN_ACCENT
-    if "immune" in value or "immun" in value:
+    if action_type in (ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
+                       ACTION_IMMUNE_CHARACTER):
         return PVP_DRAFT_IMMUNE_ACCENT
+    if action_type == ACTION_BAN_CHARACTER:
+        return PVP_DRAFT_BAN_ACCENT
     return seat_color
 
 
@@ -469,12 +600,16 @@ def _position_visual(row: Mapping[str, Any]) -> dict[str, Any]:
         "border_color": (
             action_color if status in {"active", "complete"} else UI_BORDER_DEFAULT
         ),
-        "draw_action_label": False,
+        "draw_action_label": str(row["action_type"]) in {
+            ACTION_IMMUNE_BAN_CHARACTER, ACTION_IMMUNE_PICK_CHARACTER,
+            ACTION_IMMUNE_CHARACTER,
+        },
+        "label_key": {
+            ACTION_IMMUNE_BAN_CHARACTER: "app_shell.pvp.draft.slot_immune_ban",
+            ACTION_IMMUNE_PICK_CHARACTER: "app_shell.pvp.draft.slot_immune_pick",
+            ACTION_IMMUNE_CHARACTER: "app_shell.pvp.draft.slot_immune",
+        }.get(str(row["action_type"]), ""),
     }
-
-
-def _columns_for_count(count: int, rows: int) -> int:
-    return max(1, (max(1, int(count)) + max(1, int(rows)) - 1) // max(1, int(rows)))
 
 
 def _rows_for_count(count: int, columns: int) -> int:
@@ -565,11 +700,14 @@ def _current_action_visual(rows: tuple[dict[str, Any], ...]) -> dict[str, str]:
     }
 
 def _draft_action_turn_label(action_type: str) -> str:
-    value = str(action_type or "").casefold()
-    if "ban" in value:
+    if action_type == ACTION_IMMUNE_BAN_CHARACTER:
+        return tr("app_shell.pvp.draft.immune_ban").upper()
+    if action_type == ACTION_IMMUNE_PICK_CHARACTER:
+        return tr("app_shell.pvp.draft.immune_pick").upper()
+    if action_type == ACTION_IMMUNE_CHARACTER:
+        return tr("app_shell.pvp.draft.immune").upper()
+    if action_type == ACTION_BAN_CHARACTER:
         return tr("app_shell.pvp.draft.turn_ban").upper()
-    if "immune" in value or "immun" in value:
-        return tr("app_shell.pvp.draft.turn_immune").upper()
     return tr("app_shell.pvp.draft.turn_pick").upper()
 
 

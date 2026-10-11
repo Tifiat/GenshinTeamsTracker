@@ -294,6 +294,7 @@ class PvpTimersResultWidget(QFrame):
     timer_text_changed = Signal(str, int, str)
     restart_count_changed = Signal(str, int)
     finalize_requested = Signal()
+    export_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -540,6 +541,10 @@ class PvpTimersResultWidget(QFrame):
         self.finalize_button.setObjectName("pvp_timer_finalize")
         self.finalize_button.clicked.connect(self.finalize_requested)
         root.addWidget(self.finalize_button)
+        self.export_button = QPushButton(tr("app_shell.pvp.export.button"))
+        self.export_button.setObjectName("pvp_timer_finalize")
+        self.export_button.clicked.connect(self.export_requested)
+        root.addWidget(self.export_button)
 
     def set_state(
         self,
@@ -703,6 +708,7 @@ class PvpTimersResultWidget(QFrame):
             )
         self._refresh_dps_summary(totals)
         self.finalize_button.setVisible(not completed)
+        self.export_button.setVisible(completed)
 
     def _set_score_state_current(
         self,

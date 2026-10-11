@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QFrame,
+    QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -808,7 +809,13 @@ class PvpDecksWorkspace(QWidget):
             self.state_changed.emit()
             return False
         rules_state = self.rules_ui_state()
-        if preset.rules_snapshot and rules_state["freshness"] == "unknown":
+        original = self.selected_preset() if not self._editing_is_new_deck else None
+        retained_rules = bool(
+            original is not None
+            and preset.ruleset_id == original.ruleset_id
+            and preset.rules_snapshot == original.rules_snapshot
+        )
+        if preset.rules_snapshot and rules_state["freshness"] == "unknown" and not retained_rules:
             self._last_status = tr("app_shell.pvp.rules.check_before_save")
             self.state_changed.emit()
             return False
@@ -1491,6 +1498,7 @@ class PvpDraftWorkspace(QWidget):
     timer_text_changed = Signal(str, int, str)
     restart_count_changed = Signal(str, int)
     finalize_result_requested = Signal()
+    export_result_requested = Signal()
     build_browser_back_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -2134,6 +2142,7 @@ class PvpDraftWorkspace(QWidget):
             self._timers_result_widget.finalize_requested.connect(
                 self.finalize_result_requested,
             )
+            self._timers_result_widget.export_requested.connect(self.export_result_requested)
             self._timers_result_widget.restart_count_changed.connect(self.restart_count_changed)
         timer_texts = _mapping(self._view_state.get("timer_texts"))
         result = self._view_state.get("result")
@@ -2231,8 +2240,9 @@ class PvpWorkspace(QWidget):
         self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
         self.draft_workspace.restart_count_changed.connect(self.set_restart_count)
         self.draft_workspace.finalize_result_requested.connect(
-            self.finalize_match_result,
+            self._on_finalize_result_clicked,
         )
+        self.draft_workspace.export_result_requested.connect(self.export_match_result)
         self._sync_play_workspace()
         self._sync_draft_workspace()
 
@@ -2486,12 +2496,30 @@ class PvpWorkspace(QWidget):
             return player_1_deck_id or presets[0].deck_id
         return presets[0].deck_id
 
+    def play_draft_system_options(self, player_1_deck_id: str, player_2_deck_id: str):
+        options = [(FREE_DRAFT_V0_RULESET_ID, tr("app_shell.pvp.decks.ruleset_free"))]
+        for seat, deck_id in (("player_1", player_1_deck_id), ("player_2", player_2_deck_id)):
+            preset = self._seat_preset_by_id(seat, deck_id)
+            if preset is None or preset.ruleset_id in {item[0] for item in options}:
+                continue
+            try:
+                rules = AbyssRuleset.from_dict(preset.rules_snapshot or {})
+            except ValueError:
+                continue
+            options.append((preset.ruleset_id, f"{rules.title} · {rules.updated_at[:10]}"))
+        return tuple(options)
+
+    def default_play_draft_system(self, player_1_deck_id: str) -> str:
+        preset = self._seat_preset_by_id("player_1", player_1_deck_id)
+        return preset.ruleset_id if preset else FREE_DRAFT_V0_RULESET_ID
+
     def deck_start_status(
         self,
         deck_id: str,
         *,
         player_label: str,
         seat: str = "player_1",
+        draft_system_id: str | None = None,
     ) -> PvpDeckStartStatus:
         preset = self._seat_preset_by_id(seat, deck_id)
         if preset is None:
@@ -2502,19 +2530,25 @@ class PvpWorkspace(QWidget):
                 text=tr("app_shell.pvp.play.deck_missing"),
                 ready=False,
             )
-        cache_context = (preset, self.seat_profile_provider(seat), player_label)
+        system_id = draft_system_id or preset.ruleset_id
+        if system_id not in {FREE_DRAFT_V0_RULESET_ID, preset.ruleset_id}:
+            return PvpDeckStartStatus(preset=preset, draft_deck=None, report=None,
+                                     text=tr("app_shell.pvp.rules.match_rules_mismatch"), ready=False)
+        cache_context = (preset, self.seat_profile_provider(seat), player_label, system_id)
         cached = getattr(self, "_deck_start_cache", {}).get((seat, deck_id))
         if cached is not None and cached[0] == cache_context:
             return cached[1]
         try:
             character_assets, weapon_assets = self._profile_assets(seat)
+            match_preset = (replace(preset, ruleset_id=FREE_DRAFT_V0_RULESET_ID, rules_snapshot=None)
+                            if system_id == FREE_DRAFT_V0_RULESET_ID else preset)
             draft_deck = deck_preset_to_draft_deck(
-                preset,
+                match_preset,
                 character_assets,
                 weapon_assets,
                 player_nickname=player_label,
             )
-            if preset.ruleset_id == FREE_DRAFT_V0_RULESET_ID:
+            if system_id == FREE_DRAFT_V0_RULESET_ID:
                 report = validate_draft_deck(draft_deck)
             else:
                 rules = AbyssRuleset.from_dict(preset.rules_snapshot or {})
@@ -2573,15 +2607,22 @@ class PvpWorkspace(QWidget):
         self._deck_start_cache[(seat, deck_id)] = (cache_context, status)
         return status
 
-    def match_rules_status(self, player_1_deck_id: str, player_2_deck_id: str) -> str:
+    def match_rules_status(self, player_1_deck_id: str, player_2_deck_id: str,
+                           *, draft_system_id: str | None = None) -> str:
         """Both seats execute the same rules, ignoring retrieval-only provenance."""
+        if draft_system_id == FREE_DRAFT_V0_RULESET_ID:
+            return ""
         presets = (self._seat_preset_by_id("player_1", player_1_deck_id),
                    self._seat_preset_by_id("player_2", player_2_deck_id))
         cached = getattr(self, "_match_rules_cache", None)
-        if cached is not None and cached[0] == presets:
+        context = (presets, draft_system_id)
+        if cached is not None and cached[0] == context:
             return cached[1]
-        text = self._match_rules_status_for(presets, player_1_deck_id, player_2_deck_id)
-        self._match_rules_cache = (presets, text)
+        if draft_system_id and any(p is not None and p.ruleset_id != draft_system_id for p in presets):
+            text = tr("app_shell.pvp.rules.match_rules_mismatch")
+        else:
+            text = self._match_rules_status_for(presets, player_1_deck_id, player_2_deck_id)
+        self._match_rules_cache = (context, text)
         return text
 
     def _match_rules_status_for(self, presets, player_1_deck_id, player_2_deck_id) -> str:
@@ -2611,30 +2652,35 @@ class PvpWorkspace(QWidget):
                     return tr("app_shell.pvp.rules.match_shared_roster").format(**report.errors[0].details)
         return ""
 
-    def can_start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
+    def can_start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str,
+                              *, draft_system_id: str | None = None) -> bool:
         return (
             self.period_admission().ready
-            and not self.match_rules_status(player_1_deck_id, player_2_deck_id)
+            and not self.match_rules_status(player_1_deck_id, player_2_deck_id, draft_system_id=draft_system_id)
             and
             self.deck_start_status(
                 player_1_deck_id,
                 player_label="Player 1",
                 seat="player_1",
+                draft_system_id=draft_system_id,
             ).ready
             and self.deck_start_status(
                 player_2_deck_id,
                 player_label="Player 2",
                 seat="player_2",
+                draft_system_id=draft_system_id,
             ).ready
         )
 
-    def start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
+    def start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str,
+                          *, draft_system_id: str | None = None) -> bool:
         period = self.period_admission()
         if not period.ready:
             self._last_play_status = _pvp_period_message(period)
             self.state_changed.emit()
             return False
-        rules_status = self.match_rules_status(player_1_deck_id, player_2_deck_id)
+        rules_status = self.match_rules_status(player_1_deck_id, player_2_deck_id,
+                                             draft_system_id=draft_system_id)
         if rules_status:
             self._last_play_status = rules_status
             self.state_changed.emit()
@@ -2643,11 +2689,13 @@ class PvpWorkspace(QWidget):
             player_1_deck_id,
             player_label="Player 1",
             seat="player_1",
+            draft_system_id=draft_system_id,
         )
         player_2_status = self.deck_start_status(
             player_2_deck_id,
             player_label="Player 2",
             seat="player_2",
+            draft_system_id=draft_system_id,
         )
         if (
             not player_1_status.ready
@@ -2671,7 +2719,7 @@ class PvpWorkspace(QWidget):
             )
             else player_2_status.draft_deck
         )
-        if player_1_status.preset.ruleset_id == FREE_DRAFT_V0_RULESET_ID:
+        if (draft_system_id or player_1_status.preset.ruleset_id) == FREE_DRAFT_V0_RULESET_ID:
             controller = FreeDraftController.from_decks(
                 player_1_deck, player_2_deck, source_mode="local_hot_seat",
             )
@@ -3038,6 +3086,54 @@ class PvpWorkspace(QWidget):
             for index in range(len(PVP_TIMER_CHAMBERS))
         )
 
+    def _on_finalize_result_clicked(self) -> None:
+        if self.finalize_match_result():
+            self.export_match_result()
+
+    def export_match_result(self) -> bool:
+        from ui.pvp_browser.result_export import render_result_image, save_result_png
+        from ui.pvp_browser.result_export_dialog import (
+            is_default_player_name, localized_result_labels, request_export_names,
+        )
+
+        session = self.active_draft_session
+        if session is None or self.draft_stage != PVP_DRAFT_STAGE_COMPLETED_RESULT:
+            return False
+        result = session.controller.state.match_result
+        if result is None:
+            return False
+        names = getattr(self, "_result_export_names", None)
+        names_confirmed = names is not None
+        if names is None:
+            names = tuple(
+                _text(self.seat_profile_provider(seat).profile.manifest.get("nickname"))
+                if self.seat_profile_is_imported(seat) else ""
+                for seat in PVP_SEATS
+            )
+            names = tuple(name or tr(f"app_shell.pvp.draft.{seat}") for name, seat in zip(names, PVP_SEATS))
+        if not names_confirmed and any(is_default_player_name(name) for name in names):
+            names = request_export_names(self, names)
+            if names is None:
+                return False
+        path, _filter = QFileDialog.getSaveFileName(
+            self, tr("app_shell.pvp.export.button"), "pvp-result.png", "PNG (*.png)",
+        )
+        if not path:
+            return False
+        try:
+            image = render_result_image(result, *names, localized_result_labels())
+            save_result_png(image, path)
+        except (ValueError, OSError) as exc:
+            self._last_draft_status = tr("app_shell.pvp.export.failed").format(error=str(exc))
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        self._result_export_names = names
+        self._last_draft_status = tr("app_shell.pvp.export.saved")
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+        return True
+
     def finalize_match_result(self) -> bool:
         session = self.active_draft_session
         if session is None:
@@ -3099,6 +3195,7 @@ class PvpWorkspace(QWidget):
         return self._last_draft_status
 
     def _reset_post_draft_state(self) -> None:
+        self._result_export_names = None
         self.restart_counts_by_seat = {seat: 0 for seat in PVP_SEATS}
         self._abyss_budget_context = None
         self._abyss_budget_report = None

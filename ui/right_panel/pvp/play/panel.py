@@ -31,6 +31,7 @@ class PvpPlayRightPanel(QWidget):
         self.workspace = workspace
         self.player_1_deck_id = ""
         self.player_2_deck_id = ""
+        self.draft_system_id: str | None = None
         self._refreshing = False
         self._has_refreshed = False
         self._summary_session: object | None = None
@@ -113,6 +114,17 @@ class PvpPlayRightPanel(QWidget):
         self.player_2_status_label.setWordWrap(True)
         root.addWidget(self.player_2_status_label)
 
+        self.draft_system_label = QLabel()
+        self.draft_system_label.setObjectName("pvp_deck_info_line")
+        root.addWidget(self.draft_system_label)
+        self.draft_system_combo = QComboBox()
+        self.draft_system_combo.setMinimumContentsLength(12)
+        self.draft_system_combo.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.draft_system_combo.currentIndexChanged.connect(self._on_system_changed)
+        root.addWidget(self.draft_system_combo)
+
         self.start_button = QPushButton()
         self.start_button.setObjectName("pvp_primary_button")
         self.start_button.clicked.connect(self._on_start_clicked)
@@ -175,6 +187,7 @@ class PvpPlayRightPanel(QWidget):
                 self.player_2_deck_id,
                 player_2_options,
             )
+            self._sync_draft_system_combo()
 
             has_player_1_decks = bool(player_1_options)
             has_player_2_decks = bool(player_2_options)
@@ -182,6 +195,7 @@ class PvpPlayRightPanel(QWidget):
             active = self.workspace.active_draft_session is not None
             self.player_1_combo.setEnabled(has_player_1_decks and not active)
             self.player_2_combo.setEnabled(has_player_2_decks and not active)
+            self.draft_system_combo.setEnabled(has_decks and not active)
             self.player_1_import_button.setEnabled(not active)
             self.player_2_import_button.setEnabled(not active)
             self.player_1_local_button.setVisible(
@@ -208,22 +222,26 @@ class PvpPlayRightPanel(QWidget):
                     self.player_1_deck_id,
                     player_label="Player 1",
                     seat="player_1",
+                    draft_system_id=self.draft_system_id,
                 )
                 player_2_status = self.workspace.deck_start_status(
                     self.player_2_deck_id,
                     player_label="Player 2",
                     seat="player_2",
+                    draft_system_id=self.draft_system_id,
                 )
                 self.player_1_status_label.setText(player_1_status.text)
                 self.player_2_status_label.setText(player_2_status.text)
                 self.start_button.setEnabled(
                     not active and player_1_status.ready and player_2_status.ready
                     and self.workspace.period_admission().ready
-                    and not self.workspace.match_rules_status(self.player_1_deck_id, self.player_2_deck_id)
+                    and not self.workspace.match_rules_status(
+                        self.player_1_deck_id, self.player_2_deck_id, draft_system_id=self.draft_system_id)
                 )
             self._refresh_active_summary()
             status = (self.workspace.last_play_status() or self.workspace.period_admission_text()
-                      or self.workspace.match_rules_status(self.player_1_deck_id, self.player_2_deck_id))
+                      or self.workspace.match_rules_status(
+                          self.player_1_deck_id, self.player_2_deck_id, draft_system_id=self.draft_system_id))
             self.status_label.setText(status)
             self.status_label.setVisible(bool(status))
         finally:
@@ -256,6 +274,7 @@ class PvpPlayRightPanel(QWidget):
         self.player_2_import_button.setText(tr("app_shell.pvp.profile.import"))
         self.player_1_local_button.setText(tr("app_shell.pvp.profile.use_local"))
         self.player_2_local_button.setText(tr("app_shell.pvp.profile.use_local"))
+        self.draft_system_label.setText(tr("app_shell.pvp.decks.rules_label"))
         self.start_button.setText(tr("app_shell.pvp.play.start_local_draft"))
         self.active_title_label.setText(tr("app_shell.pvp.play.active_local_draft"))
         self.clear_button.setText(tr("app_shell.pvp.play.clear_active_draft"))
@@ -307,8 +326,30 @@ class PvpPlayRightPanel(QWidget):
         if self.workspace.start_local_draft(
             self.player_1_deck_id,
             self.player_2_deck_id,
+            draft_system_id=self.draft_system_id,
         ):
             self.refresh()
+
+    def _sync_draft_system_combo(self) -> None:
+        options = self.workspace.play_draft_system_options(self.player_1_deck_id, self.player_2_deck_id)
+        available = {item[0] for item in options}
+        if self.draft_system_id not in available:
+            preferred = self.workspace.default_play_draft_system(self.player_1_deck_id)
+            self.draft_system_id = preferred if preferred in available else options[0][0]
+        self.draft_system_combo.blockSignals(True)
+        try:
+            self.draft_system_combo.clear()
+            for system_id, label in options:
+                self.draft_system_combo.addItem(label, system_id)
+            self.draft_system_combo.setCurrentIndex(self.draft_system_combo.findData(self.draft_system_id))
+        finally:
+            self.draft_system_combo.blockSignals(False)
+
+    def _on_system_changed(self, _index: int) -> None:
+        if self._refreshing:
+            return
+        self.draft_system_id = _text(self.draft_system_combo.currentData())
+        self.refresh()
 
     def _on_import_profile(self, seat: str) -> None:
         path, _selected_filter = QFileDialog.getOpenFileName(

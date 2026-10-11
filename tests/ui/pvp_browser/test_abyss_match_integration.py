@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 
 from localization import tr
 from run_workspace.pvp.abyss_rules import AbyssRuleset
+from run_workspace.pvp.deck import FREE_DRAFT_V0_RULESET_ID
 from run_workspace.pvp.weapon_roster_budget import CUP_SOURCE
 from run_workspace.pvp.deck_preset import save_deck_preset
 from tests.run_workspace.pvp.test_abyss_rules import _source
@@ -112,6 +113,44 @@ class AbyssMatchIntegrationTest(unittest.TestCase):
         status = self.workspace.deck_start_status("local", player_label="Player 1")
         self.assertFalse(status.ready)
         self.assertEqual(status.text, tr("app_shell.pvp.rules.match_phase_missing"))
+
+    def test_play_can_explicitly_choose_free_without_changing_saved_rules(self):
+        before = self.workspace.decks_workspace.presets[0]
+        panel = PvpPlayRightPanel(self.workspace)
+        self.addCleanup(panel.close)
+        self.assertEqual(panel.draft_system_combo.currentData(), before.ruleset_id)
+        self.assertIn(self.rules.title, panel.draft_system_combo.currentText())
+        panel.draft_system_combo.setCurrentIndex(panel.draft_system_combo.findData(FREE_DRAFT_V0_RULESET_ID))
+        panel.refresh()
+        self.assertEqual(panel.draft_system_combo.currentData(), FREE_DRAFT_V0_RULESET_ID)
+        self.assertTrue(panel.start_button.isEnabled())
+        panel.start_button.click()
+        state = self.workspace.active_draft_session.controller.state
+        self.assertIsNone(state.abyss_rules)
+        self.assertEqual(state.player_1_deck.ruleset_ref.ruleset_id, FREE_DRAFT_V0_RULESET_ID)
+        self.assertEqual(self.workspace.decks_workspace.presets[0], before)
+        self.assertFalse(panel.draft_system_combo.isEnabled())
+
+    def test_free_choice_allows_different_saved_rules_and_readiness_cache_is_separate(self):
+        data = self.rules.to_dict()
+        data.pop("phase_picks")
+        self.save_rules(rules=AbyssRuleset.from_dict(data))
+        self.assertFalse(self.workspace.deck_start_status("local", player_label="Player 1").ready)
+        self.assertTrue(self.workspace.deck_start_status(
+            "local", player_label="Player 1", draft_system_id=FREE_DRAFT_V0_RULESET_ID).ready)
+        self.assertFalse(self.workspace.deck_start_status("local", player_label="Player 1").ready)
+        data["source"]["system_id"] = "f" * 24
+        self.save_rules(deck_id="other", rules=AbyssRuleset.from_dict(data))
+        self.assertTrue(self.workspace.can_start_local_draft(
+            "local", "other", draft_system_id=FREE_DRAFT_V0_RULESET_ID))
+        self.assertFalse(self.workspace.can_start_local_draft("local", "other"))
+
+    def test_active_system_summary_uses_title_instead_of_internal_identifier(self):
+        from ui.right_panel.pvp._shared import _active_draft_summary_lines
+        self.assertTrue(self.workspace.start_local_draft("local", "local"))
+        lines = _active_draft_summary_lines(self.workspace.active_draft_session)
+        self.assertIn(self.rules.title, lines[2])
+        self.assertNotIn(self.workspace.draft_board_dict()["draft_system"]["system_id"], lines[2])
 
     def test_fetch_time_does_not_make_same_rules_incompatible(self):
         data = self.rules.to_dict()

@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-10-09 (pinned Abyss local matches alongside Free Draft).
+Last updated: 2026-10-11 (draft uniqueness, selectable local systems and result PNG).
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -30,6 +30,10 @@ source definition now executes supported 26-action Abyss flows with immunity,
 assigned-weapon budgets and restart-adjusted single-game Shiyu scoring.
 Unsupported modes/flows/stages fail closed. Its session-bundle export remains
 unsupported until the verifier can carry and replay pinned source content.
+Ordinary picks/bans remain global; Free also rejects bans of prior picks.
+Shared source immunity claims remain once per seat. Explicit Free Draft in Play
+projects saved membership without changing its rules snapshot; source mode keeps
+the equal-snapshot gate. [Result export](PVP_UI_ROADMAP.md#export--result) owns PNG.
 
 ## AppShell UI Status
 
@@ -260,7 +264,7 @@ Still out of scope / not implemented:
   `PVP_BUILD_SERVICES.md`;
 - online/P2P/relay transport;
 - PvP History persistence;
-- result PNG/export UI;
+- native result PNG acceptance and team/build artwork;
 - Gentor importer and complete Abyss rule matching/match execution (deck editor
   is implemented under `PVP_DECK_RULES.md`);
 - XLSX/Google Sheets/Discord importer;

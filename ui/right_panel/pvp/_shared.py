@@ -405,7 +405,7 @@ def _active_draft_summary_lines(
         tr("app_shell.pvp.play.summary_p1").format(name=session.player_1_deck_name),
         tr("app_shell.pvp.play.summary_p2").format(name=session.player_2_deck_name),
         tr("app_shell.pvp.play.summary_system").format(
-            system_id=_text(draft_system.get("system_id")),
+            system_id=_text(draft_system.get("display_name")),
         ),
         tr("app_shell.pvp.play.summary_requirement").format(
             requirement=requirement_text,

@@ -42,7 +42,9 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
         db_path = Path(temp_dir.name) / "right-panel-postdraft.sqlite"
         pvp_fixtures._seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
 
-        workspace = PvpWorkspace(db_path=db_path, deck_dir=temp_dir.name)
+        from tests.ui.pvp_browser._period_fixture import fixture_period_provider_kwargs
+        workspace = PvpWorkspace(db_path=db_path, deck_dir=temp_dir.name,
+                                 **fixture_period_provider_kwargs())
         self.assertTrue(workspace.decks_workspace.create_deck("Mirror"))
         self.assertTrue(workspace.decks_workspace.save_edit(name="Mirror"))
         play_panel = PvpPlayRightPanel(workspace)

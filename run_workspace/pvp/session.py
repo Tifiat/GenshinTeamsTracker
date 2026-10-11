@@ -620,6 +620,9 @@ def _apply_ban(
         and character_id not in state.player_2_deck.character_ids
     ):
         raise DraftActionRejected(REJECT_CHARACTER_NOT_IN_ANY_DECK)
+    if (character_id in state.player_1_picked_character_ids
+            or character_id in state.player_2_picked_character_ids):
+        raise DraftActionRejected(REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT)
     if state.is_abyss_match:
         if character_id not in state.deck_for(state.opponent_seat(action.seat)).character_ids:
             raise DraftActionRejected(REJECT_CHARACTER_NOT_IN_OPPONENT_DECK)
@@ -627,10 +630,6 @@ def _apply_ban(
             raise DraftActionRejected(REJECT_CHARACTER_ABSOLUTELY_IMMUNE)
         if character_id in state.immune_pick_character_ids:
             raise DraftActionRejected(REJECT_CHARACTER_RESERVED_FOR_IMMUNE)
-        if (character_id in state.player_1_picked_character_ids
-                or character_id in state.player_2_picked_character_ids):
-            raise DraftActionRejected(REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT)
-
     if action.seat == SEAT_PLAYER_1:
         return replace(
             state,

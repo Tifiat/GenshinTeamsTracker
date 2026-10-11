@@ -1,10 +1,11 @@
 # PvP deck rules editor
 
 <!-- handoff-current: pvp-deck-rules -->
-Reviewed 2026-10-10, Worker4 source branch only. Decks explicitly loads the public
+Reviewed 2026-10-11, Worker4 source branch only. Decks explicitly loads the public
 catalog, offers the latest live version per family plus Free Draft, and saves a
-validated snapshot. Older decks remain viewable; saving requires currentness and
-explicit adoption of newer rules. Cancel preserves the original selection.
+validated snapshot. Existing decks can retain saved rules and save edits after
+restart without a catalog request. New/replaced rules require currentness;
+known newer versions require explicit adoption. Cancel preserves selection.
 
 Nine DEFAULT families normalize; FRENCH_COST remains unsupported. Cost/tier badges,
 budgets and required characters/combination statuses use the existing grids and
@@ -33,6 +34,12 @@ series remain open. Current Cup requires Pyro Traveler. The independent
 [Traveler package](TRAVELER_VARIANTS.md) now owns selectable variants, exact
 element price/requirement checks and their remaining cross-account/runtime gates.
 
+Play explicitly selects Free Draft or saved Abyss rules, using readable titles.
+Free changes only the match projection. Preparation prohibitions, shared protection
+and per-seat claims are visually distinct. Ordinary repeated picks/bans fail;
+Free also rejects banning an already picked character. The [result contract](PVP_UI_ROADMAP.md#export--result)
+owns finalized single-game PNG export and optional display nicknames.
+
 Persistent catalog caching is user-deferred to MVP. No Computer Use, application
 launch or real-account access. Next is the user's Decks → Play → Draft/build/timer
 recheck. The [source receipt](PVP_ABYSS_SOURCE_AUDIT.md) retains API/document
@@ -54,7 +61,9 @@ conflicts; organizer prose is not silently treated as machine validation.
 - `ui/pvp_browser/deck_rules.py`: asynchronous explicit catalog/version reads,
   freshness state and localized presentation. A failed refresh leaves saved
   data visible, marks freshness unknown and offers only Free Draft until a new
-  successful catalog check. Pending loads cannot apply after cancelling or
+  successful catalog check. Existing edits can retain the original snapshot and
+  save while freshness is unknown; new or replaced snapshots cannot bypass it.
+  Pending loads cannot apply after cancelling or
   beginning another edit. Errors preserve membership and the previous rules.
 - `PvpDecksWorkspace` retains view/edit/save/cancel and normal neutral portraits.
   Costs are calculated outside paint calls, including unselected account cards.
@@ -64,6 +73,48 @@ conflicts; organizer prose is not silently treated as machine validation.
 - Free Draft is the initial selection and has no price badges. There is no menu
   for creating from old versions. Saved old titles remain visible separately
   until the user enters edit mode and adopts the current version.
+
+## Restart, draft actions and result export — 2026-10-11
+
+Work began after «Путешественник — семь элементов и импорт» completed at
+`5e15334`; its cards/import/profile changes were preserved. Saved snapshots were
+not deleted: unknown catalog freshness blocked saving after restart and the
+picker described the retained version as unavailable. Existing edits now save
+with their unchanged snapshot while freshness is unknown. New or replaced rules
+remain gated, and a known newer version still requires adoption. No persistent
+catalog cache, network side effect or real-account change was introduced.
+
+Play exposes Free Draft and the saved Abyss titles/dates. Explicit Free validates
+the match projection with Free rules and preserves both stored presets. Source
+selection still checks identical pinned content and pair eligibility; internal
+IDs/hashes remain in identity/replay, while the summary shows the display title.
+
+The inspected Cup's preparation IMMUNE_BAN forbids protection, so that same
+character may later receive an ordinary ban. IMMUNE_PICK creates shared protection
+once; later IMMUNE claims can place that protected character in both teams, once
+per seat. Gold labels distinguish preparation/claims from red ordinary bans, and
+shared protection appears once centrally. Narrow strips grow instead of clipping.
+Reducer regressions cover normal global uniqueness, stale actions, repeated
+protection/claims, legitimate shared claims and explicit absolute immunity. A Free
+bug permitted banning prior picks; it now rejects that action. The deterministic
+contract sample's final section was refreshed because late bans now skip picks.
+Source MIRROR remains unsupported; no separate normal pick/ban pools were inferred.
+
+130 distinct focused checks PASS: saved-rules restart/replacement, mode/cache/pair
+gates, draft reducer/board, responsive immunity, actual finalize/export handlers,
+optional nickname dialog/cancel/retry/error, localized PNG, timer/period/build-panel
+compatibility and retained-grid/geometry/performance guards. The old post-draft
+panel test lacked an official-period fixture; its disposable fixture now injects
+the existing frozen period. 129 passed together; the subsequent six export checks
+include the added default-name confirmation regression. Handoff checker PASS.
+
+Synthetic offscreen PNGs were inspected with Segoe UI loaded explicitly because
+Windows offscreen Qt initially lacked font discovery. Short/long Cyrillic names,
+source totals/penalties and narrow immunity were readable; both seven-file
+TemporaryDirectory previews were removed after inspection. No native UI acceptance
+is claimed. User recheck: restart → edit/save retained deck; Play → choose Free or
+Abyss → draft preparation/claims → finalize → optional names → PNG; cancel export
+and retry. The [export contract](PVP_UI_ROADMAP.md#export--result) owns file retention.
 
 ## Persistence and exchange
 

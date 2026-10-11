@@ -45,9 +45,9 @@ remains in `PVP_BACKEND_STATUS.md`.
   with validated portable v3 slices/assets and pending real-account acceptance.
   Scoped Artifact Browser, GCSIM dispatch and local period admission are
   implemented; current acceptance/lifecycle limits live in `PVP_BUILD_SERVICES.md`.
-  Deck rules/costs are now implemented under `PVP_DECK_RULES.md`. Online play,
-  Supported pinned Abyss local flows, immunity and restart scoring now connect
-  under `PVP_DECK_RULES.md`. Online play, tournament series, result PNG/export,
+  Deck rules/costs, supported pinned Abyss local flows, immunity and restart scoring
+  now connect under `PVP_DECK_RULES.md`. Single-game result PNG is implemented
+  under [Export / Result](#export--result). Online play, tournament series,
   source session-bundle verification and PvP History remain open. Package/provider truth lives in
   `PVP_PROFILE_PACKAGE.md`.
 
@@ -594,8 +594,21 @@ Hot-seat layout direction:
 - The MVP result view should show scoped PvP teams/builds, assigned weapons,
   per-player chamber timers/totals, winner/draw, and time difference without
   bringing back the disposable two-player source/target slot layout.
-- PNG/export, history persistence, and polished result-card design remain
-  future work.
+- Finalize result opens PNG export after the match is saved in memory. A visible
+  Export PNG button permits retry. If either name is still Player/Игрок/Jogador
+  1/2, an optional two-name dialog offers nicknames; blanks retain the defaults.
+  Cancel leaves the finalized result available. Display names live only in the
+  current match and reset on clearing/restarting it; they do not rename profiles.
+- `ui/pvp_browser/result_export.py` paints an independent 1400-wide image of the
+  actual single local game: both names, three chamber times, raw totals, source
+  adjusted totals/restart penalties when present, winner/draw and difference.
+  Long names wrap; screen/window dimensions do not squeeze the export. No second
+  game, tournament series, source hash, authentication or local account path is
+  added to the picture. Team/build artwork and History persistence remain future.
+- The user chooses the PNG destination through the standard save dialog. The
+  exported file belongs to the user until deletion. The renderer keeps no file,
+  image cache or automatic output folder. Synthetic preview PNGs are owned by a
+  TemporaryDirectory context and removed immediately after inspection.
 
 ## Reference-Site Conclusions
 
@@ -713,7 +726,7 @@ Current v0 limitations / later work:
   second-account decks under `PVP_PROFILE_PACKAGE.md`;
 - online;
 - History;
-- PNG/export result card;
+- native acceptance and team/build artwork for the result PNG;
 - native acceptance of deck rules/costs under `PVP_DECK_RULES.md`;
 - Gentor importer and complete Abyss matching/match schedule;
 - user acceptance of scoped artifact equipment and GCSIM preparation;

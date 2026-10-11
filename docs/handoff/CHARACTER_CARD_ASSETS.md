@@ -312,3 +312,15 @@ empty. No Git operation/index lock/active hook was found. The 39-case product
 check and negative mutation witness pass within the boundaries above. Canonical
 PvP status, shared queue, other checkouts, runtime/profile data and native UI are
 outside this write; no transfer or push.
+
+Correction result 2026-10-11 16:10:23 +03:00: source commit
+`0c21fb51198212ebe41933ac6b28d0d97c4f7be5`, parent
+`a02d4e3127913209038fb51b1344cb17fcf11134`, on `codex/pvp-providers`.
+All six selected paths committed; tree/index clean afterward. The 39-case product
+suite and rejected-geometry mutation witness pass; the full structural checker
+still reports only the foreign Worker2 status-size issue. No transfer, push,
+profile/runtime mutation, native control or persistent preview output occurred.
+
+Correction receipt-only intent 2026-10-11 16:10:23 +03:00: commit only this actual
+result from `0c21fb51198212ebe41933ac6b28d0d97c4f7be5`, same executor/branch and
+standing authority. The final chat snapshot supplies receipt hash/clean state.

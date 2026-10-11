@@ -158,3 +158,15 @@ The canonical PvP worker status and shared queue are owned by their existing
 chats; this scoped report proposes source readiness while retaining the native
 UI, authenticated import and pre-MVP packaging checks. The final chat snapshot
 provides the actual commit result to the queue owner.
+
+Result 2026-10-11 14:32:51 +03:00: source commit
+`b98fee2ffe3cd445e5bf51bfb28b23084f8f3275`, parent
+`5c9494a1203ef3a7b6354072991526d99d1657e5`, on `codex/pvp-providers`.
+All 43 selected paths committed; tree and index were clean afterward. The
+focused/tooltip/handoff receipts above apply within their stated boundaries.
+No transfer, push, engine/native consumer or canonical worker-status write.
+
+Receipt-only follow-up intent 2026-10-11 14:33:25 +03:00: the same scoped executor will
+commit only this actual Git result, from `b98fee2ffe3cd445e5bf51bfb28b23084f8f3275`
+on the same branch under the same own-stage authority. Its resulting hash and
+final clean-tree result are reported in the final chat snapshot.

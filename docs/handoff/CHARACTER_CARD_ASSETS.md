@@ -369,3 +369,14 @@ verified-own-stage authority. Initial tree/index were clean; current index is
 empty. No Git operation/index lock/active hook was found. The product, mutation
 and final structural checks above apply. No transfer, push, profile/runtime/
 settings mutation or native control; canonical PvP status and shared queue unchanged.
+
+Shared-frame/defaults result 2026-10-11 16:44:02 +03:00: source commit
+`4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2`, parent
+`6b2c0d2d02e578340b25f749bac31d56af0da824`, on `codex/pvp-providers`.
+All 15 selected paths committed; tree/index clean afterward. Product/mutation
+evidence above applies; final structural checker PASS. No external transfer,
+push, account/settings/runtime mutation or native control occurred.
+
+Shared-frame receipt-only intent 2026-10-11 16:44:02 +03:00: commit only this
+actual result from `4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2`, same scoped executor,
+branch and standing authority. Final receipt hash/clean state is in chat closeout.

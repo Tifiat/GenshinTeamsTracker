@@ -194,6 +194,15 @@ def _slot_view_model(
                 warnings=build.warnings,
             )
         ),
+        portrait_rarity=None if character is None else character.rarity,
+        portrait_element="" if character is None else character.element,
+        portrait_constellation=None if character is None else character.constellation,
+        portrait_background_path=(
+            "" if character is None else _asset_path(bundle_dir, character.rarity_background_ref)
+        ),
+        portrait_element_icon_path=(
+            "" if character is None else _asset_path(bundle_dir, character.element_icon_ref)
+        ),
     )
 
 

@@ -36,6 +36,7 @@ from ui.right_panel.common.history_card import (
     render_history_card_png,
     stat_columns,
     prepare_images,
+    CardPainter,
     team_seconds,
 )
 
@@ -59,6 +60,45 @@ class HistoryCardsTest(unittest.TestCase):
             visual = replace(visual, teams=(replace(team, slots=(slot,)),))
             self.assertEqual(prepare_images(visual, 1)[("artwork", team.team_index)].toImage().pixelColor(0, 0).name(), "#0000ff")
             self.assertEqual(prepare_images(visual, 1, {team.team_index: custom})[("artwork", team.team_index)].toImage().pixelColor(0, 0).name(), "#00ff00")
+
+    def test_new_frozen_portraits_include_layers_in_profile_front_expanded_and_default_art(self):
+        from PIL import Image
+        from PySide6.QtGui import QPainter
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            raw, background, element, custom = (root/name for name in ("raw.png", "rarity.png", "element.png", "custom.png"))
+            portrait = Image.new("RGBA", (96, 96))
+            portrait.paste((20, 35, 210, 255), (24, 24, 72, 96))
+            portrait.save(raw)
+            Image.new("RGBA", (96, 96), "#a45f25").save(background)
+            Image.new("RGBA", (32, 32), "#cf3028").save(element)
+            Image.new("RGBA", (96, 96), "#137627").save(custom)
+            visual = _run_visual(_bundle(), root/"snapshot.json")
+            slot = HistorySlotVisual(slot_index=0, character_name="Fixture Hero", rarity=5,
+                portrait_path=str(raw), expanded_portrait_path=str(raw), side_icon_path=str(raw),
+                constellation=4, element="Pyro", rarity_background_path=str(background), element_icon_path=str(element))
+            team = replace(visual.teams[0], slots=(slot,))
+            visual = replace(visual, teams=(team,))
+            with patch("ui.utils.character_card_layers.character_background_path", side_effect=AssertionError("no live rarity")), patch(
+                "ui.utils.character_card_layers.filter_icon_path", side_effect=AssertionError("no live element"),
+            ):
+                images = prepare_images(visual, 1)
+                for view, expanded in (("profile", False), ("front", False), ("profile", True)):
+                    picture = QImage(96, 96, QImage.Format.Format_ARGB32)
+                    picture.fill(Qt.GlobalColor.transparent)
+                    painter = QPainter(picture)
+                    CardPainter(painter, images, view).portrait(slot, 0, 0, 96, expanded_variant=expanded)
+                    painter.end()
+                    self.assertEqual(picture.pixelColor(3, 40).name(), "#a45f25")
+                    self.assertEqual(picture.pixelColor(7, 7).name(), "#cf3028")
+                    self.assertNotEqual(picture.pixelColor(90, 7).name(), "#a45f25")
+                self.assertEqual(images[("artwork", team.team_index)].toImage().pixelColor(1, 160).name(), "#a45f25")
+                self.assertTrue(images[("artwork_layers", team.team_index)])
+                replaced = prepare_images(visual, 1, {team.team_index: str(custom)})
+                self.assertNotIn(("artwork_layers", team.team_index), replaced)
+                self.assertEqual(replaced[("artwork", team.team_index)].toImage().pixelColor(0, 0).name(), "#137627")
 
     def test_larger_expanded_weapon_and_two_sets_fit_each_character_header(self):
         visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))

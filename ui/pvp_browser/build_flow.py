@@ -201,6 +201,12 @@ class PvpScopedCharacterWeaponWorkspace(CharacterWeaponWorkspace):
         super().reload_weapons()
         self._schedule_content_sized_picker_geometry()
 
+    def refresh_weapons_incremental(self) -> None:
+        previous_ids = self.weapon_grid.item_ids()
+        super().refresh_weapons_incremental()
+        if self.weapon_grid.item_ids() != previous_ids:
+            self._schedule_content_sized_picker_geometry()
+
     def _schedule_content_sized_picker_geometry(self) -> None:
         timer = getattr(self, "_picker_geometry_timer", None)
         if timer is not None:
@@ -280,11 +286,17 @@ class PvpScopedCharacterWeaponWorkspace(CharacterWeaponWorkspace):
         assets: Iterable[dict[str, Any]],
         *,
         reload_grid: bool = True,
-    ) -> None:
-        self._pvp_weapon_assets = [dict(asset) for asset in assets]
-        self.refresh_weapon_asset_cache()
+    ) -> bool:
+        updated = [dict(asset) for asset in assets]
+        changed = updated != self._pvp_weapon_assets
+        if not changed:
+            return False
+        self._pvp_weapon_assets = updated
+        if not updated:
+            self.refresh_weapon_asset_cache()
         if reload_grid:
             self.reload_weapons()
+        return True
 
     def update_grids(self) -> None:
         self._initial_grid_built = True
@@ -849,7 +861,7 @@ class PvpSeatBuildContext:
         affected_character_ids: set[str] | None = None,
         sync_weapon_filter: bool = True,
     ) -> None:
-        self.source_workspace.set_pvp_weapon_assets(
+        weapon_assets_changed = self.source_workspace.set_pvp_weapon_assets(
             self.equipment_state.weapon_assets_with_owner_badges(self.weapon_assets),
             reload_grid=False,
         )
@@ -857,15 +869,18 @@ class PvpSeatBuildContext:
             self.controller.roster_selection_markers(),
             affected_character_ids=affected_character_ids,
         )
+        filter_changed = False
         if sync_weapon_filter:
-            self.source_workspace.set_auto_weapon_type_filter(
-                self.controller.selected_character_weapon_filter_key()
+            self._weapon_filter_timer.stop()
+            filter_changed = self.source_workspace.set_auto_weapon_type_filter(
+                self.controller.selected_character_weapon_filter_key(),
+                reload_grid=not reload_grids,
             )
         if reload_grids:
             self.source_workspace.refresh_asset_cache()
             self.source_workspace.update_grids()
-        elif refresh_weapons:
-            self.source_workspace.reload_weapons()
+        elif (refresh_weapons or weapon_assets_changed) and not filter_changed:
+            self.source_workspace.refresh_weapons_incremental()
         else:
             self.source_workspace.weapon_area.viewport().update()
 

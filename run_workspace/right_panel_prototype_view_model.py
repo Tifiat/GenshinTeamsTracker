@@ -7,6 +7,7 @@ from pathlib import Path
 import sqlite3
 from typing import Any, Iterable, Mapping
 
+from hoyolab_export.asset_paths import character_background_path, element_icon_path
 from localization import tr, tr_for_language
 from run_workspace.profile_context import ACCOUNT_ROOT
 
@@ -235,6 +236,11 @@ class RightPanelSlotPrototypeViewModel:
     warning_count: int
     warning_tooltip: str
     artifact_summary: TeamCardArtifactSummaryViewModel | None = None
+    portrait_rarity: int | None = None
+    portrait_element: str = ""
+    portrait_constellation: int | None = None
+    portrait_background_path: str = ""
+    portrait_element_icon_path: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -258,6 +264,11 @@ class RightPanelSlotPrototypeViewModel:
             "warning_count": self.warning_count,
             "warning_tooltip": self.warning_tooltip,
             "artifact_summary": _artifact_summary_to_dict(self.artifact_summary),
+            "portrait_rarity": self.portrait_rarity,
+            "portrait_element": self.portrait_element,
+            "portrait_constellation": self.portrait_constellation,
+            "portrait_background_path": self.portrait_background_path,
+            "portrait_element_icon_path": self.portrait_element_icon_path,
         }
 
 
@@ -902,6 +913,35 @@ def _build_slot(
         duplicate_character_ids=duplicate_character_ids,
     )
     details = _details_dict(slot.character_details_data)
+    account_character = _account_character_for_slot(slot, details)
+    slot_character = slot.character.to_dict() if slot.character is not None else {}
+    portrait_rarity = None
+    portrait_element = ""
+    portrait_constellation = None
+    portrait_background_path = ""
+    portrait_element_icon_path = ""
+    if not card_slot.is_empty:
+        portrait_rarity = _optional_int(account_character.get("rarity"))
+        if portrait_rarity is None:
+            portrait_rarity = _optional_int(slot_character.get("rarity"))
+        portrait_element = (
+            _text(account_character.get("element")) or _text(slot_character.get("element"))
+        )
+        portrait_constellation = _optional_int(
+            _first_present(account_character, "constellation", "actived_constellation_num")
+        )
+        if portrait_constellation is None:
+            portrait_constellation = _optional_int(
+                _first_present(slot_character, "constellation", "actived_constellation_num")
+            )
+        if "portrait_background_path" in details:
+            portrait_background_path = _text(details.get("portrait_background_path"))
+        elif portrait_rarity is not None:
+            portrait_background_path = str(character_background_path(portrait_rarity) or "")
+        if "portrait_element_icon_path" in details:
+            portrait_element_icon_path = _text(details.get("portrait_element_icon_path"))
+        elif portrait_element:
+            portrait_element_icon_path = str(element_icon_path(portrait_element) or "")
     account_weapon = _account_weapon_for_slot(slot, details)
     has_weapon = _has_weapon_reference(account_weapon)
     artifact = card_slot.artifact_summary
@@ -930,6 +970,11 @@ def _build_slot(
         warning_count=warning_count,
         warning_tooltip=_warning_tooltip(warnings),
         artifact_summary=artifact,
+        portrait_rarity=portrait_rarity,
+        portrait_element=portrait_element,
+        portrait_constellation=portrait_constellation,
+        portrait_background_path=portrait_background_path,
+        portrait_element_icon_path=portrait_element_icon_path,
     )
 
 

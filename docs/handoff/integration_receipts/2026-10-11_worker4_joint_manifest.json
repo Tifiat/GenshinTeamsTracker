@@ -1,0 +1,2111 @@
+{
+  "schema": "gtt_worker4_joint_source_v1",
+  "package_id": "worker4-joint-20261011-8356c597-base1b7e9fe",
+  "shared_base": "77c26458d3a0beda3f88fc4cda1b129053dad081",
+  "source_tip": "8356c59733c9113a3fba4985d978c1611150864b",
+  "remote_base": "1b7e9fe73a47866aa1ef77cfc02cbaa7fd61a009",
+  "remote_ref": "refs/heads/master",
+  "product_tree": "dcede0f9a4c9425b143e1bb47d4bb3ba19b8aaed",
+  "source_delta_sha256": "fd6b47211d9644e6c2870f9403c87445b6a2f16d6c37cf0ee54c3d2f797833e4",
+  "publication_product_delta_sha256": "7a8fd992f657d1353bfa4ebe609e48b42f1f2c6502bf0773e98f6d93b5f3f67a",
+  "product_path_count": 182,
+  "source_commits": [
+    {
+      "commit": "4ff031d677fb830034a3c9c23e9227cd3956baba",
+      "parents": [
+        "77c26458d3a0beda3f88fc4cda1b129053dad081"
+      ],
+      "title": "Restore PvP character rarity and identity layers"
+    },
+    {
+      "commit": "f304d39aee5c554c65702572264e36b34605eb24",
+      "parents": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba"
+      ],
+      "title": "Discover and map public Abyss tournament rules"
+    },
+    {
+      "commit": "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+      "parents": [
+        "f304d39aee5c554c65702572264e36b34605eb24"
+      ],
+      "title": "Add latest Abyss rules to the PvP deck editor"
+    },
+    {
+      "commit": "732da0b6b7f5af4d58f094eb768f994d689f95eb",
+      "parents": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5"
+      ],
+      "title": "Fix clipped PvP deck rules and preserve readable scrolling"
+    },
+    {
+      "commit": "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+      "parents": [
+        "732da0b6b7f5af4d58f094eb768f994d689f95eb"
+      ],
+      "title": "Show live PvP requirement status with shared tier allocation"
+    },
+    {
+      "commit": "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+      "parents": [
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9"
+      ],
+      "title": "Correct Abyss character roles and add contextual requirement filters"
+    },
+    {
+      "commit": "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+      "parents": [
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f"
+      ],
+      "title": "Keep out-of-band zero-cost characters from blocking tier allocation"
+    },
+    {
+      "commit": "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+      "parents": [
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce"
+      ],
+      "title": "Keep PvP selection and downstream updates incremental"
+    },
+    {
+      "commit": "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+      "parents": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a"
+      ],
+      "title": "Keep Decks geometry stable and show weapon pricing rules"
+    },
+    {
+      "commit": "31e77fd2a341469778ed13040d07bec6117444a4",
+      "parents": [
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1"
+      ],
+      "title": "Connect pinned Abyss local matches and clarify weapon limits"
+    },
+    {
+      "commit": "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+      "parents": [
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ],
+      "title": "Enforce weapon roster budgets with live requirement counters"
+    },
+    {
+      "commit": "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+      "parents": [
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3"
+      ],
+      "title": "Add seven persistent Traveler element variants"
+    },
+    {
+      "commit": "5c9494a1203ef3a7b6354072991526d99d1657e5",
+      "parents": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ],
+      "title": "Record Traveler package verification and commit receipt"
+    },
+    {
+      "commit": "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+      "parents": [
+        "5c9494a1203ef3a7b6354072991526d99d1657e5"
+      ],
+      "title": "Group Traveler browser cards and bundle shared card artwork"
+    },
+    {
+      "commit": "5e15334e926e2321772fa573483fa150d2548f0a",
+      "parents": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ],
+      "title": "Record character card package acceptance receipt"
+    },
+    {
+      "commit": "e58c508d3257f9c2731009cab69b633b12532c0f",
+      "parents": [
+        "5e15334e926e2321772fa573483fa150d2548f0a"
+      ],
+      "title": "Fix PvP deck restart editing and draft controls; export result PNG"
+    },
+    {
+      "commit": "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+      "parents": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ],
+      "title": "Fix shared character portraits, weapon styling and filter hints"
+    },
+    {
+      "commit": "a02d4e3127913209038fb51b1344cb17fcf11134",
+      "parents": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ],
+      "title": "Record character presentation follow-up verification"
+    },
+    {
+      "commit": "0c21fb51198212ebe41933ac6b28d0d97c4f7be5",
+      "parents": [
+        "a02d4e3127913209038fb51b1344cb17fcf11134"
+      ],
+      "title": "Restore calibrated weapon owner overlays and balance team colors"
+    },
+    {
+      "commit": "6b2c0d2d02e578340b25f749bac31d56af0da824",
+      "parents": [
+        "0c21fb51198212ebe41933ac6b28d0d97c4f7be5"
+      ],
+      "title": "Record owner overlay correction and rendered regression evidence"
+    },
+    {
+      "commit": "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2",
+      "parents": [
+        "6b2c0d2d02e578340b25f749bac31d56af0da824"
+      ],
+      "title": "Share PvP inventory outlines and balance player default colors"
+    },
+    {
+      "commit": "1ebd6ff8a927f169c1fef6d341d76468efb0e0f1",
+      "parents": [
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ],
+      "title": "Record shared outline and player palette verification"
+    },
+    {
+      "commit": "2843ee94e8aa31d745db43bee69a2c741264417a",
+      "parents": [
+        "1ebd6ff8a927f169c1fef6d341d76468efb0e0f1"
+      ],
+      "title": "Add cost-gap prebans and configurable draft clocks and restart policy"
+    },
+    {
+      "commit": "661774e8052e6b263da252f8dd1657ee33ca63f2",
+      "parents": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a"
+      ],
+      "title": "Support Ascend mirror, Reverse, and French cost draft flows"
+    },
+    {
+      "commit": "2a95ad5094f3db398645d5cdf066434b202006a8",
+      "parents": [
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ],
+      "title": "Guard source draft choices with replay-verified completion matching"
+    },
+    {
+      "commit": "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb",
+      "parents": [
+        "2a95ad5094f3db398645d5cdf066434b202006a8"
+      ],
+      "title": "Add explicit first actor and fresh drafts with series totals and PNG"
+    },
+    {
+      "commit": "87a7adc6165eaaba4476768e1db4ff510ad3fabb",
+      "parents": [
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ],
+      "title": "Add shared character constellation and level sorting"
+    },
+    {
+      "commit": "8356c59733c9113a3fba4985d978c1611150864b",
+      "parents": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ],
+      "title": "Record character filter sorting verification and source receipt"
+    }
+  ],
+  "product_paths": [
+    {
+      "path": "assets/card_backgrounds/SOURCES.md",
+      "mode": "100644",
+      "after_blob": "b5c0664ac64a6ca86bf9df93305b7c8fefa15b0e",
+      "after_sha256": "39db8e01d4549708e0e73925c9a4c1cb804e69c2a80bc1ea0c8b83ba9b9f92a4",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/card_backgrounds/rarity_3.png",
+      "mode": "100644",
+      "after_blob": "e62821a1d7199084aa40315b355a9c53d447cc30",
+      "after_sha256": "95a73719b65c23a620e2e9e86135d87892dac3bc01bdd5bb85433093394f994a",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/card_backgrounds/rarity_4.png",
+      "mode": "100644",
+      "after_blob": "9f1547e17273485b0d3ae74d806e09875dfc7808",
+      "after_sha256": "1278e2fcb4561e9cea02607a1efd81b2d513d242b262bb7c660d2a3e910bf42c",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/card_backgrounds/rarity_5.png",
+      "mode": "100644",
+      "after_blob": "9a4ad1950672e48c7546a7e65db3c2634e9d5965",
+      "after_sha256": "2fed689271a857ff95fb35471553f7c10b4b8cb9000c56f012b496e40612d7a2",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/filters/element_anemo.png",
+      "mode": "100644",
+      "after_blob": "09c3992a3397dba07fc2d09a69369c34f22145be",
+      "after_sha256": "369b34e54cb3beda4ba6be4dbb30aa5e2f4115d7795465adde7d40c455049e1a",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/filters/element_cryo.png",
+      "mode": "100644",
+      "after_blob": "5e1c9c637494482fcd856620a13a62a1b8ddd4cc",
+      "after_sha256": "4ed9b3e84ea8af085ab1052cd4504ea72f1242fecb9cbe3a7ba65db711e22dc0",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/filters/element_dendro.png",
+      "mode": "100644",
+      "after_blob": "62de2a904043b58f8414a26c2bb4e086dc54e947",
+      "after_sha256": "956795505a17a8383ef719f67f93498fede1f066fa94c208afc35c02e82243da",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/filters/element_electro.png",
+      "mode": "100644",
+      "after_blob": "4570a22b4c24b9d7593bad338de6c87caeb697fc",
+      "after_sha256": "bcee1decd86c2ea2d11d557f641d23c076ac352544ad81e5fe5e7abd02bf2c3f",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/filters/element_geo.png",
+      "mode": "100644",
+      "after_blob": "01752d587a992ccfb80a695a4ab0fdaaa3ab4f43",
+      "after_sha256": "9cedc535d7516efae97e5ae7d847b133972f31698e8a98000d35c8b10c332018",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/filters/element_hydro.png",
+      "mode": "100644",
+      "after_blob": "ef68e1cf7073ee0d099314c6230bb04d163419e0",
+      "after_sha256": "27f15965a0605c6a8df01ee4f72fe6eb5fbbe6d95e412dc741064043690e2367",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/filters/element_pyro.png",
+      "mode": "100644",
+      "after_blob": "71c72e43029efff7a223507a5e2cfaca91190b6c",
+      "after_sha256": "ccc5d0ff6c8805c7f75fced3f3e0255122f6e2fe1dbc3a6ab29ba5ec6e59e4e3",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "assets/ui/icons/character-constellation.svg",
+      "mode": "100644",
+      "after_blob": "6b023fdabfb398027d7cedea2f37fe05cb1aa466",
+      "after_sha256": "41220ad9ca1139d4f37086afa796e9eb8fe37c8a859b65a441441d3d5bec6d43",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "assets/ui/icons/character-level.svg",
+      "mode": "100644",
+      "after_blob": "81826b1453a0ffa1232a2df130eec0a0788045af",
+      "after_sha256": "892a4509c0c15cffb48357d88b8f2879e5e3b46a6676165e8b244d8c0b2be2d8",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "docs/handoff/ACCOUNT_PROFILES.md",
+      "mode": "100644",
+      "after_blob": "e6bb150a4c6295ffcc51a8de827af7f0241f1aec",
+      "after_sha256": "2c808a2d99367ce1ad99fa407fc606f2914fdd2a1b8d41d23ff4e74e0fd0befb",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "docs/handoff/ACCOUNT_SQLITE_STORAGE.md",
+      "mode": "100644",
+      "after_blob": "d6024ecdc7100462aef5107b403607f8a565b8a9",
+      "after_sha256": "644bcd6db25838f20466680f10894ee5c7f10491ce5892fd89e5a25354d07d6b",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "docs/handoff/APP_SHELL_WORKSPACE_PLAN.md",
+      "mode": "100644",
+      "after_blob": "6038ab39d6a5c5a6f96dab3d7d7cd0d4280dfcba",
+      "after_sha256": "e6ab106ca8c709f812a0eb182757f1b38863b1198af9a09396f814e74d23c7c7",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "docs/handoff/ARTIFACT_BROWSER.md",
+      "mode": "100644",
+      "after_blob": "85fa73cacb8979a76f5a0960d8386b45faf858ed",
+      "after_sha256": "81724d0de29b91258653bebdd1b7ff209db5de8dda9d999dd1d6916283ec4e95",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "docs/handoff/CATALOG.md",
+      "mode": "100644",
+      "after_blob": "09039307a37a8aca6277c09941e2ba419d7b5536",
+      "after_sha256": "d7ed93222973914f6ae4aaa040c0aba4ecf01c8ef454ca0357397c92094c4b19",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24",
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "docs/handoff/CHARACTER_CARD_ASSETS.md",
+      "mode": "100644",
+      "after_blob": "785c84cfe99b10a5db1e3c07a1cbbdb180f24b3f",
+      "after_sha256": "204c57cb5cfb1e8a3a83fc310903a7ade5352a1daa0b8df589bf186fe603bc16",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "5e15334e926e2321772fa573483fa150d2548f0a",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "a02d4e3127913209038fb51b1344cb17fcf11134",
+        "0c21fb51198212ebe41933ac6b28d0d97c4f7be5",
+        "6b2c0d2d02e578340b25f749bac31d56af0da824",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2",
+        "1ebd6ff8a927f169c1fef6d341d76468efb0e0f1",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "docs/handoff/CHARACTER_FILTERS.md",
+      "mode": "100644",
+      "after_blob": "2147219f6f0725ac69106fe8847c2d3bff89fc4d",
+      "after_sha256": "75b957fd2f603270a57d8a59235ebb2f289a8fdc268f54dd239b93122078edec",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb",
+        "8356c59733c9113a3fba4985d978c1611150864b"
+      ]
+    },
+    {
+      "path": "docs/handoff/DATA_RUNTIME_BOUNDARIES.md",
+      "mode": "100644",
+      "after_blob": "47a066a880500a08292044d4cef4a382c49c8dcc",
+      "after_sha256": "e2be6898ccd755e186f8568a7cd6dddb03d9cae4eef114fe84044ef8ff0299df",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "docs/handoff/DATA_WORK_RULES.md",
+      "mode": "100644",
+      "after_blob": "2f4c75f83303e9b567ed7e2a74d4ef6bbb7c93b3",
+      "after_sha256": "dccd665f0c7015bb304de7c716b9154c3996270035dc8e8a3c21f3099c2a6dc2",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "docs/handoff/HISTORY_BROWSER.md",
+      "mode": "100644",
+      "after_blob": "069d36b38ba03907b840bb68a4d543ca20c1422d",
+      "after_sha256": "01a8b4644f8929fb289c4f058ab7b43260e0946ee76cb9f5e499b70b097da8f6",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "docs/handoff/HOYOLAB_IMPORT_RELIABILITY.md",
+      "mode": "100644",
+      "after_blob": "50643d7d61a61aa3e0d3adbc837da4c4f95acc1b",
+      "after_sha256": "9c19d22a3a5d2797d7c7ce95ce36fc5ef5761f8bcc71a6b7f5c69bfd685a6d11",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_ABYSS_SOURCE_AUDIT.md",
+      "mode": "100644",
+      "after_blob": "2b9a82b384a591e42dd7568605ed31f04f104c10",
+      "after_sha256": "3c92a9e932ef5f9f83c87046e51c2998baa3ce93f5c02538c02a14e78a7282b3",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24",
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_BACKEND_STATUS.md",
+      "mode": "100644",
+      "after_blob": "094d2abbc7d896e39c49d6d4aaa15f4bbf77db76",
+      "after_sha256": "c7e8349495d901682b61f54d3cece8375020941ff70ab33795c2b31ae8298cdd",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24",
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_BUILD_SERVICES.md",
+      "mode": "100644",
+      "after_blob": "6f5adfe76debbf892564b411ee3b79f15ac05533",
+      "after_sha256": "67c05b278ded5d01d8a4c60b38e57d417a87d121bcaf6cf5ddc95a83a0a137ce",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24",
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_DECK_RULES.md",
+      "mode": "100644",
+      "after_blob": "38235f4b3584c40cac76943933e7e34a62b8db5f",
+      "after_sha256": "0e80eac3f244cf8cf49f5a95a4358e00c650c06b82504d22cb602135a0d8d656",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "732da0b6b7f5af4d58f094eb768f994d689f95eb",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_DRAFT_RUNTIME.md",
+      "mode": "100644",
+      "after_blob": "ce2b4d4e385ffb00a88a202fe7b2702c626a6eb1",
+      "after_sha256": "9cfde116c48664b10595191f70a738f2d94cae4dcd5ebe89861611307c13bea5",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "2a95ad5094f3db398645d5cdf066434b202006a8",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_PROFILE_PACKAGE.md",
+      "mode": "100644",
+      "after_blob": "6394ffa0a7ed8f17589c64356d28830533da40a2",
+      "after_sha256": "45377958bcdf0e4b60ffd5b28bf5bb6a82f339bf99cf259600548b443011b790",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_RULESETS_AUDIT.md",
+      "mode": "100644",
+      "after_blob": "1c9a36c964a90c7c6cca1fb4c0ea89cedb6bed3b",
+      "after_sha256": "3d0e22124ffec2f0bdfb733c837997d0f6a0387387251825da9d1d7b2668962c",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_RULESET_SOURCE_MATRIX.md",
+      "mode": "100644",
+      "after_blob": "b501102e26db6369245699e0429567681435cde6",
+      "after_sha256": "6aefa9d0c36d5a302ceb71ac95d8df24417f19cb1bb5fa06dbae50ebdea9ea0a",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24",
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_UI_ROADMAP.md",
+      "mode": "100644",
+      "after_blob": "81331a71d4531e154df6925fde920f099cadf64b",
+      "after_sha256": "247683cc9fea913a6c106632a7afec7d481133010edd85a5cc9147ddbf4cbdcb",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "docs/handoff/PVP_V0_CONTRACT.md",
+      "mode": "100644",
+      "after_blob": "8603467a1fa63f4b45c3bf728382bdc23baf84f2",
+      "after_sha256": "110bf7b513cc313f4c12af5b28f797216aba2ca0bc8fd042edc89f7cd2985115",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24"
+      ]
+    },
+    {
+      "path": "docs/handoff/README.md",
+      "mode": "100644",
+      "after_blob": "5a3f5c15e442216924234c0ee21cd1b9f910fa20",
+      "after_sha256": "df2336a249f7bb13e481647829601e18926ce2e109b2636a5057ba2655cbc2c2",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md",
+      "mode": "100644",
+      "after_blob": "c3f113c1fc0da0839a637c1b4ca8f893e4e3a455",
+      "after_sha256": "c5741c5304020744849aaff65019e565a8965f88f569b8fd62a0312e343ba50b",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "docs/handoff/STAT_NORMALIZATION.md",
+      "mode": "100644",
+      "after_blob": "4c5bc3e6a0c35ed63d7d983156963d2e4e09ff0b",
+      "after_sha256": "271ffef587e0fda8f50d1ed1f1bb5cf907bee70b3d7654dbe54854a826ec31c0",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "docs/handoff/TOOLTIP_CONTRACTS.md",
+      "mode": "100644",
+      "after_blob": "7e08e925f9ca063903101c22a48c7e8f2c105cd8",
+      "after_sha256": "f6895942c5362fdc14313ae5ec843b07941e3e43764c128079bbdad02b18ecf3",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "docs/handoff/TRAVELER_VARIANTS.md",
+      "mode": "100644",
+      "after_blob": "496d65a6e5cd9c7d4157db6251eff71a4e9b10cb",
+      "after_sha256": "2fe929b5cf8cc8fee537b98e3adddd9cbb3055e392c0307f7ccc223c79549295",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "5c9494a1203ef3a7b6354072991526d99d1657e5",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "docs/handoff/UI_WORK_RULES.md",
+      "mode": "100644",
+      "after_blob": "1faa4ccac4395bf69607dfa2b74cf75d40cd6a4b",
+      "after_sha256": "8df4fc1a713017ecec2ebb8e6a1ac66ee0e3ca44ed899ba12511a7346bfae067",
+      "contributors": [
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "docs/handoff/performance_measurements/2026-10-09_pvp_selection_pipeline.md",
+      "mode": "100644",
+      "after_blob": "f21f3a2abe773029a361c22f3f2a7994acfa1a8a",
+      "after_sha256": "a657b1016952970563fed9b7c6a510156a3b8d77c98544d3368e42e566a509f4",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1"
+      ]
+    },
+    {
+      "path": "hoyolab_export/account_storage.py",
+      "mode": "100644",
+      "after_blob": "bea871ec8964b26e7d55c3c5065155c7c0215b2b",
+      "after_sha256": "d434c5e7da457c9e787df62650394713a2bdb931cfdc5171d08e6c46912a9457",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "hoyolab_export/asset_layers.py",
+      "mode": "100644",
+      "after_blob": "1b2fb881e2c76c6e9d98b38d159c494e01ed0f14",
+      "after_sha256": "18b4719184b0c6befde453770095d1d9c85a03846a83f2f147e80c47ce84db3c",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "hoyolab_export/asset_paths.py",
+      "mode": "100644",
+      "after_blob": "1c4efadd8c9d6f1099f1ca9943bcf0ac94bbe8ab",
+      "after_sha256": "270a4f208814e5e98faf708e06efebd5325bea8c8501c1f275bb865b81aa58f1",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "hoyolab_export/bundled_assets.py",
+      "mode": "100644",
+      "after_blob": "1da63fa676c213727dfb295082a846e9cede272c",
+      "after_sha256": "77c931badf24db7161a50fb9ad7b5f203e2204e9d43962874a57a004efd6adc0",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "hoyolab_export/character_identity.py",
+      "mode": "100644",
+      "after_blob": "6a53379fc412c95765e630598de95c400751e6b4",
+      "after_sha256": "ecfdd5c3ec9e5351576ab8468e052c54bcd3f7bf279e6a0767edffe37bea7644",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "hoyolab_export/character_stat_snapshot.py",
+      "mode": "100644",
+      "after_blob": "252475d2108197b1371a9dc3d9ba36d9c9f88331",
+      "after_sha256": "0c1384457e078fae97074015ef03a13d9757e8a7d69e93818a1fe1f7934d1912",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "hoyolab_export/import_pipeline.py",
+      "mode": "100644",
+      "after_blob": "fbec458e46fd58817651f87b93f9352a337f611a",
+      "after_sha256": "462e4e25f698d40864b7946ad0e2c1135e756831702603597825bda61a9f5547",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "hoyolab_export/import_store.py",
+      "mode": "100644",
+      "after_blob": "347659bcadf6c2eb11dc04c3a15a8571890ea474",
+      "after_sha256": "8ab071386fa13e941d1d8804a913d75264fd44e1a2baea11a299509ebab7df26",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "hoyolab_export/traveler.py",
+      "mode": "100644",
+      "after_blob": "fc121666368b03cb29527522cc9be65e2704e7b1",
+      "after_sha256": "e22d05f497e0eca28ee0d0b377df70c14ba36a81aaffe978a2060e4ca540c577",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "hoyolab_export/traveler_variants.py",
+      "mode": "100644",
+      "after_blob": "6270a522df0d56dfd433ce506c8217006921c6f3",
+      "after_sha256": "46f667ba869aedd9cd1afe9278520af26cadbaa612dea3f4cb04e2029d3b7ac2",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "localization/locales/en.json",
+      "mode": "100644",
+      "after_blob": "fce97649a7f757ffd282b0fe7f070e2f77c5c39d",
+      "after_sha256": "4aeec0a20b9eb523107467153e8b477eb5bd39d2f4c402269841acf9c4fe6bb8",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "2a95ad5094f3db398645d5cdf066434b202006a8",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "localization/locales/pt-br.json",
+      "mode": "100644",
+      "after_blob": "9ee57bd843e175c512ec8bc3c0b9471c29d890be",
+      "after_sha256": "5e4dd76dd98aaf5a525b70352841d0f0d337eef47bdb0a3884788d905ca11a11",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "2a95ad5094f3db398645d5cdf066434b202006a8",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "localization/locales/ru.json",
+      "mode": "100644",
+      "after_blob": "fba812b791df122c2ea9f3632ccf8b8dcd2dd193",
+      "after_sha256": "3b71bec70a6548861d2d047d5d68264ec90f908a96e5fa80dc0275d1b4ce626b",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "2a95ad5094f3db398645d5cdf066434b202006a8",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "run_workspace/history_browser_catalog.py",
+      "mode": "100644",
+      "after_blob": "84a8471e6a43063138fe6c5b494f7a1c3342864d",
+      "after_sha256": "5693f5cb496f11960c03d3fb5635df091123003627c5c9da4136b19394abbb2c",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "run_workspace/history_snapshot.py",
+      "mode": "100644",
+      "after_blob": "aa0f5c60fe85f944fb2287227541f07dd0239491",
+      "after_sha256": "413bfcffc7bb14bff936e5a536ad440bbeafd8db45bcfec0ff8da522e7d02023",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "run_workspace/history_snapshot_builder.py",
+      "mode": "100644",
+      "after_blob": "37eb1e79209a7b5e490935eec4b68315cb62f5d2",
+      "after_sha256": "3f270fc5beb29d62f8b188f0d07ab38423ab616c43a7fce460ef156133b3b69c",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "run_workspace/history_snapshot_right_panel.py",
+      "mode": "100644",
+      "after_blob": "8d72f13cf32b0d9519fb92740c908e2eec7b2a56",
+      "after_sha256": "e39181b62e9fb398806c1f3236b7ca050e212613aa6e7cbe5ba2ebb7b16b44a2",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/__init__.py",
+      "mode": "100644",
+      "after_blob": "1910a47907324a927d537b2a8d181dbf7918901b",
+      "after_sha256": "c5effac77e72cee0da6cfbb7dd086ef593764920158df0503ba52908024ae4f6",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/abyss_client.py",
+      "mode": "100644",
+      "after_blob": "ad6c0eab73b633f15a73a7293517429184125e2b",
+      "after_sha256": "03150ffcd1bd928762920fe04fbbf1887549f726e40a965df373eeaba3933542",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/abyss_match_rules.py",
+      "mode": "100644",
+      "after_blob": "16247c7ac8a1c79d3fdcae376be27cb175700cfc",
+      "after_sha256": "74af4e0e8a1512995d02d50a32b60d1b1e6b89c8fac6ee5ce8e3af5ab0f2b8cc",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "2a95ad5094f3db398645d5cdf066434b202006a8",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/abyss_rules.py",
+      "mode": "100644",
+      "after_blob": "a4223b095356043f05eeaf0ccbb10a53e9fcc247",
+      "after_sha256": "c05d84ee9d2b5a3120f095305f63a6da021ba7ebb0fd6884fecab33abd668762",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/account_deck_export.py",
+      "mode": "100644",
+      "after_blob": "d7e0a5d39235fe97c788536be28746f33d256f68",
+      "after_sha256": "03d282cce5e43071f19cbb62bdaafa2f46505055097bc93b895123f37c82afaf",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/deck_preset.py",
+      "mode": "100644",
+      "after_blob": "cbbe38ff87f58ace794ce5df6cb35326d6226c2a",
+      "after_sha256": "f6cf4c786642451e44cb0ddaca9d73d7479bfe20808f6e887119cf86b73188c4",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/draft_clock.py",
+      "mode": "100644",
+      "after_blob": "5955756595fc17150334d1cce41a81fff6bc066e",
+      "after_sha256": "1a5ac689b1908994717cbcb9cee12b0d452b605843218f2d89f021afcac49739",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/draft_completion.py",
+      "mode": "100644",
+      "after_blob": "8833638fe85b602df15c56ea75ec2f33f7dafb24",
+      "after_sha256": "5657054815036692052235626f6f880e17e2600427288065acf2068097110d27",
+      "contributors": [
+        "2a95ad5094f3db398645d5cdf066434b202006a8"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/draft_options.py",
+      "mode": "100644",
+      "after_blob": "5ee1da83e208d13604636bcc60c150b59b99befd",
+      "after_sha256": "c9135090915094dcfb332518ae10bc49569e3481650e04eaf07874d1db6762e1",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/draft_system.py",
+      "mode": "100644",
+      "after_blob": "f5bb3d3bd060ad7683ab2782d06df3ef58636ec7",
+      "after_sha256": "6daefb34eb50b3d100a278566eb142782bf1c55602bae3f89cf22e8faebb3ba4",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/free_draft_board.py",
+      "mode": "100644",
+      "after_blob": "68c0e5c79d6d1f60272ffecbebe1fda642ed7659",
+      "after_sha256": "24eb0bfc2682c7d0a11b34a1a9922b183286505ddd11986b541be14ebdf9bcaa",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/free_draft_controller.py",
+      "mode": "100644",
+      "after_blob": "bec54a77150ce649e92edf5627be03f7878bf5ba",
+      "after_sha256": "f5c6d4db55e500e30c2aba31269532fea7b7abe8e21ef8b6084895fd4d3578d8",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "2a95ad5094f3db398645d5cdf066434b202006a8",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/french_cost.py",
+      "mode": "100644",
+      "after_blob": "cf789f0e455345ab18cb2c60bcfd2bb088dffcac",
+      "after_sha256": "b7d2cfe091ab426425a4917f2a6dca60dd2a14421ce7ab346eab6eafc14b92a7",
+      "contributors": [
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/match_result.py",
+      "mode": "100644",
+      "after_blob": "1af7b5344c3badce3ef8466691a11b08174b9ea9",
+      "after_sha256": "eb7aa70af677d21766804f1271b9903ab78758c95a2d404dc36b02a47be31646",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/profile_package.py",
+      "mode": "100644",
+      "after_blob": "f45c53a79a9c593176349749d57962af0be0f6a7",
+      "after_sha256": "10218cf1903f30a1014e8341f658f8bb0264935b12a1ef6a4fcb94130ac21e46",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/profile_schema.py",
+      "mode": "100644",
+      "after_blob": "d26aee3c3883b6791bc25a1071dbf6b57b2fa7d6",
+      "after_sha256": "50a38a5558b94fed66e5aeab5428ee4184634825bbccf88b751bb5a10a04392c",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/schedule.py",
+      "mode": "100644",
+      "after_blob": "9ce3b37de35b8170775d3ae0d615a80fd62ad520",
+      "after_sha256": "e9e0712527bfdfea0e2a894ab4d5a55df39110d854ff054f3f2bf79a7ec4da43",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/session.py",
+      "mode": "100644",
+      "after_blob": "4d5196fd50cdb11f0ac447840872b3f3bb7aff96",
+      "after_sha256": "b165321b9aa9f359df6fd06f5cc50ef71417c4855dac266da06db8e14092fe17",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/session_bundle.py",
+      "mode": "100644",
+      "after_blob": "6d6ec606b9978a663f30cfbb0252474c63dfcaaa",
+      "after_sha256": "222f8d90b3aa812d0b53d893e3b042d4575f53d29060841a340481f338d02b40",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/tier_allocation.py",
+      "mode": "100644",
+      "after_blob": "7dc6aaf0e4268fe0809d5f1b3bde61cd456614f9",
+      "after_sha256": "d6a062d2c458339fe5d02a282fb74b24aa8652a4f4a0940350625a4cdc6b6e2b",
+      "contributors": [
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/tournament_series.py",
+      "mode": "100644",
+      "after_blob": "d8e796b76958a6d8a5e02079acf1796e3a333313",
+      "after_sha256": "080eb492b92fc9a2fc008289f39db94f07c1a89967a3da9e20e8c8b9ebdbb115",
+      "contributors": [
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/validation.py",
+      "mode": "100644",
+      "after_blob": "ee252586249789da122d1ab565e7e8d698aea4c0",
+      "after_sha256": "5e8034f0b57b2a6a053da7d810dbdc81e22cb7486b15d240b84cdeb132f5b411",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "run_workspace/pvp/weapon_roster_budget.py",
+      "mode": "100644",
+      "after_blob": "a1ed07ff7c3e9bcb74678d41a6776d1526ae27b1",
+      "after_sha256": "bdc2027848d560fcfe1dee8990b4823ca19fcd34f3343397a65f8320f7447877",
+      "contributors": [
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3"
+      ]
+    },
+    {
+      "path": "run_workspace/right_panel_prototype_view_model.py",
+      "mode": "100644",
+      "after_blob": "3856700fa41412b5caa66ae00c7feac1cdb3d8b7",
+      "after_sha256": "d352487a85699bb3004ba9d4c847f43c2c964855d92af0d9690486f2c48ec619",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "run_workspace/settings_defaults.py",
+      "mode": "100644",
+      "after_blob": "d67042f257960ba543992d3c6fe75025d142a03b",
+      "after_sha256": "cc90cce9da697fb27eac9b280f4e4b93495e866cda52fb547120e9bd6b94c774",
+      "contributors": [
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "samples/pvp/ui_contract/free_draft_board_projection_sample.json",
+      "mode": "100644",
+      "after_blob": "9b425080b0e87070dbacba7b9010fd5db4ce4bd0",
+      "after_sha256": "5b09e0121a491b3df464d8de79f73672a3812dc9cfa9a49a9678b76e27ca943b",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "tests/hoyolab_export/account/test_asset_layers.py",
+      "mode": "100644",
+      "after_blob": "9448a5b799ed6c396907689705b6f7217bf7dc4b",
+      "after_sha256": "760f7de8a9b7684b99cfe8f9565740bbdfc14373cf83e98629a5c3e61d154f27",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "tests/hoyolab_export/account/test_asset_paths.py",
+      "mode": "100644",
+      "after_blob": "627c26de82da0223b821469c339469ce79768c3c",
+      "after_sha256": "f01f7cc2cb8957287d6b828d5d590639518a0b5b737501c4a51b5acbfb808f86",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "tests/hoyolab_export/account/test_import_pipeline.py",
+      "mode": "100644",
+      "after_blob": "8f026c008b1cf6df3a52c09561b4c676630db769",
+      "after_sha256": "25c8015f3d53e9d1eb301e4384a37fbc5ef072dfbd286a7e0958fa4f86cf8a69",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "tests/hoyolab_export/account/test_traveler_variants.py",
+      "mode": "100644",
+      "after_blob": "872aa843f4e0c8d53093f42247a5c7595157a673",
+      "after_sha256": "13548bd1d5d48c0d96d0c22fe28b52a0d1ebefe7457642bdefad268d5744eca9",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/history/test_history_snapshot_builder.py",
+      "mode": "100644",
+      "after_blob": "5b9a724a9cd59ce3dbbdb01f7184f0502bba8a99",
+      "after_sha256": "8bbf797013fab2d56844842c081ab7fc1e35e6b3d960412320a54690db402e0f",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/history/test_history_snapshot_right_panel.py",
+      "mode": "100644",
+      "after_blob": "6a335a21e26a05a185645ebf114cba1d4b74c6c7",
+      "after_sha256": "f7f189b36df5abfed0d68ba62e1feea5ddf2056dd085239948cd2acc49d785c7",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/history/test_history_transparent_pipeline.py",
+      "mode": "100644",
+      "after_blob": "375e74081449586acb284ef27392abbb356edf5c",
+      "after_sha256": "30d6f82ac97280667a4eb25855c1bae303ac04f14aece051190bb5c91ee9db8d",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_abyss_client.py",
+      "mode": "100644",
+      "after_blob": "fc7de82464e7e5626cee58f25adfe2b40cebb2ba",
+      "after_sha256": "253411415155cabec45f63ff0602bad24b542457cfefeef730da65f0113895a8",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_abyss_deck_persistence.py",
+      "mode": "100644",
+      "after_blob": "1acbcd83b92c59000ec73911e47dc984f95fd9d1",
+      "after_sha256": "1444eda081cdf7f8144e504537952551aa2e893da0932c55bb3b99ae0f008eee",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_abyss_dynamic_preban.py",
+      "mode": "100644",
+      "after_blob": "880f767bac04dfd84255e53ccc7035b036396034",
+      "after_sha256": "72f028445043b6ada0e9288b0b5b651864549b815dfd3695405a88d8f762f72e",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_abyss_match_rules.py",
+      "mode": "100644",
+      "after_blob": "3cd4eaa3e81987502150a26758b16718ae1e6e2b",
+      "after_sha256": "70a1c8b841ca374641d52f332e96658b0af6ba6a24cc5c9e381903895a85e95f",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_abyss_other_flows.py",
+      "mode": "100644",
+      "after_blob": "ff75e35b0ec5bda5a8275a8ae4d7c254e5328229",
+      "after_sha256": "e22e106d6858d9409549bcd90d67272ba5b0bea20670bd627a263b95421a7742",
+      "contributors": [
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_abyss_rules.py",
+      "mode": "100644",
+      "after_blob": "24d2132022c087afb4686a9947e2eb9c7fb13c7c",
+      "after_sha256": "a968b1174d729191da6088c145c66a9d6149b7d34fed26d5b8dea537c8d8a6b1",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_abyss_snapshot_phases.py",
+      "mode": "100644",
+      "after_blob": "66f9924d277692ff5edcebf064e98ba08fe75443",
+      "after_sha256": "8d04ea5c9d45596dabf2f6dc707255a151c0409e3c4679096faa20a17e201404",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_account_deck_export.py",
+      "mode": "100644",
+      "after_blob": "803d62907fd2170e3012e00cc9f7853210d4fa1e",
+      "after_sha256": "36b588d44b1e92e31224771864cf333d3d4a4cb4115e46cdf9579f860719a327",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_deck.py",
+      "mode": "100644",
+      "after_blob": "ae892b63e7e8601f9ca6d1735b6c45ac71adab86",
+      "after_sha256": "ed18ef86b92cc24871f3d985c3f78f43120b6bf6c9cc477f8981f23858ce861b",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_draft_ban_skip.py",
+      "mode": "100644",
+      "after_blob": "5883f9d516c8d76ce4fb6f98d518ef591f1c975f",
+      "after_sha256": "41718cefb674bc94a6771d682897755219558ea6d4e82c00869b08126b3330b5",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_draft_clock.py",
+      "mode": "100644",
+      "after_blob": "63cbddd7204236a7ed2f4377bccaf2fa91128e47",
+      "after_sha256": "7163eaf5ffb9604487e3a4b4ec09cc2c42e7a0f6b43d43f21d248b739bba395a",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_draft_completion.py",
+      "mode": "100644",
+      "after_blob": "bb27c93dd15ea1a86f4838ef93f78c1580b752ba",
+      "after_sha256": "c6d9a82c7ec65fd6ec5c047a33f668dcaea5fa5d51110eccdbb69186c95dd768",
+      "contributors": [
+        "2a95ad5094f3db398645d5cdf066434b202006a8"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_draft_first_seat.py",
+      "mode": "100644",
+      "after_blob": "a1621dc81c58b6e022171a5dfd2db9c8256cbf14",
+      "after_sha256": "73e61ba5e95df8dcd16aca2b7e89b88cb3e216045e31260f0305b46bdcbb802b",
+      "contributors": [
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_draft_options.py",
+      "mode": "100644",
+      "after_blob": "3bd005f25e911650c4380d0e2da0acc9c9c8a0a3",
+      "after_sha256": "6f62d6a6dd26dfe2f53885f68c3b29109e82a95632cdd5b604b84430d8fd7b21",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_free_draft_board.py",
+      "mode": "100644",
+      "after_blob": "538d6ba9e8a48f7e79f4a20f5889416c783b4907",
+      "after_sha256": "92118b41e630c6b7303f4159aa914dc96f4b2ea6c6657ca66973eb51a2ce12ad",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_french_cost.py",
+      "mode": "100644",
+      "after_blob": "a6960af548d4e24d7d593dcdbc13e1af14da8cda",
+      "after_sha256": "689d0853195ef10d7c1aaa8b7fee1b18127186b2d8e2818923d7b0c8470cd3e3",
+      "contributors": [
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_profile_package.py",
+      "mode": "100644",
+      "after_blob": "30f422f9b553231b99855a84bb6013f912375006",
+      "after_sha256": "367fc9737114a285c62f6ec2b65efdeac8b2f0ac10097fd3391c62b4352a9c88",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_profile_package_validation.py",
+      "mode": "100644",
+      "after_blob": "7e5f0f3d04fc6e04e3b761b94f957739ae506a6f",
+      "after_sha256": "60f6cb72622190006359c4b479ea36f0338238faa9e5a869876543bc3d1ba14c",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_profile_schema.py",
+      "mode": "100644",
+      "after_blob": "78227f4d84da23aeee7a89e4dadef9e464d7efde",
+      "after_sha256": "b23260aeac21210db5354cb64a2404c2f80562a8cda908a84ac7f956bedd8e2a",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_session_uniqueness.py",
+      "mode": "100644",
+      "after_blob": "9894b6b54668f5f8ed99a33bd0ae04d0544ae6a0",
+      "after_sha256": "c8301b5757031707e59f3d70b0fce41720edc4194c3aa2af38cc9a282d6b9557",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_tier_allocation.py",
+      "mode": "100644",
+      "after_blob": "09f8843e7749d5a827d8fb86e0e3ac7f1a927c08",
+      "after_sha256": "11741c165bfa2a9b9b09012dfdaf5a0bdf20ea170ecee0fbc3639ef8cc6d51f7",
+      "contributors": [
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_tournament_series.py",
+      "mode": "100644",
+      "after_blob": "cb20352234f807c2760d2f5f16eb3db590e11904",
+      "after_sha256": "0707473d090ac50aa034fbebb207a5ec297e39167ff417fee48ed1444f9c2fa8",
+      "contributors": [
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/pvp/test_weapon_roster_budget.py",
+      "mode": "100644",
+      "after_blob": "d3fd4c77e68da7c7ae396e51a690fe019594a3a9",
+      "after_sha256": "8ebef897e03b33079e84534bc55abcee1bbd7b083f9884fb4435eefa4a8d2aa1",
+      "contributors": [
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/right_panel/test_right_panel_prototype_view_model.py",
+      "mode": "100644",
+      "after_blob": "dcf5a7d0ddab7637fe0c2627d12eecf0d592e1aa",
+      "after_sha256": "c5437938222352e96e2ff4d7b87e997fcd5f5d09bb97f20bcb4891fbc040113d",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/run_workspace/test_settings_defaults.py",
+      "mode": "100644",
+      "after_blob": "42fdba647bd9dcc9c78cc71fb4413bf4d94299d0",
+      "after_sha256": "0501ed9f5e4de123ec36f4408f22a6b154bdce8ef867f556f2ba3ca668dbe044",
+      "contributors": [
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "tests/tools/test_abyss_rules_source.py",
+      "mode": "100644",
+      "after_blob": "68e9b19ba7da05780eca56b96835ce741cb62e01",
+      "after_sha256": "4a747ce61729e71fab0d153c82159717a59a3704702b26e2cf5f95a85fb54a72",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24"
+      ]
+    },
+    {
+      "path": "tests/ui/app_shell/test_app_shell.py",
+      "mode": "100644",
+      "after_blob": "021eb63f932f5484263a3e8f09af93e6039d8027",
+      "after_sha256": "3f0af96fe1a8e1e7e86f2427925220a252e487f47ee11c56f565aca4fb83d2db",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "0c21fb51198212ebe41933ac6b28d0d97c4f7be5",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "tests/ui/character_assets/test_character_assets.py",
+      "mode": "100644",
+      "after_blob": "62ebd02e64a75db3c8045b72683344941f01401f",
+      "after_sha256": "cbed1c7c6eb8a4bdccd1a56f452a5bac804191a654d9543b87eaaf64f3c64ca5",
+      "contributors": [
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/ui/character_browser/__init__.py",
+      "mode": "100644",
+      "after_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "tests/ui/character_browser/test_sort_surfaces.py",
+      "mode": "100644",
+      "after_blob": "be26b97d0c98527421be6e6fd7287a1f20e0aac8",
+      "after_sha256": "c0532535f06e3f2b3f4b7e22676486fc7c0f235fd04bbc8f2ec8ba4cfa942b80",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "tests/ui/character_browser/test_sorting.py",
+      "mode": "100644",
+      "after_blob": "8819422086d92ecae897d868c0d3253cdc0203d9",
+      "after_sha256": "1a4aecab26d5685dde8b6da344c38eb086a14c6fc3aaa09c50b07f587b6ffa53",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "tests/ui/character_browser/test_traveler_selector.py",
+      "mode": "100644",
+      "after_blob": "f1fda6361ff46f9872d112fb3be02db4e66c5417",
+      "after_sha256": "a715e8b9fe5f98b730192d3425b6129cf8ce58cebc16e74d1e15eb4de9562a73",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "tests/ui/character_browser/test_weapon_grid_style.py",
+      "mode": "100644",
+      "after_blob": "f01a4a45f64ce31f6b0450e0e37cb9020bbfcba3",
+      "after_sha256": "f4f6612c3a30895b75539937a796f8a375ca89088fa1ff414786a4c4c68d918a",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "0c21fb51198212ebe41933ac6b28d0d97c4f7be5",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "tests/ui/character_browser/test_weapon_owner_geometry.py",
+      "mode": "100644",
+      "after_blob": "06304151cc8c395d3abf6e065bfa56bf9b305767",
+      "after_sha256": "e9fea6e8947eafe01ad710cd3f5862378f5561cf87b0ae38d68c3ed5b4bbc092",
+      "contributors": [
+        "0c21fb51198212ebe41933ac6b28d0d97c4f7be5"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_abyss_match_integration.py",
+      "mode": "100644",
+      "after_blob": "9717303bd31ab4278548a1d17a7526236b2d26a0",
+      "after_sha256": "0a06340f3390f41f373be621ad32c9e4ffb2399bf8c1f7254ea44c2e762cc77c",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_build_performance.py",
+      "mode": "100644",
+      "after_blob": "e838e1b9f51438366eb35dff58ad8e14bf1864c1",
+      "after_sha256": "d59830c65dff5ec39cd256b32e07cd9abe57298442aa251b399a35547a048330",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_decks_geometry.py",
+      "mode": "100644",
+      "after_blob": "cdda0d9a40fcdb587dfce18cb9752199b1a48c45",
+      "after_sha256": "b62197ee459609eaed5c15cfc93ab51744aa6bb0f98dc064aa0b89f85eb3a22f",
+      "contributors": [
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_draft_mirror_labels.py",
+      "mode": "100644",
+      "after_blob": "65e0077c2f76f6fc7678388f0bf5b4faf76c5809",
+      "after_sha256": "a8f8141c2c2fab0053741b1ba107315a15672982c74b12534b81d135a013a959",
+      "contributors": [
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_draft_order_immunity.py",
+      "mode": "100644",
+      "after_blob": "c7ac1ba7da78d2b282e8e5f8359fc500562115d3",
+      "after_sha256": "f2091767bf9cedd87d90ff2283d6255ca2870b15a4d90f94bc24332e6297a007",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_draft_performance.py",
+      "mode": "100644",
+      "after_blob": "af11ed4e745e3ea4c32cebf9657fd6bc0bd8aa9e",
+      "after_sha256": "87b29edf44fc2d0bb8e68d783da84ac8097a6b9191c060e2b0c74c9e639f7453",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_import_order.py",
+      "mode": "100644",
+      "after_blob": "3b493790a951fdda9c318c41623d88989587faa0",
+      "after_sha256": "34af8e815c57398a415c512e4a23fc7480c18938b30591eb496bb9dca9ad0560",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_other_flow_integration.py",
+      "mode": "100644",
+      "after_blob": "ead3e824e11af4165549892fbe1b66505d6d7607",
+      "after_sha256": "cbd53112ddc5827fe2069ec062b1f2699b923b4e964c5dec983a4642179e7b48",
+      "contributors": [
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "2a95ad5094f3db398645d5cdf066434b202006a8"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_preban_clock_flow.py",
+      "mode": "100644",
+      "after_blob": "28da44c8d0aebd6216853c13d29019285b7754c2",
+      "after_sha256": "b0f8d900cc3ff2435bfb9615eae74a5d114f99d7fa8e556b52d365c0375818b3",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_pvp_browser.py",
+      "mode": "100644",
+      "after_blob": "25421d6d0f669928417e3265532ba3bf75d2e3f1",
+      "after_sha256": "956d862b333b4d0827fa8618d54441e58f70a992f39e9da70efb961509413dea",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_pvp_deck_rules.py",
+      "mode": "100644",
+      "after_blob": "d28d9c4d3542685cc86babdb65c6de371e70facc",
+      "after_sha256": "4b8295d069e0029e54a2aa0dd22ca5eb2ae49c6737d2aa9b2594437a3f9ac063",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "732da0b6b7f5af4d58f094eb768f994d689f95eb",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_pvp_performance.py",
+      "mode": "100644",
+      "after_blob": "2bdb693954097bcbb04935a94936a965ab584358",
+      "after_sha256": "14d2b85577286b6beb27af014571417374594fe74dc934aa9544a99c9c7cc2db",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_pvp_profile_integration.py",
+      "mode": "100644",
+      "after_blob": "d64442254f8eba8133e13bbdcdcfbb8110b0efbe",
+      "after_sha256": "9004fffc65e29d4a284f79b034fb6b1fb42b5cfa9ba71dd32c557d0fc622cad5",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_result_export.py",
+      "mode": "100644",
+      "after_blob": "b6899d50b9a94c83a59e9d83df76d734ab04280c",
+      "after_sha256": "2e9fc2ba25783b5ffedd00499a4820230ecf9d66accd609123aecb9740111783",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_result_export_flow.py",
+      "mode": "100644",
+      "after_blob": "67f05f6d91718c8c59d8dd0c5a653da7afe81315",
+      "after_sha256": "4e3e62d7b38c75ee9cb4803cf3e40085a0ffd2cad61a57afa239361c22935c4a",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_series_export.py",
+      "mode": "100644",
+      "after_blob": "9213396a0c944f63efd1edbe5e3646ccdd7667e0",
+      "after_sha256": "946b43fda8967c416cbe62f80e69f1011675e61c5eed61bf9e08f36e86ebc605",
+      "contributors": [
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "tests/ui/pvp_browser/test_tournament_series_flow.py",
+      "mode": "100644",
+      "after_blob": "cadd37dbaf06d3d9f7a80cb39882b2aa2decffc4",
+      "after_sha256": "d934195c798e3975d1da844aed27a2a725e7f4fb8d0bad200b9a7baa8ec3805e",
+      "contributors": [
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "tests/ui/right_panel/history/test_history_cards.py",
+      "mode": "100644",
+      "after_blob": "033bbae079b68eecea615e918e160cd2ff682cc5",
+      "after_sha256": "8465733dc5a7e860cfa622e89b5a715fd25d8a59734c405740ea82901b6fadb4",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/ui/right_panel/pvp/test_decks_rules_ui.py",
+      "mode": "100644",
+      "after_blob": "d7e5de115af7fa8cfc7e597e216d66c7394ba54f",
+      "after_sha256": "f9b39ff00a401ec99a66c79c7a08769996dba8cd7ab32f1afe58f3fcb4b29618",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "732da0b6b7f5af4d58f094eb768f994d689f95eb",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3"
+      ]
+    },
+    {
+      "path": "tests/ui/right_panel/test_character_portrait_layers.py",
+      "mode": "100644",
+      "after_blob": "00bbe55d80163b09a6e4c3e1455fb04e46ecfb29",
+      "after_sha256": "6444ef39fbd0e289c5d3b39122cbf6a5872f03fe3bfe9a3a6603cf32f44dc41f",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/ui/right_panel/test_pvp_postdraft_panel.py",
+      "mode": "100644",
+      "after_blob": "9177cdae487769635d461623ad46582a3a713a7f",
+      "after_sha256": "10f528c8162d9d1173f86726dda87d2fdb37c77edb6e9b302e106c5f13cc9dee",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "tests/ui/tooltips/test_character_sort_hints.py",
+      "mode": "100644",
+      "after_blob": "41bcce2603b72baac4fe4569a3cab2cbd08e5ba0",
+      "after_sha256": "17915d1514467e32f5c6feac0c3e6d95425fd54f0292d209b28c790f8285352e",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "tests/ui/tooltips/test_inventory.py",
+      "mode": "100644",
+      "after_blob": "75b17d34487df4374a65d367172259a3646b50b2",
+      "after_sha256": "bec678f9ab3efe81add07e56829556f1c01d584d5f3792d5555f3e0e3abf183b",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "tests/ui/tooltips/test_presentation_contracts.py",
+      "mode": "100644",
+      "after_blob": "176cccf9a1b2d7cfa62ed85c6237e297e6ded7ab",
+      "after_sha256": "d2cbd5930ec5ae60608b04bae53a221d26f7769c73e30f6a20137b4beed30457",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "tests/ui/utils/test_pixel_icon_grid.py",
+      "mode": "100644",
+      "after_blob": "8a93efdd49b44554d5e2dd0d377e55dd35ffd0ab",
+      "after_sha256": "5b4624090874dd578560eb219db621065f3622d44e9623aac51727c0b2e7f1af",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba"
+      ]
+    },
+    {
+      "path": "tests/ui/utils/test_pvp_colors.py",
+      "mode": "100644",
+      "after_blob": "bae738acf2af4c026c759f7dd37db1ab2fcd720a",
+      "after_sha256": "d88a1a3840bb609daac727f9c07dbb0aaee76115975458c2999f2dc09b9e0440",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "tools/experiments/pvp_site_audit/abyss_rules_source.py",
+      "mode": "100644",
+      "after_blob": "542d6b4188c587aa1df7c5d5fdbce40caed825f0",
+      "after_sha256": "16c0e8f92c23d464c23a434fd26770319079eab346488a5f1a4b320bb70d0d2b",
+      "contributors": [
+        "f304d39aee5c554c65702572264e36b34605eb24"
+      ]
+    },
+    {
+      "path": "ui/app_shell.py",
+      "mode": "100644",
+      "after_blob": "90c851e0cee440cb520563a0c5acb6dd39eb63bd",
+      "after_sha256": "98bd3fc5e37eeb601d91bfde2146cdbc6d53affbba04a34718a88715e81e1586",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "0c21fb51198212ebe41933ac6b28d0d97c4f7be5",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/artifact_browser/window.py",
+      "mode": "100644",
+      "after_blob": "bf08a91d670b5ac396cb0185d368eea886a7dabd",
+      "after_sha256": "9c8a44d8cfdc48a3e21f368cb3d9712f1b9750734ff263893fa2fbfe7c94aab5",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/character_assets.py",
+      "mode": "100644",
+      "after_blob": "7d2b97dce00635c8e99d2d31d3f6f33f853ab4e2",
+      "after_sha256": "3779167ba7007a8ef2674cbd2069b6322f791eb821c9c5072ce3693a6f580dba",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/character_browser/filter_bar.py",
+      "mode": "100644",
+      "after_blob": "fb31ca624f0d1e12312ff86d7f3672accd76e2dc",
+      "after_sha256": "c18286a434c8fc7710c0533502e2f55213f80dc9e0c325a4cb7d7030bcbcd2f4",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/character_browser/icon_grid_adapter.py",
+      "mode": "100644",
+      "after_blob": "9f82a431286c64ebba12562a39bdb0909ebf352e",
+      "after_sha256": "465d00066f9c5746a9371ebe706e7fdc8d65eb995dad3dbbe70d42c198295560",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba"
+      ]
+    },
+    {
+      "path": "ui/character_browser/sort_controls.py",
+      "mode": "100644",
+      "after_blob": "2badf8c532fe538ac3479198dfed3041d3fba85e",
+      "after_sha256": "4a3f1f099bfe86dd49ec62f5ccce6e0a05f1867627f6fbf7acff3b795eaf5e2b",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/character_browser/sorting.py",
+      "mode": "100644",
+      "after_blob": "481c04af6ef0699042c4c3f7dd897fdc1e2243ba",
+      "after_sha256": "1e8f218ced92b3bd233b88f6daa8b6305334da157bb5016cbb2cb4ad1401e07e",
+      "contributors": [
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/character_browser/traveler_selector.py",
+      "mode": "100644",
+      "after_blob": "55b8aab1985e37124d98eae2512717064334bce6",
+      "after_sha256": "f56df906d5ced30d8050b635c8ac9a280284c23d0464ff309860fff8e9e40e3c",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "ui/main_window.py",
+      "mode": "100644",
+      "after_blob": "d6e73f494c972f91226a9a3e31e2e9be609639c4",
+      "after_sha256": "435f24caf8ba1c79786153890d361f0604b462dd0fa2ca457e723dff529b91d8",
+      "contributors": [
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/build_flow.py",
+      "mode": "100644",
+      "after_blob": "2e7e72e1a68ba10de1fa49b5a3dcde91140ecc7b",
+      "after_sha256": "b6ad21723f77e40d63b71e9749863435eccafb0c0af9a4fdc044e02c171b6eb3",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/deck_rules.py",
+      "mode": "100644",
+      "after_blob": "a0d0daa669a31385c87d93b3cabd04b440758f3c",
+      "after_sha256": "85a38a670a62f4d868ee8a47755d08d9aaf70c1253fe95bdaa0255fd05b07081",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "732da0b6b7f5af4d58f094eb768f994d689f95eb",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "4bbca90d9ec1db8201928a60ca0c3943ef3cddce",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "34de29b9ea2ffb6115020a69e713a7a9630a5893"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/draft_clock_widget.py",
+      "mode": "100644",
+      "after_blob": "80630700265363dca892d05d75d883a107a29e2c",
+      "after_sha256": "244c0bd4c3ac4bb546473f76078689ce292f4745a71720f35b0b5c1f7cbdc857",
+      "contributors": [
+        "2843ee94e8aa31d745db43bee69a2c741264417a"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/draft_order.py",
+      "mode": "100644",
+      "after_blob": "9a44ebd391cb1eb40db0da453fcadc97df1bfcd9",
+      "after_sha256": "0879acf8b691727c12e9292e85a1b8d25a57a1fb7dfe9b4d2dfc083996683c9b",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/result_export.py",
+      "mode": "100644",
+      "after_blob": "56c75522ebdd520a52daffa0726b2f277e3beb54",
+      "after_sha256": "95121be713ea217d954d85e614d88ac2658345c3442a80d84944c3818addef9a",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/result_export_dialog.py",
+      "mode": "100644",
+      "after_blob": "5005c72344dce1a371064fde9e894b1c887d9535",
+      "after_sha256": "d63b2062c450930b8832d1e1ea657423c2caf4f247083172961b59749424b8c8",
+      "contributors": [
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/timers.py",
+      "mode": "100644",
+      "after_blob": "5dfe326eb24c1beaeceab55275a521d00a58f14a",
+      "after_sha256": "5937d0bd50e696db9d483fb03694cdf39f4402ad2e01c4a9861a9892f33b5be1",
+      "contributors": [
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "e58c508d3257f9c2731009cab69b633b12532c0f"
+      ]
+    },
+    {
+      "path": "ui/pvp_browser/window.py",
+      "mode": "100644",
+      "after_blob": "db725f25b57f87b56daa529292ff7c3ad8fec32c",
+      "after_sha256": "b320f031cdb686dda0049e6d1e19835c60b1902a8e3d7a40c4af79a8a61914cc",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "c0a8850296f2a7e6d21383225ab0ad47e1baa2c3",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "2a95ad5094f3db398645d5cdf066434b202006a8",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/right_panel/common/history_card.py",
+      "mode": "100644",
+      "after_blob": "08258049cc2d5da7667478770f340f2ad126a7ae",
+      "after_sha256": "5d34119a601f2cb864825899a23de56d946c190d1e4c989a6b7dc55928e82543",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "ui/right_panel/common/slot_card.py",
+      "mode": "100644",
+      "after_blob": "d032202af7caa2d863f6b1e6293d3600ce09de75",
+      "after_sha256": "e074b040f956ad7fc8eaef98d528d9c0728a5051818f56d01ba45764de3de2fd",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "ui/right_panel/common/slot_parts.py",
+      "mode": "100644",
+      "after_blob": "ffc2b4c3809fc4661403f681e25051706c0a7c0e",
+      "after_sha256": "66b4e129693db467b0a8f6ea212a435bd1a7c8b54d1d7326305236b4b3b31ea8",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "ui/right_panel/pvp/_shared.py",
+      "mode": "100644",
+      "after_blob": "421a06a0f51163537bc240e261584ed2f7aa6a09",
+      "after_sha256": "df79531a6fb34468d9e3aeb91448f337570ede73532144b87e241b03ebb053fd",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "732da0b6b7f5af4d58f094eb768f994d689f95eb",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2"
+      ]
+    },
+    {
+      "path": "ui/right_panel/pvp/decks/panel.py",
+      "mode": "100644",
+      "after_blob": "7974daf862ce82deae5ac5def50656baf2ed8fd3",
+      "after_sha256": "1b93caecad8e40c3c400c33b1b5490a7f5c3426fe624c1a5fefca8de5d4b3ff8",
+      "contributors": [
+        "f4f3495feac74cf36a9b385348ccfa3dbc4d91e5",
+        "732da0b6b7f5af4d58f094eb768f994d689f95eb",
+        "e80f1bd37d2744b59b7e7818c6aa19da66d365a9",
+        "2fde4bff11a1702c5a0482ea52ae27d0e518031f",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "00f7d85b2fc617a256c1b4e7b62c9495354ff8b1",
+        "31e77fd2a341469778ed13040d07bec6117444a4"
+      ]
+    },
+    {
+      "path": "ui/right_panel/pvp/draft/panel.py",
+      "mode": "100644",
+      "after_blob": "f31349d7419c635abd1cb62e150f46671a6b6e08",
+      "after_sha256": "817bc3afd700933cea57d39df3e07742e4812176f2920287a2a114f31ac1356f",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/right_panel/pvp/play/panel.py",
+      "mode": "100644",
+      "after_blob": "e5ea938dfe58335df43213f0c3592635114ab5d2",
+      "after_sha256": "866a584f7107649e0abf191531cfc7bb4d4f68cb061fccc65f6498c9ff0cf503",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "31e77fd2a341469778ed13040d07bec6117444a4",
+        "e58c508d3257f9c2731009cab69b633b12532c0f",
+        "2843ee94e8aa31d745db43bee69a2c741264417a",
+        "661774e8052e6b263da252f8dd1657ee33ca63f2",
+        "468c5c0d8dcea1d3a9a84cc6a849e635e2533dfb",
+        "87a7adc6165eaaba4476768e1db4ff510ad3fabb"
+      ]
+    },
+    {
+      "path": "ui/utils/character_card_layers.py",
+      "mode": "100644",
+      "after_blob": "ffdfe47f43473d9e168a0da679f7ced417161773",
+      "after_sha256": "9c9986b0a1b8dabc220cc667b3831585423d3d2b80f4244178188a31397a0ebe",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "ui/utils/character_card_pixmap.py",
+      "mode": "100644",
+      "after_blob": "8a96a749e385aba8f1f33f62a357d89009ad3fe4",
+      "after_sha256": "d8e50c2d0ab439ce90ebff3bc49a1d3307910a278eb004c894653f657c6103ac",
+      "contributors": [
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad"
+      ]
+    },
+    {
+      "path": "ui/utils/pixel_icon_grid.py",
+      "mode": "100644",
+      "after_blob": "5f2c4e7a566178a495bcc37a9c51a790de14c4c7",
+      "after_sha256": "0d4cf5ae868936f248c9c1f1a1a9cce734986541258327e65e65f8eb33ed18fd",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a",
+        "b98fee2ffe3cd445e5bf51bfb28b23084f8f3275"
+      ]
+    },
+    {
+      "path": "ui/utils/pvp_colors.py",
+      "mode": "100644",
+      "after_blob": "5ba401b6096c7bfdfb7b5068b540e7a34a42a3f9",
+      "after_sha256": "875341c41e9ce9ab237e5e889c1e59ed33301925386d9ce0de182f3e4d98e817",
+      "contributors": [
+        "89aa0e16edff8e00b2209db39d63373fcf504b2a"
+      ]
+    },
+    {
+      "path": "ui/utils/selection_outline.py",
+      "mode": "100644",
+      "after_blob": "4b106c555ec2669e3650d8f73fbea3aa0e15138e",
+      "after_sha256": "142854969c2e10b7d10960366dc934f0d537cd57097334ec5d421fc0dcc3f255",
+      "contributors": [
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    },
+    {
+      "path": "ui/utils/ui_palette.py",
+      "mode": "100644",
+      "after_blob": "527986df2c7119f30d6c76412938888e1e090456",
+      "after_sha256": "868fd82010bdbef5af2ecc8a2d4377da2e12ae6afe25b27646561f24d1c66f5d",
+      "contributors": [
+        "4ff031d677fb830034a3c9c23e9227cd3956baba",
+        "e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad",
+        "0c21fb51198212ebe41933ac6b28d0d97c4f7be5",
+        "4d87a8b91b32dcfe1373dfc6d6d42bd999929bc2"
+      ]
+    }
+  ],
+  "receipt_paths": [
+    "docs/handoff/integration_receipts/2026-10-11_worker4_joint_source.md",
+    "docs/handoff/integration_receipts/2026-10-11_worker4_joint_peer.md",
+    "docs/handoff/integration_receipts/2026-10-11_worker4_joint_manifest.json"
+  ]
+}

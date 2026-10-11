@@ -9,6 +9,9 @@ Account-relative paths below resolve under the selected `ACCOUNT_ROOT`.
 [Saved accounts and defaults](ACCOUNT_PROFILES.md) owns profile isolation,
 legacy migration, explicit deletion and complete preference reset. Public
 reference caches and engine installations remain checkout-wide.
+Shared card artwork is versioned application source, not account cache: the
+[card asset contract](CHARACTER_CARD_ASSETS.md) owns its fixed resource paths,
+shipping gate and separation from account cleanup.
 
 ## Generated output lifecycle (mandatory)
 

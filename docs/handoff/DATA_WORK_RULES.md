@@ -34,9 +34,13 @@ owners in `README.md` and `DATA_RUNTIME_BOUNDARIES.md`.
 - Account/API content language differs from UI language. EN service details
   are mapping inputs. Catalog detail refresh is explicit; ordinary import must
   not fetch every character/weapon detail page.
+- Shared character/weapon card artwork is shipped application source under the
+  [card asset contract](CHARACTER_CARD_ASSETS.md). Imports download unique icons;
+  elements/backgrounds have no per-account network fallback or cleanup owner.
 - Selected-build display stats use base/reference data and equipment, not
   HoYoLAB final rows. Only explicitly modeled static effects apply; passive
-  text is reference. Traveler element modeling is deferred.
+  text is reference. [Traveler variants](TRAVELER_VARIANTS.md) have explicit
+  account elements; their calculation/runtime acceptance remains deferred.
 - History freezes each occupied slot's display data/assets and reuses an
   isolated read-only Run panel. Factual DPS is HP/time from authoritative Abyss
   cache; missing period/cache/HP means unavailable. PvP has independent source

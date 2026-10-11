@@ -85,6 +85,9 @@ class PvpDraftRightPanel(QWidget):
         workspace: PvpWorkspace,
         parent: QWidget | None = None,
     ) -> None:
+        # The browser package exports the window, which also imports this panel.
+        from ui.pvp_browser.draft_clock_widget import DraftClockWidget
+
         super().__init__(parent)
         self.workspace = workspace
         self.setObjectName("RightPanelPrototypeContent")
@@ -102,6 +105,17 @@ class PvpDraftRightPanel(QWidget):
         self.empty_label.setObjectName("small_muted")
         self.empty_label.setWordWrap(True)
         root.addWidget(self.empty_label)
+        self.series_label = QLabel()
+        self.series_label.setObjectName("pvp_deck_info_line")
+        self.series_label.setWordWrap(True)
+        self.series_label.setMinimumHeight(50)
+        root.addWidget(self.series_label)
+        self.next_game_button = QPushButton()
+        self.next_game_button.setObjectName("pvp_primary_button")
+        self.next_game_button.clicked.connect(self.workspace.start_next_series_game)
+        root.addWidget(self.next_game_button)
+        self.clock_widget = DraftClockWidget(workspace)
+        root.addWidget(self.clock_widget)
 
         self.action_frame = QFrame()
         self.action_frame.setObjectName("pvp_draft_action_card")
@@ -136,6 +150,7 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_run_panels_by_seat: dict[str, PvpPostDraftRunPanel] = {}
         self.postdraft_toggle_buttons_by_seat: dict[str, QPushButton] = {}
         self.postdraft_ready_buttons_by_seat: dict[str, QPushButton] = {}
+        self.postdraft_budget_labels_by_seat: dict[str, QLabel] = {}
         self.postdraft_artifact_buttons_by_seat: dict[str, QPushButton] = {}
         self.postdraft_gcsim_buttons_by_seat: dict[str, QPushButton] = {}
         self._last_match_stage = ""
@@ -221,8 +236,25 @@ class PvpDraftRightPanel(QWidget):
         self.refresh()
 
     def refresh(self) -> None:
+        self.clock_widget.set_clock(self.workspace.draft_clock_snapshot())
         session = self.workspace.active_draft_session
         has_session = session is not None
+        series = self.workspace.series_view_state()
+        self.series_label.setVisible(series is not None)
+        self.next_game_button.setVisible(bool(series and not series["complete"]
+            and self.workspace.draft_stage == PVP_DRAFT_STAGE_COMPLETED_RESULT))
+        self.next_game_button.setText(tr("app_shell.pvp.series.next_game"))
+        if series:
+            text = tr("app_shell.pvp.series.progress").format(
+                current=series["current_game_index"], total=series["configured_games"],
+                first=tr("app_shell.pvp.draft." + series["current_first_seat"]))
+            if series["games"]:
+                text += "\n" + tr("app_shell.pvp.series.totals").format(**series["totals"])
+            if series["complete"]:
+                text += "\n" + (tr("app_shell.pvp.series.winner").format(
+                    seat=tr("app_shell.pvp.draft." + series["winner_seat"]))
+                    if series["winner_seat"] else tr("app_shell.pvp.export.draw"))
+            self.series_label.setText(text)
         self.title_label.setVisible(not has_session)
         self.empty_label.setVisible(not has_session)
         self.action_frame.setVisible(False)
@@ -275,7 +307,7 @@ class PvpDraftRightPanel(QWidget):
             return
 
         self._reset_postdraft_pane_geometry()
-        board = session.board_dict()
+        board = self.workspace.draft_board_dict()
         if not post_draft_stage:
             self.action_label.setText("")
             self.action_detail_label.setText("")
@@ -465,6 +497,7 @@ class PvpDraftRightPanel(QWidget):
             left_layout.activate()
 
     def retranslate_ui(self) -> None:
+        self.clock_widget.retranslate_ui()
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
         self.empty_label.setText(tr("app_shell.pvp.draft.no_active_body"))
         self._refresh_log_toggle_text()
@@ -513,6 +546,7 @@ class PvpDraftRightPanel(QWidget):
             else {}
         )
         items: list[Any] = []
+        layer_path_cache: dict[tuple[str, str], str] = {}
         for character_id_value in character_ids:
             character_id = str(character_id_value or "").strip()
             if not character_id:
@@ -527,6 +561,7 @@ class PvpDraftRightPanel(QWidget):
                     ),
                     result_seat=seat,
                     result_zone=zone,
+                    layer_path_cache=layer_path_cache,
                 )
             )
         return items
@@ -552,6 +587,7 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_run_panels_by_seat.clear()
         self.postdraft_toggle_buttons_by_seat.clear()
         self.postdraft_ready_buttons_by_seat.clear()
+        self.postdraft_budget_labels_by_seat.clear()
         self.postdraft_artifact_buttons_by_seat.clear()
         self.postdraft_gcsim_buttons_by_seat.clear()
         self._last_collapsed_by_seat.clear()
@@ -603,6 +639,12 @@ class PvpDraftRightPanel(QWidget):
             )
             self.postdraft_toggle_buttons_by_seat[seat] = toggle
             zone_layout.addWidget(toggle)
+
+            budget_label = QLabel(zone)
+            budget_label.setObjectName("pvp_weapon_budget")
+            budget_label.setWordWrap(True)
+            self.postdraft_budget_labels_by_seat[seat] = budget_label
+            zone_layout.addWidget(budget_label)
 
             panel = PvpPostDraftRunPanel(
                 seat_context.right_panel_model(),
@@ -668,6 +710,22 @@ class PvpDraftRightPanel(QWidget):
             zone.setVisible(True)
         self._update_match_panel(stage)
         self._last_match_stage = stage
+
+    def _refresh_weapon_budgets(self) -> None:
+        budget = self.workspace.abyss_weapon_budget()
+        for seat, label in self.postdraft_budget_labels_by_seat.items():
+            label.setVisible(bool(budget) and not self.workspace.is_build_seat_collapsed(seat))
+            if budget:
+                row = budget["per_seat"][seat]
+                label.setText(tr("app_shell.pvp.post.weapon_budget").format(
+                    total="—" if row["total"] is None else f"{row['total']:g}",
+                    limit=f"{row['current_limit']:g}",
+                ))
+                invalid = bool(row["issue_codes"]) or not row["within_limit"]
+                if label.property("budgetInvalid") != invalid:
+                    label.setProperty("budgetInvalid", invalid)
+                    label.style().unpolish(label)
+                    label.style().polish(label)
 
     def _refresh_postdraft_match_panel(self, stage: str) -> None:
         if set(self.postdraft_run_panels_by_seat) != set(PVP_SEATS):
@@ -744,6 +802,7 @@ class PvpDraftRightPanel(QWidget):
                     not seat_context.ready and seat_context.ready_candidate()
                 )
             self._apply_postdraft_visibility(stage, seats=(seat,))
+        self._refresh_weapon_budgets()
 
     def _apply_postdraft_visibility(
         self,
@@ -791,6 +850,7 @@ class PvpDraftRightPanel(QWidget):
             self._sync_postdraft_zone_size(zone, collapsed)
             self._last_collapsed_by_seat[seat] = collapsed
         self.match_layout.invalidate()
+        self._refresh_weapon_budgets()
         self.match_layout.activate()
         self._sync_postdraft_pane_geometry()
         self._schedule_postdraft_pane_geometry_sync()

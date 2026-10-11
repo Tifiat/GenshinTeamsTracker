@@ -10,10 +10,12 @@ from PySide6.QtWidgets import QApplication
 from ui.utils.hidpi_pixmap import HidpiPixmapResult
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
+    PixelIconGridBackground,
     PixelIconGridBadge,
     PixelIconGridItem,
     PixelIconGridMetrics,
     PixelIconGridOutline,
+    PixelIconGridOverlayIcon,
     build_pixel_icon_grid_layout,
 )
 
@@ -195,6 +197,53 @@ class PixelIconGridLayoutTest(unittest.TestCase):
 
         self.assertTrue(updated)
         self.assertEqual(load.call_count, 2)
+
+    def test_card_layers_render_behind_portrait_and_at_top_left(self) -> None:
+        portrait = QPixmap(72, 72)
+        portrait.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(portrait)
+        painter.fillRect(QRect(28, 28, 16, 16), QColor("#ff0000"))
+        painter.end()
+        element = QPixmap(18, 18)
+        element.fill(QColor("#00ff00"))
+        background = QPixmap(72, 72)
+        background.fill(QColor("#0000ff"))
+        images = {"portrait.png": portrait, "element.png": element, "rarity.png": background}
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=72))
+        self.addCleanup(grid.close)
+        grid.resize(72, 72)
+        with patch("ui.utils.pixel_icon_grid.load_hidpi_pixmap", side_effect=lambda path, *a, **kw:
+                   HidpiPixmapResult(images[str(path)], False, 1.0)):
+            grid.set_items([PixelIconGridItem(
+                item_id="hero", icon_path="portrait.png",
+                background=PixelIconGridBackground("#000000", "#ffffff", "rarity.png"),
+                overlay_icons=(PixelIconGridOverlayIcon("element.png", size_ratio=0.25,
+                                                        position="top_left"),),
+            )])
+            rendered = grid.grab().toImage()
+        scale = rendered.devicePixelRatio()
+        for x, y, color in ((36, 36, "#ff0000"), (8, 8, "#00ff00"), (64, 64, "#0000ff")):
+            self.assertEqual(rendered.pixelColor(round(x * scale), round(y * scale)), QColor(color))
+
+    def test_card_background_fallback_and_changes_do_not_reuse_stale_layer(self) -> None:
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=72))
+        self.addCleanup(grid.close)
+        grid.resize(72, 72)
+        with patch("ui.utils.pixel_icon_grid.load_hidpi_pixmap",
+                   return_value=HidpiPixmapResult(QPixmap(), False, 1.0)) as load:
+            grid.set_items([PixelIconGridItem(
+                item_id="hero", icon_path="",
+                background=PixelIconGridBackground("#804000", "#804000", "missing.png"),
+            )])
+            rendered = grid.grab().toImage()
+            self.assertEqual(rendered.pixelColor(rendered.width() // 2, rendered.height() // 2), QColor("#804000"))
+            before = load.call_count
+            grid.update_item("hero", badges=(PixelIconGridBadge("C6", "#000000"),))
+            self.assertEqual(load.call_count, before)
+            grid.update_item("hero", background=PixelIconGridBackground("#804080", "#804080", "other.png"))
+            self.assertEqual(load.call_count, before + 1)
+            grid.update_item("hero", background=None, badges=())
+            self.assertFalse(grid._prepared_card_backgrounds)
 
     def test_repeated_show_event_skips_unchanged_pixmap_inputs(self) -> None:
         grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=20, gap_x=2))

@@ -45,6 +45,7 @@ from .collect_account_inventory import (
 )
 from .crop_manifest import character_asset_key, icon_key
 from .asset_layers import cleanup_unused_v2_assets, prepare_layered_assets, _image_is_usable, _run_asset_thread
+from .bundled_assets import bundled_asset_path, bundled_shared_assets
 from .display_stat_effects import (
     rebuild_artifact_set_display_stat_effects,
     rebuild_weapon_passive_tooltips,
@@ -564,6 +565,11 @@ def publish_import_projections(attempt_id: str) -> dict[str, Any]:
 def _asset_local_path(value: Any) -> Path | None:
     if not isinstance(value, str) or not value:
         return None
+    bundled = bundled_asset_path(value, project_root=PROJECT_ROOT)
+    if bundled is not None:
+        return bundled
+    if Path(value).parts[:2] in {("assets", "filters"), ("assets", "card_backgrounds")}:
+        return None
     try:
         path = account_asset_path(value).resolve()
         if not path.is_relative_to(ACCOUNT_ROOT.resolve()):
@@ -606,14 +612,12 @@ def _merge_asset_manifests(previous: dict[str, Any], fresh: dict[str, Any]) -> d
         # HoYoLAB observations are not a complete inventory.
         merged.extend(old.values())
         result[group] = merged
-    shared = {}
-    old_shared = previous.get("sharedAssets") or {}
-    for group in set(old_shared) | set(fresh.get("sharedAssets") or {}):
-        values = dict(old_shared.get(group) or {})
-        values.update({k: v for k, v in (fresh.get("sharedAssets", {}).get(group) or {}).items()
-                       if usable(v)})
-        shared[group] = {k: v for k, v in values.items() if usable(v)}
-    result["sharedAssets"] = shared
+    # Shared artwork belongs to the application package, never an account's
+    # previous download cache. Optional unique-image recovery stays above.
+    result["sharedAssets"] = {
+        group: {key: value for key, value in values.items() if usable(value)}
+        for group, values in bundled_shared_assets(project_root=PROJECT_ROOT).items()
+    }
     return result
 
 
@@ -898,16 +902,24 @@ async def refresh_import_side_icons(
 ) -> dict[str, Any]:
     with closing(connect_db(ARTIFACT_DB_PATH)) as conn:
         rows = [dict(row) for row in conn.execute(
-            "SELECT character_id, side_icon_url FROM account_characters WHERE side_icon_url != ''"
+            "SELECT character_id, side_icon_url FROM account_characters "
+            "WHERE side_icon_url != '' ORDER BY character_id DESC"
         )]
+    # Traveler variants share the same source image. Prefer the positive
+    # anchor's existing cache and perform one job per unique source URL.
+    groups: dict[str, list[dict]] = {}
+    for row in rows:
+        groups.setdefault(row["side_icon_url"], []).append(row)
+    jobs = list(groups.values())
     semaphore = asyncio.Semaphore(6)
     completed = 0
-    total = len(rows) + (1 if extra_work is not None else 0)
+    total = len(jobs) + (1 if extra_work is not None else 0)
     if progress_callback:
         progress_callback("download", completed, total)
 
-    async def download(row):
+    async def download(group):
         nonlocal completed
+        row = group[0]
         async with semaphore:
             result = await asyncio.to_thread(
                 cache_account_side_icon,
@@ -918,7 +930,7 @@ async def refresh_import_side_icons(
             completed += 1
             if progress_callback:
                 progress_callback("download", completed, total)
-            return row, result
+            return group, result
 
     async def run_extra_work():
         nonlocal completed
@@ -931,19 +943,19 @@ async def refresh_import_side_icons(
             progress_callback("download", completed, total)
         return result
 
-    tasks = [download(row) for row in rows]
+    tasks = [download(group) for group in jobs]
     if extra_work is not None:
         tasks.append(run_extra_work())
     results = await asyncio.gather(*tasks)
-    side_icon_results = results[:len(rows)]
+    side_icon_results = results[:len(jobs)]
     profile_result = results[-1] if extra_work is not None else None
     with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
-        for row, result in side_icon_results:
+        for group, result in side_icon_results:
             if result.path:
-                conn.execute(
+                conn.executemany(
                     "UPDATE account_characters SET side_icon_path = ? "
                     "WHERE character_id = ? AND side_icon_url = ?",
-                    (result.path, row["character_id"], row["side_icon_url"]),
+                    [(result.path, row["character_id"], row["side_icon_url"]) for row in group],
                 )
     return {
         "downloaded": sum(item.downloaded for _, item in side_icon_results),

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 from localization import tr
 from run_workspace.history_browser_catalog import HistoryRunVisual, HistorySlotVisual
 from ui.utils.hidpi_pixmap import load_hidpi_pixmap
+from ui.utils.character_card_pixmap import character_card_pixmap
 from ui.utils.owner_icon_badge import DEFAULT_OWNER_BADGE_SIZE_RATIO
 from ui.utils.tooltips import CUSTOM_TOOLTIP_DELAY_MS, CustomTooltipPopup, anchored_tooltip_rect
 from ui.utils.ui_palette import (
@@ -324,6 +325,23 @@ def summary_height(run, width=CARD_WIDTH):
     return CardLayout(width).height(run, False)
 
 
+def _portrait_card_key(slot, path):
+    return ("portrait_card", path, slot.rarity, slot.element, slot.constellation,
+            slot.rarity_background_path, slot.element_icon_path)
+
+
+def _has_portrait_layers(slot):
+    return bool(slot.rarity_background_path or slot.element_icon_path)
+
+
+def _frozen_portrait(slot, path, size, dpr):
+    return character_card_pixmap(
+        path, size, dpr=dpr, rarity=slot.rarity, element=slot.element,
+        constellation=slot.constellation, background_path=slot.rarity_background_path,
+        element_icon_path=slot.element_icon_path,
+    )
+
+
 def prepare_images(run, dpr, artwork_paths=None):
     paths = set()
     trimmed_paths = set()
@@ -341,12 +359,20 @@ def prepare_images(run, dpr, artwork_paths=None):
     images.update({("bonus", path): load_hidpi_pixmap(path, 112, dpr=dpr, trim_alpha=True,
                    trim_alpha_threshold=64, surface="history_bonus").pixmap for path in bonus_paths})
     for team in visible_teams(run):
+        for slot in team.slots:
+            if _has_portrait_layers(slot):
+                for path in {slot.portrait_path, slot.expanded_portrait_path, slot.side_icon_path} - {""}:
+                    images[_portrait_card_key(slot, path)] = _frozen_portrait(slot, path, 96, dpr)
         custom = (artwork_paths or {}).get(team.team_index)
         lead = next((slot for slot in team_slots(team) if slot.character_name), None)
         path = custom or ((lead.expanded_portrait_path or lead.portrait_path or lead.side_icon_path) if lead else "")
         if path:
-            images[("artwork", team.team_index)] = load_hidpi_pixmap(
-                path, 420, dpr=dpr, trim_alpha=True, surface="history_artwork").pixmap
+            if not custom and lead is not None and _has_portrait_layers(lead):
+                images[("artwork", team.team_index)] = _frozen_portrait(lead, path, 420, dpr)
+                images[("artwork_layers", team.team_index)] = True
+            else:
+                images[("artwork", team.team_index)] = load_hidpi_pixmap(
+                    path, 420, dpr=dpr, trim_alpha=True, surface="history_artwork").pixmap
     return images
 
 
@@ -419,7 +445,9 @@ class CardPainter:
 
     def portrait(self, slot, x, y, size, *, soft_crop=False, expanded_variant=False, bottom_aligned=False):
         path = slot.expanded_portrait_path if expanded_variant and slot.expanded_portrait_path else (slot.side_icon_path if self.character_view == "profile" else slot.portrait_path)
-        if not expanded_variant and self.character_view == "profile" and slot.side_icon_path:
+        path = path or slot.portrait_path or slot.side_icon_path
+        layered = _has_portrait_layers(slot)
+        if not layered and not expanded_variant and self.character_view == "profile" and slot.side_icon_path:
             # ArtifactCardDelegate uses the original calibrated side-icon canvas,
             # not per-character alpha bounds. Its shared badge ratio defines the
             # face scale; hats may extend above the text instead of shrinking it.
@@ -431,8 +459,8 @@ class CardPainter:
             clip.addRoundedRect(QRectF(x, y, size, size), 7, 7)
             self.p.save()
             self.p.setClipPath(clip)
-        zoom = 2 if soft_crop and not expanded_variant else 0
-        self.icon(path or slot.portrait_path or slot.side_icon_path,
+        zoom = 2 if soft_crop and not expanded_variant and not layered else 0
+        self.icon(_portrait_card_key(slot, path) if layered else path,
                   x-zoom, y-zoom, size+2*zoom, slot.character_name[:1] or "—",
                   bottom_aligned=expanded_variant or bottom_aligned)
         if soft_crop:
@@ -741,9 +769,10 @@ class CardPainter:
         self.p.setClipPath(clip)
         image = self.images.get(("artwork", team.team_index))
         if image is not None and not image.isNull():
-            # One centered cover crop, shared by local portraits and custom art.
+            # Keep frozen card badges in bounds; custom/legacy art retains cover cropping.
             art = QRectF(rect.x(), rect.y(), rect.width(), rect.height())
-            ratio = max(art.width()/image.width(), art.height()/image.height())
+            ratio_for_art = min if self.images.get(("artwork_layers", team.team_index)) else max
+            ratio = ratio_for_art(art.width()/image.width(), art.height()/image.height())
             iw, ih = image.width()*ratio, image.height()*ratio
             self.p.drawPixmap(QRectF(art.center().x()-iw/2, art.center().y()-ih/2, iw, ih), image, QRectF(image.rect()))
         fade = QLinearGradient(rect.topLeft(), rect.bottomLeft())

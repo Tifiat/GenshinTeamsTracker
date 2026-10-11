@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from pathlib import Path
 from run_workspace.profile_context import account_asset_path
 from typing import Any
@@ -26,6 +26,7 @@ from run_workspace.pvp.deck_preset import character_id_from_asset, weapon_ref_fr
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import metadata_int
 from ui.utils.icon_utils import contrast_icon_color
+from ui.utils.character_card_layers import with_character_card_layers
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
@@ -98,6 +99,20 @@ WEAPON_TYPE_FILTER_ALIASES = {
 }
 
 PVP_DECKS_RIGHT_PANEL_STYLE = f"""
+QCheckBox#pvp_setup_defaults {{
+    color: {UI_TEXT_PRIMARY};
+}}
+QSpinBox#pvp_setup_value {{
+    color: {UI_TEXT_PRIMARY};
+    background: {UI_BG_APP};
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 4px;
+    padding: 3px;
+}}
+QSpinBox#pvp_setup_value:disabled {{
+    color: {UI_TEXT_SECONDARY};
+    background: {UI_BG_PANEL};
+}}
 QLineEdit {{
     min-height: 28px;
     padding: 4px 8px;
@@ -142,7 +157,58 @@ QLabel#pvp_deck_info_line {{
     border: none;
     padding: 0px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
+}}
+QLabel#pvp_rules_heading {{
+    color: {UI_TEXT_PRIMARY};
+    background: transparent;
+    border: none;
+    padding: 0px;
+    font-size: 13px;
+    font-weight: 700;
+}}
+QLabel#pvp_requirement_header {{
+    color: {UI_TEXT_MUTED};
+    font-size: 11px;
+    font-weight: 700;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_description,
+QLabel#pvp_requirement_current {{
+    color: {UI_TEXT_SECONDARY};
+    font-size: 12px;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_detail {{
+    color: {UI_TEXT_MUTED};
+    font-size: 11px;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_status {{
+    color: {UI_TEXT_MUTED};
+    font-size: 14px;
+    font-weight: 700;
+    padding: 0px;
+}}
+QLabel#pvp_requirement_status[requirementStatus="pass"] {{ color: #77c991; }}
+QLabel#pvp_requirement_status[requirementStatus="fail"] {{ color: #f18b84; }}
+QLabel#pvp_requirement_status[requirementStatus="unknown"] {{ color: #e5c16b; }}
+QPushButton#pvp_requirement_show {{
+    color: {UI_TEXT_SECONDARY};
+    background: {UI_BG_BUTTON};
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 11px;
+}}
+QPushButton#pvp_requirement_show:checked {{
+    color: {UI_TEXT_PRIMARY};
+    border-color: {UI_STATE_SUCCESS};
+}}
+QFrame#pvp_rules_section {{
+    background: {UI_BG_PANEL_RAISED};
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 6px;
 }}
 QFrame#pvp_draft_result_zone {{
     border: 1px solid {UI_BORDER_PANEL};
@@ -249,6 +315,8 @@ QFrame#pvp_postdraft_match_panel {{
     background: transparent;
     border: none;
 }}
+QLabel#pvp_weapon_budget {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; }}
+QLabel#pvp_weapon_budget[budgetInvalid="true"] {{ color: {UI_STATE_DANGER}; }}
 QFrame#pvp-postdraft-target-player-1,
 QFrame#pvp-postdraft-target-player-2 {{
     border: 1px solid {UI_BORDER_PANEL};
@@ -337,19 +405,25 @@ QPushButton#pvp_postdraft_player_toggle:hover {{
 
 def _active_draft_summary_lines(
     session: PvpActiveDraftSession,
+    *,
+    board: Mapping[str, Any] | None = None,
 ) -> list[str]:
-    board = session.board_dict()
+    board = session.board_dict() if board is None else board
     draft_system = _mapping(board.get("draft_system"))
     requirement = board.get("current_requirement")
     requirement_text = _format_requirement(requirement if isinstance(requirement, Mapping) else None)
     progress = _mapping(board.get("progress"))
     action_log = board.get("action_log")
     action_log_count = len(action_log) if isinstance(action_log, list) else 0
+    from run_workspace.pvp.draft_options import DraftMatchOptions
+    system_name = _text(draft_system.get("display_name"))
+    if session.controller.state.match_options != DraftMatchOptions().resolve(session.controller.state.abyss_rules):
+        system_name += " · " + tr("app_shell.pvp.setup.custom_settings")
     return [
         tr("app_shell.pvp.play.summary_p1").format(name=session.player_1_deck_name),
         tr("app_shell.pvp.play.summary_p2").format(name=session.player_2_deck_name),
         tr("app_shell.pvp.play.summary_system").format(
-            system_id=_text(draft_system.get("system_id")),
+            system_id=system_name,
         ),
         tr("app_shell.pvp.play.summary_requirement").format(
             requirement=requirement_text,
@@ -526,7 +600,7 @@ def _draft_action_log_lines(
             seat=_seat_label(_text(_mapping(row).get("seat"))),
             action=_draft_action_label(_text(_mapping(row).get("action_type"))),
             target=_text(_mapping(row).get("target_display_name"))
-            or _text(_mapping(row).get("target_id")),
+            or _text(_mapping(row).get("target_id")) or tr("app_shell.pvp.clock.skipped"),
         )
         for row in rows
     ]
@@ -595,6 +669,7 @@ def build_pvp_draft_grid_item(
     portrait_path: str,
     result_seat: str = "",
     result_zone: str = "",
+    layer_path_cache: MutableMapping[tuple[str, str], str] | None = None,
 ) -> PixelIconGridItem:
     """Build the shared portrait-first item used by Draft pool and results."""
     character_id = _text(entry.get("character_id"))
@@ -632,7 +707,7 @@ def build_pvp_draft_grid_item(
                 )
             )
     status = _text(entry.get("status")) or "available"
-    return PixelIconGridItem(
+    item = PixelIconGridItem(
         item_id=character_id,
         icon_path=portrait_path,
         label=_text(entry.get("display_name")) or character_id,
@@ -657,6 +732,12 @@ def build_pvp_draft_grid_item(
             "action": dict(entry.get("action")) if isinstance(entry.get("action"), Mapping) else {},
         },
         pixmap_cache_key_parts=("pvp_draft", character_id),
+    )
+    return with_character_card_layers(
+        item,
+        entry,
+        show_constellation=False,
+        layer_path_cache=layer_path_cache,
     )
 
 
@@ -838,7 +919,8 @@ def _draft_action_from_unified_pool(
     target_type = _text(action_payload.get("target_type"))
     character_id = _text(action_payload.get("character_id"))
     if (
-        action_type not in {"ban_character", "pick_character"}
+        action_type not in {"ban_character", "preban_character", "pick_character", "immune_ban_character",
+                            "immune_pick_character", "immune_character", "mirror_character"}
         or target_type != "character"
         or not character_id
     ):
@@ -1489,8 +1571,17 @@ def _seat_label(seat: str) -> str:
 def _draft_action_label(action_type: str) -> str:
     if action_type == "pick_character":
         return tr("app_shell.pvp.draft.pick")
+    if action_type == "mirror_character":
+        return tr("app_shell.pvp.draft.mirror")
     if action_type == "ban_character":
         return tr("app_shell.pvp.draft.ban")
+    if action_type == "preban_character":
+        return tr("app_shell.pvp.draft.preban")
+    for action, key in (("immune_ban_character", "immune_ban"),
+                        ("immune_pick_character", "immune_pick"),
+                        ("immune_character", "immune")):
+        if action_type == action:
+            return tr("app_shell.pvp.draft." + key)
     return action_type
 
 
@@ -1569,21 +1660,6 @@ def _reset_grid_columns(grid: QGridLayout) -> None:
     for column in range(grid.columnCount()):
         grid.setColumnMinimumWidth(column, 0)
         grid.setColumnStretch(column, 0)
-
-
-def _pvp_deck_outline(
-    *,
-    editing: bool,
-    selected: bool,
-) -> PixelIconGridOutline | None:
-    if not editing or not selected:
-        return None
-    return PixelIconGridOutline(
-        color="#d6b15d",
-        width=2,
-        radius=4,
-        alpha=255,
-    )
 
 
 def _pvp_deck_inactive_fill(

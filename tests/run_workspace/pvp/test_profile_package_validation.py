@@ -237,6 +237,7 @@ class PortableProfileValidationTest(unittest.TestCase):
     def test_rejects_unknown_duplicate_illegal_decks_and_private_fields(self) -> None:
         for change in (
             lambda deck: deck["character_ids"].__setitem__(0, "9999"),
+            lambda deck: deck["character_ids"].__setitem__(0, "-123"),
             lambda deck: deck["character_ids"].append(deck["character_ids"][0]),
             lambda deck: deck.__setitem__("character_ids", ["1001"]),
             lambda deck: deck.__setitem__("ruleset_id", "unknown_ruleset"),

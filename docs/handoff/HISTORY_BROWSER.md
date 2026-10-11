@@ -27,14 +27,14 @@ panel. V8 period/boss controls, one-line header, warning classification,
 calibrated assets, tooltip containment, export and snapshot isolation remain
 unchanged and are specified below.
 
-2026-10-03 asset follow-up: new saves freeze the imported transparent front
-portrait for expanded slots/default team art and the transparent weapon icon.
-The default team portrait has no baked constellation or rarity background;
-the painter supplies a dark element-tinted surface. Expanded weapons have a
-larger allocation with wrapping set tiles. Expanded portraits and weapon
-content share a bottom baseline. Compact weapons use their own 22-34px
-allocation, separate from set-icon sizing; compact height is unchanged.
-Old bundles retain their frozen assets, without live-account repair.
+2026-10-11 Worker4 follow-up: new saves freeze neutral portraits, rarity backgrounds
+and element icons separately, then paint their saved Cn in compact/expanded slots,
+default team art and the shared right panel. Explicit bundle-local paths prevent
+live-account/application-art lookup. Old bundles and custom art retain their
+existing display. Expanded weapon/build allocations and compact height are unchanged.
+[Card asset acceptance](CHARACTER_CARD_ASSETS.md#portrait-weapon-and-filter-follow-up--2026-10-11)
+owns tests and the user-Escape native boundary; this follow-up is local source,
+not a new master integration or native acceptance.
 
 Automated checks and painter previews pass; the design workspace owns dated
 counts/images, including v10 responsive, 4p/2+2 and bonus-overflow evidence.
@@ -70,9 +70,10 @@ subsequent click-path acceptance remain separate from that startup evidence.
   account/profile data, DBs or network state to reconstruct saved run facts.
   Compact character slots use bundle-local side icons, falling back to portraits
   only when absent. Expanded slots prefer their own frozen expanded/front
-  portrait; default team art uses the first occupied slot's same image, without
-  a baked constellation or background in new saves with imported transparent layers. There
-  is no longer a user-facing Profile/Portrait comparison setting.
+  portrait; default team art uses the first occupied slot's same image. New bundles
+  supply frozen rarity/element layers and saved Cn through the shared runtime
+  recipe. Older bundles retain their unlayered assets without repair. There is
+  no user-facing Profile/Portrait comparison setting.
 - The Abyss period navigator may read production Floor 12 source-data caches
   for its period catalog and enemy preview only. A selected saved-run row and
   its right panel use only frozen snapshot fields and bundle-local assets.
@@ -235,7 +236,7 @@ Each occupied team slot must preserve enough frozen data to rebuild the full
 shared read-only panel independently:
 
 - character identity, display name, level, element, rarity, constellation,
-  portrait, and side icon;
+  portrait, side icon, and new bundle-local rarity background/element icon;
 - weapon identity, display fields, level/refinement, visible stats, passive
   tooltip data, and icon;
 - complete selected/current artifact build contents, active sets, set icons,
@@ -294,12 +295,16 @@ Snapshot Bundle v2 and production Save capture frozen display details for every
 occupied slot and materialize declared visible assets inside the bundle without
 retaining temporary hydration in live state.
 New saves may carry a second frozen character image for expanded cards/default
-team art: the imported transparent front portrait, without element, rarity
-background or constellation. Weapon snapshots prefer the transparent source
-icon supplied by the live save input. These optional layers are resolved before
-Save only for an exact matching local imported bitmap, then copied into the
-immutable bundle. Old bundles keep their frozen fallback assets; browsing
-never consults the current manifest to replace them.
+team art: the imported transparent front portrait. The portrait stays neutral;
+the saved `rarity_background_ref` and `element_icon_ref` point to separately
+frozen resources, with Cn drawn from snapshot data. Styled compact/expanded slots,
+default team art, right panel and PNG export use only these bundle-local paths.
+Custom artwork retains its crop; default styled art fits within its allocation
+so its labels remain visible. Weapon snapshots prefer the transparent source
+icon supplied by the live save input. Old bundles omit the new optional refs,
+keep their frozen fallback assets and never consult current account/application
+art to repair them. The [card asset contract](CHARACTER_CARD_ASSETS.md) owns the
+shared recipe and current regression receipt.
 The History right panel also uses the expanded variant when present.
 Grouped storage, row selection, the snapshot-to-shared-right-panel adapter,
 isolated read-only Run panel, first

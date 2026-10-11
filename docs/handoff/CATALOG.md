@@ -1,5 +1,8 @@
 # Full handoff catalog
 
+- [Character card assets and browser presentation](CHARACTER_CARD_ASSETS.md)
+- [Character filters and sorting](CHARACTER_FILTERS.md)
+
 This file lists the available handoff documents for discovery and structural
 coverage. It is not startup reading. Use `README.md` to choose one area and
 read only that area's current status and relevant contract section. Read
@@ -45,6 +48,7 @@ in every file.
 | --- | --- |
 | [DATA_RUNTIME_BOUNDARIES.md](DATA_RUNTIME_BOUNDARIES.md) | Current source/cache, SQLite, assets/catalogs and normal offline-profile boundaries |
 | [ACCOUNT_PROFILES.md](ACCOUNT_PROFILES.md) | Isolated saved accounts, profile switching/deletion, login and central settings/reset contract |
+| [TRAVELER_VARIANTS.md](TRAVELER_VARIANTS.md) | Seven account Traveler variants, source identity, imports, assets and scoped acceptance |
 | [ACCOUNT_CHARACTER_DETAIL_FIELDS.md](ACCOUNT_CHARACTER_DETAIL_FIELDS.md) | Observed HoYoLAB character-detail source fields |
 | [ACCOUNT_SQLITE_STORAGE.md](ACCOUNT_SQLITE_STORAGE.md) | Runtime characters, talents, identities and observed weapon stacks |
 | [ACCOUNT_EQUIPMENT_STATE_DESIGN.md](ACCOUNT_EQUIPMENT_STATE_DESIGN.md) | Implemented persistent equipment service and import-apply contract |
@@ -110,7 +114,11 @@ in every file.
 | [PVP_BUILD_SERVICES.md](PVP_BUILD_SERVICES.md) | Scoped artifact/GCSIM services, local period admission, lifecycle and acceptance |
 | [PVP_REFERENCE_SITE_AUDIT.md](PVP_REFERENCE_SITE_AUDIT.md) | Dated Abyss Draft/Gentor product-reference research |
 | [PVP_RULESETS_AUDIT.md](PVP_RULESETS_AUDIT.md) | Historical tournament source research |
-| [PVP_RULESET_SOURCE_MATRIX.md](PVP_RULESET_SOURCE_MATRIX.md) | Source/applicability map; import work paused pending usable sources |
+| [PVP_RULESET_SOURCE_MATRIX.md](PVP_RULESET_SOURCE_MATRIX.md) | Source/applicability map; confirmed public Abyss source and remaining adapters |
+| [PVP_ABYSS_SOURCE_AUDIT.md](PVP_ABYSS_SOURCE_AUDIT.md) | Current public API, ID/price/constraint mapping, document conflicts and research probe |
+| [PVP_DECK_RULES.md](PVP_DECK_RULES.md) | Latest Abyss deck rules, saved versions, costs/UI, portable snapshots and acceptance limits |
+| [PVP_DRAFT_RUNTIME.md](PVP_DRAFT_RUNTIME.md) | Cost-difference prebans, per-match controls, draft clocks, source semantics and acceptance |
+| [PvP response measurement](performance_measurements/2026-10-09_pvp_selection_pipeline.md) | Synthetic selection timings, downstream hot-path repair and verification boundary |
 | [FAR_FUTURE_TODO.md](FAR_FUTURE_TODO.md) | Non-MVP ideas; read only when requested |
 
 ## Maintenance Entry

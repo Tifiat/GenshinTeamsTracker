@@ -45,6 +45,10 @@ class HistorySnapshotRightPanelAdapterTest(unittest.TestCase):
             model.teams[0].slots[1].portrait_path,
             str(bundle_dir / "assets" / "mona_history.png"),
         )
+        self.assertEqual(model.teams[0].slots[1].portrait_background_path, "")
+        self.assertEqual(model.teams[0].slots[1].portrait_element_icon_path, "")
+        self.assertEqual(model.teams[0].slots[1].portrait_element, "Hydro")
+        self.assertEqual(model.teams[0].slots[1].portrait_constellation, 1)
         self.assertEqual(model.selected_details.weapon_name, "The Widsith")
         self.assertEqual(model.selected_details.stat_rows[0].value, "70%")
         self.assertEqual(model.selected_details.bonus_sources[0].label, "Hydro resonance")
@@ -64,6 +68,18 @@ class HistorySnapshotRightPanelAdapterTest(unittest.TestCase):
         self.assertEqual(model.selected_details.character_name, "Nahida")
         self.assertTrue(model.teams[1].slots[0].is_selected)
         self.assertFalse(model.teams[0].slots[1].is_selected)
+
+    def test_old_character_payload_without_layer_refs_keeps_empty_paths(self) -> None:
+        character = HistoryCharacterSnapshot.from_dict({
+            "name": "Mona", "element": "Hydro", "rarity": 5,
+            "constellation": 1, "portrait_ref": "assets/mona.png",
+        })
+        self.assertEqual(character.rarity_background_ref, "")
+        self.assertEqual(character.element_icon_ref, "")
+        self.assertEqual(
+            (character.to_dict()["rarity_background_ref"], character.to_dict()["element_icon_ref"]),
+            ("", ""),
+        )
 
 
 def _bundle() -> HistorySnapshotBundle:

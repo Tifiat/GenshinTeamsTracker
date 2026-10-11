@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
 from .character_region_catalog import normalize_character_name
+from .traveler import is_traveler_id
 from .character_trait_catalog import (
     TRAIT_STANDARD_5_STAR,
     CharacterTraitEntry,
@@ -104,7 +105,7 @@ def sync_character_identity_from_account_rows(
         region_entry = regions_by_entry_id.get(entry_id) or regions_by_name.get(normalized_name) or {}
         traits = set(traits_by_entry_id.get(entry_id, set()))
         traits.update(traits_by_name.get(normalized_name, set()))
-        if int(character_id) in TRAVELER_CHARACTER_IDS:
+        if is_traveler_id(character_id):
             traits.add(TRAIT_STANDARD_5_STAR)
         traits_tuple = tuple(sorted(traits))
 

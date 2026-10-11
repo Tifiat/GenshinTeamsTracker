@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from run_workspace.history_browser_catalog import load_history_browser_catalog
 from run_workspace.history_snapshot import (
     HISTORY_RUN_TYPE_ABYSS,
     HISTORY_RUN_TYPE_DPS_DUMMY,
@@ -27,6 +28,9 @@ from run_workspace.history_snapshot_builder import (
     WARNING_RIGHT_PANEL_SLOT_MISSING,
     HistorySnapshotBuildContext,
     build_history_snapshot_bundle,
+)
+from run_workspace.history_snapshot_right_panel import (
+    build_history_snapshot_right_panel_view_model,
 )
 from run_workspace.models import AbyssTimerState
 from run_workspace.right_panel_prototype_view_model import (
@@ -60,10 +64,24 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
         details["account_weapon"]["icon_transparent_path"] = "raw/weapon.png"
         session.team_state = session.team_state.set_character(0, 0, {"id": "10000050", "name": "Thoma"}).attach_character_details_data(0, 0, details)
         before = deepcopy(session.state)
-        model = _right_panel_model(mode=MODE_ABYSS, teams=_teams_vm(overrides={(0, 0): _rich_slot_vm()}),
+        layered_slot = replace(
+            _rich_slot_vm(),
+            portrait_rarity=4,
+            portrait_element="Pyro",
+            portrait_constellation=6,
+            portrait_background_path="art/rarity_4.png",
+            portrait_element_icon_path="art/element_pyro.png",
+        )
+        model = _right_panel_model(mode=MODE_ABYSS, teams=_teams_vm(overrides={(0, 0): layered_slot}),
                                   selected_details=_rich_selected_details(), chamber_rows=_chamber_rows())
         bundle = build_history_snapshot_bundle(session.state, model, _context())
         self.assertEqual(bundle.teams[0].slots[0].character.expanded_portrait_ref, "raw/character.png")
+        self.assertEqual(bundle.teams[0].slots[0].character.rarity_background_ref, "art/rarity_4.png")
+        self.assertEqual(bundle.teams[0].slots[0].character.element_icon_ref, "art/element_pyro.png")
+        self.assertTrue(
+            {"character_rarity_background", "character_element_icon"}
+            <= {ref.role for ref in bundle.teams[0].slots[0].asset_refs}
+        )
         self.assertEqual(bundle.teams[0].slots[0].weapon.icon_ref, "raw/weapon.png")
         self.assertEqual(session.state, before)
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,10 +92,46 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
                 source.write_bytes(ref.path.encode("utf-8"))
             store = HistorySnapshotBundleStore(root / "saved")
             destination = store.write_bundle_grouped(bundle, copy_assets=True, asset_source_roots=(root,))
+            for ref in bundle.asset_refs:
+                (root / ref.path).unlink(missing_ok=True)
             stored = store.read_bundle(bundle.bundle_id)
-            for ref in (stored.teams[0].slots[0].character.expanded_portrait_ref, stored.teams[0].slots[0].weapon.icon_ref):
+            stored_character = stored.teams[0].slots[0].character
+            for ref in (
+                stored_character.expanded_portrait_ref,
+                stored_character.rarity_background_ref,
+                stored_character.element_icon_ref,
+                stored.teams[0].slots[0].weapon.icon_ref,
+            ):
                 self.assertTrue(ref.startswith("assets/"))
                 self.assertTrue((destination.parent / ref).is_file())
+            model = build_history_snapshot_right_panel_view_model(
+                stored, bundle_dir=destination.parent,
+            )
+            right_slot = model.teams[0].slots[0]
+            self.assertEqual(right_slot.portrait_rarity, 4)
+            self.assertEqual(right_slot.portrait_element, "Pyro")
+            self.assertEqual(right_slot.portrait_constellation, 6)
+            self.assertEqual(
+                right_slot.portrait_background_path,
+                str(destination.parent / stored_character.rarity_background_ref),
+            )
+            self.assertEqual(
+                right_slot.portrait_element_icon_path,
+                str(destination.parent / stored_character.element_icon_ref),
+            )
+            catalog = load_history_browser_catalog(
+                root / "saved", abyss_cache_dir=root / "no-cache",
+            )
+            left_slot = catalog.periods[0].runs[0].teams[0].slots[0]
+            self.assertEqual(left_slot.rarity, 4)
+            self.assertEqual(
+                left_slot.rarity_background_path,
+                str(destination.parent / stored_character.rarity_background_ref),
+            )
+            self.assertEqual(
+                left_slot.element_icon_path,
+                str(destination.parent / stored_character.element_icon_ref),
+            )
 
     def test_builds_minimal_abyss_bundle_from_session_and_right_panel_model(self) -> None:
         session = RunSessionController.empty()

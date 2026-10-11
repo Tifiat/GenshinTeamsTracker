@@ -3522,15 +3522,15 @@
               "rarity": 4,
               "level": 90,
               "constellation": 6,
-              "status": "globally_banned",
+              "status": "picked_by_self",
               "status_reason_codes": [
-                "character_globally_banned"
+                "character_picked_by_self"
               ],
               "is_current_legal_target": false,
               "is_active_seat_card": false,
-              "picked_by": null,
-              "banned_by": "player_2",
-              "action_index": 14
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 4
             },
             {
               "character_id": "test_p1_char_04",
@@ -3594,15 +3594,15 @@
               "rarity": 4,
               "level": 90,
               "constellation": 6,
-              "status": "picked_by_self",
+              "status": "globally_banned",
               "status_reason_codes": [
-                "character_picked_by_self"
+                "character_globally_banned"
               ],
               "is_current_legal_target": false,
               "is_active_seat_card": false,
-              "picked_by": "player_1",
-              "banned_by": null,
-              "action_index": 15
+              "picked_by": null,
+              "banned_by": "player_2",
+              "action_index": 14
             },
             {
               "character_id": "test_p1_char_08",
@@ -3620,7 +3620,7 @@
               "is_active_seat_card": false,
               "picked_by": "player_1",
               "banned_by": null,
-              "action_index": 16
+              "action_index": 15
             },
             {
               "character_id": "test_p1_char_09",
@@ -3638,7 +3638,7 @@
               "is_active_seat_card": false,
               "picked_by": "player_1",
               "banned_by": null,
-              "action_index": 19
+              "action_index": 16
             },
             {
               "character_id": "test_p1_char_10",
@@ -3656,7 +3656,7 @@
               "is_active_seat_card": false,
               "picked_by": "player_1",
               "banned_by": null,
-              "action_index": 20
+              "action_index": 19
             },
             {
               "character_id": "test_p1_char_11",
@@ -3666,13 +3666,15 @@
               "rarity": 5,
               "level": 90,
               "constellation": 0,
-              "status": "available",
-              "status_reason_codes": [],
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
               "is_current_legal_target": false,
               "is_active_seat_card": false,
-              "picked_by": null,
+              "picked_by": "player_1",
               "banned_by": null,
-              "action_index": null
+              "action_index": 20
             },
             {
               "character_id": "test_p1_char_12",
@@ -3747,15 +3749,15 @@
               "rarity": 4,
               "level": 90,
               "constellation": 6,
-              "status": "globally_banned",
+              "status": "picked_by_self",
               "status_reason_codes": [
-                "character_globally_banned"
+                "character_picked_by_self"
               ],
               "is_current_legal_target": false,
               "is_active_seat_card": false,
-              "picked_by": null,
-              "banned_by": "player_1",
-              "action_index": 12
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 5
             },
             {
               "character_id": "test_p2_char_04",
@@ -3819,15 +3821,15 @@
               "rarity": 4,
               "level": 90,
               "constellation": 6,
-              "status": "picked_by_self",
+              "status": "globally_banned",
               "status_reason_codes": [
-                "character_picked_by_self"
+                "character_globally_banned"
               ],
               "is_current_legal_target": false,
               "is_active_seat_card": false,
-              "picked_by": "player_2",
-              "banned_by": null,
-              "action_index": 13
+              "picked_by": null,
+              "banned_by": "player_1",
+              "action_index": 12
             },
             {
               "character_id": "test_p2_char_08",
@@ -3845,7 +3847,7 @@
               "is_active_seat_card": false,
               "picked_by": "player_2",
               "banned_by": null,
-              "action_index": 17
+              "action_index": 13
             },
             {
               "character_id": "test_p2_char_09",
@@ -3863,7 +3865,7 @@
               "is_active_seat_card": false,
               "picked_by": "player_2",
               "banned_by": null,
-              "action_index": 18
+              "action_index": 17
             },
             {
               "character_id": "test_p2_char_10",
@@ -3881,7 +3883,7 @@
               "is_active_seat_card": false,
               "picked_by": "player_2",
               "banned_by": null,
-              "action_index": 21
+              "action_index": 18
             },
             {
               "character_id": "test_p2_char_11",
@@ -3891,13 +3893,15 @@
               "rarity": 5,
               "level": 90,
               "constellation": 0,
-              "status": "available",
-              "status_reason_codes": [],
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
               "is_current_legal_target": false,
               "is_active_seat_card": false,
-              "picked_by": null,
+              "picked_by": "player_2",
               "banned_by": null,
-              "action_index": null
+              "action_index": 21
             },
             {
               "character_id": "test_p2_char_12",
@@ -3945,16 +3949,16 @@
             "target_display_name": "P1 Bow 02"
           },
           {
-            "character_id": "test_p2_char_03",
+            "character_id": "test_p2_char_07",
             "seat": "player_1",
             "action_index": 12,
-            "target_display_name": "P2 Polearm 03"
+            "target_display_name": "P2 Bow 07"
           },
           {
-            "character_id": "test_p1_char_03",
+            "character_id": "test_p1_char_07",
             "seat": "player_2",
             "action_index": 14,
-            "target_display_name": "P1 Polearm 03"
+            "target_display_name": "P1 Bow 07"
           }
         ],
         "player_1_picked_ids": [
@@ -3962,20 +3966,20 @@
           "test_p1_char_04",
           "test_p1_char_05",
           "test_p1_char_06",
-          "test_p1_char_07",
           "test_p1_char_08",
           "test_p1_char_09",
-          "test_p1_char_10"
+          "test_p1_char_10",
+          "test_p1_char_11"
         ],
         "player_2_picked_ids": [
           "test_p2_char_03",
           "test_p2_char_04",
           "test_p2_char_05",
           "test_p2_char_06",
-          "test_p2_char_07",
           "test_p2_char_08",
           "test_p2_char_09",
-          "test_p2_char_10"
+          "test_p2_char_10",
+          "test_p2_char_11"
         ],
         "picked_character_ids_by_seat": {
           "player_1": [
@@ -3983,20 +3987,20 @@
             "test_p1_char_04",
             "test_p1_char_05",
             "test_p1_char_06",
-            "test_p1_char_07",
             "test_p1_char_08",
             "test_p1_char_09",
-            "test_p1_char_10"
+            "test_p1_char_10",
+            "test_p1_char_11"
           ],
           "player_2": [
             "test_p2_char_03",
             "test_p2_char_04",
             "test_p2_char_05",
             "test_p2_char_06",
-            "test_p2_char_07",
             "test_p2_char_08",
             "test_p2_char_09",
-            "test_p2_char_10"
+            "test_p2_char_10",
+            "test_p2_char_11"
           ]
         }
       },
@@ -4008,8 +4012,8 @@
               "player_1"
             ],
             "base_seat": "player_1",
-            "zone": "banned",
-            "status": "banned",
+            "zone": "picked",
+            "status": "picked",
             "is_current_legal_target": false,
             "active_seat": null,
             "expected_action_type": null,
@@ -4108,15 +4112,15 @@
                 "level": 90,
                 "constellation": 6,
                 "cost": null,
-                "card_status": "globally_banned",
+                "card_status": "picked_by_self",
                 "is_active_seat_card": false
               }
             },
             "picked_by": "player_1",
-            "banned_by": "player_2",
-            "action_index": 14,
+            "banned_by": null,
+            "action_index": 4,
             "reason_codes": [
-              "character_globally_banned"
+              "character_picked_by_self"
             ]
           },
           {
@@ -4125,8 +4129,8 @@
               "player_1"
             ],
             "base_seat": "player_1",
-            "zone": "picked",
-            "status": "picked",
+            "zone": "banned",
+            "status": "banned",
             "is_current_legal_target": false,
             "active_seat": null,
             "expected_action_type": null,
@@ -4264,15 +4268,15 @@
                 "level": 90,
                 "constellation": 6,
                 "cost": null,
-                "card_status": "picked_by_self",
+                "card_status": "globally_banned",
                 "is_active_seat_card": false
               }
             },
-            "picked_by": "player_1",
-            "banned_by": null,
-            "action_index": 15,
+            "picked_by": null,
+            "banned_by": "player_2",
+            "action_index": 14,
             "reason_codes": [
-              "character_picked_by_self"
+              "character_globally_banned"
             ]
           },
           {
@@ -4309,7 +4313,7 @@
             },
             "picked_by": "player_1",
             "banned_by": null,
-            "action_index": 16,
+            "action_index": 15,
             "reason_codes": [
               "character_picked_by_self"
             ]
@@ -4348,7 +4352,7 @@
             },
             "picked_by": "player_1",
             "banned_by": null,
-            "action_index": 19,
+            "action_index": 16,
             "reason_codes": [
               "character_picked_by_self"
             ]
@@ -4387,7 +4391,7 @@
             },
             "picked_by": "player_1",
             "banned_by": null,
-            "action_index": 20,
+            "action_index": 19,
             "reason_codes": [
               "character_picked_by_self"
             ]
@@ -4398,8 +4402,8 @@
               "player_1"
             ],
             "base_seat": "player_1",
-            "zone": "blocked",
-            "status": "blocked",
+            "zone": "picked",
+            "status": "picked",
             "is_current_legal_target": false,
             "active_seat": null,
             "expected_action_type": null,
@@ -4420,14 +4424,16 @@
                 "level": 90,
                 "constellation": 0,
                 "cost": null,
-                "card_status": "available",
+                "card_status": "picked_by_self",
                 "is_active_seat_card": false
               }
             },
-            "picked_by": null,
+            "picked_by": "player_1",
             "banned_by": null,
-            "action_index": null,
-            "reason_codes": []
+            "action_index": 20,
+            "reason_codes": [
+              "character_picked_by_self"
+            ]
           },
           {
             "character_id": "test_p1_char_12",
@@ -4472,8 +4478,8 @@
               "player_2"
             ],
             "base_seat": "player_2",
-            "zone": "banned",
-            "status": "banned",
+            "zone": "picked",
+            "status": "picked",
             "is_current_legal_target": false,
             "active_seat": null,
             "expected_action_type": null,
@@ -4572,15 +4578,15 @@
                 "level": 90,
                 "constellation": 6,
                 "cost": null,
-                "card_status": "globally_banned",
+                "card_status": "picked_by_self",
                 "is_active_seat_card": false
               }
             },
             "picked_by": "player_2",
-            "banned_by": "player_1",
-            "action_index": 12,
+            "banned_by": null,
+            "action_index": 5,
             "reason_codes": [
-              "character_globally_banned"
+              "character_picked_by_self"
             ]
           },
           {
@@ -4589,8 +4595,8 @@
               "player_2"
             ],
             "base_seat": "player_2",
-            "zone": "picked",
-            "status": "picked",
+            "zone": "banned",
+            "status": "banned",
             "is_current_legal_target": false,
             "active_seat": null,
             "expected_action_type": null,
@@ -4728,15 +4734,15 @@
                 "level": 90,
                 "constellation": 6,
                 "cost": null,
-                "card_status": "picked_by_self",
+                "card_status": "globally_banned",
                 "is_active_seat_card": false
               }
             },
-            "picked_by": "player_2",
-            "banned_by": null,
-            "action_index": 13,
+            "picked_by": null,
+            "banned_by": "player_1",
+            "action_index": 12,
             "reason_codes": [
-              "character_picked_by_self"
+              "character_globally_banned"
             ]
           },
           {
@@ -4773,7 +4779,7 @@
             },
             "picked_by": "player_2",
             "banned_by": null,
-            "action_index": 17,
+            "action_index": 13,
             "reason_codes": [
               "character_picked_by_self"
             ]
@@ -4812,7 +4818,7 @@
             },
             "picked_by": "player_2",
             "banned_by": null,
-            "action_index": 18,
+            "action_index": 17,
             "reason_codes": [
               "character_picked_by_self"
             ]
@@ -4851,7 +4857,7 @@
             },
             "picked_by": "player_2",
             "banned_by": null,
-            "action_index": 21,
+            "action_index": 18,
             "reason_codes": [
               "character_picked_by_self"
             ]
@@ -4862,8 +4868,8 @@
               "player_2"
             ],
             "base_seat": "player_2",
-            "zone": "blocked",
-            "status": "blocked",
+            "zone": "picked",
+            "status": "picked",
             "is_current_legal_target": false,
             "active_seat": null,
             "expected_action_type": null,
@@ -4884,14 +4890,16 @@
                 "level": 90,
                 "constellation": 0,
                 "cost": null,
-                "card_status": "available",
+                "card_status": "picked_by_self",
                 "is_active_seat_card": false
               }
             },
-            "picked_by": null,
+            "picked_by": "player_2",
             "banned_by": null,
-            "action_index": null,
-            "reason_codes": []
+            "action_index": 21,
+            "reason_codes": [
+              "character_picked_by_self"
+            ]
           },
           {
             "character_id": "test_p2_char_12",
@@ -4934,33 +4942,33 @@
         "zones": {
           "pool": [],
           "picked": [
+            "test_p1_char_03",
             "test_p1_char_04",
             "test_p1_char_05",
             "test_p1_char_06",
-            "test_p1_char_07",
             "test_p1_char_08",
             "test_p1_char_09",
             "test_p1_char_10",
+            "test_p1_char_11",
+            "test_p2_char_03",
             "test_p2_char_04",
             "test_p2_char_05",
             "test_p2_char_06",
-            "test_p2_char_07",
             "test_p2_char_08",
             "test_p2_char_09",
-            "test_p2_char_10"
+            "test_p2_char_10",
+            "test_p2_char_11"
           ],
           "banned": [
             "test_p1_char_01",
             "test_p1_char_02",
-            "test_p1_char_03",
+            "test_p1_char_07",
             "test_p2_char_01",
             "test_p2_char_02",
-            "test_p2_char_03"
+            "test_p2_char_07"
           ],
           "blocked": [
-            "test_p1_char_11",
             "test_p1_char_12",
-            "test_p2_char_11",
             "test_p2_char_12"
           ],
           "invalid": []
@@ -4972,15 +4980,15 @@
               "test_p1_char_04",
               "test_p1_char_05",
               "test_p1_char_06",
-              "test_p1_char_07",
               "test_p1_char_08",
               "test_p1_char_09",
-              "test_p1_char_10"
+              "test_p1_char_10",
+              "test_p1_char_11"
             ],
             "banned": [
               "test_p2_char_01",
               "test_p2_char_02",
-              "test_p2_char_03"
+              "test_p2_char_07"
             ]
           },
           "player_2": {
@@ -4989,15 +4997,15 @@
               "test_p2_char_04",
               "test_p2_char_05",
               "test_p2_char_06",
-              "test_p2_char_07",
               "test_p2_char_08",
               "test_p2_char_09",
-              "test_p2_char_10"
+              "test_p2_char_10",
+              "test_p2_char_11"
             ],
             "banned": [
               "test_p1_char_01",
               "test_p1_char_02",
-              "test_p1_char_03"
+              "test_p1_char_07"
             ]
           }
         }
@@ -5152,8 +5160,8 @@
           "phase": "pick",
           "seat": "player_1",
           "action_type": "ban_character",
-          "target_id": "test_p2_char_03",
-          "target_display_name": "P2 Polearm 03",
+          "target_id": "test_p2_char_07",
+          "target_display_name": "P2 Bow 07",
           "accepted": true,
           "step_index": 8,
           "action_index": 1,
@@ -5164,8 +5172,8 @@
           "phase": "pick",
           "seat": "player_2",
           "action_type": "pick_character",
-          "target_id": "test_p2_char_07",
-          "target_display_name": "P2 Bow 07",
+          "target_id": "test_p2_char_08",
+          "target_display_name": "P2 Polearm 08",
           "accepted": true,
           "step_index": 9,
           "action_index": 0,
@@ -5176,8 +5184,8 @@
           "phase": "pick",
           "seat": "player_2",
           "action_type": "ban_character",
-          "target_id": "test_p1_char_03",
-          "target_display_name": "P1 Polearm 03",
+          "target_id": "test_p1_char_07",
+          "target_display_name": "P1 Bow 07",
           "accepted": true,
           "step_index": 9,
           "action_index": 1,
@@ -5188,8 +5196,8 @@
           "phase": "pick",
           "seat": "player_1",
           "action_type": "pick_character",
-          "target_id": "test_p1_char_07",
-          "target_display_name": "P1 Bow 07",
+          "target_id": "test_p1_char_08",
+          "target_display_name": "P1 Polearm 08",
           "accepted": true,
           "step_index": 10,
           "action_index": 0,
@@ -5200,8 +5208,8 @@
           "phase": "pick",
           "seat": "player_1",
           "action_type": "pick_character",
-          "target_id": "test_p1_char_08",
-          "target_display_name": "P1 Polearm 08",
+          "target_id": "test_p1_char_09",
+          "target_display_name": "P1 Claymore 09",
           "accepted": true,
           "step_index": 10,
           "action_index": 1,
@@ -5212,8 +5220,8 @@
           "phase": "pick",
           "seat": "player_2",
           "action_type": "pick_character",
-          "target_id": "test_p2_char_08",
-          "target_display_name": "P2 Polearm 08",
+          "target_id": "test_p2_char_09",
+          "target_display_name": "P2 Claymore 09",
           "accepted": true,
           "step_index": 11,
           "action_index": 0,
@@ -5224,8 +5232,8 @@
           "phase": "pick",
           "seat": "player_2",
           "action_type": "pick_character",
-          "target_id": "test_p2_char_09",
-          "target_display_name": "P2 Claymore 09",
+          "target_id": "test_p2_char_10",
+          "target_display_name": "P2 Catalyst 10",
           "accepted": true,
           "step_index": 11,
           "action_index": 1,
@@ -5236,8 +5244,8 @@
           "phase": "pick",
           "seat": "player_1",
           "action_type": "pick_character",
-          "target_id": "test_p1_char_09",
-          "target_display_name": "P1 Claymore 09",
+          "target_id": "test_p1_char_10",
+          "target_display_name": "P1 Catalyst 10",
           "accepted": true,
           "step_index": 12,
           "action_index": 0,
@@ -5248,8 +5256,8 @@
           "phase": "pick",
           "seat": "player_1",
           "action_type": "pick_character",
-          "target_id": "test_p1_char_10",
-          "target_display_name": "P1 Catalyst 10",
+          "target_id": "test_p1_char_11",
+          "target_display_name": "P1 Sword 11",
           "accepted": true,
           "step_index": 12,
           "action_index": 1,
@@ -5260,8 +5268,8 @@
           "phase": "pick",
           "seat": "player_2",
           "action_type": "pick_character",
-          "target_id": "test_p2_char_10",
-          "target_display_name": "P2 Catalyst 10",
+          "target_id": "test_p2_char_11",
+          "target_display_name": "P2 Sword 11",
           "accepted": true,
           "step_index": 13,
           "action_index": 0,

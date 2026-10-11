@@ -195,6 +195,11 @@ saved details without a live lookup:
 
 - character id, name, level, element, rarity, constellation;
 - bundle-local portrait and side-icon asset references;
+- new saves' optional `rarity_background_ref` and `element_icon_ref`, declared
+  by the pure builder and copied by production materialization like portraits;
+  saved rarity/element/Cn and these frozen paths drive the shared card recipe.
+  Schema v2 readers default absent refs to empty and preserve old display;
+  History must not fetch current account/application layers to repair them;
 - weapon id, name, level, promote level, rarity, refinement,
   `weapon_fingerprint`, bundle-local icon, visible stats, passive/static effect
   data, warnings, and user-facing tooltip content from save time;

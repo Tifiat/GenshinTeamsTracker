@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import colorsys
 from pathlib import Path
 import tempfile
 import unittest
@@ -68,6 +69,8 @@ class SettingsDefaultsTest(unittest.TestCase):
         )
         self.assertEqual(PVP_PLAYER_1_COLOR_DEFAULT, settings_default("pvp_player_1_color"))
         self.assertEqual(PVP_PLAYER_2_COLOR_DEFAULT, settings_default("pvp_player_2_color"))
+        self.assertEqual(PVP_PLAYER_1_COLOR_DEFAULT, "#75adbd")
+        self.assertEqual(PVP_PLAYER_2_COLOR_DEFAULT, "#a5b474")
         self.assertEqual(
             (
                 GcsimOptimizerSettings().set_group_limit,
@@ -87,6 +90,31 @@ class SettingsDefaultsTest(unittest.TestCase):
                     settings_default("gcsim_optimizer_builds_per_group", context=context),
                 ),
             )
+
+    def test_approved_application_accents_have_balanced_saturation_and_lightness(self) -> None:
+        from ui.utils.ui_palette import (
+            UI_ACCENT_TEAM_1, UI_ACCENT_TEAM_2, UI_INVENTORY_SELECTION_ACCENT,
+        )
+
+        accents = {
+            "player_1_default": settings_default("pvp_player_1_color"),
+            "player_2_default": settings_default("pvp_player_2_color"),
+            "character_team_1": UI_ACCENT_TEAM_1,
+            "character_team_2": UI_ACCENT_TEAM_2,
+            "inventory_selection": UI_INVENTORY_SELECTION_ACCENT,
+        }
+        for role, color in accents.items():
+            rgb = tuple(
+                int(color[index:index + 2], 16) / 255
+                for index in (1, 3, 5)
+            )
+            _hue, lightness, saturation = colorsys.rgb_to_hls(*rgb)
+
+            with self.subTest(role=role, color=color):
+                self.assertGreaterEqual(saturation, 0.25)
+                self.assertLessEqual(saturation, 0.60)
+                self.assertGreaterEqual(lightness, 0.56)
+                self.assertLessEqual(lightness, 0.64)
 
     def test_known_registry_default_beats_legacy_fallback_unknown_uses_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

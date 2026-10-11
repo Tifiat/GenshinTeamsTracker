@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import unittest
+import asyncio
 import tempfile
 from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
+from PIL import Image
+
+from hoyolab_export import import_pipeline as pipeline
+from hoyolab_export.traveler import TRAVELER_ELEMENTS, traveler_variant_id
 
 from hoyolab_export.import_pipeline import (
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
@@ -17,6 +22,87 @@ from hoyolab_export.artifact_db import connect_db, init_db
 from run_workspace.abyss.source_data_runtime import (
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH as RUNTIME_HOYOLAB_ABYSS_PERIOD_PATH,
 )
+
+
+class ImportSharedAssetsTest(unittest.TestCase):
+    def test_publication_replaces_downloaded_shared_layers_with_package_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            old = root / "old_element.png"
+            Image.new("RGBA", (8, 8), "red").save(old)
+            previous = {"sharedAssets": {"elements": {"pyro": str(old)}, "custom": {"unsafe": str(old)}}}
+            with patch.object(pipeline, "ACCOUNT_ROOT", root):
+                merged = pipeline._merge_asset_manifests(previous, {})
+            shared = merged["sharedAssets"]
+            self.assertEqual(set(shared["elements"]), {"anemo", "geo", "electro", "dendro", "hydro", "pyro", "cryo"})
+            self.assertEqual(set(shared["characterBackgrounds"]), {"4", "5"})
+            self.assertEqual(set(shared["weaponBackgrounds"]), {"3", "4", "5"})
+            self.assertNotIn("custom", shared)
+            self.assertEqual(shared["elements"]["pyro"], "assets/filters/element_pyro.png")
+            self.assertNotIn(str(old), str(shared))
+
+    def test_only_allowlisted_package_paths_can_escape_account_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            account = Path(temporary) / "account"
+            account.mkdir()
+            with (
+                patch.object(pipeline, "ACCOUNT_ROOT", account),
+                patch.object(pipeline, "account_asset_path", side_effect=lambda value: account / value),
+            ):
+                expected = pipeline.PROJECT_ROOT / "assets/filters/element_geo.png"
+                self.assertEqual(pipeline._asset_local_path("assets/filters/element_geo.png"), expected)
+                self.assertIsNone(pipeline._asset_local_path(str(expected)))
+                self.assertIsNone(pipeline._asset_local_path("../outside.png"))
+                self.assertEqual(pipeline._asset_local_path("assets/hoyolab/portrait.png"), account / "assets/hoyolab/portrait.png")
+
+    def test_unique_image_recovery_survives_without_shared_cache_override(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            package = root / "empty-package"
+            package.mkdir()
+            raw = root / "portrait.png"
+            Image.new("RGBA", (8, 8), "blue").save(raw)
+            previous = {"characterAssets": [{"character": {"id": 1001}, "portrait": str(raw)}],
+                        "sharedAssets": {"elements": {"pyro": str(raw)}}}
+            fresh = {"characterAssets": [{"character": {"id": 1001}, "portrait": str(root / "missing.png")}]}
+            with patch.object(pipeline, "ACCOUNT_ROOT", root), patch.object(pipeline, "PROJECT_ROOT", package):
+                merged = pipeline._merge_asset_manifests(previous, fresh)
+            self.assertEqual(merged["characterAssets"][0]["portrait"], str(raw))
+            self.assertEqual(merged["sharedAssets"], {"elements": {}, "characterBackgrounds": {}, "weaponBackgrounds": {}})
+
+    def test_traveler_side_icons_use_one_download_and_the_existing_anchor_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            db = root / "account.db"
+            with closing(connect_db(db)) as conn, conn:
+                init_db(conn)
+                init_account_storage(conn)
+                for element in TRAVELER_ELEMENTS:
+                    character_id = 10000007 if element == "Cryo" else traveler_variant_id(10000007, element)
+                    conn.execute(
+                        "INSERT INTO account_characters (character_id, name, element, side_icon_url) VALUES (?, 'Traveler', ?, ?)",
+                        (character_id, element, "https://example.invalid/unique_traveler.png"),
+                    )
+            progress = []
+            def download(_url: str, destination: Path) -> None:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                Image.new("RGBA", (8, 8), "green").save(destination)
+            with (
+                patch.object(pipeline, "ARTIFACT_DB_PATH", db),
+                patch.object(pipeline, "HOYOLAB_ASSETS_DIR", root / "assets"),
+                patch.object(pipeline, "_download_url_to_file", side_effect=download) as downloader,
+            ):
+                first = asyncio.run(pipeline.refresh_import_side_icons(progress_callback=lambda *event: progress.append(event)))
+                second = asyncio.run(pipeline.refresh_import_side_icons())
+            self.assertEqual(downloader.call_count, 1)
+            self.assertEqual(first["downloaded"], 1)
+            self.assertEqual(second["downloaded"], 0)
+            self.assertEqual(progress, [("download", 0, 1), ("download", 1, 1)])
+            with closing(connect_db(db)) as conn:
+                paths = [row[0] for row in conn.execute("SELECT side_icon_path FROM account_characters")]
+            self.assertEqual(len(paths), 7)
+            self.assertEqual(len(set(paths)), 1)
+            self.assertEqual(Path(paths[0]).name, "char_10000007.png")
 
 
 class ImportPipelineAccountStorageTest(unittest.TestCase):

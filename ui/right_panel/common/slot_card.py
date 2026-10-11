@@ -147,6 +147,11 @@ class RightPanelSlotCardWidget(QFrame):
             model.character_title,
             model.portrait_label,
             model.portrait_path,
+            model.portrait_rarity,
+            model.portrait_element,
+            model.portrait_constellation,
+            model.portrait_background_path,
+            model.portrait_element_icon_path,
             model.weapon_square_label,
             model.weapon_image_path,
             model.weapon_tooltip,
@@ -166,6 +171,11 @@ class RightPanelSlotCardWidget(QFrame):
             image_path=model.portrait_path,
             fallback_text=model.portrait_label,
             empty=model.is_empty,
+            rarity=model.portrait_rarity,
+            element=model.portrait_element,
+            constellation=model.portrait_constellation,
+            background_path=model.portrait_background_path,
+            element_icon_path=model.portrait_element_icon_path,
         )
 
         self._weapon.set_weapon(

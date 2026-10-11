@@ -8,6 +8,7 @@ import zipfile
 from contextlib import closing
 from pathlib import Path
 
+from hoyolab_export.traveler import traveler_variant_id
 from hoyolab_export.artifact_db import connect_db, init_db
 from run_workspace.pvp import (
     PVP_PROFILE_DB_NAME,
@@ -119,6 +120,79 @@ class PvpProfilePackageTest(unittest.TestCase):
                 provider.close()
 
             self.assertFalse(profile.db_path.exists())
+
+    def test_traveler_negative_refs_round_trip_with_account_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            db_path = root / "artifacts.db"
+            deck_dir = root / "decks"
+            _create_account_db(db_path)
+            variant_id = traveler_variant_id(10000007, "Pyro")
+            with closing(connect_db(db_path)) as conn:
+                for character_id, element in ((10000007, "Anemo"), (variant_id, "Pyro")):
+                    conn.execute(
+                        """INSERT INTO account_characters (
+                            character_id,name,element,rarity,level,constellation,
+                            weapon_type,weapon_type_name,catalog_english_name
+                        ) VALUES (?,?,?,5,90,0,1,'Sword',?)""",
+                        (character_id, f"Traveler ({element})", element, f"Traveler ({element})"),
+                    )
+                    conn.execute(
+                        """INSERT INTO account_character_talents (
+                            character_id,skill_id,skill_type,name,level
+                        ) VALUES (?,1,1,'Normal Attack',9)""",
+                        (character_id,),
+                    )
+                    conn.execute(
+                        """INSERT INTO character_identity (
+                            character_id,region_key,traits_json,is_standard_5_star
+                        ) VALUES (?,'mondstadt','[]',1)""",
+                        (character_id,),
+                    )
+                conn.commit()
+            preset = PvpDeckPreset(
+                deck_id="traveler-deck",
+                name="Traveler variants",
+                character_ids=tuple(str(value) for value in range(1001, 1023))
+                + ("10000007", str(variant_id)),
+                weapon_refs=(WeaponObservedStackRef(weapon_fingerprint="fp-a"),),
+            )
+            save_deck_preset(preset, deck_dir)
+
+            report = export_pvp_profile_package(
+                root / "traveler.gttpvp",
+                deck_dir=deck_dir,
+                db_path=db_path,
+            )
+
+            self.assertEqual(report.counts["character_count"], 24)
+            with import_pvp_profile_package(report.path) as profile:
+                self.assertEqual(profile.deck_presets[0].character_ids[-2:],
+                                 ("10000007", str(variant_id)))
+                with closing(sqlite3.connect(profile.db_path)) as conn:
+                    account_rows = {
+                        int(row[0]): row[1]
+                        for row in conn.execute(
+                            "SELECT character_id,element FROM account_characters "
+                            "WHERE character_id IN (?,?)",
+                            (10000007, variant_id),
+                        )
+                    }
+                    self.assertEqual(account_rows, {10000007: "Anemo", variant_id: "Pyro"})
+                    self.assertEqual(
+                        conn.execute(
+                            "SELECT character_id FROM account_character_talents WHERE character_id=?",
+                            (variant_id,),
+                        ).fetchone(),
+                        (variant_id,),
+                    )
+                    self.assertEqual(
+                        conn.execute(
+                            "SELECT character_id FROM character_identity WHERE character_id=?",
+                            (variant_id,),
+                        ).fetchone(),
+                        (variant_id,),
+                    )
 
     def test_local_provider_returns_supplied_db_path_without_copying(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -38,25 +38,17 @@ from hoyolab_export.offline_profile import (
 )
 from localization import get_language, language_options, set_language, tr
 from run_workspace import RunSnapshotV1, build_legacy_abyss_run_snapshot
+from ui.character_browser.filter_bar import CharacterFilterBar
 from ui.character_assets import (
-    CHARACTER_RARITY_FILTERS,
-    CHARACTER_STANDARD_FILTER,
-    CHARACTER_TRAIT_FILTERS,
-    ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
     filter_icon_path,
-    refresh_imported_element_filter_icons,
     STANDARD_FILTER_ALL,
-    STANDARD_FILTER_EXCLUDE,
-    STANDARD_FILTER_ONLY,
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
     character_matches_filters,
-    character_sort_key,
     load_account_character_asset_items,
     load_account_weapon_stack_asset_items,
     metadata_int,
-    standard_character_filter_icon,
 )
 from ui.run_history_window import RunHistoryWindow
 from ui.widgets.drag import DraggableIcon
@@ -450,7 +442,6 @@ class App(QWidget):
         if self._run_history_window is not None:
             self._run_history_window.reload()
         self.safe_update_grids()
-        refresh_imported_element_filter_icons(self)
         self.refresh_hoyolab_auth_status()
 
     def run_hoyolab_export(self, images_only: bool = False):
@@ -577,7 +568,6 @@ class App(QWidget):
                 self._hoyolab_loader.finish()
 
             self.safe_update_grids()
-            refresh_imported_element_filter_icons(self)
             self._close_hoyolab_loader()
             self.refresh_hoyolab_auth_status()
             return
@@ -666,8 +656,6 @@ class App(QWidget):
         button.setFixedSize(30, 30)
         button.setIconSize(QSize(24, 24))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
-        if icon_name.startswith("element_"):
-            button.setProperty("elementIconName", icon_name)
 
         icon_path = filter_icon_path(icon_name)
         if icon_path.exists():
@@ -710,36 +698,9 @@ class App(QWidget):
         row.addStretch()
         return row
 
-    def _make_standard_filter_button(self) -> QPushButton:
-        value, icon_name, _tooltip_key = CHARACTER_STANDARD_FILTER
-        button = QPushButton("")
-        button.setObjectName("asset_filter_button")
-        button.setCheckable(False)
-        button.setFixedSize(30, 30)
-        button.setIconSize(QSize(24, 24))
-        button.setStyleSheet(FILTER_BUTTON_STYLE)
-        button.setIcon(standard_character_filter_icon(STANDARD_FILTER_ALL, size=24))
-        button.setProperty("standardOnly", False)
-
-        def cycle_standard_filter() -> None:
-            if self._character_standard_filter == STANDARD_FILTER_ALL:
-                self._character_standard_filter = STANDARD_FILTER_ONLY
-            elif self._character_standard_filter == STANDARD_FILTER_ONLY:
-                self._character_standard_filter = STANDARD_FILTER_EXCLUDE
-            else:
-                self._character_standard_filter = STANDARD_FILTER_ALL
-            button.setProperty(
-                "standardOnly",
-                self._character_standard_filter == STANDARD_FILTER_ONLY,
-            )
-            button.style().unpolish(button)
-            button.style().polish(button)
-            button.setIcon(standard_character_filter_icon(self._character_standard_filter, size=24))
-            button.repaint()
-            QTimer.singleShot(0, self.reload_characters)
-
-        button.clicked.connect(cycle_standard_filter)
-        return button
+    def _on_character_filters_changed(self) -> None:
+        self._character_standard_filter = self.character_filter_bar.standard_filter
+        QTimer.singleShot(0, self.reload_characters)
 
     def build_left_panel(self):
         left = QVBoxLayout()
@@ -794,17 +755,13 @@ class App(QWidget):
 
         self.char_title_label = QLabel(tr("asset_panel.characters"))
         left.addWidget(self.char_title_label)
-        left.addLayout(
-            self._build_filter_row(
-                (
-                    (ELEMENT_FILTERS, self._character_element_filters, self.reload_characters),
-                    (WEAPON_TYPE_FILTERS, self._character_weapon_filters, self.reload_characters),
-                    (CHARACTER_RARITY_FILTERS, self._character_rarity_filters, self.reload_characters),
-                    (CHARACTER_TRAIT_FILTERS, self._character_trait_filters, self.reload_characters),
-                ),
-                trailing_widgets=(self._make_standard_filter_button(),),
-            )
-        )
+        self.character_filter_bar = CharacterFilterBar(self)
+        self._character_element_filters = self.character_filter_bar.element_filters
+        self._character_weapon_filters = self.character_filter_bar.weapon_filters
+        self._character_rarity_filters = self.character_filter_bar.rarity_filters
+        self._character_trait_filters = self.character_filter_bar.trait_filters
+        self.character_filter_bar.filters_changed.connect(self._on_character_filters_changed)
+        left.addWidget(self.character_filter_bar)
         self.char_area = QScrollArea()
         self.char_area.setWidgetResizable(True)
         self.char_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -917,6 +874,7 @@ class App(QWidget):
         self.action_switch_profile.setText(tr("profile.switch"))
         self.weapon_title_label.setText(tr("asset_panel.weapons"))
         self.char_title_label.setText(tr("asset_panel.characters"))
+        self.character_filter_bar.retranslate_ui()
 
         for index, label in enumerate(self.team_title_labels, start=1):
             label.setText(tr("main.team_label", number=index))
@@ -991,7 +949,7 @@ class App(QWidget):
         return metadata_int(value, default)
 
     def _character_sort_key(self, asset: dict):
-        return character_sort_key(asset)
+        return self.character_filter_bar.sort_key(asset)
 
     def _weapon_sort_key(self, asset: dict):
         metadata = asset.get("metadata") or {}

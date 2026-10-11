@@ -44,6 +44,8 @@ from .character_trait_catalog import (
     load_character_trait_catalog,
     rebuild_character_trait_reference_from_catalog,
 )
+from .traveler import is_traveler_id, traveler_catalog_name, traveler_element, traveler_source_id
+from .traveler_variants import account_traveler_id, backfill_traveler_variants, ensure_traveler_variants
 
 
 DEFAULT_ACCOUNT_CHARACTER_DETAILS_PATH = HOYOLAB_DATA_DIR / "account_character_details.json"
@@ -259,10 +261,16 @@ class AccountCharacterRuntimeRecord:
     last_seen_at: str = ""
     source_status: str = "sqlite_account_characters"
 
+    @property
+    def source_character_id(self) -> str:
+        return str(traveler_source_id(self.character_id) or self.character_id)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "source_key": self.character_id,
             "id": self.character_id,
+            "source_character_id": self.source_character_id,
+            "traveler_variant": traveler_element(self.character_id, self.element).lower(),
             "name": self.name,
             "element": self.element,
             "rarity": self.rarity,
@@ -299,6 +307,8 @@ class AccountCharacterRuntimeRecord:
     def to_team_builder_character_ref(self) -> dict[str, Any]:
         return {
             "id": self.character_id,
+            "source_character_id": self.source_character_id,
+            "traveler_variant": traveler_element(self.character_id, self.element).lower(),
             "name": self.name,
             "level": self.level,
             "element": self.element,
@@ -597,6 +607,7 @@ def init_account_storage(conn: sqlite3.Connection) -> None:
     _ensure_account_character_constellation_columns(conn)
     _ensure_observed_weapon_columns(conn)
     init_character_identity_storage(conn)
+    backfill_traveler_variants(conn, now=_utc_now())
 
 
 def sync_account_storage_from_local_files(
@@ -688,6 +699,10 @@ def sync_account_storage_from_sources(
     weapon_icon_paths = _weapon_icon_paths(crop_manifest or {})
     now = _utc_now()
 
+    # Preserve a legacy row's original element before applying a later source.
+    # This is inside the caller's core transaction, with no gear/source replay.
+    ensure_traveler_variants(conn, now=now)
+
     warnings: list[str] = []
     characters_seen = 0
     characters_upserted = 0
@@ -704,6 +719,7 @@ def sync_account_storage_from_sources(
             if character_id in IGNORED_CHARACTER_IDS:
                 continue
             detail = details_by_id.get(str(character_id))
+            source_character_id = character_id
             row_warnings: list[str] = []
             if detail is None:
                 row_warnings.append(WARNING_CHARACTER_DETAIL_MISSING)
@@ -735,9 +751,10 @@ def sync_account_storage_from_sources(
 
             base = _mapping(detail.get("base")) if detail is not None else {}
             character = _merge_account_character(base, account_character)
+            character_id = account_traveler_id(conn, source_character_id, character.get("element"))
             side_icon_url = _text(character.get("side_icon"))
             side_icon_result = cache_account_side_icon(
-                character_id=character_id,
+                character_id=source_character_id,
                 side_icon_url=side_icon_url,
                 cache_dir=side_icon_cache_dir,
                 downloader=side_icon_downloader,
@@ -766,6 +783,13 @@ def sync_account_storage_from_sources(
                 project_id=str(character_id),
                 catalog_english_name=entry.name if entry is not None else "",
             )
+            if is_traveler_id(character_id):
+                gcsim_resolution = _traveler_gcsim_resolution(character_id, character.get("element"))
+                source_metadata["traveler_variant"] = {
+                    "source_character_id": source_character_id,
+                    "element": traveler_element(character_id, character.get("element")),
+                    "observation": "hoyolab",
+                }
             if gcsim_resolution.catalog_english_name or gcsim_resolution.status:
                 source_metadata["gcsim_character_key_resolution"] = (
                     gcsim_resolution.to_dict()
@@ -782,7 +806,12 @@ def sync_account_storage_from_sources(
             ).fetchone()
             if previous is not None:
                 previous_metadata = _json_dict(previous["source_metadata_json"])
-                if not gcsim_resolution.gcsim_key and previous_metadata.get("gcsim_character_key_resolution"):
+                if is_traveler_id(character_id):
+                    original = (previous_metadata.get("traveler_variant") or {}).get("legacy_original")
+                    if original is not None:
+                        source_metadata["traveler_variant"]["legacy_original"] = original
+                if (not is_traveler_id(character_id) and not gcsim_resolution.gcsim_key
+                        and previous_metadata.get("gcsim_character_key_resolution")):
                     source_metadata["gcsim_character_key_resolution"] = previous_metadata[
                         "gcsim_character_key_resolution"
                     ]
@@ -797,7 +826,7 @@ def sync_account_storage_from_sources(
                 conn,
                 character_id=character_id,
                 character=character,
-                portrait_path=character_crops.get(str(character_id), ""),
+                portrait_path=character_crops.get(str(source_character_id), ""),
                 side_icon_path=side_icon_result.path,
                 base_hp=_number_or_none(base_values.base_hp if base_values else None),
                 base_atk=_number_or_none(base_values.base_atk if base_values else None),
@@ -840,6 +869,8 @@ def sync_account_storage_from_sources(
                 constellations_seen += seen
                 constellations_upserted += upserted
                 warnings.extend(constellation_warnings)
+            if is_traveler_id(character_id):
+                ensure_traveler_variants(conn, now=now)
     else:
         warnings.append(WARNING_CHARACTER_SOURCE_EMPTY_PRESERVED)
 
@@ -988,8 +1019,17 @@ def refresh_account_reference_fields(
     updated_characters = 0
     updated_weapons = 0
     for row in conn.execute(
-        "SELECT character_id, source_metadata_json FROM account_characters"
+        "SELECT character_id, element, source_metadata_json FROM account_characters"
     ).fetchall():
+        if is_traveler_id(row["character_id"]):
+            resolution = _traveler_gcsim_resolution(row["character_id"], row["element"])
+            conn.execute(
+                "UPDATE account_characters SET catalog_english_name = ?, gcsim_character_key = '', "
+                "gcsim_character_key_status = ?, gcsim_character_key_method = ? WHERE character_id = ?",
+                (resolution.catalog_english_name, resolution.status, resolution.method, row["character_id"]),
+            )
+            updated_characters += 1
+            continue
         metadata = _json_dict(row["source_metadata_json"])
         entry = character_entries.get(_text(metadata.get("hoyowiki_character_entry_id")))
         resolution = _resolve_account_gcsim_key(
@@ -1376,6 +1416,40 @@ def _sync_account_character_talents(
     skills = detail.get("skills")
     if not isinstance(skills, list):
         return 0, 0, []
+
+    # Only copied placeholders may be removed. A partial same-element source
+    # must not delete already observed skills. HoYoLAB marks all three active
+    # talents with skill_type=1; require them before replacing a copied set.
+    if is_traveler_id(character_id):
+        copied = [
+            row for row in conn.execute(
+                "SELECT skill_id, skill_type, source_metadata_json FROM account_character_talents WHERE character_id = ?",
+                (character_id,),
+            ) if _json_dict(row["source_metadata_json"]).get("traveler_initial_copy")
+        ]
+        if copied:
+            complete = skills and all(
+                isinstance(skill, Mapping) and _optional_int(skill.get("skill_id") or skill.get("id")) is not None
+                for skill in skills
+            ) and len({
+                _optional_int(skill.get("skill_id") or skill.get("id"))
+                for skill in skills if _optional_int(skill.get("skill_type")) == 1
+            }) >= 3
+            if not complete:
+                return 0, 0, ["traveler_skills_incomplete_preserved"]
+            ids = {_optional_int(skill.get("skill_id") or skill.get("id")) for skill in skills}
+            # Active talents do not prove a complete passive list. Retain
+            # missing groups (or a shorter partial group) as marked copies.
+            replace_types = {
+                row["skill_type"] for row in copied
+                if sum(_optional_int(skill.get("skill_type")) == row["skill_type"] for skill in skills)
+                >= sum(item["skill_type"] == row["skill_type"] for item in copied)
+            }
+            conn.executemany(
+                "DELETE FROM account_character_talents WHERE character_id = ? AND skill_id = ?",
+                [(character_id, row["skill_id"]) for row in copied
+                 if row["skill_id"] not in ids and row["skill_type"] in replace_types],
+            )
 
     seen = 0
     upserted = 0
@@ -2272,6 +2346,15 @@ def _resolve_account_gcsim_key(
             method=GCSIM_KEY_METHOD_NOT_CHECKED,
         )
     return resolver(entity_type, _text(project_id), display_name)
+
+
+def _traveler_gcsim_resolution(character_id: object, element: object) -> AccountGcsimKeyResolution:
+    # Account selection is explicit; calculation of cloned/observed Traveler
+    # talents is a separate acceptance boundary. Never reuse another element's key.
+    return AccountGcsimKeyResolution(
+        catalog_english_name=traveler_catalog_name(character_id, element),
+        status="unsupported_traveler", method="explicit_variant_runtime_deferred",
+    )
 
 
 def _character_crops_by_id(manifest: Mapping[str, Any]) -> dict[str, str]:

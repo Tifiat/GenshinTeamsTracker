@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import unittest
 
+from hoyolab_export.traveler import TRAVELER_ELEMENTS, traveler_variant_id
 from run_workspace.pvp.abyss_rules import AbyssRulesError, AbyssRuleset, evaluate_deck
 from run_workspace.pvp.deck import DRAFT_DECK_KIND, DraftCharacter, DraftDeck, DraftWeaponStack
 from run_workspace.pvp.tier_allocation import allocate_requirements
 
 
 IDS = {name: f"{index:024x}" for index, name in enumerate(
-    ("version1", "family1", "a", "b", "trav_anemo", "trav_dendro", "w", "simple"), 1)}
+    ("version1", "family1", "a", "b", "trav_anemo", "trav_dendro", "w", "simple",
+     "trav_geo", "trav_electro", "trav_hydro", "trav_pyro", "trav_cryo"), 1)}
 
 
 def _replace_ids(value):
@@ -66,6 +68,38 @@ def _source() -> tuple[dict, list[dict], list[dict]]:
     return _replace_ids(system), _replace_ids(agents), _replace_ids(engines)
 
 
+def _traveler_source() -> tuple[dict, list[dict], list[dict]]:
+    system, agents, engines = _source()
+    rows = {
+        "Anemo": (IDS["trav_anemo"], 11, 5),
+        "Geo": (IDS["trav_geo"], 15, 2),
+        "Electro": (IDS["trav_electro"], 14, 3),
+        "Dendro": (IDS["trav_dendro"], 13, 6),
+        "Hydro": (IDS["trav_hydro"], 16, 4),
+        "Pyro": (IDS["trav_pyro"], 17, 7),
+        "Cryo": (IDS["trav_cryo"], 12, 8),
+    }
+    existing = {row["_id"] for row in agents}
+    cost_rows = {row["agent"]: row for row in system["costs"]["agents"]}
+    for element in TRAVELER_ELEMENTS:
+        source_id, attribute, price = rows[element]
+        if source_id not in existing:
+            agents.append({"_id": source_id, "enkaId": "10000007", "attribute": attribute,
+                           "name": {"en": "Traveler"}})
+        if source_id in cost_rows:
+            cost_rows[source_id]["costs"] = [price] * 7 + [0, 0]
+        else:
+            row = {"agent": source_id, "costs": [price] * 7 + [0, 0]}
+            system["costs"]["agents"].append(row)
+            cost_rows[source_id] = row
+    system["preset"]["rules"] = [
+        {"type": "required_agents", "agents": [IDS["trav_pyro"]]},
+    ]
+    system["draft"] = {"minMaxCosts": {"agents": [0, 0], "engines": [0, 0]},
+                       "minMaxCount": {"agents": [0, 0], "engines": [0, 0]}}
+    return system, agents, engines
+
+
 def _character(game_id: str, element: str, *, level: int | None = 90,
                constellation: int | None = 0) -> DraftCharacter:
     return DraftCharacter(game_id, game_id, element, "SWORD", 5, level, constellation)
@@ -112,6 +146,59 @@ def _weapon(game_id: str, refinement: int = 1, count: int = 1) -> DraftWeaponSta
 
 
 class AbyssRulesTests(unittest.TestCase):
+    def test_traveler_variants_keep_element_prices_and_pyro_required_rule(self):
+        rules = AbyssRuleset.from_source(*_traveler_source())
+        game_id = 10000005  # public source rows use Lumine's 10000007 alias
+        prices = dict(zip(TRAVELER_ELEMENTS, (5, 2, 3, 6, 4, 7, 8)))
+        characters = tuple(
+            _character(
+                str(game_id) if element == "Anemo" else str(traveler_variant_id(game_id, element)),
+                element.upper(),
+                constellation=0,
+            )
+            for element in TRAVELER_ELEMENTS
+        )
+
+        report = evaluate_deck(_deck(*characters), rules)
+
+        self.assertEqual(
+            {character.element: row["cost"] for character, row in zip(characters, report.character_rows)},
+            {element.upper(): prices[element] for element in TRAVELER_ELEMENTS},
+        )
+        self.assertNotIn("required_characters_missing", {issue.code for issue in report.issues})
+
+        without_pyro = tuple(character for character in characters if character.element != "PYRO")
+        missing_required = evaluate_deck(_deck(*without_pyro), rules)
+        self.assertIn("required_characters_missing", {issue.code for issue in missing_required.issues})
+
+    def test_traveler_rule_lookup_never_guesses_an_element(self):
+        rules = AbyssRuleset.from_source(*_traveler_source())
+        ambiguous = evaluate_deck(_deck(_character("10000005", "")), rules)
+        wrong = evaluate_deck(_deck(_character(str(traveler_variant_id(10000005, "Pyro")), "HYDRO")), rules)
+
+        self.assertIn("character_variant_ambiguous", {issue.code for issue in ambiguous.issues})
+        self.assertIsNone(ambiguous.character_rows[0]["source_id"])
+        self.assertIn("character_unmapped", {issue.code for issue in wrong.issues})
+        self.assertIsNone(wrong.character_rows[0]["source_id"])
+
+    def test_missing_element_anchor_stays_ambiguous_with_one_source_row(self):
+        system, agents, engines = _source()
+        agents = [row for row in agents if row["_id"] != IDS["trav_dendro"]]
+        system["costs"]["agents"] = [
+            row for row in system["costs"]["agents"]
+            if row["agent"] != IDS["trav_dendro"]
+        ]
+        system["preset"]["rules"] = [
+            {"type": "required_agents", "agents": [IDS["trav_anemo"]]},
+        ]
+        rules = AbyssRuleset.from_source(system, agents, engines)
+
+        report = evaluate_deck(_deck(_character("10000007", "")), rules)
+
+        self.assertIn("character_variant_ambiguous", {issue.code for issue in report.issues})
+        self.assertIsNone(report.character_rows[0]["source_id"])
+        self.assertIsNone(report.character_rows[0]["cost"])
+
     def test_screenshot_scale_roster_with_zero_prices_keeps_known_allocation(self):
         source, characters = _screenshot_scale_source()
         rules = AbyssRuleset.from_source(*source)

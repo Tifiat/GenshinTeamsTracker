@@ -309,6 +309,30 @@ class PvpDeckRulesTest(unittest.TestCase):
 
 
 class DeckRulesPresentationTest(unittest.TestCase):
+    def test_free_draft_requirement_counts_all_traveler_variants(self):
+        from hoyolab_export.traveler import TRAVELER_ELEMENTS, traveler_variant_id
+        ids = ("10000007",) + tuple(str(traveler_variant_id(10000007, element))
+                                    for element in TRAVELER_ELEMENTS if element != "Cryo")
+        preset = SimpleNamespace(character_ids=ids, ruleset_id=FREE_DRAFT_V0_RULESET_ID)
+        controller = DeckRulesController()
+        state = controller.ui_state(preset, editable=True)
+        self.assertTrue(state["requirement_rows"][0]["current"].startswith("7 / "))
+
+    def test_selected_required_traveler_has_no_obsolete_unavailable_warning(self):
+        rules = AbyssRuleset.from_source(*_source())
+        snapshot = rules.to_dict()
+        snapshot["preset_rules"] = [{"type": "required_agents", "characters": [
+            {"source_id": "required-pyro", "game_id": "10000005", "attribute": 17},
+        ]}]
+        deck = _deck()
+        report = evaluate_deck(deck, rules).to_dict()
+        report["character_rows"] = [{"index": 0, "source_id": "required-pyro", "character_id": "-100000076",
+                                     "cost": 0, "tier": None, "specification": None}]
+        state = format_report(snapshot, report, deck)
+        required = next(row for row in state["requirement_rows"] if row["label"] == tr("app_shell.pvp.rules.required_heading"))
+        self.assertEqual((required["current"], required["status"]), ("1 / 1", "pass"))
+        self.assertNotIn(tr("app_shell.pvp.rules.traveler_unavailable"), state["issue_lines"])
+
     def test_statuses_distinguish_price_bands_limits_and_unknown_costs(self):
         rules = AbyssRuleset.from_source(*_source())
         deck = _deck(_character("1001", "PYRO"))

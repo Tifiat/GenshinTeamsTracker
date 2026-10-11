@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from hoyolab_export.traveler import is_traveler_id, traveler_element
+
 from .deck import DRAFT_DECK_KIND, DRAFT_DECK_SCHEMA_VERSION, DraftDeck
 from .schedule import FreeDraftV0Config, default_free_draft_v0_config
 
@@ -31,8 +33,8 @@ ISSUE_INVALID_WEAPON_COUNT = "invalid_weapon_count"
 SEVERITY_ERROR = "error"
 SEVERITY_WARNING = "warning"
 
-# Existing handoff/tests identify account Traveler as these ids. Full localized
-# variant detection belongs to the future dedicated Traveler model.
+# Historical source-ID constants remain import-compatible. Runtime checks now
+# require a recognized identity and an explicit matching element.
 UNSUPPORTED_TRAVELER_CHARACTER_IDS = frozenset({"10000005", "10000007"})
 
 
@@ -155,7 +157,9 @@ def validate_draft_deck(
             )
         else:
             seen_characters[character.character_id] = index
-            if not _is_unsupported_traveler(character.character_id, character.display_name):
+            if not _is_unsupported_traveler(
+                character.character_id, character.display_name, character.element
+            ):
                 valid_character_ids.add(character.character_id)
         if not character.display_name:
             issues.append(
@@ -182,7 +186,9 @@ def validate_draft_deck(
                     path=f"{path}.constellation",
                 )
             )
-        if _is_unsupported_traveler(character.character_id, character.display_name):
+        if _is_unsupported_traveler(
+            character.character_id, character.display_name, character.element
+        ):
             issues.append(
                 _error(
                     ISSUE_UNSUPPORTED_TRAVELER_CHARACTER,
@@ -201,7 +207,7 @@ def validate_draft_deck(
                 path="characters",
                 details={
                     "minimum_required": config.minimum_characters_per_deck,
-                    "actual_unique_non_traveler": len(valid_character_ids),
+                    "actual_unique_valid_characters": len(valid_character_ids),
                 },
             )
         )
@@ -265,7 +271,29 @@ def _int_in_range(value: int | None, minimum: int, maximum: int) -> bool:
     return value is not None and minimum <= value <= maximum
 
 
-def _is_unsupported_traveler(character_id: str, display_name: str) -> bool:
-    if character_id in UNSUPPORTED_TRAVELER_CHARACTER_IDS:
-        return True
-    return "traveler" in display_name.strip().casefold()
+def _is_unsupported_traveler(
+    character_id: str, display_name: str, element: str = ""
+) -> bool:
+    return is_unsupported_traveler(character_id, display_name, element)
+
+
+def is_unsupported_traveler(
+    character_id: str,
+    display_name: str,
+    element: str = "",
+) -> bool:
+    """Keep legacy/ambiguous Traveler rows blocked; allow explicit variants."""
+    traveler_name = "traveler" in display_name.strip().casefold()
+    if not is_traveler_id(character_id):
+        return traveler_name
+
+    text_id = str(character_id).strip()
+    try:
+        canonical_id = str(int(text_id)) == text_id
+    except (TypeError, ValueError):
+        canonical_id = False
+    return not (
+        canonical_id
+        and bool(str(element or "").strip())
+        and bool(traveler_element(character_id, element))
+    )

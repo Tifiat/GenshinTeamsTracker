@@ -38,7 +38,7 @@ from .validation import (
     ISSUE_MISSING_CHARACTER_WEAPON_TYPE,
     ISSUE_UNSUPPORTED_TRAVELER_CHARACTER,
     DeckValidationReport,
-    UNSUPPORTED_TRAVELER_CHARACTER_IDS,
+    is_unsupported_traveler,
 )
 
 if TYPE_CHECKING:
@@ -1382,9 +1382,9 @@ def _invalid_character_reason_codes(character: DraftCharacter) -> tuple[str, ...
 
 
 def _is_unsupported_traveler(character: DraftCharacter) -> bool:
-    if character.character_id in UNSUPPORTED_TRAVELER_CHARACTER_IDS:
-        return True
-    return "traveler" in character.display_name.strip().casefold()
+    return is_unsupported_traveler(
+        character.character_id, character.display_name, character.element
+    )
 
 
 def _assignments_ready(controller: "FreeDraftController") -> bool:

@@ -133,7 +133,9 @@ condition instead of silently falling back to stale raw JSON.
 
 ### `account_characters`
 
-One canonical account-state row per HoYoLAB source/game character id.
+One canonical account-state row per HoYoLAB source/game character id, except
+Traveler's seven explicit element variants. The [Traveler contract](TRAVELER_VARIANTS.md)
+owns its stable account-local IDs, source ID, copied observations and backfill.
 `account_characters.json` is the authoritative source for which characters are
 on the account.
 
@@ -146,7 +148,8 @@ registry result, not as a raw normalized-name guess. Account sync joins the
 HoYoWiki character stats cache entry by `hoyowiki_character_entry_id`, takes the
 English catalog name, resolves it against the local GCSIM shortcut registry
 once per sync, then stores `gcsim_character_key` only when the resolver reports
-`ready`. Traveler and missing/ambiguous current-registry rows remain not-ready.
+`ready`. Traveler variants and missing/ambiguous current-registry rows remain
+not-ready; explicit Traveler element selection does not assert runtime readiness.
 
 Fields:
 
@@ -199,7 +202,7 @@ Current trait values include `moonsign`, `hexerei`, and `standard_5_star`.
 standard 5-star membership is seeded from the standard-wish 5-star list plus
 Traveler, with HoYoWiki entry `2952` as source context. Traveler must remain
 marked `standard_5_star` when the dedicated Traveler model is implemented; the
-current identity join force-marks Traveler account character ids as standard so
+current identity join force-marks all finite Traveler variant ids as standard so
 localized/custom account naming does not hide it from the tri-state filter.
 Concrete resonance formulas are not stored here.
 
@@ -306,7 +309,9 @@ Sync policy:
 - existing skill rows update level/name/type/icon/unlock state;
 - new skill rows insert;
 - missing/broken detail JSON for one character does not wipe existing talents;
-- no pruning/deletion policy is implemented in this step.
+- ordinary observed skills are not pruned; the [Traveler exception](TRAVELER_VARIANTS.md)
+  replaces copied elemental skill IDs only when the corresponding source group
+  is usable, preserving incomplete/missing groups and already observed rows.
 
 Storage contract:
 

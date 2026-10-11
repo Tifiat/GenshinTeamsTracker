@@ -8,6 +8,7 @@ from dataclasses import replace
 from unittest.mock import patch
 from pathlib import Path
 
+from hoyolab_export.traveler import traveler_variant_id
 from hoyolab_export.account_storage import (
     list_account_characters,
     list_account_weapon_observed_stacks,
@@ -130,6 +131,59 @@ class PvpProfileSchemaTest(unittest.TestCase):
                 db_bytes = portable.read_bytes()
                 for secret in (b"signed-character-url", b"signed-talent-url", b"signed-weapon-url", b"signed-piece-url"):
                     self.assertNotIn(secret, db_bytes)
+
+    def test_profile_slice_preserves_finite_negative_traveler_references(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "source.db"
+            portable = root / "profile.db"
+            _create_source(source)
+            variant_id = traveler_variant_id(10000007, "Pyro")
+            _insert_traveler_rows(source, variant_id)
+            preset = PvpDeckPreset(
+                deck_id="traveler-deck",
+                name="Traveler variants",
+                character_ids=tuple(str(value) for value in range(3000, 3010))
+                + ("10000007", str(variant_id)),
+                weapon_refs=(WeaponObservedStackRef(weapon_fingerprint="fp-a"),),
+            )
+
+            counts = create_profile_slice(source, portable, (preset,))
+            self.assertEqual(counts["character_count"], 12)
+            self.assertEqual(validate_profile_slice(portable, (preset,), counts), counts)
+            with closing(sqlite3.connect(portable)) as conn:
+                rows = {int(row[0]): row[1] for row in conn.execute(
+                    "SELECT character_id,element FROM account_characters"
+                )}
+                self.assertEqual(rows[10000007], "Anemo")
+                self.assertEqual(rows[variant_id], "Pyro")
+                self.assertEqual(
+                    conn.execute(
+                        "SELECT character_id FROM account_character_talents WHERE character_id=?",
+                        (variant_id,),
+                    ).fetchone(),
+                    (variant_id,),
+                )
+                self.assertEqual(
+                    conn.execute(
+                        "SELECT character_id FROM character_identity WHERE character_id=?",
+                        (variant_id,),
+                    ).fetchone(),
+                    (variant_id,),
+                )
+
+            with closing(sqlite3.connect(portable)) as conn:
+                conn.execute("UPDATE account_characters SET element='' WHERE character_id=?", (variant_id,))
+                conn.commit()
+            with self.assertRaises(ProfileSchemaError):
+                validate_profile_slice(portable, (preset,), counts)
+
+            invalid = replace(
+                preset,
+                character_ids=tuple(str(value) for value in range(3000, 3011)) + ("-123",),
+            )
+            with self.assertRaises(ProfileSchemaError):
+                create_profile_slice(source, root / "invalid.db", (invalid,))
 
     def test_materialized_runtime_db_has_reader_defaults_and_managed_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -514,6 +568,31 @@ def _create_source(db_path: Path) -> None:
         conn.execute(
             "INSERT INTO artifact_build_targets(build_id,target_type,character_id) VALUES (110,'character',9999)"
         )
+        conn.commit()
+
+
+def _insert_traveler_rows(db_path: Path, variant_id: int) -> None:
+    with closing(sqlite3.connect(db_path)) as conn:
+        for character_id, element in ((10000007, "Anemo"), (variant_id, "Pyro")):
+            conn.execute(
+                """INSERT INTO account_characters (
+                    character_id,name,element,rarity,level,constellation,weapon_type,
+                    weapon_type_name,catalog_english_name
+                ) VALUES (?,?,?,5,90,0,1,'Sword',?)""",
+                (character_id, f"Traveler ({element})", element, f"Traveler ({element})"),
+            )
+            conn.execute(
+                """INSERT INTO account_character_talents (
+                    character_id,skill_id,skill_type,name,level
+                ) VALUES (?,1,1,'Normal Attack',9)""",
+                (character_id,),
+            )
+            conn.execute(
+                """INSERT INTO character_identity (
+                    character_id,region_key,traits_json,is_standard_5_star
+                ) VALUES (?,'mondstadt','[]',1)""",
+                (character_id,),
+            )
         conn.commit()
 
 

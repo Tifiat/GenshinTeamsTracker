@@ -25,6 +25,7 @@ from hoyolab_export.display_stat_effects import (
     VALUE_TYPE_FLAT,
     VALUE_TYPE_PERCENT_POINTS,
 )
+from hoyolab_export.traveler import is_traveler_id, traveler_element
 
 from .deck import FREE_DRAFT_V0_RULESET_ID
 from .deck_preset import (
@@ -586,10 +587,18 @@ def _validate_deck_preset_metadata(
         normalized_chars: list[str] = []
         for value in char_ids:
             text = str(value or "")
-            if not text or text != text.strip() or not text.isdecimal():
+            if not text or text != text.strip():
                 raise ProfileSchemaError(f"Deck {deck_id} has an empty or invalid character reference.")
-            if str(int(text)) != text:
+            try:
+                numeric_id = int(text)
+            except ValueError:
+                raise ProfileSchemaError(f"Deck {deck_id} has an empty or invalid character reference.") from None
+            if str(numeric_id) != text:
                 raise ProfileSchemaError(f"Deck {deck_id} has a non-canonical character reference.")
+            if numeric_id == 0:
+                raise ProfileSchemaError(f"Deck {deck_id} has an empty or invalid character reference.")
+            if numeric_id < 0 and not is_traveler_id(numeric_id):
+                raise ProfileSchemaError(f"Deck {deck_id} has an invalid negative character reference.")
             normalized_chars.append(text)
         if len(set(normalized_chars)) != len(normalized_chars):
             raise ProfileSchemaError(f"Deck {deck_id} contains duplicate character references.")
@@ -934,9 +943,11 @@ def _select_weapon_stacks_for_presets(
 
 def _safe_account_character(row: dict[str, Any]) -> dict[str, Any]:
     result = {column: row[column] for column in _SOURCE_COLUMNS["account_characters"]}
-    result["character_id"] = _positive_int(result["character_id"], "account character id")
-    result["name"] = _required_text(result["name"], "account character name")
     result["element"] = _optional_text(result["element"])
+    result["character_id"] = _account_character_id(
+        result["character_id"], "account character id", result["element"]
+    )
+    result["name"] = _required_text(result["name"], "account character name")
     result["weapon_type_name"] = _optional_text(result["weapon_type_name"])
     for column in ("rarity", "level", "constellation", "weapon_type"):
         result[column] = _optional_int(result[column], f"character {column}")
@@ -957,7 +968,7 @@ def _safe_account_character(row: dict[str, Any]) -> dict[str, Any]:
 
 def _safe_talent(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        "character_id": _positive_int(row["character_id"], "talent character id"),
+        "character_id": _account_character_ref_id(row["character_id"], "talent character id"),
         "skill_id": _positive_int(row["skill_id"], "talent skill id"),
         "skill_type": _optional_int(row["skill_type"], "talent skill type"),
         "name": _optional_text(row["name"]),
@@ -968,7 +979,7 @@ def _safe_talent(row: dict[str, Any]) -> dict[str, Any]:
 
 def _safe_constellation(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        "character_id": _positive_int(row["character_id"], "constellation character id"),
+        "character_id": _account_character_ref_id(row["character_id"], "constellation character id"),
         "pos": _bounded_int(row["pos"], 1, 6, "constellation position"),
         "name": _optional_text(row["name"]),
         "effect": _optional_text(row["effect"]),
@@ -991,7 +1002,7 @@ def _safe_identity(row: dict[str, Any]) -> dict[str, Any]:
     if is_standard is None:
         raise ProfileSchemaError("Character identity standard flag must be 0 or 1.")
     return {
-        "character_id": _positive_int(row["character_id"], "identity character id"),
+        "character_id": _account_character_ref_id(row["character_id"], "identity character id"),
         "hoyowiki_entry_id": _optional_text(row["hoyowiki_entry_id"]),
         "region_key": _optional_text(row["region_key"]),
         "region_name": _optional_text(row["region_name"]),
@@ -1808,6 +1819,22 @@ def _optional_catalog_id(value: Any, field: str) -> int | None:
         return None
     if result < 0:
         raise ProfileSchemaError(f"{field} must be positive, zero, or null.")
+    return result
+
+
+def _account_character_ref_id(value: Any, field: str) -> int:
+    result = _optional_int(value, field)
+    if result is None or result == 0 or (result < 0 and not is_traveler_id(result)):
+        raise ProfileSchemaError(f"{field} must be positive or a recognized Traveler variant id.")
+    return result
+
+
+def _account_character_id(value: Any, field: str, element: str | None) -> int:
+    result = _account_character_ref_id(value, field)
+    if is_traveler_id(result) and (
+        not str(element or "").strip() or not traveler_element(result, element)
+    ):
+        raise ProfileSchemaError(f"{field} must have an explicit matching Traveler element.")
     return result
 
 

@@ -180,7 +180,7 @@ class DeckRulesController(QObject):
             self._clear_allocation()
             if preset is not None and preset.ruleset_id == FREE_DRAFT_V0_RULESET_ID:
                 minimum = default_free_draft_v0_config().minimum_characters_per_deck
-                count = len(set(preset.character_ids) - {"10000005", "10000007"})
+                count = len(set(preset.character_ids))
                 state["requirement_rows"] = ({
                     "label": _t("free_minimum", minimum=minimum),
                     "current": f"{count} / {minimum}",
@@ -365,7 +365,6 @@ def format_report(snapshot, report, deck, *, allocation=None):
     requirements = []
     requirement_rows = []
     requirement_rows.append({"label": _t("weapon_price_explanation"), "current": "—", "status": "info"})
-    traveler_required = False
     for group, metrics in (("agents", ("cost", "count")), ("engines", ("count",))):
         for metric in metrics:
             low, high = snapshot["bounds"][group][metric]
@@ -468,7 +467,6 @@ def format_report(snapshot, report, deck, *, allocation=None):
             for item in rule["characters"]:
                 name = names.get(item["game_id"], item["game_id"])
                 if item["game_id"] in ("10000005", "10000007"):
-                    traveler_required = True
                     element = {11: "anemo", 12: "cryo", 13: "dendro", 14: "electro",
                                15: "geo", 16: "hydro", 17: "pyro"}.get(item["attribute"])
                     if element:
@@ -487,7 +485,7 @@ def format_report(snapshot, report, deck, *, allocation=None):
         else:
             requirements.append(_t("unsupported_rule"))
             requirement_rows.append({"label": _t("unsupported_rule"), "current": "?", "status": "unknown"})
-    issues = [_t("traveler_unavailable")] if traveler_required else []
+    issues = []
     if allocation.get("status") == "fail":
         issues.append(_t("allocation_shortfall"))
     elif allocation.get("status") == "unknown" and allocation.get("reason") != "pending":

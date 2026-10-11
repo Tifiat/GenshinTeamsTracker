@@ -16,6 +16,7 @@ from threading import RLock
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
+from hoyolab_export.traveler import is_traveler_id
 from .deck_preset import DEFAULT_PVP_DECK_PRESET_DIR, PvpDeckPreset, deck_preset_from_mapping, load_deck_presets
 from .abyss_rules import AbyssRuleset
 from .profile_assets import ASSET_MANIFEST_NAME, ASSET_MEMBER_PATTERN, ProfileAssetError, build_profile_assets, validate_profile_assets
@@ -435,7 +436,7 @@ def _load_decks(payload: Mapping[str, Any]) -> tuple[PvpDeckPreset, ...]:
         if type(deck["schema_version"]) is not int:
             raise PvpProfilePackageError("Invalid PvP deck schema version.")
         ids, refs = deck["character_ids"], deck["weapon_refs"]
-        if not isinstance(ids, list) or len(ids) > 512 or any(not isinstance(item, str) or not re.fullmatch(r"[1-9][0-9]{0,9}", item) for item in ids) or len(set(ids)) != len(ids):
+        if not isinstance(ids, list) or len(ids) > 512 or any(not _valid_deck_character_id(item) for item in ids) or len(set(ids)) != len(ids):
             raise PvpProfilePackageError("Invalid or duplicate PvP deck character ids.")
         if not isinstance(refs, list) or len(refs) > 2048:
             raise PvpProfilePackageError("Invalid PvP deck weapon references.")
@@ -465,6 +466,22 @@ def _load_decks(payload: Mapping[str, Any]) -> tuple[PvpDeckPreset, ...]:
     if used_snapshots != set(snapshots):
         raise PvpProfilePackageError("Unreferenced rules snapshot.")
     return tuple(presets)
+
+
+def _valid_deck_character_id(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    if re.fullmatch(r"[1-9][0-9]{0,9}", value):
+        return True
+    try:
+        numeric_id = int(value)
+    except ValueError:
+        return False
+    return (
+        numeric_id < 0
+        and str(numeric_id) == value
+        and is_traveler_id(numeric_id)
+    )
 
 
 def _select_deck_presets(

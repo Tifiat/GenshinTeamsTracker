@@ -36,7 +36,8 @@ owners in `README.md` and `DATA_RUNTIME_BOUNDARIES.md`.
   not fetch every character/weapon detail page.
 - Selected-build display stats use base/reference data and equipment, not
   HoYoLAB final rows. Only explicitly modeled static effects apply; passive
-  text is reference. Traveler element modeling is deferred.
+  text is reference. [Traveler variants](TRAVELER_VARIANTS.md) have explicit
+  account elements; their calculation/runtime acceptance remains deferred.
 - History freezes each occupied slot's display data/assets and reuses an
   isolated read-only Run panel. Factual DPS is HP/time from authoritative Abyss
   cache; missing period/cache/HP means unavailable. PvP has independent source

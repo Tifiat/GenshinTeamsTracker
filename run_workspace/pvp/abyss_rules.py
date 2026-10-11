@@ -14,6 +14,8 @@ import math
 import re
 from typing import Any, Mapping
 
+from hoyolab_export.traveler import TRAVELER_SOURCE_IDS, traveler_element, traveler_source_id
+
 from .deck import DraftDeck
 from .weapon_roster_budget import build_weapon_roster_report
 
@@ -646,6 +648,45 @@ def _tier(cost: int | float, tiers: list[dict[str, Any]]) -> int | None:
     return matches[0] if len(matches) == 1 else None
 
 
+def _character_rule_candidates(
+    character_id: str,
+    element: str,
+    by_game: Mapping[str, list[dict[str, Any]]],
+) -> tuple[list[dict[str, Any]], bool]:
+    """Resolve one account identity to source rows without guessing Traveler element."""
+    source_game_id = traveler_source_id(character_id)
+    if source_game_id is None:
+        candidates = by_game.get(character_id, [])
+        attribute = _ELEMENT_ATTRIBUTE.get(element.upper()) if element else None
+        if len(candidates) > 1 and attribute is not None:
+            candidates = [row for row in candidates if row["attribute"] == attribute]
+        return candidates, False
+
+    alias_id = next(value for value in TRAVELER_SOURCE_IDS if value != source_game_id)
+    source_candidates = by_game.get(str(source_game_id), []) + by_game.get(str(alias_id), [])
+    resolved_element = traveler_element(character_id, element)
+    if not resolved_element:
+        # An absent element on a source-ID anchor is ambiguous. A contradictory
+        # or unknown explicit element is unmapped; neither case may pick a row.
+        return (source_candidates, True) if not element.strip() else ([], False)
+
+    attribute = _ELEMENT_ATTRIBUTE.get(resolved_element.upper())
+    if attribute is None:
+        return [], False
+    exact = [
+        row for row in by_game.get(str(source_game_id), [])
+        if row["attribute"] == attribute
+    ]
+    if exact:
+        return exact, False
+    # Public rules sometimes use the other gender's source game ID. Only the
+    # exact requested element can cross that alias boundary.
+    return [
+        row for row in by_game.get(str(alias_id), [])
+        if row["attribute"] == attribute
+    ], False
+
+
 def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
     """Evaluate known declarations without inventing weapon assignment or rule reuse."""
     data = rules.to_dict()
@@ -663,22 +704,21 @@ def evaluate_deck(deck: DraftDeck, rules: AbyssRuleset) -> AbyssDeckReport:
     character_base_total: int | float | None = 0
     tier_counts: dict[str, int] = {}
     for index, item in enumerate(deck.characters):
-        candidates = by_game.get(item.character_id, [])
-        attribute = _ELEMENT_ATTRIBUTE.get(item.element.upper()) if item.element else None
-        if len(candidates) > 1 and attribute is not None:
-            candidates = [row for row in candidates if row["attribute"] == attribute]
+        candidates, variant_ambiguous = _character_rule_candidates(
+            item.character_id, item.element, by_game
+        )
         if not candidates:
             add("character_unmapped", index=index, character_id=item.character_id, element=item.element)
-        elif len(candidates) > 1:
+        elif variant_ambiguous or len(candidates) > 1:
             add("character_variant_ambiguous", "review", index=index, character_id=item.character_id,
                 source_ids=[row["source_id"] for row in candidates])
-        source = candidates[0] if len(candidates) == 1 else None
+        source = candidates[0] if len(candidates) == 1 and not variant_ambiguous else None
         cost = tier = role = None
         tier_status = "unknown"
         if source is not None:
             # The selected preset defines role by DD membership. The price-row
             # specification is archival source data, not a character's role.
-            role = 0 if item.character_id in dd_character_ids else 1
+            role = 0 if source["game_id"] in dd_character_ids else 1
             if item.constellation is None or not 0 <= item.constellation <= 6:
                 add("character_constellation_unknown", index=index, character_id=item.character_id)
             if item.level is None or not 1 <= item.level <= 100:

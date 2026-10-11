@@ -6,7 +6,9 @@ from collections import Counter
 from decimal import Decimal, ROUND_CEILING
 from typing import Any
 
-from .abyss_rules import AbyssRuleset, _ELEMENT_ATTRIBUTE, evaluate_deck
+from hoyolab_export.traveler import traveler_element, traveler_source_id
+
+from .abyss_rules import AbyssRuleset, _ELEMENT_ATTRIBUTE, _character_rule_candidates, evaluate_deck
 from .deck import DraftDeck
 from .draft_system import DraftSystemDefinition, DRAFT_SYSTEM_RULESET_DATA_REQUIRED
 from .tier_allocation import allocate_requirements
@@ -225,13 +227,24 @@ def abyss_immune_context(
     for character_id in sorted(rows_1.keys() & rows_2.keys()):
         if character_id in absolute_set:
             continue
+        if traveler_source_id(character_id) is not None:
+            element_1 = traveler_element(character_id, deck_1[character_id].element)
+            element_2 = traveler_element(character_id, deck_2[character_id].element)
+            if (
+                not element_1
+                or element_1 != element_2
+                or rows_1[character_id]["source_id"] is None
+                or rows_1[character_id]["source_id"] != rows_2[character_id]["source_id"]
+            ):
+                continue
         one = rows_1[character_id]["cost"]
         two = rows_2[character_id]["cost"]
         if one or two:
             if one is not None and one == two:
                 eligible.append(character_id)
         elif (deck_1[character_id].constellation == deck_2[character_id].constellation
-              or character_id in _COSTLESS_VARIANT_EXCEPTIONS):
+              or character_id in _COSTLESS_VARIANT_EXCEPTIONS
+              or traveler_source_id(character_id) is not None):
             eligible.append(character_id)
     return tuple(eligible), absolute_ids
 
@@ -296,10 +309,16 @@ def calculate_abyss_weapon_budget(
             cost: int | float | None = None
             source_character = None
             if character is not None:
-                candidates = source_characters.get(character.character_id, ())
-                attribute = _ELEMENT_ATTRIBUTE.get(character.element.upper())
-                exact = [row for row in candidates if row["attribute"] == attribute]
-                source_character = exact[0] if len(exact) == 1 else None
+                if traveler_source_id(character.character_id) is not None:
+                    candidates, ambiguous = _character_rule_candidates(
+                        character.character_id, character.element, source_characters
+                    )
+                    source_character = candidates[0] if len(candidates) == 1 and not ambiguous else None
+                else:
+                    candidates = source_characters.get(character.character_id, ())
+                    attribute = _ELEMENT_ATTRIBUTE.get(character.element.upper())
+                    exact = [row for row in candidates if row["attribute"] == attribute]
+                    source_character = exact[0] if len(exact) == 1 else None
             source_weapon = source_weapons.get(stack.weapon_id) if stack is not None else None
             if (source_character is None or source_weapon is None or stack is None
                     or stack.refinement is None or not 1 <= stack.refinement <= 5):

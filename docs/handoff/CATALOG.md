@@ -42,6 +42,7 @@ in every file.
 | --- | --- |
 | [DATA_RUNTIME_BOUNDARIES.md](DATA_RUNTIME_BOUNDARIES.md) | Current source/cache, SQLite, assets/catalogs and normal offline-profile boundaries |
 | [ACCOUNT_PROFILES.md](ACCOUNT_PROFILES.md) | Isolated saved accounts, profile switching/deletion, login and central settings/reset contract |
+| [TRAVELER_VARIANTS.md](TRAVELER_VARIANTS.md) | Seven account Traveler variants, source identity, imports, assets and scoped acceptance |
 | [ACCOUNT_CHARACTER_DETAIL_FIELDS.md](ACCOUNT_CHARACTER_DETAIL_FIELDS.md) | Observed HoYoLAB character-detail source fields |
 | [ACCOUNT_SQLITE_STORAGE.md](ACCOUNT_SQLITE_STORAGE.md) | Runtime characters, talents, identities and observed weapon stacks |
 | [ACCOUNT_EQUIPMENT_STATE_DESIGN.md](ACCOUNT_EQUIPMENT_STATE_DESIGN.md) | Implemented persistent equipment service and import-apply contract |

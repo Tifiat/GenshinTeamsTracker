@@ -29,9 +29,9 @@ assigned-weapon budgets and restart-adjusted single-game Shiyu scoring. Both dec
 must use equal rules and have enough compatible shared immunity candidates.
 Unsupported flows/modes/stages and incomplete snapshots fail explicitly; old
 snapshots require refresh. Source session-bundle verification and tournament
-series remain open. Current Cup requires Pyro Traveler; GTT cannot select that
-variant yet, and Play names the missing character. Traveler remains the first
-independent task for another chat.
+series remain open. Current Cup requires Pyro Traveler. The independent
+[Traveler package](TRAVELER_VARIANTS.md) now owns selectable variants, exact
+element price/requirement checks and their remaining cross-account/runtime gates.
 
 Persistent catalog caching is user-deferred to MVP. No Computer Use, application
 launch or real-account access. Next is the user's Decks → Play → Draft/build/timer

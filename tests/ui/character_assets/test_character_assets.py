@@ -14,13 +14,17 @@ from hoyolab_export.account_storage import (
     AccountWeaponObservedStack,
 )
 from hoyolab_export import asset_paths
+from hoyolab_export.traveler import TRAVELER_ELEMENTS, traveler_variant_id
 from localization import get_language, set_language
+from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from ui.character_assets import (
     STANDARD_FILTER_EXCLUDE,
     STANDARD_FILTER_ONLY,
     account_character_asset_item,
     account_weapon_stack_asset_item,
     character_matches_filters,
+    character_sort_key,
+    filter_icon_path,
     pvp_character_asset_item,
     refresh_imported_element_filter_icons,
 )
@@ -326,6 +330,170 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
                 standard_filter=STANDARD_FILTER_EXCLUDE,
             )
         )
+
+    def test_traveler_variants_reuse_neutral_portrait_and_layer_each_element(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            portrait = root / "portrait.png"
+            baked_anchor = root / "baked_cryo.png"
+            Image.new("RGBA", (24, 24), "white").save(portrait)
+            Image.new("RGBA", (24, 24), "red").save(baked_anchor)
+            source_id = 10000005
+            records = []
+            for element in TRAVELER_ELEMENTS:
+                character_id = (
+                    source_id
+                    if element == "Cryo"
+                    else traveler_variant_id(source_id, element)
+                )
+                records.append(AccountCharacterRuntimeRecord(
+                    character_id=str(character_id),
+                    name="Lumine",
+                    element=element,
+                    rarity=5,
+                    level=90,
+                    constellation=4,
+                    portrait_path=str(baked_anchor),
+                    traits=("standard_5_star",),
+                    is_standard_5_star=True,
+                ))
+
+            def manifest_path(character_id, variant):
+                self.assertEqual(character_id, source_id)
+                return {
+                    "crop": baked_anchor,
+                    "portrait": portrait,
+                }.get(variant)
+
+            with patch(
+                "ui.character_assets.character_variant_path",
+                side_effect=manifest_path,
+            ):
+                assets = [account_character_asset_item(record) for record in records]
+
+            self.assertTrue(all(asset is not None for asset in assets))
+            items = [asset for asset in assets if asset is not None]
+            for record, asset in zip(records, items):
+                character = asset["metadata"]["character"]
+                self.assertEqual(asset["path"], portrait)
+                self.assertTrue(asset["metadata"]["portrait_is_neutral"])
+                self.assertEqual(character["source_character_id"], str(source_id))
+                self.assertEqual(
+                    character["canonical_name"],
+                    f"Traveler ({record.element})",
+                )
+                self.assertEqual(character["element"], record.element)
+                self.assertEqual(character["portrait_path"], str(portrait))
+                self.assertTrue(character["is_standard_5_star"])
+                self.assertEqual(asset["metadata"]["portrait_pvp_path"], str(portrait))
+
+                self.assertTrue(character_matches_filters(
+                    asset, {record.element}, set(), set(),
+                    standard_filter=STANDARD_FILTER_ONLY,
+                ))
+                wrong_element = next(
+                    value for value in TRAVELER_ELEMENTS if value != record.element
+                )
+                self.assertFalse(character_matches_filters(
+                    asset, {wrong_element}, set(), set(),
+                ))
+                self.assertFalse(character_matches_filters(
+                    asset, set(), set(), set(),
+                    standard_filter=STANDARD_FILTER_EXCLUDE,
+                ))
+
+            icons = root / "filter_icons"
+            icons.mkdir()
+            with patch(
+                "ui.utils.character_card_layers.filter_icon_path",
+                side_effect=lambda name: icons / name,
+            ):
+                grid = build_asset_grid_items(
+                    items,
+                    key_for_asset=lambda asset: asset["metadata"]["character"]["id"],
+                )
+            self.assertEqual(len({item.item_id for item in grid.items}), 7)
+            self.assertEqual(
+                [Path(item.overlay_icons[0].icon_path).name for item in grid.items],
+                [f"element_{element.lower()}.png" for element in TRAVELER_ELEMENTS],
+            )
+            sorted_names = [
+                asset["metadata"]["character"]["canonical_name"]
+                for asset in sorted(items, key=character_sort_key)
+            ]
+            self.assertEqual(sorted_names, sorted(sorted_names, key=str.casefold))
+
+    def test_traveler_missing_portrait_uses_side_icon_then_element_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            baked_anchor = root / "baked_pyro.png"
+            side_icon = root / "side_icon.png"
+            fallback_icon = root / "element_pyro.png"
+            for path in (baked_anchor, side_icon, fallback_icon):
+                Image.new("RGBA", (24, 24), "white").save(path)
+            character_id = traveler_variant_id(10000007, "Pyro")
+            record = AccountCharacterRuntimeRecord(
+                character_id=str(character_id),
+                name="Aether",
+                element="Pyro",
+                rarity=5,
+                level=80,
+                constellation=3,
+                portrait_path=str(baked_anchor),
+                side_icon_path=str(side_icon),
+                traits=("standard_5_star",),
+                is_standard_5_star=True,
+            )
+
+            with patch(
+                "ui.character_assets.character_variant_path",
+                side_effect=lambda _character_id, variant: (
+                    baked_anchor if variant == "crop" else None
+                ),
+            ):
+                side_item = account_character_asset_item(record)
+            self.assertEqual(side_item["path"], side_icon)
+            self.assertTrue(side_item["metadata"]["portrait_missing"])
+            self.assertEqual(pvp_character_asset_item(side_item)["path"], side_icon)
+
+            record = AccountCharacterRuntimeRecord(
+                character_id=str(character_id),
+                name="Aether",
+                element="Pyro",
+                rarity=5,
+                level=80,
+                constellation=3,
+                portrait_path=str(baked_anchor),
+                traits=("standard_5_star",),
+                is_standard_5_star=True,
+            )
+            with (
+                patch(
+                    "ui.character_assets.character_variant_path",
+                    return_value=None,
+                ),
+                patch(
+                    "ui.character_assets.filter_icon_path",
+                    return_value=fallback_icon,
+                ),
+            ):
+                fallback_item = account_character_asset_item(record)
+            self.assertIsNotNone(fallback_item)
+            self.assertEqual(fallback_item["path"], fallback_icon)
+            self.assertNotEqual(fallback_item["path"], baked_anchor)
+            self.assertTrue(fallback_item["metadata"]["portrait_missing"])
+            self.assertEqual(
+                pvp_character_asset_item(fallback_item)["path"],
+                fallback_icon,
+            )
+
+    def test_missing_imported_element_layer_uses_tracked_filter_icon(self) -> None:
+        for element in TRAVELER_ELEMENTS:
+            icon_name = f"element_{element.lower()}.png"
+            with patch("ui.character_assets.element_icon_path", return_value=None):
+                path = filter_icon_path(icon_name)
+            self.assertEqual(path.name, icon_name)
+            self.assertTrue(path.is_file())
 
 
 if __name__ == "__main__":

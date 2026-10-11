@@ -611,6 +611,10 @@ def _character_row_has_before_after(row: CharacterBaseStatRow) -> bool:
 
 
 def _is_special_traveler(character: SnapshotAccountCharacter) -> bool:
+    from .traveler import is_traveler_id
+
+    if is_traveler_id(character.id):
+        return True
     normalized = normalize_catalog_name(character.name)
     return normalized in {
         normalize_catalog_name(name)

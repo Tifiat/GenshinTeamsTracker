@@ -3,8 +3,10 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 
+from hoyolab_export.traveler import traveler_variant_id
 from run_workspace.pvp.abyss_match_rules import (
     AbyssMatchRulesError,
+    abyss_immune_context,
     build_abyss_match_schedule,
     calculate_abyss_weapon_budget,
     validate_abyss_match_deck,
@@ -107,6 +109,35 @@ def _deck(rules: AbyssRuleset) -> DraftDeck:
     )
 
 
+def _rules_with_traveler() -> AbyssRuleset:
+    payload = _rules().to_dict()
+    anemo_source_id = "e" * 24
+    pyro_source_id = "f" * 24
+    for source_id, attribute, cost in (
+        (anemo_source_id, 11, 0),
+        (pyro_source_id, 17, 0),
+    ):
+        payload["characters"].append({
+            "source_id": source_id,
+            "game_id": "10000007",
+            "attribute": attribute,
+            "names": {"en": "Traveler"},
+            "constellation_costs": [cost] * 7,
+            "level_percent": 0,
+            "level_flat": 0,
+            "specification": None,
+            "disable_french_cap": False,
+            "specialty": 5,
+        })
+    payload["weapons"][0]["character_overrides"].append({
+        "source_id": pyro_source_id,
+        "game_id": "10000007",
+        "attribute": 17,
+        "refinement_costs": [13] * 5,
+    })
+    return AbyssRuleset.from_dict(payload)
+
+
 class AbyssMatchRulesTests(unittest.TestCase):
     def test_pinned_flow_and_controller_replay(self) -> None:
         rules = _rules()
@@ -182,6 +213,93 @@ class AbyssMatchRulesTests(unittest.TestCase):
         with self.assertRaises(AbyssMatchRulesError) as error:
             build_abyss_match_schedule(_rules(first_action="MIRROR"))
         self.assertEqual(error.exception.code, "abyss_pick_action_unsupported")
+
+    def test_traveler_alias_and_element_select_assigned_weapon_price(self) -> None:
+        rules = _rules_with_traveler()
+        base = _deck(rules)
+        traveler_id = str(traveler_variant_id(10000005, "Pyro"))
+        traveler = replace(
+            base.characters[0],
+            character_id=traveler_id,
+            display_name="Traveler (Pyro)",
+            element="PYRO",
+        )
+        deck = replace(base, characters=(traveler,) + base.characters[1:])
+        assignment = PlayerWeaponAssignment(
+            SEAT_PLAYER_1,
+            (CharacterWeaponAssignment(traveler_id, deck.weapons[0].stack_key),),
+        )
+
+        report = calculate_abyss_weapon_budget(
+            rules,
+            {SEAT_PLAYER_1: deck, SEAT_PLAYER_2: deck},
+            {SEAT_PLAYER_1: assignment},
+        )
+
+        self.assertEqual(report["per_seat"][SEAT_PLAYER_1]["rows"][0]["cost"], 13)
+
+    def test_traveler_variant_is_a_costless_immunity_exception(self) -> None:
+        rules = _rules_with_traveler()
+        base = _deck(rules)
+        traveler_id = str(traveler_variant_id(10000005, "Pyro"))
+        player_1 = replace(
+            base,
+            characters=(replace(base.characters[0], character_id=traveler_id,
+                                display_name="Traveler (Pyro)", element="PYRO",
+                                constellation=0),) + base.characters[1:],
+        )
+        player_2 = replace(
+            base,
+            characters=(replace(base.characters[0], character_id=traveler_id,
+                                display_name="Traveler (Pyro)", element="PYRO",
+                                constellation=6),) + base.characters[1:],
+        )
+
+        eligible, _ = abyss_immune_context(player_1, player_2, rules)
+
+        self.assertIn(traveler_id, eligible)
+
+    def test_same_anchor_with_different_elements_is_not_a_shared_immune_candidate(self) -> None:
+        rules = _rules_with_traveler()
+        base = _deck(rules)
+        player_1 = replace(
+            base,
+            characters=(replace(base.characters[0], character_id="10000005",
+                                display_name="Traveler (Anemo)", element="ANEMO"),)
+            + base.characters[1:],
+        )
+        player_2 = replace(
+            base,
+            characters=(replace(base.characters[0], character_id="10000005",
+                                display_name="Traveler (Pyro)", element="PYRO"),)
+            + base.characters[1:],
+        )
+
+        eligible, _ = abyss_immune_context(player_1, player_2, rules)
+
+        self.assertNotIn("10000005", eligible)
+
+    def test_ordinary_assigned_weapon_price_still_requires_exact_element(self) -> None:
+        rules = _rules()
+        base = _deck(rules)
+        character = replace(base.characters[0], element="HYDRO")
+        deck = replace(base, characters=(character,) + base.characters[1:])
+        assignment = PlayerWeaponAssignment(
+            SEAT_PLAYER_1,
+            (CharacterWeaponAssignment(character.character_id, deck.weapons[0].stack_key),),
+        )
+
+        report = calculate_abyss_weapon_budget(
+            rules,
+            {SEAT_PLAYER_1: deck, SEAT_PLAYER_2: deck},
+            {SEAT_PLAYER_1: assignment},
+        )
+
+        self.assertIsNone(report["per_seat"][SEAT_PLAYER_1]["rows"][0]["cost"])
+        self.assertIn(
+            "abyss_assigned_weapon_price_unknown",
+            report["per_seat"][SEAT_PLAYER_1]["issue_codes"],
+        )
 
     def test_restart_penalty_changes_winner_without_changing_raw_timers(self) -> None:
         player_1 = PlayerMatchTimers(SEAT_PLAYER_1, (ChamberTimer("room", "one", 90),))

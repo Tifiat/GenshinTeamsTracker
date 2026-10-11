@@ -39,6 +39,11 @@ FAMILIES = {
     "PvP run admission and stale reason": ("test_presentation_contracts", "test_pvp_run_admission_hints_update_and_clear_without_changing_run_guards"),
     "account settings and import state": ("test_presentation_contracts", "test_account_help_and_busy_hint_use_custom_controllers"),
     "character filter choices": ("test_presentation_contracts", "test_filter_buttons_attach_localized_custom_hints"),
+    "character sort modes and conflicts": ("test_character_sort_hints", "test_sort_hints_describe_modes_and_exclusive_switch_in_all_languages"),
+    "character predicate combinations": ("test_character_sort_hints", "test_filter_hints_explain_group_intersection_and_conflicts_in_all_languages"),
+    "artifact pinned character targets": ("test_character_sort_hints", "test_artifact_filter_hints_explain_pinned_targets_in_all_languages"),
+    "PvP first actor setup": ("test_presentation_contracts", "test_pvp_first_actor_hint_uses_custom_controller_and_retranslates"),
+    "PvP per-player sort source": ("test_character_sort_hints", "test_pvp_sort_hint_identifies_selected_active_and_opponent_values"),
     "plain/rich popup lifecycle": ("test_presentation_contracts", "test_shared_popup_renders_plain_and_rich_text_and_hides_on_owner_events"),
     "grid hover identity": ("test_presentation_contracts", "test_grid_hover_uses_one_anchor_and_clears_stale_text"),
     "drag icon updates": ("test_presentation_contracts", "test_draggable_icon_routes_updates_through_custom_controller"),
@@ -55,7 +60,9 @@ REGISTERED_BINDINGS = {
         "ArtifactBrowserWindow._install_set_bonus_tooltip", "ArtifactBrowserWindow._make_build_preset_row",
         "ArtifactBrowserWindow._set_json_action_button", "ArtifactBrowserWindow.retranslate_ui",
         "ArtifactBrowserWindow.update_build_create_controls", "ArtifactBrowserWindow.update_build_slot_row",
+        "ArtifactBrowserWindow._refresh_build_target_filter_hints",
     },
+    "ui/character_browser/sort_controls.py": {"CharacterSortControls.retranslate_ui"},
     "ui/character_browser/filter_bar.py": {"CharacterFilterBar._make_filter_button", "CharacterFilterBar._make_standard_filter_button", "CharacterFilterBar.retranslate_ui"},
     "ui/character_browser/traveler_selector.py": {"TravelerVariantGrid.set_variant_groups", "TravelerVariantGrid.retranslate_ui"},
     "ui/gcsim_browser/optimizer_result.py": {"CompactOptimizerArtifactCard.__init__", "OptimizerResultBuildsWidget._render_current_page"},
@@ -70,6 +77,7 @@ REGISTERED_BINDINGS = {
     "ui/right_panel/common/slot_parts.py": {"RightPanelArtifactMiniZoneWidget.set_state", "RightPanelPixmapMiniBoxLabel._render"},
     "ui/right_panel/live_run/panel.py": {"BonusSourceChipWidget.__init__", "ChamberTableBlockWidget._rebuild", "ChamberTableBlockWidget._update_rows", "SelectedCharacterDetailsWidget._set_weapon_summary"},
     "ui/right_panel/pvp/decks/panel.py": {"PvpDecksRightPanel._install_button_tooltip"},
+    "ui/right_panel/pvp/play/panel.py": {"PvpPlayRightPanel.retranslate_ui"},
     "ui/right_panel/settings/account_data.py": {"AccountDataPage._build_ui"},
     "ui/right_panel/settings/account_profiles.py": {"AccountProfilesWidget._populate_menu"},
     "ui/utils/pixel_icon_grid.py": {"PixelIconGrid.__init__"},
@@ -80,6 +88,7 @@ REGISTERED_BINDINGS = {
 # Default is one call per registered method. Tracking multiplicity also catches
 # a new tooltip added inside an already registered UI-construction method.
 MULTIPLE_BINDINGS = {
+    ("ui/artifact_browser/window.py", "ArtifactBrowserWindow._refresh_build_target_filter_hints"): 2,
     ("ui/artifact_browser/window.py", "ArtifactBrowserWindow._build_build_panel"): 2,
     ("ui/artifact_browser/window.py", "ArtifactBrowserWindow.retranslate_ui"): 2,
     ("ui/artifact_browser/window.py", "ArtifactBrowserWindow._make_build_preset_row"): 6,

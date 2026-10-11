@@ -47,7 +47,8 @@ from ui.gcsim_browser.optimizer_result import (
 from ui.gcsim_browser.virtual_slot_editor import VirtualGcsimCardEditor
 from ui.gcsim_browser.window import GcsimBrowserWorkspace
 from ui.main_window import App
-from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace
+from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
+from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 from ui.right_panel.common.run_summary import CompactSlotSummaryWidget
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 from ui.right_panel.settings.account_data import AccountDataPage
@@ -263,12 +264,12 @@ class TooltipPresentationContracts(unittest.TestCase):
                         for button, key in zip(bar.buttons, keys):
                             with self.subTest(key=key):
                                 text = _controller(button).text()
-                                self.assertEqual(text, tr(key))
+                                self.assertEqual(text, f"{tr(key)}\n\n{tr('filter.character.rules')}")
                                 self.assertNotIn("?", text)
                                 self.assertNotIn("\\u", text)
                                 if key in _FILTER_HINT_EXPECTATIONS[language]:
                                     self.assertEqual(
-                                        text,
+                                        text.split("\n\n", 1)[0],
                                         _FILTER_HINT_EXPECTATIONS[language][key],
                                     )
                                 self.assertEqual(button.toolTip(), "")
@@ -276,7 +277,7 @@ class TooltipPresentationContracts(unittest.TestCase):
                         standard_button = bar.standard_button
                         expected_hint = _FILTER_HINT_EXPECTATIONS[language][
                             CHARACTER_STANDARD_FILTER[2]
-                        ]
+                        ] + f"\n\n{tr('filter.character.rules')}"
                         states = (
                             (STANDARD_FILTER_ALL, False, False),
                             (STANDARD_FILTER_ONLY, True, False),
@@ -299,6 +300,34 @@ class TooltipPresentationContracts(unittest.TestCase):
                             self.assertEqual(standard_button.property("standardOnly"), only)
                             self.assertEqual(standard_button.property("standardExclude"), exclude)
                             self.assertEqual(_controller(standard_button).text(), expected_hint)
+
+    def test_pvp_first_actor_hint_uses_custom_controller_and_retranslates(self) -> None:
+        original_language = get_language()
+        self.addCleanup(set_language, original_language)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = PvpWorkspace(
+                db_path=root / "unused.db", deck_dir=root / "decks",
+                character_assets_provider=lambda: [], weapon_assets_provider=lambda: [],
+                abyss_source_data_provider=lambda: None, abyss_period_provider=lambda: None,
+                abyss_cache_dir=root / "abyss",
+            )
+            self.addCleanup(workspace.close)
+            panel = PvpPlayRightPanel(workspace)
+            self.addCleanup(panel.close)
+            controller = _controller(panel.first_seat_combo)
+            expectations = {
+                "ru": "Дополнительные пребаны по разнице коста идут до основной очереди ходов.",
+                "en": "Cost compensation prebans come before the main turn order.",
+                "pt-br": "Pré-bans por diferença de custo ocorrem antes da ordem principal.",
+            }
+            for language, phrase in expectations.items():
+                set_language(language)
+                panel.retranslate_ui()
+                self.assertIs(_controller(panel.first_seat_combo), controller)
+                self.assertEqual(controller.text(), phrase)
+                self.assertEqual(panel.first_seat_combo.toolTip(), "")
+            self.assertFalse((root / "unused.db").exists())
 
     def test_optimizer_save_status_and_replacement_help_are_distinct(self) -> None:
         widget = OptimizerResultBuildsWidget()

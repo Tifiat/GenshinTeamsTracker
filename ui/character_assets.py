@@ -50,6 +50,12 @@ from hoyolab_export.traveler import (
 )
 from localization import get_language
 from ui.artifact_browser.stat_types import localized_stat_label
+from ui.character_browser.sorting import (
+    CharacterSortState,
+    DEFAULT_CHARACTER_SORT,
+    character_sort_key as _character_sort_key,
+    is_standard_character,
+)
 from ui.utils.icon_utils import tinted_svg_pixmap
 
 FILTER_ASSETS_DIR = PROJECT_ROOT / "assets" / "filters"
@@ -557,11 +563,7 @@ def character_matches_filters(
     rarity = metadata_int(character.get("rarity"))
     region_key = str(character.get("region_key") or metadata.get("region_key") or "")
     traits = set(character.get("traits") or metadata.get("traits") or [])
-    is_standard = bool(
-        character.get("is_standard_5_star")
-        or metadata.get("is_standard_5_star")
-        or TRAIT_STANDARD_5_STAR in traits
-    )
+    is_standard = is_standard_character(asset)
 
     if element_filters and element not in element_filters:
         return False
@@ -581,11 +583,5 @@ def character_matches_filters(
     return True
 
 
-def character_sort_key(asset: dict):
-    character = character_metadata(asset)
-    rarity = metadata_int(character.get("rarity"))
-    level = metadata_int(character.get("level"))
-    name = str(
-        character.get("canonical_name") or character_name(asset)
-    ).casefold()
-    return (-rarity, -level, name, str(asset.get("filename") or ""))
+def character_sort_key(asset: dict, state: CharacterSortState = DEFAULT_CHARACTER_SORT):
+    return _character_sort_key(asset, state)

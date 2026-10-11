@@ -86,16 +86,10 @@ from run_workspace.pvp.profile_package import (
 from run_workspace.pvp.validation import DeckValidationReport, validate_draft_deck
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import (
-    CHARACTER_RARITY_FILTERS,
-    CHARACTER_STANDARD_FILTER,
-    CHARACTER_TRAIT_FILTERS,
-    ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
     filter_icon_path,
     pvp_character_asset_item,
     STANDARD_FILTER_ALL,
-    STANDARD_FILTER_EXCLUDE,
-    STANDARD_FILTER_ONLY,
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
     character_matches_filters,
@@ -103,7 +97,6 @@ from ui.character_assets import (
     load_account_character_asset_items,
     load_account_weapon_stack_asset_items,
     metadata_int,
-    standard_character_filter_icon,
 )
 from ui.utils.filter_button_style import (
     FILTER_BUTTON_ICON_SIZE,
@@ -569,25 +562,13 @@ class PvpDecksWorkspace(QWidget):
         self.character_title_label = QLabel()
         editor.addWidget(self.character_title_label)
         editor.addSpacing(6)
-        editor.addLayout(
-            self._build_filter_row(
-                (
-                    (ELEMENT_FILTERS, self._character_element_filters, self.refresh_view),
-                    (WEAPON_TYPE_FILTERS, self._character_weapon_filters, self.refresh_view),
-                    (
-                        CHARACTER_RARITY_FILTERS,
-                        self._character_rarity_filters,
-                        self.refresh_view,
-                    ),
-                    (
-                        CHARACTER_TRAIT_FILTERS,
-                        self._character_trait_filters,
-                        self.refresh_view,
-                    ),
-                ),
-                trailing_widgets=(self._make_standard_filter_button(),),
-            )
-        )
+        self.character_filter_bar = CharacterFilterBar(self)
+        self._character_element_filters = self.character_filter_bar.element_filters
+        self._character_weapon_filters = self.character_filter_bar.weapon_filters
+        self._character_rarity_filters = self.character_filter_bar.rarity_filters
+        self._character_trait_filters = self.character_filter_bar.trait_filters
+        self.character_filter_bar.filters_changed.connect(self._on_character_filters_changed)
+        editor.addWidget(self.character_filter_bar)
         editor.addSpacing(6)
         self.requirement_filter_frame = QWidget()
         requirement_filter_layout = QHBoxLayout(self.requirement_filter_frame)
@@ -995,6 +976,7 @@ class PvpDecksWorkspace(QWidget):
     def retranslate_ui(self) -> None:
         self.character_title_label.setText(tr("app_shell.pvp.decks.characters"))
         self.weapon_title_label.setText(tr("app_shell.pvp.decks.weapons"))
+        self.character_filter_bar.retranslate_ui()
         self.requirement_filter_reset.setText(tr("app_shell.pvp.rules.filter_reset"))
         self._sync_requirement_filter_text()
         self._sync_empty_state()
@@ -1070,7 +1052,7 @@ class PvpDecksWorkspace(QWidget):
                 standard_filter=self._character_standard_filter,
             )
         ]
-        assets.sort(key=character_sort_key)
+        assets.sort(key=self.character_filter_bar.sort_key)
         if self._character_requirement_filter is not None:
             tier, role = self._character_requirement_filter
             assets = [asset for asset in assets if (
@@ -1377,41 +1359,9 @@ class PvpDecksWorkspace(QWidget):
         row.addStretch()
         return row
 
-    def _make_standard_filter_button(self) -> QPushButton:
-        _value, _icon_name, _tooltip_key = CHARACTER_STANDARD_FILTER
-        button = QPushButton("")
-        button.setObjectName("app_shell_filter_button")
-        button.setCheckable(False)
-        button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
-        button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
-        button.setStyleSheet(FILTER_BUTTON_STYLE)
-        button.setIcon(standard_character_filter_icon(STANDARD_FILTER_ALL, size=FILTER_BUTTON_ICON_SIZE))
-        button.setProperty("standardOnly", False)
-
-        def cycle_standard_filter() -> None:
-            if self._character_standard_filter == STANDARD_FILTER_ALL:
-                self._character_standard_filter = STANDARD_FILTER_ONLY
-            elif self._character_standard_filter == STANDARD_FILTER_ONLY:
-                self._character_standard_filter = STANDARD_FILTER_EXCLUDE
-            else:
-                self._character_standard_filter = STANDARD_FILTER_ALL
-            button.setProperty(
-                "standardOnly",
-                self._character_standard_filter == STANDARD_FILTER_ONLY,
-            )
-            button.style().unpolish(button)
-            button.style().polish(button)
-            button.setIcon(
-                standard_character_filter_icon(
-                    self._character_standard_filter,
-                    size=FILTER_BUTTON_ICON_SIZE,
-                )
-            )
-            button.repaint()
-            self.refresh_view()
-
-        button.clicked.connect(cycle_standard_filter)
-        return button
+    def _on_character_filters_changed(self) -> None:
+        self._character_standard_filter = self.character_filter_bar.standard_filter
+        self.refresh_view()
 
     def _weapon_matches_filters(self, asset: dict[str, Any]) -> bool:
         metadata = asset.get("metadata") or {}
@@ -1825,7 +1775,9 @@ class PvpDraftWorkspace(QWidget):
             layout.addLayout(scope_row)
             self._refresh_pool_scope_texts()
 
-            self.character_filter_bar = CharacterFilterBar(pool_frame)
+            self.character_filter_bar = CharacterFilterBar(
+                pool_frame, sort_context_hint_key="filter.sort.pvp_source",
+            )
             self.character_filter_bar.filters_changed.connect(
                 self._refresh_draft_pool_filters,
             )
@@ -1957,12 +1909,33 @@ class PvpDraftWorkspace(QWidget):
                     )
                 )
             ]
+        sort_key = filters.sort_key if filters is not None else character_sort_key
+        active_sort = filters is not None and filters.sort_controls.state.active
         entries.sort(
-            key=lambda entry: character_sort_key(
-                self._character_assets_by_id.get(_text(entry.get("character_id")), {})
+            key=lambda entry: sort_key(
+                self._draft_pool_sort_asset(entry, board) if active_sort
+                else self._character_assets_by_id.get(_text(entry.get("character_id")), {})
             )
         )
         return entries
+
+    def _draft_pool_sort_asset(self, entry: Mapping[str, Any], board: Mapping[str, Any]) -> dict[str, Any]:
+        asset = self._character_assets_by_id.get(_text(entry.get("character_id")), {})
+        owners = tuple(entry.get("owner_seats") or ())
+        seat = self._pool_scope if self._pool_scope in PVP_SEATS else _text(
+            _mapping(board.get("current_requirement")).get("active_seat") or entry.get("active_seat")
+        )
+        if seat not in owners:
+            base = _text(entry.get("base_seat"))
+            seat = base if base in owners else next((owner for owner in PVP_SEATS if owner in owners), "")
+        values = _mapping(entry.get("per_seat")).get(seat)
+        if not isinstance(values, Mapping):
+            return asset
+        metadata = dict(asset.get("metadata") or {})
+        character = dict(metadata.get("character") or {})
+        character.update(level=values.get("level"), constellation=values.get("constellation"))
+        # Only the comparison projection changes; neither profile nor board is edited.
+        return {**asset, "metadata": {**metadata, "character": character}}
 
     def click_legal_character_for_test(self, character_id: str | None = None) -> bool:
         target = character_id or (self.legal_character_ids[0] if self.legal_character_ids else "")

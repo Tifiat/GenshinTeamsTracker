@@ -28,6 +28,11 @@ question-mark and literal Unicode-escape text, cover the standard all/only/exclu
 cycle and verify same-controller language refresh in normal/PvP filter bars.
 [Current card receipt](CHARACTER_CARD_ASSETS.md#portrait-weapon-and-filter-follow-up--2026-10-11)
 owns the rerun and native boundary. Filter state survives retranslation.
+
+The [character-filter contract](CHARACTER_FILTERS.md) now owns numbered Cn/level
+sorts, exclusivity, predicate conflicts and artifact pinned-target exceptions.
+Their semantic locale/controller checks and bindings join the common suite;
+its verification section owns the fresh result and native boundary.
 <!-- /handoff-current -->
 
 ## Required workflow

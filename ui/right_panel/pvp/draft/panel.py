@@ -44,7 +44,6 @@ from ui.right_panel.pvp._shared import (
     _refresh_postdraft_seat_toggle_style,
 )
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidget
-from ui.pvp_browser.draft_clock_widget import DraftClockWidget
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 
 
@@ -86,6 +85,9 @@ class PvpDraftRightPanel(QWidget):
         workspace: PvpWorkspace,
         parent: QWidget | None = None,
     ) -> None:
+        # The browser package exports the window, which also imports this panel.
+        from ui.pvp_browser.draft_clock_widget import DraftClockWidget
+
         super().__init__(parent)
         self.workspace = workspace
         self.setObjectName("RightPanelPrototypeContent")

@@ -26,6 +26,10 @@ retain their existing display. Absolute browser/selection paths now pass through
 the managed-profile resolver. Filter tooltips have semantic locale checks and
 refresh in place when UI language changes.
 
+[Character filters and sorting](CHARACTER_FILTERS.md) owns the shared predicate
+and cycling-sort contract, including the shown Traveler variant's comparison
+values and unchanged weapon/owner layers.
+
 The dated follow-up below owns automated evidence and the native boundary:
 the existing window was inspected before the fix; user Escape stopped further
 Computer Use. Native after-fix acceptance, authenticated import and release

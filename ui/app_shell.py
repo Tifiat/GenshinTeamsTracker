@@ -101,7 +101,6 @@ from ui.character_assets import (
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
     character_matches_filters,
-    character_sort_key,
     load_account_character_asset_items,
     load_account_weapon_stack_asset_items,
     load_weapon_owner_badges_for_fingerprints,
@@ -4108,10 +4107,10 @@ class CharacterWeaponWorkspace(QWidget):
         ]
         predicate_ms = perf_ms(predicate_start)
         sort_start = perf_now()
-        assets.sort(key=character_sort_key)
-        sort_ms = perf_ms(sort_start)
         presentation = collapse_traveler_assets(assets, self._selected_traveler_ids)
         assets = list(presentation.assets)
+        assets.sort(key=self.character_filter_bar.sort_key)
+        sort_ms = perf_ms(sort_start)
         self._last_character_grid_keys = tuple(_asset_character_id(asset) for asset in assets)
         rebuild_ms = self._reload_icon_grid(
             assets,

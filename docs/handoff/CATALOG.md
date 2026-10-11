@@ -1,6 +1,7 @@
 # Full handoff catalog
 
 - [Character card assets and browser presentation](CHARACTER_CARD_ASSETS.md)
+- [Character filters and sorting](CHARACTER_FILTERS.md)
 
 This file lists the available handoff documents for discovery and structural
 coverage. It is not startup reading. Use `README.md` to choose one area and

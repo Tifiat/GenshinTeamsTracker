@@ -206,9 +206,9 @@ Build presets:
   `data/cache/hoyowiki/character_region_catalog.json`.
 - Region/trait identity is joined into SQLite `character_identity`; read adapters expose
   `region_key`, `region_name`, `traits`, and `is_standard_5_star` for every account character when matched.
-- Region and `Moonsign`/`Hexerei` filters are OR inside their own group, then AND
-  with selected element/weapon/rarity filters. Standard 5-star is a tri-state
-  filter using `assets/filters/standard.png`.
+- [Character filters and sorting](CHARACTER_FILTERS.md) owns target predicate
+  combinations, the standard cycle, Cn/level sorts and selected-target exceptions.
+  The standard button continues to use `assets/filters/standard.png`.
 - Region/trait joins prefer HoYoWiki entry ids and use normalized localized names only as fallback.
 - `assets/filters/Icon_Back.png` is used as the build target selector reset-all filter button.
 - Editing a saved build preset temporarily switches selected targets to that preset's targets; after save/cancel, the previous target browsing selection is restored.

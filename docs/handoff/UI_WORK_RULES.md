@@ -88,6 +88,8 @@ saved choices remain unchanged on read, even when equal to old factory values.
 
 ## Text and performance
 
+Character predicates and sort controls follow [the filter contract](CHARACTER_FILTERS.md).
+
 - New user-visible text goes through `localization/locales/{ru,en,pt-br}.json`
   and `tr`/`tr_for_language`. New tooltips use the in-app custom surface, not
   native Qt tooltips; preserve typed content when richer payloads are planned.

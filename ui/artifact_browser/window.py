@@ -39,6 +39,7 @@ from PySide6.QtGui import (
 )
 
 from hoyolab_export.paths import PROJECT_ROOT
+from ui.character_browser.sort_controls import CharacterSortControls, character_filter_hint
 from hoyolab_export.character_region_catalog import (
     REGION_ICON_FILES,
     REGION_LABEL_KEYS,
@@ -975,6 +976,7 @@ class ArtifactBrowserWindow(QWidget):
         self._region_popup: RegionFilterPopup | None = None
         self._suppress_next_region_popup_open = False
         self.build_target_filter_buttons: list[tuple[QPushButton, set, object]] = []
+        self._build_target_filter_tooltip_keys: dict[QPushButton, str] = {}
         self._character_region_by_name: dict[str, dict] = {}
         self._region_names_by_key: dict[str, str] = {}
         self.build_target_filter_reset_button: QPushButton | None = None
@@ -1469,6 +1471,12 @@ class ArtifactBrowserWindow(QWidget):
         filter_column.addWidget(self.build_target_region_button)
         self.build_target_standard_button = self._make_build_target_standard_filter_button()
         filter_column.addWidget(self.build_target_standard_button)
+        self.build_target_sort_controls = CharacterSortControls(
+            filter_content, vertical=True, button_name="target_filter_button",
+        )
+        self.build_target_sort_controls.sort_changed.connect(self.refresh_build_target_list)
+        filter_column.addWidget(self.build_target_sort_controls)
+        self._refresh_build_target_filter_hints()
         filter_column.addStretch()
         filter_scroll.setWidget(filter_content)
         body.addWidget(filter_scroll)
@@ -1510,6 +1518,7 @@ class ArtifactBrowserWindow(QWidget):
             )
         )
         self.build_target_filter_buttons.append((button, selected_values, value))
+        self._build_target_filter_tooltip_keys[button] = tooltip_key
         return button
 
     def _make_build_target_filter_reset_button(self) -> QPushButton:
@@ -1531,6 +1540,7 @@ class ArtifactBrowserWindow(QWidget):
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
         button.pressed.connect(self.on_build_target_region_button_pressed)
         button.clicked.connect(self.show_region_filter_popup)
+        self._build_target_filter_tooltip_keys[button] = "filter.character.region"
         return button
 
     def _make_build_target_standard_filter_button(self) -> QPushButton:
@@ -1546,6 +1556,7 @@ class ArtifactBrowserWindow(QWidget):
         )
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
         button.setProperty("standardOnly", False)
+        self._build_target_filter_tooltip_keys[button] = CHARACTER_STANDARD_FILTER[2]
 
         def cycle_standard_filter() -> None:
             if self.build_target_standard_filter == STANDARD_FILTER_ALL:
@@ -1891,6 +1902,8 @@ class ArtifactBrowserWindow(QWidget):
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("artifact.browser.title"))
+        self._refresh_build_target_filter_hints()
+        self.build_target_sort_controls.retranslate_ui()
 
         for pos, button in self.position_buttons.items():
             button.setText(self._position_label(pos))
@@ -3187,6 +3200,7 @@ class ArtifactBrowserWindow(QWidget):
 
         ensure_start = perf_now()
         created_buttons = self._ensure_build_target_buttons()
+        self._sync_build_target_button_order()
         ensure_ms = perf_ms(ensure_start)
 
         filter_start = perf_now()
@@ -3337,8 +3351,43 @@ class ArtifactBrowserWindow(QWidget):
             for key, item in self.build_target_items_by_key.items()
             if key != BUILD_TARGET_UNIVERSAL_KEY
         ]
-        character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
+        character_items.sort(key=lambda item: character_sort_key(
+            item.get("asset") or {"filename": item["key"], "metadata": {"character": {
+                "name": item.get("character_name"), "id": item.get("character_id") or item["key"],
+            }}}, self.build_target_sort_controls.state,
+        ))
         return ([universal] if universal else []) + character_items
+
+    def _sync_build_target_button_order(self) -> None:
+        ordered_keys = [item["key"] for item in self._ordered_build_target_items()]
+        current_keys = set(ordered_keys)
+        # Keep removed source rows in the visibility pass so cached widgets hide.
+        ordered_keys.extend(key for key in self._build_target_button_order if key not in current_keys)
+        if ordered_keys == self._build_target_button_order:
+            return
+        content = self.build_target_list_content
+        enabled = content.updatesEnabled()
+        content.setUpdatesEnabled(False)
+        try:
+            for index, key in enumerate(ordered_keys):
+                button = self.build_target_buttons_by_key[key]
+                old_index = self.build_target_list_layout.indexOf(button)
+                if old_index != index:
+                    # Move the layout item; keep the widget, parent, selection and icon.
+                    item = self.build_target_list_layout.takeAt(old_index)
+                    self.build_target_list_layout.insertItem(index, item)
+            self._build_target_button_order = ordered_keys
+        finally:
+            content.setUpdatesEnabled(enabled)
+            if enabled:
+                content.update()
+
+    def _refresh_build_target_filter_hints(self) -> None:
+        for button, tooltip_key in self._build_target_filter_tooltip_keys.items():
+            hint = f"{character_filter_hint(tooltip_key)}\n\n{tr('filter.character.pinned_targets')}"
+            install_custom_tooltip(button, hint)
+        if self.build_target_filter_reset_button is not None:
+            install_custom_tooltip(self.build_target_filter_reset_button, tr("filter.character.reset"))
 
     def _build_target_insert_index(self, key: str) -> int:
         ordered_keys = [item["key"] for item in self._ordered_build_target_items()]
@@ -3415,6 +3464,7 @@ class ArtifactBrowserWindow(QWidget):
             or self.build_target_region_filters
             or self.build_target_trait_filters
             or self.build_target_standard_filter != STANDARD_FILTER_ALL
+            or self.build_target_sort_controls.state.active
         )
 
     def sync_build_target_filter_buttons(self) -> None:
@@ -3425,6 +3475,10 @@ class ArtifactBrowserWindow(QWidget):
             self.build_target_standard_button.setProperty(
                 "standardOnly",
                 self.build_target_standard_filter == STANDARD_FILTER_ONLY
+            )
+            self.build_target_standard_button.setProperty(
+                "standardExclude",
+                self.build_target_standard_filter == STANDARD_FILTER_EXCLUDE,
             )
             self.build_target_standard_button.style().unpolish(
                 self.build_target_standard_button
@@ -3457,6 +3511,7 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_region_filters.clear()
         self.build_target_trait_filters.clear()
         self.build_target_standard_filter = STANDARD_FILTER_ALL
+        self.build_target_sort_controls.reset(emit=False)
         self.sync_build_target_filter_buttons()
         self.refresh_build_target_list()
 

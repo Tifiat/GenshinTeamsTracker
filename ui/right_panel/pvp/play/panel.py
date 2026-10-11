@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from localization import tr
 from PySide6.QtCore import Qt
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from ui.utils.tooltips import install_custom_tooltip
 from run_workspace.pvp.deck_preset import PvpDeckPreset
 from run_workspace.pvp.deck import FREE_DRAFT_V0_RULESET_ID
 from run_workspace.pvp.draft_options import DraftMatchOptions, parse_restart_penalties
@@ -393,7 +394,7 @@ class PvpPlayRightPanel(QWidget):
         self.player_2_local_button.setText(tr("app_shell.pvp.profile.use_local"))
         self.draft_system_label.setText(tr("app_shell.pvp.decks.rules_label"))
         self.first_seat_label.setText(tr("app_shell.pvp.setup.first_seat"))
-        self.first_seat_combo.setToolTip(tr("app_shell.pvp.setup.first_seat_hint"))
+        install_custom_tooltip(self.first_seat_combo, tr("app_shell.pvp.setup.first_seat_hint"))
         self.games_count_label.setText(tr("app_shell.pvp.setup.games_count"))
         self.alternate_first_check.setText(tr("app_shell.pvp.setup.alternate_first"))
         for index, seat in enumerate(("player_1", "player_2")):

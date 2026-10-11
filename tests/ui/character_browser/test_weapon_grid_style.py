@@ -13,7 +13,6 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication
 
 from ui.app_shell import CharacterWeaponWorkspace
-from ui.utils.pixel_icon_grid import build_pixel_icon_grid_layout
 from ui.utils.ui_palette import UI_ACCENT_TEAM_1
 
 
@@ -77,7 +76,7 @@ class WeaponGridStyleTest(unittest.TestCase):
         self.workspace.reload_weapons()
         _APP.processEvents()
 
-    def test_equipped_card_matches_pvp_grid_spacing_and_compact_owner_geometry(self) -> None:
+    def test_equipped_card_keeps_pvp_spacing_and_original_owner_geometry(self) -> None:
         grid = self.workspace.weapon_grid
         self.assertEqual(grid.item_count(), 24)
         self.assertEqual(grid._metrics.item_width, 48)
@@ -101,8 +100,8 @@ class WeaponGridStyleTest(unittest.TestCase):
         self.assertIsNotNone(item)
         self.assertIsNotNone(item.outline)
         self.assertEqual(item.outline.color, UI_ACCENT_TEAM_1)
-        self.assertEqual((item.outline.width, item.outline.radius, item.outline.overhang), (2, 4, 0))
-        self.assertEqual((item.outline.alpha, item.outline.fill_alpha), (255, 0))
+        self.assertEqual((item.outline.width, item.outline.radius, item.outline.overhang), (4, 4, 0))
+        self.assertEqual((item.outline.alpha, item.outline.fill_alpha), (230, 0))
         self.assertEqual(len(item.overlay_icons), 1)
         self.assertEqual(item.tooltip, "Weapon 0 details")
         self.assertEqual(item.badges, ())
@@ -110,23 +109,11 @@ class WeaponGridStyleTest(unittest.TestCase):
         overlay = item.overlay_icons[0]
         self.assertEqual(overlay.icon_path, str(self.owner_icon))
         self.assertTrue(overlay.background_enabled)
-        self.assertLess(overlay.size_ratio, 0.5)
-        for dpr in (1.0, 1.25, 2.0):
-            layout = build_pixel_icon_grid_layout(24, 220, grid._metrics, dpr=dpr)
-            card = layout.rects[0]
-            side = round(card.width() * overlay.size_ratio)
-            right_shift = round(side * overlay.right_overhang_ratio)
-            top_shift = round(side * overlay.top_overhang_ratio)
-            portrait = QRect(
-                card.right() - side + 1 + right_shift,
-                card.top() - top_shift,
-                side,
-                side,
-            )
-            self.assertTrue(card.contains(portrait), f"owner portrait overhangs at DPR {dpr}")
-            self.assertLess(portrait.width(), card.width() // 2 + 1)
-            self.assertGreaterEqual(card.right() - portrait.right(), 2)
-            self.assertGreaterEqual(portrait.top() - card.top(), 2)
+        # The painted-pixel regression independently locks placement to the
+        # main checkout's 45px owner canvas on a 48px weapon box.
+        self.assertAlmostEqual(overlay.size_ratio, 45 / 48)
+        self.assertAlmostEqual(overlay.right_overhang_ratio, 14 / 45)
+        self.assertAlmostEqual(overlay.top_overhang_ratio, 22 / 45)
 
     def test_equip_and_unequip_refresh_owner_state_for_full_and_incremental_grids(self) -> None:
         grid = self.workspace.weapon_grid

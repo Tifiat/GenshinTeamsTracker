@@ -260,11 +260,11 @@ WEAPON_OWNER_OVERLAY_TRACE = os.environ.get(
     "yes",
     "on",
 }
-# Keep the owner visible without covering the weapon or crossing into the next card.
-# Negative overhang ratios inset the portrait by two pixels at the 48px reference size.
-WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 22 / 48
-WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = -2 / 22
-WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = -2 / 22
+# Preserve the accepted main-checkout geometry relative to the weapon box:
+# a 45px owner canvas at x=17/y=-22 on a 48px weapon, independent of its outline.
+WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 45 / 48
+WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 14 / 45
+WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
 WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
@@ -4475,9 +4475,9 @@ def _weapon_occupied_outline(asset: dict[str, Any]) -> PixelIconGridOutline | No
         return None
     return PixelIconGridOutline(
         color=WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
-        width=2,
+        width=4,
         radius=4,
-        alpha=255,
+        alpha=GRID_SELECTION_OUTLINE_ALPHA,
     )
 
 

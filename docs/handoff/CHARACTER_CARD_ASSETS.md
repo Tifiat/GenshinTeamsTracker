@@ -18,8 +18,9 @@ The element/constellation bitmap renderer, shared URL/DOM extraction and
 import-dependent filter-icon refresh code are removed. Historical account image
 files retain their existing lifetime.
 
-The follow-up aligns equipped weapon frames/owner portraits with PvP, softens the
-shared green and applies the same rarity/element/Cn recipe to live and PvP Run
+Equipped weapon frames share the browser style; owner portraits retain the main
+checkout's accepted geometry. Balanced green/blue team accents accompany the
+same rarity/element/Cn recipe in live and PvP Run
 slots. New History saves freeze these layers inside each bundle; old bundles
 retain their existing display. Absolute browser/selection paths now pass through
 the managed-profile resolver. Filter tooltips have semantic locale checks and
@@ -86,10 +87,13 @@ the active profile, foreign managed-profile paths are rejected and external
 package paths remain valid. Shared shipped resources stay outside account ownership.
 
 Normal weapon cells retain PvP's 48px size and 6px gaps. Equipped cards use a
-2px rounded frame without a fill or overhang, and a 22px owner portrait inset
-2px inside the upper-right corner. Full and incremental refreshes use the same
-recipe. `UI_ACCENT_TEAM_1` is now the muted `#64967c`, so equipped/team/selection
-surfaces using this shared accent change together. PvP prices remain PvP-owned.
+4px rounded frame, alpha 230, without a fill or overhang. The owner canvas keeps
+the main checkout's accepted 45×45 size at (+17, −22) relative to the 48×48 weapon
+box. Its ratios are 45/48 for size, 14/45 right overhang and 22/45 top overhang;
+rounding uses the actual weapon rectangle at each scale. Frame thickness/overhang
+cannot move or resize the owner portrait. Full and incremental refreshes use the
+same recipe. Team accents are `#72b18e` green and `#729fd3` blue; character outline
+and slot-badge alpha remain 230/235. PvP prices remain PvP-owned.
 
 The former import-time Cn stamp was locally generated with PIL, not downloaded
 as a constellation icon. Its ImageDraw/ImageFont/Arial branch is deleted, along
@@ -221,6 +225,38 @@ contracts or shared queue edits, but its full result is FAIL for one unrelated
 `coordination-oversize-file` in `GTT coordination/workers/worker2.md` (over 8000
 bytes). That foreign owner's status was not edited; this boundary is retained.
 
+## Owner overlay and palette correction — 2026-10-11
+
+User-provided screenshots accepted character layering and slight transparency,
+requested a lighter green/calmer blue pair and rejected the 22px inset owner
+portrait. The rejected compact-overlay assertions are removed; no retained
+acceptance claim treats that redesign as the desired layout.
+
+The reference was read from the main checkout's `ui/app_shell.py` at
+`c14e366c539d265f52e8bc512d57f65cac1aa271` (that file was clean): a 45px owner
+canvas at (+17, −22) on a 48px weapon box. Restored source ratios use the weapon
+rectangle, independently of its border. Weapon outline increased 2→4px and uses
+alpha 230; team accents changed to the balanced colors specified above while
+character alpha/neutral fills stayed intact.
+
+`test_weapon_owner_geometry.py` measures independently colored painted pixels
+against the fixed main reference, including downscale/fractional DPR and changes
+to border width/overhang. Its fixtures are synthetic, caller-owned temporary
+PNGs removed by connected test cleanup, with no account/bootstrap dependency.
+The older workspace test still covers equip/unequip, incremental ownership,
+payloads and retained grid spacing. Native after-correction acceptance remains
+with the user's next restart; this correction does not launch/control the app.
+
+Final combined verification: **39 tests passed in 13.940 seconds**, covering the
+two painted-owner regressions, weapon refresh/spacing, pixel grid, Traveler
+selector, PvP profile integration and eight existing AppShell geometry/marker
+checks. An in-memory mutation to the rejected 22/48, −2/22, −2/22 geometry made
+both new rendered tests fail in all seven subcases, with no test errors or source
+file edits. The reference case measures 45×45 at (+17, −22); fractional/downscaled
+cases preserve box-relative proportions. These are synthetic Qt render checks,
+not native hover/click acceptance. The structural closeout retains only the
+previously recorded foreign Worker2 status-size issue.
+
 ## Local Git receipt
 
 Intent 2026-10-11 14:31:05 +03:00: Worker4 scoped Traveler executor will commit this
@@ -267,3 +303,12 @@ Receipt-only intent 2026-10-11 15:50:02 +03:00: the same scoped executor will co
 only this recorded Git result, from `e6f8c2069a382a1cdcbf706d2f0d7241fa84c2ad`
 under standing own-stage authority. Final receipt hash/clean state will be in the
 chat closeout; canonical PvP worker status remains untouched.
+
+Owner/palette correction intent 2026-10-11 16:09:51 +03:00: Worker4 scoped executor will
+commit six reviewed own source/test/contract paths from
+`a02d4e3127913209038fb51b1344cb17fcf11134` on `codex/pvp-providers`, under standing
+verified-own-stage authority. Initial tree/index were clean; current index is
+empty. No Git operation/index lock/active hook was found. The 39-case product
+check and negative mutation witness pass within the boundaries above. Canonical
+PvP status, shared queue, other checkouts, runtime/profile data and native UI are
+outside this write; no transfer or push.

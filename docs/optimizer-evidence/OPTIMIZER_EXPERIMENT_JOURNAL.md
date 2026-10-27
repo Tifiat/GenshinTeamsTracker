@@ -220,3 +220,12 @@ material gameplay anomaly.7Go+5Python passed; no new cache arm/install/run.
 24 adaptive samples/131events retained. REPORT/STOP; single-team evidence only.
 Original owner71494 exited0; job-d84n6yff removed,258365738bytes; protectedexact,
 heavy/owner processes0. Compact attribution58894b14 and closeout retained. STOP.
+
+Human27October pins R2 as the experimental reference and asks for the next plan.
+[Baseline and proposed work](2026-10-27-staged-finalists/BASELINE_AND_NEXT.md)
+preserves exact identities, source-recovery limitation and the one-case boundary.
+Prioritize demonstrable repeated preparation/binding work without changed search
+semantics. Do not remove53response/24adaptive checks from one Chasca observation.
+Record local stat-dependent frozen-residual learning as a separate conditional
+research item, with attribution/held-out/noise/budget guards. Planning only;
+no workers, simulations, product changes or installation resumed.

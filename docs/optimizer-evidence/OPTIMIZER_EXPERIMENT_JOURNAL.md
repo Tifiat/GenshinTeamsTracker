@@ -150,3 +150,9 @@ tests passed with zero engine calls; core source/delta frozen for a separate
 research commit. Actual3×3 wrapper check also passed; full managed integration
 and numerical measurements remain pending. The historical403 helper/archive
 dependency is explicitly disclosed, not falsely called a standalone source tree.
+
+R1 integration now passes four focused Python checks, engine calls0, including
+actual3×3/cache transport and retained outputs before cleanup. Material/rotation
+matches the saved full-account158k control; fresh account snapshot comes at
+preparation. Source/runner frozen before one consumer build. No numerical result
+yet. See the same core checkpoint for exact receipt and dependency limitations.

@@ -1,0 +1,16 @@
+test_actual_worker_and_both_launch_observers_without_engine (tools.experiments.gcsim.mvp_polish.test_r1_button.R1ButtonChecks.test_actual_worker_and_both_launch_observers_without_engine) ... ok
+test_nested_raw_moves_before_existing_cleanup_even_on_failure (tools.experiments.gcsim.mvp_polish.test_r1_button.R1ButtonChecks.test_nested_raw_moves_before_existing_cleanup_even_on_failure) ... Disposable output removed: 0 bytes; job no longer exists.
+Disposable output removed: 0 bytes; job no longer exists.
+Disposable output removed: 43 bytes; job no longer exists.
+ok
+test_run_arm_freezes_inventory_and_consumes_retained_native_results (tools.experiments.gcsim.mvp_polish.test_r1_button.R1ButtonChecks.test_run_arm_freezes_inventory_and_consumes_retained_native_results) ... Disposable output removed: 27 bytes; job no longer exists.
+Disposable output removed: 27 bytes; job no longer exists.
+Disposable output removed: 82896 bytes; job no longer exists.
+ok
+test_r1_three_by_three_entire_wrapper (tools.experiments.gcsim.mvp_polish.test_whole_chasca_owned_paths.WholeOwnedPaths.test_r1_three_by_three_entire_wrapper) ... Disposable output removed: 45361 bytes; job no longer exists.
+ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.358s
+
+OK

@@ -89,7 +89,9 @@ and configuration to the engine/consumer hashes, input identity, DPS/uncertainty
 measurement boundary and time. Preserve the previous useful version's identity and
 reconstruction route. An executable hash or a temporary source archive alone is not
 a replacement for committed source. Keep observations in the owning experiment
-journal; do not overwrite older measurements with a new baseline.
+journal; do not overwrite older measurements with a new baseline. The optimizer's
+[single journal](../optimizer-evidence/OPTIMIZER_EXPERIMENT_JOURNAL.md) indexes
+historical measurements, rejected configurations and source recovery routes.
 
 Stage only the completed owned scope. Do not include unrelated edits, private data,
 generated binaries, raw traces or unfinished experiments; do not use `git add .`.

@@ -1,0 +1,26 @@
+=== RUN   TestR2ClearPilotLeaderAndHonestMixedRows
+--- PASS: TestR2ClearPilotLeaderAndHonestMixedRows (0.02s)
+=== RUN   TestR2InitialNearTiesAreAllConfirmed
+--- PASS: TestR2InitialNearTiesAreAllConfirmed (0.02s)
+=== RUN   TestR2ConfirmationRankReversalPromotesOldPilots
+--- PASS: TestR2ConfirmationRankReversalPromotesOldPilots (0.02s)
+=== RUN   TestR2AllCloseIsBoundedAtNineConfirmations
+--- PASS: TestR2AllCloseIsBoundedAtNineConfirmations (0.03s)
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence/identity
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence/nonfinite
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence/iterations
+--- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence (0.04s)
+    --- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence/identity (0.01s)
+    --- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence/nonfinite (0.02s)
+    --- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence/iterations (0.01s)
+=== RUN   TestR2EnergyRejectedPilotLeaderCannotWin
+--- PASS: TestR2EnergyRejectedPilotLeaderCannotWin (0.02s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/finalists	0.196s
+=== RUN   TestR2GroupedProductRetainsActualMixedIterations
+    r2_product_test.go:24: validate grouped product result: success requires exactly one compact IR or set-context panel identity
+--- FAIL: TestR2GroupedProductRetainsActualMixedIterations (0.01s)
+FAIL
+FAIL	genshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer	0.076s
+FAIL

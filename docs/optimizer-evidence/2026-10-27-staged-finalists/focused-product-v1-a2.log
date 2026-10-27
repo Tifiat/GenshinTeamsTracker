@@ -1,0 +1,4 @@
+=== RUN   TestR2GroupedProductRetainsActualMixedIterations
+--- PASS: TestR2GroupedProductRetainsActualMixedIterations (0.01s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer	0.055s

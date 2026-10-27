@@ -1,0 +1,10 @@
+{
+  "consumer_builds": 0,
+  "engine_calls": 0,
+  "go_fixture_sha256": "fb302a9b9e5b32a868f0a1c392080a6d57daaea069bbbfccce7b91505ba30482",
+  "log_sha256": "003f2b2b94a5e6994df080777dbf2c4ebe04606719c108ed6d16d0bfcc0ce7b3",
+  "returncode": 0,
+  "reused_check": "unconfirmed-winner text rejection PASS in a1; unchanged",
+  "schema": "r2_actual_mixed_transport_v1",
+  "wall_seconds": 5.140999999945052
+}

@@ -1,0 +1,9 @@
+{
+  "consumer_builds": 0,
+  "engine_calls": 0,
+  "go_fixture_sha256": "fb302a9b9e5b32a868f0a1c392080a6d57daaea069bbbfccce7b91505ba30482",
+  "log_sha256": "1eed52e6010a6fca511293aed597fd139405143be2b59f339b083c29fcfab7c2",
+  "returncode": 1,
+  "schema": "r2_actual_mixed_transport_v1",
+  "wall_seconds": 5.76500000001397
+}

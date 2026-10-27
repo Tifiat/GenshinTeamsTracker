@@ -1,0 +1,15 @@
+test_actual_mixed_wire_worker_and_display (tools.experiments.gcsim.mvp_polish.test_r2_transport.R2TransportChecks.test_actual_mixed_wire_worker_and_display) ... FAIL
+test_unconfirmed_winner_rejected_in_experiment_text (tools.experiments.gcsim.mvp_polish.test_r2_transport.R2TransportChecks.test_unconfirmed_winner_rejected_in_experiment_text) ... ok
+
+======================================================================
+FAIL: test_actual_mixed_wire_worker_and_display (tools.experiments.gcsim.mvp_polish.test_r2_transport.R2TransportChecks.test_actual_mixed_wire_worker_and_display)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\user\Desktop\GenshinTeamsTracker\tools\experiments\gcsim\mvp_polish\test_r2_transport.py", line 63, in test_actual_mixed_wire_worker_and_display
+    self.assertEqual(len(pages), 2)
+AssertionError: 1 != 2
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.703s
+
+FAILED (failures=1)

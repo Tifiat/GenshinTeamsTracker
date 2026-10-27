@@ -179,3 +179,31 @@ nine measured builds, publication proof and timer/call boundaries. Human STOP:
 ON/warm never run; no new numerical work, tests or installation. ROOT incorrectly
 treated earlier cache comparison as required after the first completed run;
 partial continuation preparation stopped, its unrun source remains unaccepted.
+
+## 27October: cost review and R2 authorization
+
+Read-only review clarified R1 timer boundaries:49.510s includes15.279s initial
+capture/model,18.360s package preparation/screens and8.712s package-joint work.
+The53 stat-response calls/10.064s occur AFTER this timer;24 adaptive ordinary
+calls/2.994s are inside it. Recorded local refinements cost0.901s and final
+stabilization1.679s. Joint work rows contain a cumulative timer; use its final
+0.133s rather than adding those rows. Rule11.588s/bind3.754s are nested views.
+
+Stat-response53 =2baseline +19paired directions +13first-seed-zero directions.
+It produced two admitted challengers,150011.548 and146832.522DPS, neither beating
+the ordinary winner. FlatATK+43 proposal lost9.7points CR and6.4points ATK%; the
+probe panel omits crit dimensions, and reservation prioritization does not use
+the formula's numeric opportunity cost. This nominates a later isolated repair,
+not permission to alter it together with final verification.
+
+Human now authorizes [R2](2026-10-27-staged-finalists/CONTRACT.md): ONLY staged
+final verification over unchanged R1. All admitted candidates n100, measured
+leader/close contenders n500, bounded reconsideration after confirmation.
+One full-account Chasca All Sets OFF, compare with R1, report and STOP. No new
+baseline run/cache pair/team/installation. MAIN implements; ROOT reviews;
+Luna runs only after admitted source/chain checks. No R2 numerical result yet.
+
+R2 [offline acceptance](2026-10-27-staged-finalists/OFFLINE_ACCEPTANCE.md): six
+policy Go tests, one grouped-product Go test and two Python checks passed across
+focused attempts. Two fixture/assertion failures remain recorded. ROOT and Luna
+reviewed the bounded policy; zero numerical engine calls and no consumer build yet.

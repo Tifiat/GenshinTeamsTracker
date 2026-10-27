@@ -155,4 +155,27 @@ R1 integration now passes four focused Python checks, engine calls0, including
 actual3×3/cache transport and retained outputs before cleanup. Material/rotation
 matches the saved full-account158k control; fresh account snapshot comes at
 preparation. Source/runner frozen before one consumer build. No numerical result
-yet. See the same core checkpoint for exact receipt and dependency limitations.
+yet at that checkpoint. See the same core checkpoint for exact receipt and dependency limitations.
+
+## 27October: first complete R1 OFF
+
+Full-account604/597, same Chasca material/rotation/target/seeds and engine f1e.
+Consumer d42b5024, source core697c8cd/integration d475daf. One model, two seed
+captures and zero extra context captures. [OFF receipt](2026-10-27-single-trace/run-v1/off.json):
+button126.719s, search49.510s, ordinary winner158438.265DPS +/-106.657SE at n500.
+All20 winning artifacts match the25October installed control exactly; its OFF
+button455.844s/158472.516DPS is a historical comparison, not a contemporaneous
+paired hardware measurement. The user's97s reference remains unrecovered and
+unreached. No installation or later-team run.
+
+The first output anomaly held progression:9 finalists measured,8 published.
+ROOT checked exact compiled `grouped_result.go`: the missing146832.522DPS
+combined proposal changes2 items from the measured group leader; existing
+distance-one per-item display intentionally excludes it. Harness demanded an
+unsupported exact publication count. Preserve original anomaly details and add
+separate reviewed acceptance, without repeating unchanged native OFF. [Full report](2026-10-27-single-trace/RESULT_RU.md)
+and [attribution](2026-10-27-single-trace/run-v1/off-attribution-v1.json) preserve
+nine measured builds, publication proof and timer/call boundaries. Human STOP:
+ON/warm never run; no new numerical work, tests or installation. ROOT incorrectly
+treated earlier cache comparison as required after the first completed run;
+partial continuation preparation stopped, its unrun source remains unaccepted.

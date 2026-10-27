@@ -1,0 +1,2559 @@
+{
+  "actor_coverage": [
+    {
+      "actor": 0,
+      "anchor_and_complete_cycles": 2,
+      "feasible_per_cycle": 524,
+      "prepared_per_cycle": [
+        243,
+        524
+      ],
+      "sampled_refinements": 32,
+      "unavailable": 0,
+      "wearer": "bennett"
+    },
+    {
+      "actor": 1,
+      "anchor_and_complete_cycles": 2,
+      "feasible_per_cycle": 524,
+      "prepared_per_cycle": [
+        241,
+        524
+      ],
+      "sampled_refinements": 32,
+      "unavailable": 0,
+      "wearer": "chasca"
+    },
+    {
+      "actor": 2,
+      "anchor_and_complete_cycles": 2,
+      "feasible_per_cycle": 524,
+      "prepared_per_cycle": [
+        243,
+        524
+      ],
+      "sampled_refinements": 32,
+      "unavailable": 0,
+      "wearer": "furina"
+    },
+    {
+      "actor": 3,
+      "anchor_and_complete_cycles": 2,
+      "feasible_per_cycle": 524,
+      "prepared_per_cycle": [
+        244,
+        524
+      ],
+      "sampled_refinements": 32,
+      "unavailable": 0,
+      "wearer": "ororon"
+    }
+  ],
+  "all_nine_builds": [
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1615,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1395,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1598,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1563,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1614,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "tenacityofthemillelith"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1586,
+              "main_stat": {
+                "key": "electro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "config_sha256": "77be0c07a6ae6f151dfcad8d0ba87a548cfbf12015a44b1477c82379677c6eae",
+        "elapsed_ms": 19789.3915,
+        "engine_result_sha256": "c0385017cd5679bd5848910200114f805139d50d98d28b24ddc4eb03ff943cea",
+        "formula_dps": 156969.25165871024,
+        "formula_residual_dps": 1469.0136024639069,
+        "iterations": 500,
+        "measured_dps": 158438.26526117415,
+        "rank": 1,
+        "source": "real_candidate",
+        "standard_deviation": 2384.921093112935,
+        "standard_error": 106.65691370347257
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1290,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1395,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1598,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1563,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1614,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "tenacityofthemillelith"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1586,
+              "main_stat": {
+                "key": "electro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1290
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "config_sha256": "00283b18f401c18348b1b58b0d884d16f4c60551d34bf213a435fd1089802214",
+        "elapsed_ms": 19340.2374,
+        "engine_result_sha256": "b6051b629b9109c7214f151187765a378dd145de98c93353676a28686718c269",
+        "formula_dps": 148644.3089331408,
+        "formula_residual_dps": 1367.2392127512721,
+        "iterations": 500,
+        "measured_dps": 150011.54814589207,
+        "rank": 2,
+        "source": "measured_stat_response_proposal",
+        "standard_deviation": 3450.030249979248,
+        "standard_error": 154.2900432676838
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 132,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 124,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1395,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1598,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1563,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1614,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "tenacityofthemillelith"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1586,
+              "main_stat": {
+                "key": "electro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            132,
+            88,
+            124
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "config_sha256": "4ed6794212cc714b10d4f999b94ec4669d269444139989f145996106c8026fcc",
+        "elapsed_ms": 19186.9493,
+        "engine_result_sha256": "e8efd3f76d9c6fcd76a8d2dbf7c7a5c6cf07678a9fb525856a84dd343021ef8e",
+        "formula_dps": 145247.14513794772,
+        "formula_residual_dps": 1585.376595982205,
+        "iterations": 500,
+        "measured_dps": 146832.52173392993,
+        "rank": 3,
+        "source": "measured_stat_response_combined_proposal",
+        "standard_deviation": 2599.287536630538,
+        "standard_error": 116.24367249947714
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1615,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1302,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 7,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1309,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1318,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "goldentroupe"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1586,
+              "main_stat": {
+                "key": "electro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "config_sha256": "de7ca4ca3e761f6ca44b322161e123e2c545a32eb7abc10e2fb59a4d265fa916",
+        "elapsed_ms": 19850.6451,
+        "engine_result_sha256": "65d1d3ada29a6b165b19b7b64398e8a303a4e492c12778c566a545f7add7f150",
+        "formula_dps": 154637.8107269837,
+        "formula_residual_dps": 1315.174560384592,
+        "iterations": 500,
+        "measured_dps": 155952.9852873683,
+        "rank": 4,
+        "source": "real_candidate",
+        "standard_deviation": 2267.5246954536356,
+        "standard_error": 101.40678719387674
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1615,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1302,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 7,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1309,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1318,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "goldentroupe"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1566,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "config_sha256": "760e1f285d6383873555c2c2b2d43e29bee5e97abb0094e6cf9ff8dc70fa7626",
+        "elapsed_ms": 17194.6208,
+        "engine_result_sha256": "e43ef77b0b07360e9f98fb35180cf4dba2db6a29fb807acbf7db015700068c8a",
+        "formula_dps": 154633.2859967898,
+        "formula_residual_dps": 1177.405294844153,
+        "iterations": 500,
+        "measured_dps": 155810.69129163396,
+        "rank": 5,
+        "source": "single_item_replacement",
+        "standard_deviation": 2128.822148677774,
+        "standard_error": 95.20382072901332
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1615,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1302,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 7,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1309,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1318,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "goldentroupe"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1477,
+              "main_stat": {
+                "key": "electro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "config_sha256": "ec8ebdedac9415d1ed846ef2dd69c75bfa599df52c4c21d6ed4c5acb7435b603",
+        "elapsed_ms": 17402.9579,
+        "engine_result_sha256": "dd0f3ad08891cdad54d71ffeeb0bab96a05c1ff47f55b4952aa75a71b99920ae",
+        "formula_dps": 154617.04832316763,
+        "formula_residual_dps": 1334.8597846235498,
+        "iterations": 500,
+        "measured_dps": 155951.90810779118,
+        "rank": 6,
+        "source": "single_item_replacement",
+        "standard_deviation": 2326.1859640636862,
+        "standard_error": 104.0301988790457
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1615,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1395,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1351,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1563,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1436,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 2,
+              "set_uid": "tenacityofthemillelith"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1586,
+              "main_stat": {
+                "key": "electro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "config_sha256": "244987975c29074aa42617e3b56f592b2d64d34de24b9ab119b177c89b50ff20",
+        "elapsed_ms": 16921.4731,
+        "engine_result_sha256": "febf654e19ad52f0f6346cf21f180540befb5bf3e476357a8cc94732f6399a99",
+        "formula_dps": 153368.87796647247,
+        "formula_residual_dps": 1213.604770517879,
+        "iterations": 500,
+        "measured_dps": 154582.48273699035,
+        "rank": 7,
+        "source": "real_candidate",
+        "standard_deviation": 2124.8295680918563,
+        "standard_error": 95.02526709709818
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1615,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1395,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1351,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1563,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1436,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 2,
+              "set_uid": "tenacityofthemillelith"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1566,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "config_sha256": "e5943a81e4ba84996120269c8a8840e5da6a26bc889a40a4744d338685311c7b",
+        "elapsed_ms": 17501.9493,
+        "engine_result_sha256": "e062704f2875087c2b16802486fc2bed871bf34acc3d93fde0210d8b43e482f1",
+        "formula_dps": 153364.3532362786,
+        "formula_residual_dps": 1361.3057289751596,
+        "iterations": 500,
+        "measured_dps": 154725.65896525377,
+        "rank": 8,
+        "source": "single_item_replacement",
+        "standard_deviation": 2195.869039518441,
+        "standard_error": 98.20224884100811
+      }
+    },
+    {
+      "gear": [
+        {
+          "artifacts": [
+            {
+              "artifact_id": 36,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1413,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1426,
+              "main_stat": {
+                "key": "em",
+                "value": "187"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 140,
+              "main_stat": {
+                "key": "pyro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 203,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer": "bennett"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1571,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 81,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 92,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 88,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1615,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "obsidiancodex"
+            }
+          ],
+          "wearer": "chasca"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1395,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 1351,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 1466,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1563,
+              "main_stat": {
+                "key": "hp_percent",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 1436,
+              "main_stat": {
+                "key": "crit_damage",
+                "value": "0.622"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 2,
+              "set_uid": "tenacityofthemillelith"
+            }
+          ],
+          "wearer": "furina"
+        },
+        {
+          "artifacts": [
+            {
+              "artifact_id": 1616,
+              "main_stat": {
+                "key": "hp",
+                "value": "4780"
+              },
+              "slot": "flower"
+            },
+            {
+              "artifact_id": 91,
+              "main_stat": {
+                "key": "atk",
+                "value": "311"
+              },
+              "slot": "plume"
+            },
+            {
+              "artifact_id": 241,
+              "main_stat": {
+                "key": "atk_percent",
+                "value": "0.466"
+              },
+              "slot": "sands"
+            },
+            {
+              "artifact_id": 1477,
+              "main_stat": {
+                "key": "electro_damage_bonus",
+                "value": "0.466"
+              },
+              "slot": "goblet"
+            },
+            {
+              "artifact_id": 119,
+              "main_stat": {
+                "key": "crit_rate",
+                "value": "0.311"
+              },
+              "slot": "circlet"
+            }
+          ],
+          "set_bonuses": [
+            {
+              "pieces": 4,
+              "set_uid": "scrolloftheheroofcindercity"
+            }
+          ],
+          "wearer": "ororon"
+        }
+      ],
+      "measurement": {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "config_sha256": "ebcb95ab6051836f37d86333cd2be6fa223d99fbaba39471751262b2385430b3",
+        "elapsed_ms": 4601.5717,
+        "engine_result_sha256": "9c9b9c62080e5dc075c0a5d07779724694a26195fb18740a6fe1891481e5721a",
+        "formula_dps": 153348.1155626564,
+        "formula_residual_dps": 1239.8807825364347,
+        "iterations": 500,
+        "measured_dps": 154587.99634519283,
+        "rank": 9,
+        "source": "single_item_replacement",
+        "standard_deviation": 2175.7318569305576,
+        "standard_error": 97.30168665817146
+      }
+    }
+  ],
+  "button_ms": 126719,
+  "captured_utc": "2026-10-27T03:41:50.830161+00:00",
+  "captures": {
+    "base_seed_members": 2,
+    "c4_projections": 0,
+    "compact_processes": 2,
+    "extra_context_captures": 0,
+    "neutral_models": 1
+  },
+  "completion": "expected neutral_cycle_budget; product_timeout0; no Finish/watchdog stop",
+  "consumer_sha256": "d42b50247b00d9df42d73ca9b9cfc674c947b7c6ca414cdfcf21b1777570d649",
+  "control_provenance": {
+    "control_receipt": "docs\\optimizer-evidence\\2026-10-25-cache-team-matrix\\corpus-main14-v2\\chasca_600_fixture-all_sets\\on.json",
+    "control_sha256": "e4f05c47e2698ca4127ffb13be09029219fc5d248725588ad527e5d76e6777ac",
+    "legacy_case_id_scope": "saved full-account control material; artifacts freshly frozen through production loader",
+    "profiles_weapons_levels_constellations_rotation_target_match": true,
+    "retained_input_sha256": "e0ecccb101d38811823bdf95b51d5b25cdd8e8d215f8055855dfdaae19f46863",
+    "source_config_sha256": "ee94b0254db25112a44c9193e695cd3de1938016e8bd31bf298c5fd7e6ef81ff",
+    "source_profiles_sha256": "5b7b3bf561b3a75b945babcc7585785d5d43d7aafc67577ea1b522491f6563a6",
+    "target_sha256": "2f6d40a7ae7e4783e5b9cb4abc5ca6579553d5098a085e363e98f62884dec4c4"
+  },
+  "cycle_semantics": {
+    "candidate_search_calls_per_cycle": [
+      1639,
+      2760
+    ],
+    "interpretation": "Processed means Exhaustive; heuristic sampled_neighborhood_stable reports are counted ModelDeferred. Zero exhaustive reports is not zero search; all four actors have32 sampled reports.",
+    "processed_per_cycle": [
+      0,
+      0
+    ],
+    "sampled_per_cycle": [
+      64,
+      64
+    ]
+  },
+  "engine_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "freeze_count_scope": "repeated package/port decisions, not distinct mechanics; prefix ledger bounded128records; these approximate guides are not pruning proofs",
+  "frozen_guides": {
+    "AnchorPorts": 339395,
+    "FallbackReplays": 37,
+    "OmittedRecords": 358661,
+    "ReferencePorts": 19394,
+    "UnmappedPackageReasons": [
+      "songofdayspast event: neutral heal amount has no bound health-operation expression",
+      "stat-dependent set amount needs a bound expression: NonExtraStat",
+      "marechausseehunter event: neutral heal amount has no bound health-operation expression"
+    ]
+  },
+  "historical_controls": [
+    {
+      "button_ms": 455844,
+      "measured": {
+        "dps": "158472.515537",
+        "iterations": "500",
+        "standard_error": "107.30063915385772"
+      },
+      "receipt": "docs/optimizer-evidence/2026-10-25-cache-team-matrix/corpus-main14-v2/chasca_600_fixture-all_sets/off.json",
+      "receipt_sha256": "362b2a01c3f85cbdb228ce2298f292f274e8ffbe724bbf1ca4b41be94e6c1167",
+      "same_twenty_assignments": true,
+      "same_winner_hash": true,
+      "winner_sha256": "e1849568c56222c878a6a21a17efaf9131aa92965076358b838cc50f52c6691f"
+    },
+    {
+      "button_ms": 455719,
+      "measured": {
+        "dps": "158230.9847735642",
+        "iterations": "500",
+        "standard_error": "107.22289194175714"
+      },
+      "receipt": "docs/optimizer-evidence/2026-10-25-cache-team-matrix/corpus-main14-v2/chasca_600_fixture-all_sets/on.json",
+      "receipt_sha256": "e4f05c47e2698ca4127ffb13be09029219fc5d248725588ad527e5d76e6777ac",
+      "same_twenty_assignments": true,
+      "same_winner_hash": true,
+      "winner_sha256": "e1849568c56222c878a6a21a17efaf9131aa92965076358b838cc50f52c6691f"
+    }
+  ],
+  "inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "97db64a2a84d0e3b1379e3f111a1f0159a054b0b5369b8a2e4c1a15e6b63846a",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "limits": [
+    "OFF only; no measured persistent-cache benefit",
+    "single-run DPS/SE is not a no-loss or global-optimum proof",
+    "heal-dependent and non-extra-stat terms remain frozen/reference guides",
+    "source reconstruction still needs accepted403/helper/archive chain"
+  ],
+  "nested_timers": {
+    "bind_seconds": 3.753810200000002,
+    "capture_decode_ms": 4679.0845,
+    "capture_process_ms": 8143.8207999999995,
+    "contract": "inclusive/nested views; DO NOT sum with top-level stages or each other",
+    "final_verification_ms": 47464.7437,
+    "native_wall_ms": 110717.1635,
+    "rule_seconds": 11.58795480000001,
+    "search_seconds": 49.510223,
+    "source_preparation_seconds": 2.2557305,
+    "support_response_ms": 10064.4723
+  },
+  "ordinary_calls": {
+    "adaptive_n1": {
+      "calls": 24,
+      "engine_ms": 2888.1435,
+      "lane_wall_ms": 2993.5108999999998
+    },
+    "final_n500": {
+      "calls": 9,
+      "engine_process_sum_ms_overlapping": 151789.79610000004,
+      "wave_wall_ms": 47464.7437,
+      "waves": [
+        {
+          "candidate_count": 4,
+          "index": 1,
+          "parallelism": 4,
+          "start_rank": 1,
+          "total_elapsed_ms": 22173.3465,
+          "workers": 4
+        },
+        {
+          "candidate_count": 4,
+          "index": 2,
+          "parallelism": 4,
+          "start_rank": 5,
+          "total_elapsed_ms": 19935.8247,
+          "workers": 4
+        },
+        {
+          "candidate_count": 1,
+          "index": 3,
+          "parallelism": 1,
+          "start_rank": 9,
+          "total_elapsed_ms": 5354.3276,
+          "workers": 16
+        }
+      ]
+    },
+    "stat_response_n1": {
+      "calls": 53,
+      "engine_sum_ms": 7001.982500000001,
+      "lane_wall_ms": 10064.4723
+    },
+    "total": 86
+  },
+  "publication_review": {
+    "all_published_are_verified": true,
+    "dropped": [
+      {
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "changed_items_from_winner": 2,
+        "measured_dps": 146832.52173392993,
+        "rank": 3,
+        "reason": "existing grouped_result.go selects only distance1 neighbours of measured group leader; this row is distance2",
+        "source": "measured_stat_response_combined_proposal"
+      }
+    ],
+    "native_result_sha256": "3ec3029c12964bd08bf2554e3cfa969666d79f7f00f8dfa9b4da2942ba50b0f0",
+    "original_details_sha256": "da29ec2ac09e9803f36fc2c902dce38138cb2960ae4d90cb27ebc45220fb56ef",
+    "original_harness_anomaly_preserved": true,
+    "published": 8,
+    "selection_source_sha256": "318dbc2807919462014ee6294608055b76128e5a88ebce5e3dff9b2eac88e877",
+    "status": "accepted_existing_display_semantics",
+    "verified_n500": 9,
+    "winner_preserved": true
+  },
+  "schema": "r1_completed_off_attribution_v1",
+  "scope": "one completed full-account Chasca OFF arm; human STOP before ON/WARM; nothing installed",
+  "source_commit": "d475daf66a3f64454dfd54e7cb2ad2b2a1bcd94d",
+  "source_map_sha256": "2f050c8565072d8cd667240943663f87b5c0b75510e32c2d30d8991dfc58281c",
+  "stop_reason": "neutral_cycle_budget",
+  "stopped_state": {
+    "heavy_process_count": 0,
+    "on_receipt_exists": false,
+    "owner_deadline": 1793082043.7449436,
+    "owner_session": 49197,
+    "partial_unvalidated_file": "tools/experiments/gcsim/mvp_polish/r1_review.py; unrun; no new continuation tests",
+    "raw_custody": "same original live owner/real lease/deadline; await ROOT release",
+    "warm_receipt_exists": false
+  },
+  "top_level_click_ms": {
+    "click_outside_adapter": 954.0,
+    "contract": "adapter sequential recorded stages plus click residual; stage integers rounded to milliseconds",
+    "formula_inputs": 6187.0,
+    "optimizer_process": 114547.0,
+    "prepare_inputs": 4906.0,
+    "request_preflight": 125.0
+  },
+  "winner": {
+    "assignment": [
+      [
+        36,
+        1413,
+        1426,
+        140,
+        203
+      ],
+      [
+        1571,
+        81,
+        92,
+        88,
+        1615
+      ],
+      [
+        1395,
+        1598,
+        1466,
+        1563,
+        1614
+      ],
+      [
+        1616,
+        91,
+        241,
+        1586,
+        119
+      ]
+    ],
+    "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+    "config_sha256": "77be0c07a6ae6f151dfcad8d0ba87a548cfbf12015a44b1477c82379677c6eae",
+    "elapsed_ms": 19789.3915,
+    "engine_result_sha256": "c0385017cd5679bd5848910200114f805139d50d98d28b24ddc4eb03ff943cea",
+    "formula_dps": 156969.25165871024,
+    "formula_residual_dps": 1469.0136024639069,
+    "iterations": 500,
+    "measured_dps": 158438.26526117415,
+    "rank": 1,
+    "source": "real_candidate",
+    "standard_deviation": 2384.921093112935,
+    "standard_error": 106.65691370347257
+  },
+  "winner_sha256": "e1849568c56222c878a6a21a17efaf9131aa92965076358b838cc50f52c6691f"
+}

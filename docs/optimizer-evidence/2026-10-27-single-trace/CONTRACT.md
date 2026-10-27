@@ -6,6 +6,10 @@ configuration and reviews evidence; existing Luna executes admitted commands
 serially. No installation, Computer Use or unrelated work. This scope is one
 Chasca All Sets configuration through completion, not a team matrix.
 
+Current authority: after the first complete OFF the human requires the full
+report and STOP. No ON/warm or new tests/implementation are authorized. Earlier
+cache-comparison items below remain the original plan, not a continuation grant.
+
 ## Hypothesis and fixed boundaries
 
 A reused neutral model, cheap candidate selection/local refinement and bounded
@@ -45,6 +49,10 @@ solvers initially; change scheduling only if starvation remains after C4 removal
   introduce residual learning, another symbolic lifecycle model or a new ordinary
   sampling ladder. The first R1 keeps the existing9 n500 output checks for3×3
   normal-mode results; reductions in verification are a later isolated experiment.
+  Nine measured finalists do not require nine published rows: existing per-item
+  labels admit only distance-one neighbours of each measured group leader. Check
+  that all published rows were measured and each admitted group leader survives;
+  preserve evidence for legitimately filtered combined replacements.
 - Generic legality, identity, finite-value, ownership, dependency and uncertainty
   checks remain. A runnable input must retain a usable verified result when
   uncertainty remains; malformed input/rotation is still an input error.

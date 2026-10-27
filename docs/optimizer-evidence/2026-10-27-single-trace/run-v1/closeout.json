@@ -1,0 +1,15 @@
+{
+  "schema": "r1_stopped_closeout_v1",
+  "source_commit": "d475daf66a3f64454dfd54e7cb2ad2b2a1bcd94d",
+  "owner_receipt_sha256": "a6165e562e2b000a5c0f9a909a7538684d7a6cb898ede7b90c3444b3092e3789",
+  "status": "closed_off_complete_waiting_root",
+  "job_removed": true,
+  "protected_exact": true,
+  "owner_finished_unix": 1793072756.3166316,
+  "on_exists": false,
+  "warm_exists": false,
+  "installation": false,
+  "human_stop": true,
+  "evidence": "off-attribution-v1.json",
+  "unfinished_excluded_source": "tools/experiments/gcsim/mvp_polish/r1_review.py"
+}

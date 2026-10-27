@@ -1,6 +1,7 @@
 # R1 core source checkpoint
 
-27October2026. Research-only; nothing installed and no gameplay run yet.
+27October2026. Research-only; nothing installed. Source/offline checkpoint below
+preceded the full run; current numerical status follows at the end.
 MAIN froze five new R1 source/test files for ROOT's scoped local commit:
 `r1_single_trace.py`, `r1_frozen_neutral.go`, `r1_frozen_neutral_test.go`,
 `r1_router_test.go`, `r1_metrics.go` under the existing mvp_polish experiment.
@@ -36,7 +37,26 @@ saved full-account158k control and retained experiment inputs. The legacy public
 case label is not a substituted inventory; preparation snapshots the current
 account separately and recounts its eligibility with the owning loader.
 
-Next: one consumer build, copied/rebound exact f1e producer with no producer build,
+Original next step: one consumer build, copied/rebound exact f1e producer with no producer build,
 then ROOT reviews concrete prepared pins and Luna executes OFF. ON/conditional
-warm are explicit separate actions; fewer than9 measured/published rows holds
-the series. Whole Chasca numerical quality/time remain unmeasured. [Contract](CONTRACT.md).
+warm are explicit separate actions. The original requirement for9 published rows
+was overstrict; the [contract](CONTRACT.md) now distinguishes measurement from
+the existing distance-one publication filter.
+
+## First complete OFF and publication review
+
+Source delta697c8cd and integration d475daf built consumer d42b5024 once in11.063s;
+engine f1e unchanged. Actual full account604/597, one model/two captures, no
+additional context captures. Button126.719s, native search49.510s, best ordinary
+158438.265DPS +/-106.657SE at n500. All20 winning artifact IDs match the saved
+25October full-account control (158472.516DPS/455.844s OFF).
+
+[Original OFF](run-v1/off.json) succeeded; [details](run-v1/off-details.json)
+retain the original harness anomaly:9 measured but8 published. ROOT inspected
+the exact compiled `selectGroupedProductRows` bytes: a146832.522DPS combined
+replacement differs by2 items from its group leader and is intentionally omitted
+from per-item labels. No winner was lost. Do not erase the original failed gate
+or rerun numerical OFF solely for this reporting correction. [Separate review](run-v1/off-attribution-v1.json)
+retains the publication proof and full attribution. Human STOP: ON/warm was never
+run; report/owned cleanup only. [Complete report](RESULT_RU.md). The partial
+unrun `r1_review.py` is unvalidated and excluded from accepted R1 source.

@@ -1,0 +1,90 @@
+[
+  {
+    "alloc_bytes": 758871272,
+    "allocations": 8687866,
+    "baseline_score_bits": [
+      4704829169248883259,
+      4703000455031502263,
+      4690492010551267732,
+      4682531253791001619,
+      4689676217973305227
+    ],
+    "compile_graph_ms": 401.1156,
+    "heap_after_work_bytes": 106444776,
+    "member_decode_validate_ms": 2052.7412,
+    "nodes": 88579,
+    "raw_identity_ms": 294.9989,
+    "read_ms": 16.3544,
+    "ready_total_ms": 3586.4483,
+    "retained_ready_delta_bytes": 65268832,
+    "seed": "742031889",
+    "sidecar_decode_validate_ms": 821.2382,
+    "typed": false
+  },
+  {
+    "alloc_bytes": 574449824,
+    "allocations": 5849294,
+    "baseline_score_bits": [
+      4704829169248883259,
+      4703000455031502263,
+      4690492010551267732,
+      4682531253791001619,
+      4689676217973305227
+    ],
+    "compile_graph_ms": 269.5568,
+    "heap_after_work_bytes": 172751200,
+    "member_decode_validate_ms": 2176.8479,
+    "nodes": 88579,
+    "raw_identity_ms": 311.5374,
+    "read_ms": 18.0554,
+    "ready_total_ms": 3921.2274,
+    "retained_ready_delta_bytes": 64991968,
+    "seed": "742031889",
+    "sidecar_decode_validate_ms": 1145.2299,
+    "typed": true
+  },
+  {
+    "alloc_bytes": 571687912,
+    "allocations": 5811034,
+    "baseline_score_bits": [
+      4704774868304096807,
+      4702977193103651929,
+      4690297978163185329,
+      4682531253791001619,
+      4689621938225898687
+    ],
+    "compile_graph_ms": 240.3681,
+    "heap_after_work_bytes": 171395888,
+    "member_decode_validate_ms": 1196.1021,
+    "nodes": 88122,
+    "raw_identity_ms": 264.3547,
+    "read_ms": 19.9918,
+    "ready_total_ms": 2418.3846,
+    "retained_ready_delta_bytes": 64301304,
+    "seed": "742031890",
+    "sidecar_decode_validate_ms": 697.5679,
+    "typed": true
+  },
+  {
+    "alloc_bytes": 755337688,
+    "allocations": 8630940,
+    "baseline_score_bits": [
+      4704774868304096807,
+      4702977193103651929,
+      4690297978163185329,
+      4682531253791001619,
+      4689621938225898687
+    ],
+    "compile_graph_ms": 256.9546,
+    "heap_after_work_bytes": 104652528,
+    "member_decode_validate_ms": 1608.4713,
+    "nodes": 88122,
+    "raw_identity_ms": 303.1919,
+    "read_ms": 17.7838,
+    "ready_total_ms": 2871.8247,
+    "retained_ready_delta_bytes": 64379872,
+    "seed": "742031890",
+    "sidecar_decode_validate_ms": 685.4231,
+    "typed": false
+  }
+]

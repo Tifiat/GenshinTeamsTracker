@@ -1,0 +1,40 @@
+=== RUN   TestSeedMemberTypedCanonicalBytes
+--- PASS: TestSeedMemberTypedCanonicalBytes (0.04s)
+=== RUN   TestSeedMemberTypedCanonicalSchema
+--- PASS: TestSeedMemberTypedCanonicalSchema (0.00s)
+=== RUN   TestSeedMemberTypedCanonicalStrictDecode
+--- PASS: TestSeedMemberTypedCanonicalStrictDecode (0.02s)
+=== RUN   TestSeedMemberTypedCanonicalScope
+--- PASS: TestSeedMemberTypedCanonicalScope (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/contracts	0.155s
+=== RUN   TestR3AdjointBitParityAndReturnedOwnership
+--- PASS: TestR3AdjointBitParityAndReturnedOwnership (0.00s)
+=== RUN   TestR3AdjointScratchCopiesAndToggle
+--- PASS: TestR3AdjointScratchCopiesAndToggle (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	0.142s
+=== RUN   TestProviderPreservesExplicitEnergyAndRejectsAmbiguity
+--- PASS: TestProviderPreservesExplicitEnergyAndRejectsAmbiguity (0.00s)
+=== RUN   TestProviderRejectsBindingDriftBeforeProcessAndCloses
+--- PASS: TestProviderRejectsBindingDriftBeforeProcessAndCloses (0.01s)
+=== RUN   TestNeutralSymbolicKeyMatchesIncrementalHashProtocol
+--- PASS: TestNeutralSymbolicKeyMatchesIncrementalHashProtocol (0.00s)
+=== RUN   TestNeutralConstantProgramKeyRequiresFullVectorIdentity
+--- PASS: TestNeutralConstantProgramKeyRequiresFullVectorIdentity (0.00s)
+=== RUN   TestNeutralConstantKeyProjectionRequiresAllInputsConstant
+--- PASS: TestNeutralConstantKeyProjectionRequiresAllInputsConstant (0.00s)
+=== RUN   TestNeutralSymbolicProgramKeyIncludesAllRootsAndStructure
+--- PASS: TestNeutralSymbolicProgramKeyIncludesAllRootsAndStructure (0.00s)
+=== RUN   TestNeutralSymbolicProgramCacheRequiresExactSuccessfulBinding
+--- PASS: TestNeutralSymbolicProgramCacheRequiresExactSuccessfulBinding (0.00s)
+=== RUN   TestR3CaptureStableOrderAndBound
+--- PASS: TestR3CaptureStableOrderAndBound (0.00s)
+=== RUN   TestR3CaptureCancellationJoinAndIdentity
+--- PASS: TestR3CaptureCancellationJoinAndIdentity (0.00s)
+=== RUN   TestR3ProgramIdentityMembershipAndEviction
+--- PASS: TestR3ProgramIdentityMembershipAndEviction (0.00s)
+=== RUN   TestR3ProgramIdentityDuplicatePointerRemoval
+--- PASS: TestR3ProgramIdentityDuplicatePointerRemoval (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/setcontext	0.068s

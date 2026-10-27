@@ -1,0 +1,62 @@
+[
+  {
+    "actor": "bennett",
+    "adjoint_bytes": 0,
+    "alloc_bytes": 87072,
+    "allocations": 160,
+    "calls": 32,
+    "first_call_alloc_bytes": 2736,
+    "nodes": 261,
+    "retained_delta_bytes": -160,
+    "reuse": false,
+    "scope": "historical single-member zero-effect specialization; not the R2 neutral graph/search",
+    "score_bits": 4700629039609504288,
+    "seed": "742031889",
+    "wall_ms": 0.7099
+  },
+  {
+    "actor": "bennett",
+    "adjoint_bytes": 2088,
+    "alloc_bytes": 13344,
+    "allocations": 128,
+    "calls": 32,
+    "first_call_alloc_bytes": 2736,
+    "nodes": 261,
+    "retained_delta_bytes": 2144,
+    "reuse": true,
+    "scope": "historical single-member zero-effect specialization; not the R2 neutral graph/search",
+    "score_bits": 4700629039609504288,
+    "seed": "742031889",
+    "wall_ms": 0
+  },
+  {
+    "actor": "bennett",
+    "adjoint_bytes": 0,
+    "alloc_bytes": 87072,
+    "allocations": 160,
+    "calls": 32,
+    "first_call_alloc_bytes": 2736,
+    "nodes": 263,
+    "retained_delta_bytes": -160,
+    "reuse": false,
+    "scope": "historical single-member zero-effect specialization; not the R2 neutral graph/search",
+    "score_bits": 4700576049345772327,
+    "seed": "742031890",
+    "wall_ms": 0
+  },
+  {
+    "actor": "bennett",
+    "adjoint_bytes": 2104,
+    "alloc_bytes": 13344,
+    "allocations": 128,
+    "calls": 32,
+    "first_call_alloc_bytes": 2736,
+    "nodes": 263,
+    "retained_delta_bytes": 2144,
+    "reuse": true,
+    "scope": "historical single-member zero-effect specialization; not the R2 neutral graph/search",
+    "score_bits": 4700576049345772327,
+    "seed": "742031890",
+    "wall_ms": 0
+  }
+]

@@ -1,0 +1,4 @@
+=== RUN   TestR3SavedReadyCosts
+--- PASS: TestR3SavedReadyCosts (21.94s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	22.003s

@@ -1,3 +1,9 @@
 # Preserve literal engine/research patch payloads across Windows checkouts.
 # Leading diff-context spaces are data, not source indentation errors.
 *.patch text eol=lf whitespace=-blank-at-eol,-space-before-tab
+# R3 reconstructs the exact historical source, including mixed line endings.
+docs/optimizer-evidence/2026-10-27-engineering-efficiency/r2-source-delta-v1.patch -text
+docs/optimizer-evidence/2026-10-27-engineering-efficiency/r2-source-delta-v1.json -text
+tools/experiments/gcsim/mvp_polish/r3_* text eol=lf
+tools/experiments/gcsim/mvp_polish/test_r3_button.py text eol=lf
+tools/experiments/gcsim/mvp_polish/seed_member_typed_canonical_parity_test.go -text

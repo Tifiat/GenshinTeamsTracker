@@ -1,0 +1,21 @@
+File: engineclient.test.exe
+Build ID: C:\Users\user\Desktop\GenshinTeamsTracker\.codex_tmp\managed-optimizer\job-i76jrc59\temp\go-build1117703142\b135\engineclient.test.exe2026-10-27 09:47:36.6255038 +0300 MSK
+Type: cpu
+Time: 2026-10-27 09:47:37 MSK
+Duration: 12.93s, Total samples = 14260ms (110.30%)
+Showing nodes accounting for 5530ms, 38.78% of 14260ms total
+Dropped 362 nodes (cum <= 71.30ms)
+Showing top 12 nodes out of 199
+      flat  flat%   sum%        cum   cum%
+    1570ms 11.01% 11.01%     1570ms 11.01%  crypto/internal/fips140/sha256.blockGeneric
+     850ms  5.96% 16.97%     1640ms 11.50%  encoding/json.(*Decoder).readValue
+     450ms  3.16% 20.13%      600ms  4.21%  runtime.tryDeferToSpanScan
+     360ms  2.52% 22.65%      360ms  2.52%  runtime.memclrNoHeapPointers
+     350ms  2.45% 25.11%      430ms  3.02%  encoding/json.(*decodeState).rescanLiteral
+     330ms  2.31% 27.42%      330ms  2.31%  runtime.memmove
+     320ms  2.24% 29.66%      350ms  2.45%  encoding/json.stateEndValue
+     290ms  2.03% 31.70%      290ms  2.03%  runtime.semawakeup
+     280ms  1.96% 33.66%      390ms  2.73%  encoding/json.unquoteBytes
+     260ms  1.82% 35.48%      260ms  1.82%  runtime.nextFreeFast (inline)
+     240ms  1.68% 37.17%     1020ms  7.15%  runtime.mallocgcSmallScanNoHeader
+     230ms  1.61% 38.78%     1920ms 13.46%  runtime.mallocgc

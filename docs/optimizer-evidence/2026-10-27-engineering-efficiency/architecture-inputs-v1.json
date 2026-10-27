@@ -1,0 +1,158 @@
+{
+  "admission": "ROOT chooses transport direction before implementation/exporter edits. Parallel capture, owner-local adjoint reuse and direct cache-identity reuse may proceed independently under R3 contract.",
+  "builds": 0,
+  "candidate": "Typed canonical JSON for IRSeedMember only: reuse frozen unexecuted typed-canonical view, retain strict raw-vs-typed equality and all semantic validation. Wire and exporter unchanged; no binary exporter proposal until current total costs justify one.",
+  "engine_calls": 0,
+  "r2_recovery_manifest": "r2-native-source-v1.json",
+  "representativeness": "Real historical Chasca capture pair. Not the removed R2 job payload; different producer manifest/context, and no mechanic-invocation section. Member and legacy neutral-sidecar codec/allocation work is measurable; current f1e invocation extension is not represented.",
+  "saved_payloads": [
+    {
+      "channels": 372,
+      "config_sha256": "9c06f02e04da55fd6655bf13acccab1ade36520aaa3f3a02899ed1ff449760d0",
+      "files": {
+        "capture-request.json": {
+          "bytes": 236,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031889__capture-request.json.gz",
+          "sha256": "ba588107d271af4018bfbf1d91755bde1197d065e8b947a2c5e4e98d29664bbe",
+          "stored_bytes": 197,
+          "stored_sha256": "626008aa3bdd36c321acbf030118c408a536f7b094a3077634620dedb6136acc"
+        },
+        "config.txt": {
+          "bytes": 1389,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031889__config.txt.gz",
+          "sha256": "9c06f02e04da55fd6655bf13acccab1ade36520aaa3f3a02899ed1ff449760d0",
+          "stored_bytes": 600,
+          "stored_sha256": "4dd62a0e1628d1b461d8e56f44765b9cfa13ef41b4e2b4bd7d0afa243863d13c"
+        },
+        "member.json": {
+          "bytes": 9127421,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031889__member.json.gz",
+          "sha256": "05b489fb8103b994b8689453263157423c19cc7583b407278b6529c6b162489f",
+          "stored_bytes": 605178,
+          "stored_sha256": "95b532463cf4c52f17374da9123e639145ec9133f414680e219286cb6d954ea1"
+        },
+        "member.json.effects.json": {
+          "bytes": 15245163,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031889__member.json.effects.json.gz",
+          "sha256": "43febf165b437a2eff4035249b0c22fec5c399e890d1658f7ec0cd90cae7f31f",
+          "stored_bytes": 391325,
+          "stored_sha256": "d36453dc215b33ec8aef394a619d098f63094e06f6463dcfcb7e2836fcd29932"
+        }
+      },
+      "has_mechanic_invocations": false,
+      "member_keys": [
+        "channels",
+        "duration_ms",
+        "energy_ledger",
+        "nodes",
+        "opaque_boundaries",
+        "seed",
+        "topology_sha256"
+      ],
+      "neutral_keys": [
+        "context",
+        "effects",
+        "health_roots",
+        "hitlag",
+        "hits",
+        "ledger",
+        "reads",
+        "reads_complete",
+        "schema_version",
+        "states",
+        "stats",
+        "uncertainty",
+        "world"
+      ],
+      "nodes": 88579,
+      "owners": [
+        "chasca",
+        "furina",
+        "bennett",
+        "ororon"
+      ],
+      "seed": 742031889,
+      "sidecar_counts": {
+        "character_keys": 4,
+        "effect_inputs": 97,
+        "resistance_inputs": 372
+      },
+      "source_manifest_sha256": "7fc2320e4e861d4a86973ad7b36ef3ab46cfa131a0d7883d33d1606ff2ef7f68"
+    },
+    {
+      "channels": 366,
+      "config_sha256": "9c06f02e04da55fd6655bf13acccab1ade36520aaa3f3a02899ed1ff449760d0",
+      "files": {
+        "capture-request.json": {
+          "bytes": 236,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031890__capture-request.json.gz",
+          "sha256": "abbbd1d6dbe651dc0a82c1ab36a7296be2c01d4401ef116fe04214601f39c94b",
+          "stored_bytes": 196,
+          "stored_sha256": "d9199cabaa1f159d808a4c97469ed69b42a56684aaedb2b6228ed251566f762d"
+        },
+        "config.txt": {
+          "bytes": 1389,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031890__config.txt.gz",
+          "sha256": "9c06f02e04da55fd6655bf13acccab1ade36520aaa3f3a02899ed1ff449760d0",
+          "stored_bytes": 600,
+          "stored_sha256": "4dd62a0e1628d1b461d8e56f44765b9cfa13ef41b4e2b4bd7d0afa243863d13c"
+        },
+        "member.json": {
+          "bytes": 9078672,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031890__member.json.gz",
+          "sha256": "e345222590778eb4d82e3ad4d9d7930a04c59a0d35d16e0f6e06840e31af8f35",
+          "stored_bytes": 602665,
+          "stored_sha256": "532642f4610a40f403f9abe80ec007cb8214ad52eb9edca59a0345cca09b0f29"
+        },
+        "member.json.effects.json": {
+          "bytes": 15084697,
+          "path": "docs/optimizer-evidence/2026-10-15-mvp-polish/candidate-preservation-chasca-v2-result__cases__chasca__candidate__verification__contexts__context-a9c6f8f457880e6eca59aa2303d3814c12adf868e13163e58a32ec1755de5dc3__seed-742031890__member.json.effects.json.gz",
+          "sha256": "74c9124440481a580c5ba7008143dfed77158fcc8cb9e3241e5bc10e61714557",
+          "stored_bytes": 387169,
+          "stored_sha256": "9ecf0340488190297495d366b75983749f30dfc9ee1f8320c1a77bfc4467df12"
+        }
+      },
+      "has_mechanic_invocations": false,
+      "member_keys": [
+        "channels",
+        "duration_ms",
+        "energy_ledger",
+        "nodes",
+        "opaque_boundaries",
+        "seed",
+        "topology_sha256"
+      ],
+      "neutral_keys": [
+        "context",
+        "effects",
+        "health_roots",
+        "hitlag",
+        "hits",
+        "ledger",
+        "reads",
+        "reads_complete",
+        "schema_version",
+        "states",
+        "stats",
+        "uncertainty",
+        "world"
+      ],
+      "nodes": 88122,
+      "owners": [
+        "chasca",
+        "furina",
+        "bennett",
+        "ororon"
+      ],
+      "seed": 742031890,
+      "sidecar_counts": {
+        "character_keys": 4,
+        "effect_inputs": 94,
+        "resistance_inputs": 366
+      },
+      "source_manifest_sha256": "7fc2320e4e861d4a86973ad7b36ef3ab46cfa131a0d7883d33d1606ff2ef7f68"
+    }
+  ],
+  "schema": "r3_architecture_inputs_v1",
+  "search_calls": 0
+}

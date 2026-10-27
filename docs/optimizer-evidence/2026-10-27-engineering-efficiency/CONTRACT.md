@@ -97,3 +97,27 @@ measured allocations/memory and instrumentation limits. List included/rejected
 modules and their local evidence. No universal speed/no-loss claim from one team.
 Export minimal evidence, release/clean the original owned job, verify protected
 state and zero owned processes, commit the result and STOP.
+
+## Representation decision after source review
+
+ROOT admits the typed-canonical IRSeedMember candidate described in
+[architecture receipt](ARCHITECTURE_RU.md). It removes the second generic JSON
+object tree while preserving the wire format, producer and validation contract.
+No binary exporter change is admitted in this round. Historical real Chasca IR
+is adequate for the bounded codec comparison; its older sidecar lacks current
+mechanic_invocations and cannot establish current full-sidecar cost. No new
+capture is needed for this comparison. Compare acceptance/rejection and canonical
+bytes/hash, including schema drift and malformed/presence/string/number cases.
+Unchanged encode/transfer costs stay explicit in complete-path measurements.
+This admits local implementation/evaluation only; full-run admission is separate.
+
+The first saved-data measurement improved canonicalization but regressed one
+complete ready-path row. Full admission remains held. ROOT admits one bounded
+unprofiled, reversed-order comparison to diagnose wall/GC interference; retain
+the first measurements and CPU/allocation profile, without claiming its wall
+times prove a full-path gain. Sub-timer gradient samples prove allocation changes
+only. The profile also identifies per-node allocation of an identical operation
+whitelist in IRNode.validate. A fifth, isolated module may replace only this map
+with exact switch membership, preserving validation order/errors. Compare it
+separately from typed JSON, folded into the same corrective saved-data job when
+possible; do not expand into general validator/crypto/cache rewrites.

@@ -1,0 +1,12 @@
+{
+  "commands": [],
+  "engine_calls": 0,
+  "error": "ValueError: R3 source seam differs: \tvar key [32]byte\n\tfound := false\n\tfor candidateKey, cached := range m.programCache {\n\t\tif",
+  "installed": false,
+  "job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-tj005xa2",
+  "job_removed": true,
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "schema": "r3_offline_gate_v1",
+  "search_calls": 0,
+  "status": "failed"
+}

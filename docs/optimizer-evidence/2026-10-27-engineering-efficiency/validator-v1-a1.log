@@ -1,0 +1,10 @@
+=== RUN   TestR3OperationValidatorDifferential
+    r3_operation_test.go:40: differential cases: 1944, both toggles
+--- PASS: TestR3OperationValidatorDifferential (0.01s)
+=== RUN   TestR3SavedOperationCosts
+--- PASS: TestR3SavedOperationCosts (3.06s)
+=== RUN   TestR3OperationValidatorAllocations
+    r3_operation_test.go:120: allocations per valid constant node: frozen=12 disabled=12 switch=9
+--- PASS: TestR3OperationValidatorAllocations (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/contracts	3.143s

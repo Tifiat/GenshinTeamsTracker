@@ -1,0 +1,46 @@
+[
+  {
+    "alloc_bytes": 56131728,
+    "allocations": 935437,
+    "gc_cycles": 3,
+    "gc_pause_ms": 0,
+    "nodes": 88579,
+    "scope": "one node-validator pass over already-decoded real saved member, including identical prior-ID index; no channel/sidecar/decode/search work timed",
+    "seed": "742031889",
+    "switch": false,
+    "wall_ms": 268.2138
+  },
+  {
+    "alloc_bytes": 15627608,
+    "allocations": 669660,
+    "gc_cycles": 1,
+    "gc_pause_ms": 0,
+    "nodes": 88579,
+    "scope": "one node-validator pass over already-decoded real saved member, including identical prior-ID index; no channel/sidecar/decode/search work timed",
+    "seed": "742031889",
+    "switch": true,
+    "wall_ms": 179.7044
+  },
+  {
+    "alloc_bytes": 55847224,
+    "allocations": 930397,
+    "gc_cycles": 3,
+    "gc_pause_ms": 0,
+    "nodes": 88122,
+    "scope": "one node-validator pass over already-decoded real saved member, including identical prior-ID index; no channel/sidecar/decode/search work timed",
+    "seed": "742031890",
+    "switch": false,
+    "wall_ms": 234.6678
+  },
+  {
+    "alloc_bytes": 15471240,
+    "allocations": 665965,
+    "gc_cycles": 1,
+    "gc_pause_ms": 0,
+    "nodes": 88122,
+    "scope": "one node-validator pass over already-decoded real saved member, including identical prior-ID index; no channel/sidecar/decode/search work timed",
+    "seed": "742031890",
+    "switch": true,
+    "wall_ms": 164.1192
+  }
+]

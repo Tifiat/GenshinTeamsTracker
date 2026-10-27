@@ -1,0 +1,13 @@
+=== RUN   TestR3SavedCodecCosts
+R3 saved codec rows: 4
+--- PASS: TestR3SavedCodecCosts (12.97s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/contracts	13.050s
+=== RUN   TestR3SavedGradientCosts
+--- PASS: TestR3SavedGradientCosts (3.66s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	3.744s
+=== RUN   TestR3SavedReadyCosts
+--- PASS: TestR3SavedReadyCosts (12.94s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	13.008s

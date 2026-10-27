@@ -1,0 +1,8 @@
+test_existing_owner_hooks_off_only_and_inventory_match (tools.experiments.gcsim.mvp_polish.test_r2_button.R2ButtonChecks.test_existing_owner_hooks_off_only_and_inventory_match) ... ok
+test_failed_result_exports_partial_stages (tools.experiments.gcsim.mvp_polish.test_r2_button.R2ButtonChecks.test_failed_result_exports_partial_stages) ... ok
+test_mixed_gear_extraction_keeps_real_counts_and_r1_default (tools.experiments.gcsim.mvp_polish.test_r2_button.R2ButtonChecks.test_mixed_gear_extraction_keeps_real_counts_and_r1_default) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.905s
+
+OK

@@ -35,3 +35,15 @@ performance/quality conclusion. Historical R1/403 helper and archive dependencie
 remain; this overlay is not a claim of standalone clean-checkout source closure.
 Shared handoffs contain older unrelated dirty changes and are excluded from the
 scoped source commit. No ON/WARM, installation or next experiment is authorized.
+
+## Button runner completion
+
+The thin `r2_button.py` reuses the R1 managed owner and real worker path, allows
+only OFF, requires the same full-account identity, and exports staged measurements
+plus adaptive-policy events. `whole_chasca_button.measured_rows` now accepts an
+explicit allowed-iterations argument; its existing default remains n500 only.
+Three focused runner checks passed (owner/input/OFF gate, mixed gear extraction,
+partial failure retention), with zero engine calls and zero consumer builds in
+those checks. See `focused-runner-v1.json` and its log. Combined scope: 7 Go and
+5 Python checks. A new n500 confirmation means a separate complete run, not a
+statistical independence claim for streams using the same fixed seed policy.

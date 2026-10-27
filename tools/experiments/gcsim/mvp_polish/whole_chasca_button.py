@@ -87,7 +87,7 @@ def validate_counters(counters,expected_mode):
             raise ValueError('whole_counter_phase_invalid')
 
 
-def measured_rows(payload,result):
+def measured_rows(payload,result,*,allowed_iterations=(500,)):
     artifacts={a['artifact_id']:a for a in payload['artifacts']}
     rows=result.get('verification',{}).get('candidates')
     cap=payload['result_options']['set_group_limit']*payload['result_options']['builds_per_group']
@@ -101,7 +101,7 @@ def measured_rows(payload,result):
         flat=tuple(i for actor in assignment for i in actor)
         if any(type(i)!=int for i in flat) or len(set(flat))!=20 or flat in seen or any(i not in artifacts for i in flat):raise ValueError('whole finalist physical identity invalid')
         seen.add(flat)
-        if row.get('iterations')!=500 or not all(type(row.get(k)) in (int,float) and math.isfinite(row[k]) and row[k]>=0 for k in ('measured_dps','standard_error')):raise ValueError('whole ordinary fidelity/uncertainty unavailable')
+        if row.get('iterations') not in allowed_iterations or not all(type(row.get(k)) in (int,float) and math.isfinite(row[k]) and row[k]>=0 for k in ('measured_dps','standard_error')):raise ValueError('whole ordinary fidelity/uncertainty unavailable')
         gear=[]
         for owner,actor in enumerate(assignment):
             items=[artifacts[i] for i in actor]

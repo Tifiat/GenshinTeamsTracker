@@ -207,3 +207,16 @@ R2 [offline acceptance](2026-10-27-staged-finalists/OFFLINE_ACCEPTANCE.md): six
 policy Go tests, one grouped-product Go test and two Python checks passed across
 focused attempts. Two fixture/assertion failures remain recorded. ROOT and Luna
 reviewed the bounded policy; zero numerical engine calls and no consumer build yet.
+
+R2 [completed result](2026-10-27-staged-finalists/RESULT_RU.md), sourcee4e3140/
+d1f525f, consumer4b4a1630, enginef1e unchanged: button126.719→101.250s (−20.1%).
+Winner same20IDs,158438.265±106.657→158310.460±101.969DPS (−0.081%, within observed
+sampling uncertainty). Same nine input candidates/formula scores,77 intermediate
+calls and366624eval/8982gradient. Final9×500→9×100+1×500;4500→1400iterations.
+Same inner verification timer47.465→20.938s; R2 outer23.729 includes2.791s extra
+outside inner bounds. R1 comparable outer unavailable. Search49.510→49.959s.
+One model/two captures/zero extras; nine measured/eight grouped published, no
+material gameplay anomaly.7Go+5Python passed; no new cache arm/install/run.
+24 adaptive samples/131events retained. REPORT/STOP; single-team evidence only.
+Original owner71494 exited0; job-d84n6yff removed,258365738bytes; protectedexact,
+heavy/owner processes0. Compact attribution58894b14 and closeout retained. STOP.

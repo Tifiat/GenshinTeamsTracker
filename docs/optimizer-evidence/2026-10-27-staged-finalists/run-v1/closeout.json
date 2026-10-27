@@ -1,0 +1,29 @@
+{
+  "attribution_owner_hash_scope": "original pre-release owner hash intentionally retained in attribution; final owner hash is above",
+  "attribution_sha256": "58894b14a5c7aaa106166dc4e621062526148250c5d52e0380feb855f216a329",
+  "consumer_sha256": "4b4a16304b10baffb40517edaf8c3bb2f16c1c163ca1bbf1a5bbfc0857440269",
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "final_owner_sha256": "5c9c4452c48b2844128a171ba9900b06bd7da8b9673397acd0ff420d4a7d501e",
+  "full_numerical_arms": 1,
+  "heavy_process_count": 0,
+  "installations": 0,
+  "on_or_warm_runs": 0,
+  "owned_job_exists": false,
+  "owned_job_removed": true,
+  "owner_exit_code": 0,
+  "owner_session": 71494,
+  "owner_status": "closed_off_complete_waiting_root",
+  "prepare_owner_process_count": 0,
+  "protected_exact": true,
+  "receipt_sha256": {
+    "off-details.json": "e32752d39171d3b9bdc382fdf7a90296be06f3bc3707cef35e3a90ef9e6d0e7c",
+    "off-observations.json": "c5ae3f27adc20873f294dc3e2c3be0eb169a5c826ea9725ee28c80dded6cf385",
+    "off.json": "d7a5fee695f82a159a242278e0e21f2959a168621bc43dc3af4e26afc41355a8"
+  },
+  "recorded_utc": "2026-10-27T04:49:04.184537+00:00",
+  "removed_parent_job_bytes": 258365738,
+  "retention": "owned producer/source/snapshot/raw removed by original real managed owner; minimal receipts and report retained",
+  "schema": "r2_owned_closeout_v1",
+  "source_commit": "d1f525fb9d2ee87a2722dbc96698572c98daee77",
+  "status": "stopped_after_one_completed_off"
+}

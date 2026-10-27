@@ -144,3 +144,9 @@ explicit reference-only uncertainty. Existing solvers and9n500 checks are retain
 initially. MAIN integrates/checks the complete chain; Luna runs first OFF then
 admitted warm ON on identical full-account inputs. No measurement yet; no install.
 Residual learning and later teams are not part of this one-configuration scope.
+
+[R1 core checkpoint](2026-10-27-single-trace/CORE_CHECKPOINT.md): six focused Go
+tests passed with zero engine calls; core source/delta frozen for a separate
+research commit. Actual3×3 wrapper check also passed; full managed integration
+and numerical measurements remain pending. The historical403 helper/archive
+dependency is explicitly disclosed, not falsely called a standalone source tree.

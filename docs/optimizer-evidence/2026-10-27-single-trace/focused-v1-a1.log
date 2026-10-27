@@ -1,0 +1,22 @@
+=== RUN   TestR1FrozenAnchorsKeepKnownArithmeticAndProvenance
+--- PASS: TestR1FrozenAnchorsKeepKnownArithmeticAndProvenance (0.00s)
+=== RUN   TestR1UnknownReferencePreservesSourceAndRejectsNonfinite
+--- PASS: TestR1UnknownReferencePreservesSourceAndRejectsNonfinite (0.00s)
+=== RUN   TestR1InvalidMechanicNeverFrozenAndUnmappedStaysExplicit
+--- PASS: TestR1InvalidMechanicNeverFrozenAndUnmappedStaysExplicit (0.00s)
+=== RUN   TestR1ConcreteInvalidAndResolvedPathRemainDistinct
+--- PASS: TestR1ConcreteInvalidAndResolvedPathRemainDistinct (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/seteffects	0.049s
+testing: warning: no tests to run
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/setcontext	0.043s [no tests to run]
+=== RUN   TestR1RouterBlocksEveryExtraContextCapture
+--- PASS: TestR1RouterBlocksEveryExtraContextCapture (0.01s)
+=== RUN   TestR1ConnectedNeutralSearchKeepsFullActorPath
+--- PASS: TestR1ConnectedNeutralSearchKeepsFullActorPath (0.09s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/allsets	0.157s
+testing: warning: no tests to run
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer	0.041s [no tests to run]

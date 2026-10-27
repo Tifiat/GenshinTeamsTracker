@@ -132,3 +132,15 @@ the current experiment scope.
 
 No new benchmark results were produced by this historical investigation. Observer
 remains disabled. Existing checks and failed receipts remain unchanged.
+
+## 27October: R1 configuration selected, implementation authorized
+
+The human authorized one complete Chasca experiment and a full report under the
+[R1 contract](2026-10-27-single-trace/CONTRACT.md). ROOT selected the normal
+neutral/parametric path from accepted403/a5262483 plus current f1e producer,
+without C4 per-package three-anchor projection or any additional context capture.
+Known arithmetic stays; unresolved ports use typed concrete-anchor freezing or
+explicit reference-only uncertainty. Existing solvers and9n500 checks are retained
+initially. MAIN integrates/checks the complete chain; Luna runs first OFF then
+admitted warm ON on identical full-account inputs. No measurement yet; no install.
+Residual learning and later teams are not part of this one-configuration scope.

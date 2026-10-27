@@ -237,3 +237,32 @@ not an assumed mandatory migration. Existing MAIN implements; cheap tester one
 correct full Chasca OFF after whole-chain admission, report/STOP. No installation,
 other teams or new algorithmic safeguards. Prior R2 plan is historical authority;
 R3 contract owns this stage. Observer remains disabled.
+
+R3 source/runner/offline milestone0596011 preserves exact native R2 recovery
+from6f1cab8 plus a literal text delta, independently checked411-map5091c1ca.
+Five engineering modules: parallel2seed capture, typed canonical JSON, internal
+adjoint reuse, bounded program-key reverse index, per-node whitelist switch.
+No math/search/coverage/77intermediate/finalist policy changes. The first saved
+ready-path regression is retained; one unprofiled ABBA confirmed typed-path
+speed/CPU/allocation improvement. Race detector unavailable; bounded ownership/
+cancellation and differential checks passed. [Offline evidence](2026-10-27-engineering-efficiency/OFFLINE_RU.md).
+
+The ONE admitted full Chasca OFF completed before quota interruption. Resume
+closes this result only, never launches another arm. Full604/597/39 inventory,
+consumere286d59d/enginef1e: button101.250→90.500s (−10.617%). Winner same20IDs,
+158310.460±101.969→158226.929±108.027DPS (−0.0528%); all9ordered candidate/formula/
+config/gear and semantic search rows match.366624eval/8982gradient/87ordinary/
+2compact/1model unchanged. Initial capture/model16.052→9.820s is INCLUDED in
+search49.959→42.454s; remaining search33.907→32.634s. Final outer23.729→21.358s
+also contributes run-to-run variance, not uniquely attributed to engineering.
+[Attribution](2026-10-27-engineering-efficiency/run-v1/off-attribution-v1.json)
+retains R3 capture joins and limitations: R2 raw captures unavailable, no full-run
+CPU/alloc/RSS, no global quality proof. Export/cleanup/report then STOP; no install.
+
+[R3 full report](2026-10-27-engineering-efficiency/RESULT_RU.md) and
+[closeout](2026-10-27-engineering-efficiency/run-v1/closeout.json) completed.
+Original owner63139 exited0; job-uvyvjrw5 removed258457682bytes. ROOT independently
+verified receipt hashes, current protected account/runtime, absent job and zero
+owned processes. Attributionc23d6398 preserves pre-release owner hash; closeout
+binds final ownerf1aaf43e. One successful OFF only; no resumed simulation, install
+or new test. REPORT/STOP; further work requires a new human order.

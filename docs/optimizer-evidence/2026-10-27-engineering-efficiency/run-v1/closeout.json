@@ -1,0 +1,77 @@
+{
+  "attribution_owner_hash_scope": "off-attribution-v1 preserves pre-release owner SHA; this closeout holds final owner SHA. Original record not rewritten.",
+  "closed_utc": "2026-10-27T07:54:46.696206+00:00",
+  "consumer_builds": 1,
+  "consumer_sha256": "e286d59d46a932cc52c34f14659e34c99790b70fe2f890e62ec1ad0c7e59f448",
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "exactly_one_completed_off": true,
+  "heavy_processes_owned": 0,
+  "installations": 0,
+  "job_removed": true,
+  "native_source_map_sha256": "3401a0e41238cc6fb85b9f74121f89e2c7cd062c6aebb2a717fc1969a9db9672",
+  "original_job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-uvyvjrw5",
+  "original_owner_exit_code": 0,
+  "original_owner_session": 63139,
+  "owned_processes_after": [],
+  "owned_processes_count": 0,
+  "owner_finished": 1793087639.838147,
+  "owner_status": "closed_off_complete_waiting_root",
+  "preserved_state": {
+    "active_profile_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "files": {
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\gcsim\\engines\\active_engine.json": "d884c10f04bab47fe8bc660ced60ae80b7efad9baef09338a1e7dc6f8fdaf2f1",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\profiles\\57b730eff7544d0eb4e9f74ecb8fc2fa\\data\\artifacts.db": "0937e22817f3cece02ac93baaa9a9d39bb5467630f55751501f3082455c9eb85",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\profiles\\registry.json": "adbefae9c6fd33116fa63d33069f50f6531ef9bfe3c42ec224841e4ed7d8ad94",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\native\\gcsim_optimizer\\gtt-optimizer.exe": "415d995c20897d13faf70217fedd37831528e6570b249b472d154b36a61f069d"
+    }
+  },
+  "producer_builds": 0,
+  "protected_exact": true,
+  "protected_sha256_after": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "protected_sha256_before": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "receipt_hashes": {
+    "ROOT_ADMISSION.json": {
+      "bytes": 1533,
+      "sha256": "df905e7fe8882050539ae6db55547767ab923ef01d091d2d095ee10dc0e876e8"
+    },
+    "off-attribution-v1.json": {
+      "bytes": 50845,
+      "sha256": "c23d6398654f17a60045c7f4225585777deaa1349df66ec46777580331a97ca4"
+    },
+    "off-details.json": {
+      "bytes": 878655,
+      "sha256": "c2b806166c1727a5b658f50e430cd13619f69d6c2ba5b06a785c95224367628e"
+    },
+    "off-observations.json": {
+      "bytes": 1331,
+      "sha256": "c5ae3f27adc20873f294dc3e2c3be0eb169a5c826ea9725ee28c80dded6cf385"
+    },
+    "off-r3-observations.json": {
+      "bytes": 506,
+      "sha256": "9efb4545ae29665813ebef77d128025444b4f96ed256129958fbce4b5a0b73c1"
+    },
+    "off.json": {
+      "bytes": 303712,
+      "sha256": "b37cf12e9315ff2d0da2f6caa046f61935ca381e83c177ec7c6d9a4b6f197872"
+    },
+    "owner.json": {
+      "bytes": 60045,
+      "sha256": "f1aaf43e284173e50fb9411c9b06ae7712868092e1bdc8f3313425122eb7a6d6"
+    },
+    "prepared-review-v1.json": {
+      "bytes": 3769,
+      "sha256": "f7bb856efde2667d6b688c9835cc6f36185e9242ff35a758d7572baf71f588cc"
+    }
+  },
+  "release_command_exit_code": 0,
+  "removed_bytes": 258457682,
+  "result_report": {
+    "bytes": 19188,
+    "path": "../RESULT_RU.md",
+    "sha256": "ad835d881a66976e7319d67a746dba6ba07b01568c2901d42294f45bdfdec9a7"
+  },
+  "schema": "r3_original_owner_closeout_v1",
+  "source_commit": "05960111603914b08b945553ee5f0df220597161",
+  "status": "report_stop",
+  "stop": "No further run/build/tests/ON/warm/install/otherteam or new experiment. ROOT owns current handoffs and final local commit."
+}

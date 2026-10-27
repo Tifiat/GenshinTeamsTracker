@@ -1,0 +1,70 @@
+{
+  "consumer_build_s": 12.281000000075437,
+  "consumer_builds": 1,
+  "consumer_sha256": "e286d59d46a932cc52c34f14659e34c99790b70fe2f890e62ec1ad0c7e59f448",
+  "consumer_target": {
+    "CGO_ENABLED": "0",
+    "GOAMD64": "v1",
+    "GOARCH": "amd64",
+    "GOEXPERIMENT": "",
+    "GOOS": "windows",
+    "GoVersion": "go1.26.4"
+  },
+  "deadline": 1793095773.0782604,
+  "engine_calls": 0,
+  "go_executable_sha256": "9b3239fee08fa24ec8280180789cd3fdcfc24f33dc19b3a1230fa6b0ae3c5aad",
+  "inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "8c0d8ce57b1417213876911e80ed841bde59261934697abb3f40114f7c9ed6d1",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-uvyvjrw5",
+  "native_source_files_verified": 428,
+  "native_source_map_sha256": "3401a0e41238cc6fb85b9f74121f89e2c7cd062c6aebb2a717fc1969a9db9672",
+  "off_authority": "ROOT dispatches singleOFF to existing cheap tester after review; MAIN has issued no OFF",
+  "owner_snapshot_sha256": "9f516eece3849c7310a72f258ca5cc49c032ba46fdbaa22c13ac056090bbe9da",
+  "producer": {
+    "artifact_path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-uvyvjrw5\\engine-store\\engines\\gcsim-v2.45.0-mechanic-compiler-20261025\\build\\gtt-gcsim.exe",
+    "artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+    "binding_sha256": "8c0d8ce57b1417213876911e80ed841bde59261934697abb3f40114f7c9ed6d1",
+    "catalog_fingerprint": "9049ed5ed5c33196961bf8bb2f1e8a54be37a0a658491f356d6c34079597c722",
+    "engine_id": "gcsim-v2.45.0-mechanic-compiler-20261025",
+    "engine_root": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-uvyvjrw5\\engine-store\\engines\\gcsim-v2.45.0-mechanic-compiler-20261025",
+    "engine_tree_sha256": "aa5351097920bb957f605eb797b8af57f6fc855e0fa7bc73f5136a8b67331e92",
+    "engine_version": "cfa93e5596d031f095f394b49d54440ce5ce24c6",
+    "manifest_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+    "manifest_engine_tree_sha256": "aa5351097920bb957f605eb797b8af57f6fc855e0fa7bc73f5136a8b67331e92",
+    "optimizer_contract_version": "accepted unified-health + source mechanic observer",
+    "trusted": true
+  },
+  "producer_builds": 0,
+  "producer_target": {
+    "CGO_ENABLED": "0",
+    "GOAMD64": "v1",
+    "GOARCH": "amd64",
+    "GOEXPERIMENT": "",
+    "GOOS": "windows",
+    "GoVersion": "go1.26.4"
+  },
+  "protected_exact": true,
+  "protected_sha256_now": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "python_version": "3.11.5 (tags/v3.11.5:cce6ba9, Aug 24 2023, 14:38:34) [MSC v.1936 64 bit (AMD64)]",
+  "r3_flags": {
+    "GTT_R3_ADJOINT_REUSE": "1",
+    "GTT_R3_OPERATION_SWITCH": "1",
+    "GTT_R3_PARALLEL_CAPTURE": "1",
+    "GTT_R3_PROGRAM_IDENTITY": "1",
+    "GTT_R3_TYPED_CANONICAL": "1"
+  },
+  "schema": "r3_prepared_review_v1",
+  "source_commit": "05960111603914b08b945553ee5f0df220597161",
+  "status": "prepared_no_numeric_command",
+  "wrapper_fields_scope": "Historical R1 metadata. Actual R3 native recovery is pinned0596011 plus exact428-map; Python/material and producer keep separate existing dependencies. Original owner unchanged.",
+  "wrapper_source_closure": "accepted403 reconstruction/helper chain; not standalone checkout",
+  "wrapper_source_commit": "e6d076c208302a442661fdad59b9fc4a5e960b98"
+}

@@ -1,0 +1,1704 @@
+{
+  "capture_witness": {
+    "R2_provider": [
+      {
+        "context_sha256": "cbf06396abf199247e4250056850d50037aa9ac693680f7948e7aaedcc3452ed",
+        "decode_ms": 2350.34,
+        "process_ms": 4248.5091,
+        "result_sha256": "506cd8854996e0fd20dbf1542219877d9bd6a12d99dec78911d9f9ea45cc0045",
+        "seed": 742031889
+      },
+      {
+        "context_sha256": "cbf06396abf199247e4250056850d50037aa9ac693680f7948e7aaedcc3452ed",
+        "decode_ms": 2659.4379,
+        "process_ms": 4347.8383,
+        "result_sha256": "e79952553468149507b218a27bf312fa62f10412eb0f7ed02df1ec19802fe494",
+        "seed": 742031890
+      }
+    ],
+    "R3": [
+      {
+        "channels": 372,
+        "config_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+        "duration_ms": 65583,
+        "effect_source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+        "mechanic_invocations_present": true,
+        "member_raw_sha256": "6d3601489c62cce58705acdb19f055d68d555d25ccb1123fa1fe9a9df7ec9846",
+        "member_semantic_sha256": "9a471d9f41b34fe251e7c00f34dee0c36f4f9b71b03e84afab1b4103ba7b381e",
+        "nodes": 89010,
+        "note": "R3-only witness; no retained R2 raw semantic payload available for pairwise comparison",
+        "request": {
+          "context_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+          "ignore_burst_energy": true,
+          "include_effect_inputs": true,
+          "iterations": 1,
+          "output_mode": "compact_ir_v1",
+          "schema_version": 1,
+          "seed": "742031889",
+          "workers": 1
+        },
+        "sidecar_sha256": "f80d72d333ff83d1fd08ee8ef3e2b9e5e5234b774caa49b483f9c1b6ba2db37f",
+        "source_config_sha256": "d5f09e4157bcc54f0eecf13bbd148bf3c8a4d47774781f0cd033650167996f3a",
+        "topology_sha256": "b27b089a5d7890ca4bd89dcfe7e2d8b58a382b3b4cae52f3152f05987393487c"
+      },
+      {
+        "channels": 366,
+        "config_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+        "duration_ms": 65583,
+        "effect_source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+        "mechanic_invocations_present": true,
+        "member_raw_sha256": "52e383aba8d07561ca4a99d83ee9c9f5547e6e1117025c3b0e35991aba292c44",
+        "member_semantic_sha256": "0a02285a7f2f6bbf5d5c1ed10bf1d2f2545f52aa3bbfc2d8565d4ae50a653643",
+        "nodes": 88553,
+        "note": "R3-only witness; no retained R2 raw semantic payload available for pairwise comparison",
+        "request": {
+          "context_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+          "ignore_burst_energy": true,
+          "include_effect_inputs": true,
+          "iterations": 1,
+          "output_mode": "compact_ir_v1",
+          "schema_version": 1,
+          "seed": "742031890",
+          "workers": 1
+        },
+        "sidecar_sha256": "5d01f200163aa4f7bf38fdf8bac611b0a103bd0defa9267cda4a6aaa2f2f7cf0",
+        "source_config_sha256": "d5f09e4157bcc54f0eecf13bbd148bf3c8a4d47774781f0cd033650167996f3a",
+        "topology_sha256": "56e5f511bac2ebe64f889757a5ccad1d8c86e66af0a0bc43b5cbfa558ac583f5"
+      }
+    ],
+    "R3_provider": [
+      {
+        "context_sha256": "c4282ea48f4fbe19fc2a3478eb469ec4bd8d024b0563259d61aa852f5c3be899",
+        "decode_ms": 1854.8418,
+        "process_ms": 4661.6708,
+        "result_sha256": "6d3601489c62cce58705acdb19f055d68d555d25ccb1123fa1fe9a9df7ec9846",
+        "seed": 742031889
+      },
+      {
+        "context_sha256": "c4282ea48f4fbe19fc2a3478eb469ec4bd8d024b0563259d61aa852f5c3be899",
+        "decode_ms": 1900.387,
+        "process_ms": 4362.1064,
+        "result_sha256": "52e383aba8d07561ca4a99d83ee9c9f5547e6e1117025c3b0e35991aba292c44",
+        "seed": 742031890
+      }
+    ],
+    "context_binding_note": "Context.Key includes EngineBinding and frame identity; relocating the owned engine changes provenance. The R3 capture requests/sidecar/config/seed raw joins were checked. R2 raw members were cleaned earlier; different raw member hashes alone neither prove nor refute numerical drift, and pairwise semantic capture identity is unavailable.",
+    "product_prepared_config_sha256_same": true,
+    "product_seed_schedule_same": true,
+    "product_target_sha256_same": true
+  },
+  "captured_utc": "2026-10-27T07:51:41.310073+00:00",
+  "consumer_sha256": "e286d59d46a932cc52c34f14659e34c99790b70fe2f890e62ec1ad0c7e59f448",
+  "control_evidence": {
+    "off-attribution-v1.json": "58894b14a5c7aaa106166dc4e621062526148250c5d52e0380feb855f216a329",
+    "off-details.json": "e32752d39171d3b9bdc382fdf7a90296be06f3bc3707cef35e3a90ef9e6d0e7c",
+    "off.json": "d7a5fee695f82a159a242278e0e21f2959a168621bc43dc3af4e26afc41355a8"
+  },
+  "counts": {
+    "artifact.evaluate_calls": 366624,
+    "artifact.gradient_calls": 8982,
+    "engine.compact.process_attempts": 2,
+    "engine.compact.process_exit_success": 2,
+    "engine.ordinary.process_attempts": 87,
+    "engine.ordinary.process_exit_success": 87,
+    "product.rendered_candidates": 8,
+    "r1.neutral_models": 1,
+    "r3.capture_batch_workers": 2,
+    "search.selected_finalists": 9
+  },
+  "coverage": {
+    "adaptive_events": 131,
+    "adaptive_samples": 24,
+    "c4_projections": 0,
+    "cycles_equal_R2": true,
+    "extra_context_captures": 0,
+    "neutral_cycles": [
+      {
+        "CandidateSearchCalls": 1639,
+        "CandidateSearchReused": 61,
+        "Cycle": 1,
+        "HeuristicSkipped": 907,
+        "ModelDeferred": 971,
+        "ModelUnavailable": 0,
+        "NotPrepared": 1125,
+        "NotProcessed": 0,
+        "Prepared": 971,
+        "Processed": 0,
+        "Queued": 971,
+        "ReservationDeferred": 0,
+        "Sampled": 64,
+        "Total": 2096
+      },
+      {
+        "CandidateSearchCalls": 2760,
+        "CandidateSearchReused": 439,
+        "Cycle": 2,
+        "HeuristicSkipped": 2032,
+        "ModelDeferred": 2096,
+        "ModelUnavailable": 0,
+        "NotPrepared": 0,
+        "NotProcessed": 0,
+        "Prepared": 2096,
+        "Processed": 0,
+        "Queued": 2096,
+        "ReservationDeferred": 0,
+        "Sampled": 64,
+        "Total": 2096
+      }
+    ],
+    "r1_frozen": {
+      "AnchorPorts": 339395,
+      "FallbackReplays": 37,
+      "OmittedRecords": 358661,
+      "ReferencePorts": 19394
+    },
+    "sampled_neighborhood_report_count": 128,
+    "stabilization_reports": 7,
+    "support_response_calls": 53
+  },
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "evidence": {
+    "ROOT_ADMISSION.json": "df905e7fe8882050539ae6db55547767ab923ef01d091d2d095ee10dc0e876e8",
+    "off-details.json": "c2b806166c1727a5b658f50e430cd13619f69d6c2ba5b06a785c95224367628e",
+    "off-observations.json": "c5ae3f27adc20873f294dc3e2c3be0eb169a5c826ea9725ee28c80dded6cf385",
+    "off-r3-observations.json": "9efb4545ae29665813ebef77d128025444b4f96ed256129958fbce4b5a0b73c1",
+    "off.json": "b37cf12e9315ff2d0da2f6caa046f61935ca381e83c177ec7c6d9a4b6f197872",
+    "owner.json": "2eb822df15756e0476b0603f55cdae068d67ea56862bd4843c8566cecdfb7ef1"
+  },
+  "inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "8c0d8ce57b1417213876911e80ed841bde59261934697abb3f40114f7c9ed6d1",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "limits": [
+    "Single-team single-complete-run timing; no per-module full ablation or global no-loss guarantee.",
+    "Final n500 uses ordinary multiworker engine; identical seeds/config do not establish identical or independent RNG samples across separate runs.",
+    "No full-run CPU/alloc/RSS instrumentation; allocation data belong to earlier saved-input offline gates.",
+    "Existing frozen residual/model limitations remain; no Tighnari/other-team acceptance."
+  ],
+  "model_reuse": {
+    "DispatchHits": 561,
+    "Preparation": {
+      "ComponentExpressionNodes": 1440,
+      "ComponentHits": 15222,
+      "FamilyHits": 2229,
+      "FamilyMisses": 1015,
+      "FullFallbacks": 34,
+      "GroupEntries": 17,
+      "GroupHits": 123,
+      "GroupMisses": 17,
+      "GroupValues": 164849,
+      "JointReplays": 51,
+      "Merges": 140,
+      "ReplaySeconds": 9.902871399999997,
+      "Replays": 283,
+      "Requests": 3278,
+      "SymbolicComponents": 4,
+      "SymbolicCompositions": 153,
+      "TwoPieceChoices": 124,
+      "TwoPieceEffectFamilies": 31
+    },
+    "PreparedPayloadProgramHits": 1914,
+    "ProgramHits": 661,
+    "ProgramMisses": 703,
+    "RegionReuse": {
+      "Calls": 602,
+      "OutputNodes": 810863,
+      "PeakArenaNodes": 20112,
+      "Rebuilt": 2162730,
+      "Resets": 0,
+      "Reused": 21341156,
+      "Visited": 23503886
+    },
+    "Requests": 3839,
+    "Specialization": {
+      "Entries": 256,
+      "Hits": 5857,
+      "Misses": 1246,
+      "Nodes": 473180
+    }
+  },
+  "native_source_map_sha256": "3401a0e41238cc6fb85b9f74121f89e2c7cd062c6aebb2a717fc1969a9db9672",
+  "outcome": {
+    "R2_winner": {
+      "assignment": [
+        [
+          36,
+          1413,
+          1426,
+          140,
+          203
+        ],
+        [
+          1571,
+          81,
+          92,
+          88,
+          1615
+        ],
+        [
+          1395,
+          1598,
+          1466,
+          1563,
+          1614
+        ],
+        [
+          1616,
+          91,
+          241,
+          1586,
+          119
+        ]
+      ],
+      "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+      "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+      "elapsed_ms": 4778.0107,
+      "engine_result_sha256": "91115ba35cefe3a6da211c0e299588dd6961472c1a8fb35cfbc31f1e7d847f0b",
+      "formula_dps": 156969.25165871024,
+      "formula_residual_dps": 1341.207989330811,
+      "iterations": 500,
+      "measured_dps": 158310.45964804105,
+      "rank": 1,
+      "source": "real_candidate",
+      "standard_deviation": 2280.0862071179604,
+      "standard_error": 101.96855507350848
+    },
+    "R3_winner": {
+      "assignment": [
+        [
+          36,
+          1413,
+          1426,
+          140,
+          203
+        ],
+        [
+          1571,
+          81,
+          92,
+          88,
+          1615
+        ],
+        [
+          1395,
+          1598,
+          1466,
+          1563,
+          1614
+        ],
+        [
+          1616,
+          91,
+          241,
+          1586,
+          119
+        ]
+      ],
+      "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+      "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+      "elapsed_ms": 3726.5448,
+      "engine_result_sha256": "d6b35c0674dd138fa47bab765cd22e3bda278ace12344096f496635e512910a3",
+      "formula_dps": 156969.25165871024,
+      "formula_residual_dps": 1257.6776075836679,
+      "iterations": 500,
+      "measured_dps": 158226.9292662939,
+      "rank": 1,
+      "source": "real_candidate",
+      "standard_deviation": 2415.548023429393,
+      "standard_error": 108.02659166606755
+    },
+    "button_R2_ms": 101250,
+    "button_R3_ms": 90500,
+    "dps_delta": -83.53038174714311,
+    "dps_delta_percent": -0.052763653098375496,
+    "saving_ms": 10750,
+    "saving_percent": 10.617283950617283
+  },
+  "owner_metadata_scope": "Inherited R1 owner source_commit e6d076c records preparation-time HEAD; source_closure accepted403 is an inherited wrapper label. This admission binds the actual R3 native snapshot to 0596011. Native recovery is standalone from pinned Git+delta; Python/material/producer dependencies retain separate receipts.",
+  "panel": {
+    "actual_published": 8,
+    "all_nine_full_gear_evidence": "off-details.json",
+    "all_nine_gear_mains_substats_exact": true,
+    "all_nine_ordered_assignment_formula_source_config_exact": true,
+    "all_nine_summary": [
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+        "elapsed_ms": 3726.5448,
+        "engine_result_sha256": "d6b35c0674dd138fa47bab765cd22e3bda278ace12344096f496635e512910a3",
+        "formula_dps": 156969.25165871024,
+        "formula_residual_dps": 1257.6776075836679,
+        "gear_sha256": "8922395239c7299caa39244fb771bd96f1f86b3b7bb94555cd78af5840216e8f",
+        "iterations": 500,
+        "measured_dps": 158226.9292662939,
+        "rank": 1,
+        "source": "real_candidate",
+        "standard_deviation": 2415.548023429393,
+        "standard_error": 108.02659166606755
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1290
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "config_sha256": "4598c385e6330a9615bdb75b6620cfda1004e8a5e1f5a5a918df8df7828c8277",
+        "elapsed_ms": 3111.5233,
+        "engine_result_sha256": "1b5d9efb874b7524a2f74d9e55b4a66b47e49298c2d6fe067a4a511b65c40c7e",
+        "formula_dps": 148644.3089331408,
+        "formula_residual_dps": 1296.0424447823898,
+        "gear_sha256": "308521aef1c578df3bc4228b5dd2d270826bcda3ef640b05122777dc7d894b82",
+        "iterations": 100,
+        "measured_dps": 149940.3513779232,
+        "rank": 2,
+        "source": "measured_stat_response_proposal",
+        "standard_deviation": 3569.1834040473336,
+        "standard_error": 356.9183404047334
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            132,
+            88,
+            124
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "config_sha256": "980b59b257175a45c703b163793449f7129ec5e89b6f37b7d0a99fa3f4381ef6",
+        "elapsed_ms": 3108.1144,
+        "engine_result_sha256": "71aeddc45ade9564350f42e031bc56864550ff0bae5ed21c4cfd0707a1cbe117",
+        "formula_dps": 145247.14513794772,
+        "formula_residual_dps": 1295.2997967931733,
+        "gear_sha256": "cb8ab919b6521f087fca1f19f4b8101c6c408b5c82363c4f50e5dced70535066",
+        "iterations": 100,
+        "measured_dps": 146542.4449347409,
+        "rank": 3,
+        "source": "measured_stat_response_combined_proposal",
+        "standard_deviation": 2558.7665971627653,
+        "standard_error": 255.87665971627652
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "config_sha256": "34301e5e338ae1640c265da2a6c7bbea5bca5b2e1fb89e91cd7685970a53281d",
+        "elapsed_ms": 3074.6285,
+        "engine_result_sha256": "0994dc7de41e15d1d39339c0f13df6fe4c98c22c0b629d12cae406e139a50dd3",
+        "formula_dps": 154637.8107269837,
+        "formula_residual_dps": 1293.8169400047045,
+        "gear_sha256": "0f330f9d23d6b73d5ea74a548bccd294570369ace51d1acdcc295c6a709e4170",
+        "iterations": 100,
+        "measured_dps": 155931.6276669884,
+        "rank": 4,
+        "source": "real_candidate",
+        "standard_deviation": 2333.864919324401,
+        "standard_error": 233.3864919324401
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "config_sha256": "fdb6a9852120ab6fb5882fc281890a5c6d5395c4948c505e26e8e4df006e8300",
+        "elapsed_ms": 3935.8218,
+        "engine_result_sha256": "218a06f4ddff627fc5d8db54ce10ca256c16aae46ef8cd8e19cb2f44b2aa4eac",
+        "formula_dps": 154633.2859967898,
+        "formula_residual_dps": 1175.2855716989143,
+        "gear_sha256": "8a2d26915b0c9f40826ca96f70a7b6d071f568bc108399d5ac82c0b72eebf19c",
+        "iterations": 100,
+        "measured_dps": 155808.57156848873,
+        "rank": 5,
+        "source": "single_item_replacement",
+        "standard_deviation": 2272.4039093985957,
+        "standard_error": 227.24039093985957
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "config_sha256": "15a97726e64b719dbf9c257fb6631f0337e952b604d8731ac10babc4b8d45304",
+        "elapsed_ms": 3954.9201,
+        "engine_result_sha256": "5d072ad73d5a3f1c13cce534a778e4f5dca1a38e0044bb6ccb7acbcb31559ebe",
+        "formula_dps": 154617.04832316763,
+        "formula_residual_dps": 1598.904375600192,
+        "gear_sha256": "79e90eee29e6fef6186709c4a9637b9582c5d0050735a6f479f27429d1f23aef",
+        "iterations": 100,
+        "measured_dps": 156215.95269876783,
+        "rank": 6,
+        "source": "single_item_replacement",
+        "standard_deviation": 2294.857484607209,
+        "standard_error": 229.48574846072088
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "config_sha256": "f51f7fe797fb734d805ff21b2e0869280fc126340de29580297e1f9a22972c3a",
+        "elapsed_ms": 4060.4831,
+        "engine_result_sha256": "6269b0f1bca0eaa612c921608827b2f80282ad259d1d070eb8b9cc1bbe7e753f",
+        "formula_dps": 153368.87796647247,
+        "formula_residual_dps": 1267.6253407982877,
+        "gear_sha256": "ebb7af1aa36372c9dabfc830edb917f75a10d67ef134d9876875d3280c9df8bc",
+        "iterations": 100,
+        "measured_dps": 154636.50330727076,
+        "rank": 7,
+        "source": "real_candidate",
+        "standard_deviation": 2179.4402461918085,
+        "standard_error": 217.94402461918085
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "config_sha256": "5b5cd779f20e7338570edcc3fc757a528a97efa08679f4371c1c515a010e48b3",
+        "elapsed_ms": 3928.5658,
+        "engine_result_sha256": "5b4f06185a6d047602ef3fce63a6d032136057d03aa73ed7f67998448bce4589",
+        "formula_dps": 153364.3532362786,
+        "formula_residual_dps": 1167.8790172594308,
+        "gear_sha256": "8ec72133fec6b788c75d8c7d96c2ee017e4b9c20d487f07a64927041c718f1a6",
+        "iterations": 100,
+        "measured_dps": 154532.23225353804,
+        "rank": 8,
+        "source": "single_item_replacement",
+        "standard_deviation": 2399.681652323542,
+        "standard_error": 239.9681652323542
+      },
+      {
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "config_sha256": "5579491474106a0b09769af85cd8b4170b622d05f2222f4a523814116b761f73",
+        "elapsed_ms": 1117.349,
+        "engine_result_sha256": "cbeb82c330b80f4cbb0f865dc37d441997bf1f0575a85063b156d44a7abd78db",
+        "formula_dps": 153348.1155626564,
+        "formula_residual_dps": 1499.240342484176,
+        "gear_sha256": "9cc04370a695140ef64725bb52bc120ef4426c4c5a964d6edb553ca9d0a449a4",
+        "iterations": 100,
+        "measured_dps": 154847.35590514058,
+        "rank": 9,
+        "source": "single_item_replacement",
+        "standard_deviation": 1970.433433425054,
+        "standard_error": 197.0433433425054
+      }
+    ],
+    "publication_note": "Eight displayed of nine measured uses unchanged distance-one replacement grouping; combined two-item proposal remains measured but not displayed.",
+    "published_alternative_ranks": [
+      1,
+      2,
+      1,
+      2,
+      3,
+      1,
+      2,
+      3
+    ],
+    "search_work_rows_excluding_context_and_timers_exact": true,
+    "winner_gear": [
+      {
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.07"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.101"
+              },
+              {
+                "key": "em",
+                "value": "82"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.047"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1413,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.14"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.179"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.078"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.047"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1426,
+            "level": 20,
+            "main_stat": {
+              "key": "em",
+              "value": "187"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.202"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.074"
+              },
+              {
+                "key": "def",
+                "value": "37"
+              },
+              {
+                "key": "hp",
+                "value": "239"
+              }
+            ]
+          },
+          {
+            "artifact_id": 140,
+            "level": 20,
+            "main_stat": {
+              "key": "pyro_damage_bonus",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "gildeddreams",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.132"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.078"
+              },
+              {
+                "key": "em",
+                "value": "63"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.058"
+              }
+            ]
+          },
+          {
+            "artifact_id": 203,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "19"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.047"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.128"
+              },
+              {
+                "key": "em",
+                "value": "63"
+              }
+            ]
+          }
+        ],
+        "owner": "bennett",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "noblesseoblige"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1571,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.111"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.027"
+              },
+              {
+                "key": "em",
+                "value": "23"
+              }
+            ]
+          },
+          {
+            "artifact_id": 81,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.053"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.148"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.136"
+              },
+              {
+                "key": "em",
+                "value": "37"
+              }
+            ]
+          },
+          {
+            "artifact_id": 92,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.311"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.062"
+              },
+              {
+                "key": "def",
+                "value": "42"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 88,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "35"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.039"
+              },
+              {
+                "key": "def",
+                "value": "19"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1615,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "19"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.105"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.097"
+              },
+              {
+                "key": "def",
+                "value": "56"
+              }
+            ]
+          }
+        ],
+        "owner": "chasca",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "obsidiancodex"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1395,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.053"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.272"
+              },
+              {
+                "key": "def",
+                "value": "44"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.099"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1598,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.111"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "em",
+                "value": "19"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.105"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1466,
+            "level": 20,
+            "main_stat": {
+              "key": "hp_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "wandererstroupe",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.187"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.128"
+              },
+              {
+                "key": "em",
+                "value": "21"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1563,
+            "level": 20,
+            "main_stat": {
+              "key": "hp_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.21"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.066"
+              },
+              {
+                "key": "em",
+                "value": "56"
+              },
+              {
+                "key": "hp",
+                "value": "269"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1614,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "45"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.082"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.031"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.117"
+              }
+            ]
+          }
+        ],
+        "owner": "furina",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "tenacityofthemillelith"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1616,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "14"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.117"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.21"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.066"
+              }
+            ]
+          },
+          {
+            "artifact_id": 91,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.146"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.124"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.109"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 241,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.218"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.074"
+              },
+              {
+                "key": "def_percent",
+                "value": "0.124"
+              },
+              {
+                "key": "hp",
+                "value": "209"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1586,
+            "level": 20,
+            "main_stat": {
+              "key": "electro_damage_bonus",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "aubadeofmorningstarandmoon",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "14"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.35"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.031"
+              },
+              {
+                "key": "def_percent",
+                "value": "0.051"
+              }
+            ]
+          },
+          {
+            "artifact_id": 119,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_rate",
+              "value": "0.311"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.264"
+              },
+              {
+                "key": "em",
+                "value": "21"
+              },
+              {
+                "key": "hp",
+                "value": "538"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.058"
+              }
+            ]
+          }
+        ],
+        "owner": "ororon",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "scrolloftheheroofcindercity"
+          }
+        ]
+      }
+    ]
+  },
+  "r3_flags": {
+    "GTT_R3_ADJOINT_REUSE": "1",
+    "GTT_R3_OPERATION_SWITCH": "1",
+    "GTT_R3_PARALLEL_CAPTURE": "1",
+    "GTT_R3_PROGRAM_IDENTITY": "1",
+    "GTT_R3_TYPED_CANONICAL": "1"
+  },
+  "schema": "r3_full_button_attribution_v1",
+  "scope": "Exactly one complete full-account Chasca AppShell All Sets OFF; no new run/build/install during closeout",
+  "source_commit": "05960111603914b08b945553ee5f0df220597161",
+  "stopped_state": "Numerical run finished; original managed owner kept until report/export then standard release. Final hashes/protected/process/cleanup evidence are in closeout.json.",
+  "timing_ms": {
+    "R2": {
+      "adaptive_wall_ms": 2893.4629,
+      "bind_ms": 3866.9059000000016,
+      "capture_decode_sum_ms": 5009.7779,
+      "capture_model_ms": 16052.438599999998,
+      "capture_process_sum_ms": 8596.3474,
+      "fullbuild_inner_sum_ms": 20938.0423,
+      "native_ms": 85563.4048,
+      "rule_ms": 11591.134000000002,
+      "search_excluding_capture_model_ms": 33906.9712,
+      "search_ms": 49959.4098,
+      "source_preparation_ms": 2226.4647,
+      "staged_outer_minus_inner_ms": 2791.3405999999995,
+      "staged_outer_ms": 23729.3829,
+      "support_response_ms": 9800.4765
+    },
+    "R3": {
+      "adaptive_wall_ms": 2936.1379999999995,
+      "bind_ms": 3666.6931000000022,
+      "capture_batch_wall_ms": 7267.8827,
+      "capture_decode_sum_ms": 3755.2288,
+      "capture_model_ms": 9819.9313,
+      "capture_process_sum_ms": 9023.7772,
+      "fullbuild_inner_sum_ms": 18690.7173,
+      "native_ms": 75174.3062,
+      "rule_ms": 11038.74960000001,
+      "search_excluding_capture_model_ms": 32633.8046,
+      "search_ms": 42453.7359,
+      "source_preparation_ms": 2205.2995,
+      "staged_outer_minus_inner_ms": 2667.2873,
+      "staged_outer_ms": 21358.0046,
+      "support_response_ms": 9271.6631
+    },
+    "capture_model_saving_ms": 6232.5072999999975,
+    "remaining_search_saving_ms": 1273.1666000000005,
+    "same_boundary_search_saving_ms": 7505.673900000002,
+    "warning": "Inclusive nested views. R3 process/decode sums overlap each other across seeds and the batch. Final staged wall changes are also run-to-run timing, not uniquely attributable to modified code."
+  },
+  "top_level_click_ms": {
+    "R2": {
+      "adapter_formula_inputs_ms": 5765.0,
+      "adapter_optimizer_process_ms": 89266.0,
+      "adapter_prepare_inputs_ms": 5172.0,
+      "adapter_request_preflight_ms": 125.0,
+      "outside_adapter_ms": 922.0,
+      "total_ms": 101250
+    },
+    "R3": {
+      "adapter_formula_inputs_ms": 5750.0,
+      "adapter_optimizer_process_ms": 78735.0,
+      "adapter_prepare_inputs_ms": 5204.0,
+      "adapter_request_preflight_ms": 140.0,
+      "outside_adapter_ms": 671.0,
+      "total_ms": 90500
+    }
+  },
+  "verification": {
+    "R2_stages": [
+      {
+        "candidate_count": 9,
+        "fullbuild_inner_ms": 15459.1877,
+        "iterations": 100,
+        "name": "pilot-n100",
+        "waves": [
+          {
+            "candidate_count": 4,
+            "index": 1,
+            "parallelism": 4,
+            "start_rank": 1,
+            "total_elapsed_ms": 7244.5732,
+            "workers": 4
+          },
+          {
+            "candidate_count": 4,
+            "index": 2,
+            "parallelism": 4,
+            "start_rank": 5,
+            "total_elapsed_ms": 6716.1009,
+            "workers": 4
+          },
+          {
+            "candidate_count": 1,
+            "index": 3,
+            "parallelism": 1,
+            "start_rank": 9,
+            "total_elapsed_ms": 1497.5152,
+            "workers": 16
+          }
+        ]
+      },
+      {
+        "candidate_count": 1,
+        "fullbuild_inner_ms": 5478.8546,
+        "iterations": 500,
+        "name": "confirmation-01-n500",
+        "waves": [
+          {
+            "candidate_count": 1,
+            "index": 1,
+            "parallelism": 1,
+            "start_rank": 1,
+            "total_elapsed_ms": 5478.8546,
+            "workers": 16
+          }
+        ]
+      }
+    ],
+    "R3_decisions": [
+      {
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "gap": 0,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": true,
+        "stage": "pilot_leader",
+        "threshold": 1236.6288143870681
+      },
+      {
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "gap": 2038.552657888009,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1267.7715694206977
+      },
+      {
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "gap": 2322.8776896674244,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1279.1143366215067
+      },
+      {
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "gap": 2445.933788167109,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1261.2836860429877
+      },
+      {
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "gap": 3407.149451515259,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1177.21819505802
+      },
+      {
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "gap": 3618.002049385075,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1234.754622652404
+      },
+      {
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "gap": 3722.2731031177973,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1298.453286601371
+      },
+      {
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "gap": 8314.153978732647,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1674.179392945239
+      },
+      {
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "gap": 11712.060421914939,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1346.176530803865
+      },
+      {
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "gap": 2010.976567526086,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1014.5616058461077
+      },
+      {
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "gap": 2295.3015993055014,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1028.7001438593716
+      },
+      {
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "gap": 2418.357697805186,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1006.4427636501739
+      },
+      {
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "gap": 3379.573361153336,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 898.8510324860712
+      },
+      {
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "gap": 3590.4259590231522,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 972.989968081426
+      },
+      {
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "gap": 3694.6970127558743,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1052.6497220402975
+      },
+      {
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "gap": 8286.577888370724,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1491.632374141867
+      },
+      {
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "gap": 11684.484331553016,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1110.9823364539795
+      }
+    ],
+    "R3_stages": [
+      {
+        "candidate_count": 9,
+        "fullbuild_inner_ms": 14285.002,
+        "iterations": 100,
+        "name": "pilot-n100",
+        "waves": [
+          {
+            "candidate_count": 4,
+            "index": 1,
+            "parallelism": 4,
+            "start_rank": 1,
+            "total_elapsed_ms": 5722.6755,
+            "workers": 4
+          },
+          {
+            "candidate_count": 4,
+            "index": 2,
+            "parallelism": 4,
+            "start_rank": 5,
+            "total_elapsed_ms": 6743.4283,
+            "workers": 4
+          },
+          {
+            "candidate_count": 1,
+            "index": 3,
+            "parallelism": 1,
+            "start_rank": 9,
+            "total_elapsed_ms": 1817.605,
+            "workers": 16
+          }
+        ]
+      },
+      {
+        "candidate_count": 1,
+        "fullbuild_inner_ms": 4405.7153,
+        "iterations": 500,
+        "name": "confirmation-01-n500",
+        "waves": [
+          {
+            "candidate_count": 1,
+            "index": 1,
+            "parallelism": 1,
+            "start_rank": 1,
+            "total_elapsed_ms": 4405.7153,
+            "workers": 16
+          }
+        ]
+      }
+    ],
+    "actual_final_calls": 10,
+    "actual_final_iterations": 1400,
+    "iteration_policy": "per_candidate",
+    "merged_iterations": 0
+  }
+}

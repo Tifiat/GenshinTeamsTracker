@@ -75,6 +75,30 @@ Do not rerun product tests or read every handoff solely for documentation
 closeout. In a continuing chat, inspect diffs or changed sections of documents
 already read rather than loading the whole file again.
 
+## Commit useful milestones — human order 27 October 2026
+
+Commit each completed, useful implementation or research milestone locally before
+starting the next experiment or installing its result. This is a required closeout
+step under the standing local-commit permission, not an optional final cleanup.
+Include the owned source, relevant tests and compact evidence; state passed checks,
+known failures, incomplete acceptance and whether anything was installed. A useful
+negative experiment also gets a small evidence commit. Never claim unrun checks.
+
+For an installed optimizer or measured configuration, link its exact source commit
+and configuration to the engine/consumer hashes, input identity, DPS/uncertainty,
+measurement boundary and time. Preserve the previous useful version's identity and
+reconstruction route. An executable hash or a temporary source archive alone is not
+a replacement for committed source. Keep observations in the owning experiment
+journal; do not overwrite older measurements with a new baseline.
+
+Stage only the completed owned scope. Do not include unrelated edits, private data,
+generated binaries, raw traces or unfinished experiments; do not use `git add .`.
+If dependencies prevent an honest self-contained source commit, name the exact gap
+and first save the completed evidence rather than declaring the milestone saved.
+Do not commit after every tool call or label a research commit product-ready.
+Branch changes, transfers and push still follow the shared Git policy. Human pause
+stops new work; preserve completed evidence and report any outstanding commit.
+
 ## Size and history
 
 The checker enforces UTF-8 budgets for short entrypoints and 400 words per

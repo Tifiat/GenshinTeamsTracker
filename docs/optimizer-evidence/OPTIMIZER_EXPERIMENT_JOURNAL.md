@@ -229,3 +229,11 @@ semantics. Do not remove53response/24adaptive checks from one Chasca observation
 Record local stat-dependent frozen-residual learning as a separate conditional
 research item, with attribution/held-out/noise/budget guards. Planning only;
 no workers, simulations, product changes or installation resumed.
+
+Human next GO27October starts [R3 engineering efficiency](2026-10-27-engineering-efficiency/CONTRACT.md).
+Preserve R2 search/math; optimize transport/representation, bounded parallel seed
+capture and measured allocation/copy/lookup costs. Review one binary alternative,
+not an assumed mandatory migration. Existing MAIN implements; cheap tester one
+correct full Chasca OFF after whole-chain admission, report/STOP. No installation,
+other teams or new algorithmic safeguards. Prior R2 plan is historical authority;
+R3 contract owns this stage. Observer remains disabled.

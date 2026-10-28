@@ -25,6 +25,8 @@ HISTORY = OUT.parent / '2026-10-25-cache-team-matrix/corpus-main14-v2/chasca_600
 
 
 def verify_sources(packet):
+    if sha(HISTORY.read_bytes())!=packet['history_sha256']:
+        raise ValueError('T1 historical reference changed')
     # The sole new executable harness file is owned by the T1 source milestone.
     # All existing R5 imported helper bytes still use their exact reconstruction.
     original = r5.verify_harness_reconstruction
@@ -33,6 +35,16 @@ def verify_sources(packet):
                          if Path(name).name not in ('t1_theory_button.py','test_t1_theory_button.py')})
     with patch.object(r5,'verify_harness_reconstruction',existing):
         r5.verify_packet_sources(packet)
+
+
+def actual_harness_coverage(packet):
+    current=r5.harness_files()
+    unexpected=sorted(set(current)-set(packet['r5_harness_files']))
+    changed=sorted(name for name,digest in current.items()
+                   if name in packet['r5_harness_files'] and packet['r5_harness_files'][name]!=digest)
+    if unexpected or changed:
+        raise ValueError('T1 actual harness source closure changed: '+','.join(unexpected+changed))
+    return current
 
 
 def preflight():
@@ -128,9 +140,14 @@ class T1TheoryButtonTest(unittest.TestCase):
                 if [row['stage'] for row in observations['native_launches']]!=['validate-theory-request','optimize-theory']:
                     raise ValueError('T1 native launch sequence incomplete')
             finally:
-                observations.update(product_imports=r5.IMAGE.verify(),source_unchanged=True)
-                verify_sources(packet)
-                write_json(Path(os.environ['GTT_T1_OBSERVATIONS']),observations)
+                observations['source_unchanged']=False
+                try:
+                    observations['product_imports']=r5.IMAGE.verify()
+                    observations['actual_harness_files']=actual_harness_coverage(packet)
+                    verify_sources(packet)
+                    observations['source_unchanged']=True
+                finally:
+                    write_json(Path(os.environ['GTT_T1_OBSERVATIONS']),observations)
 
 
 def summarize(job,arm,result,output):
@@ -205,7 +222,7 @@ def prepare(output):
             if current[key]!=reference[key]:raise ValueError('T1 input differs from R5: '+key)
         return current
     with ExitStack() as stack:
-        for name,value in [('preflight',preflight),('CHILD',CHILD),('run_arm',run_arm),('summarize',summarize)]:
+        for name,value in [('OUT',OUT),('preflight',preflight),('CHILD',CHILD),('run_arm',run_arm),('summarize',summarize)]:
             stack.enter_context(patch.object(base,name,value))
         stack.enter_context(patch.object(base.gate,'snapshot_active_inventory',inventory))
         base.prepare_and_wait(output)

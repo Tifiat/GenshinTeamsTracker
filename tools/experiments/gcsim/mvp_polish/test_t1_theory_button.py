@@ -53,5 +53,17 @@ class T1HarnessTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'exactly one OFF'):
                 t1.run_arm(root,root,'on',None,None,None,None,None)
 
+    def test_history_and_late_harness_mutations_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'history.json';path.write_bytes(b'changed historical receipt')
+            with patch.object(t1,'HISTORY',path):
+                with self.assertRaisesRegex(ValueError,'historical reference changed'):
+                    t1.verify_sources(self.packet)
+        current=t1.r5.harness_files()
+        with patch.object(t1.r5,'harness_files',return_value={**current,'tools/unlisted.py':'0'*64}):
+            with self.assertRaisesRegex(ValueError,'actual harness source closure changed'):
+                t1.actual_harness_coverage(self.packet)
+        t1.actual_harness_coverage(self.packet)
+
 
 if __name__=='__main__':unittest.main()

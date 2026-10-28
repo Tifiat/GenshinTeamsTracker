@@ -1,0 +1,9 @@
+{
+  "cause": "T1 failed to patch inherited base.OUT; path relative_to rejected before mkdir/lease/build. Corrected only wrapper OUT binding.",
+  "consumer_builds": 0,
+  "engine_calls": 0,
+  "managed_owner_created": false,
+  "schema": "t1_prepare_failure_v1",
+  "source_commit": "2ea5a6325390d52b4c6522ce06c2d2d6c732975b",
+  "status": "failed_before_owner_allocation"
+}

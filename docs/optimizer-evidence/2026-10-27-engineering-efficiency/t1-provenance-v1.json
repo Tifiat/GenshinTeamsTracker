@@ -1,0 +1,12 @@
+{
+  "engine_calls": 0,
+  "guards": [
+    "historical reference hash mutation",
+    "unlisted actual tools/tests source",
+    "current loaded harness coverage"
+  ],
+  "schema": "t1_provenance_guard_v1",
+  "search_calls": 0,
+  "status": "passed",
+  "tests": 1
+}

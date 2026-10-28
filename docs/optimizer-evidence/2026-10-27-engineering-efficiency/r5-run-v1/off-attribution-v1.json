@@ -1,0 +1,3509 @@
+{
+  "actual_python": {
+    "imported_product_files": 251,
+    "observations_sha256": "0d841df130bae6d885e1bad9a7d7931cb00d066738f1f33627854a051960765f",
+    "product_imports": {
+      "hoyolab_export/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "hoyolab_export/account_equipment.py": "aeaf6efa8eb77f73240e0cc81a1d6b16578a3bc0e7f9507df696013674b48986",
+      "hoyolab_export/account_stat_sheet.py": "ca20d27d69392625dc27c178cbe7104a8f1acc9c384a07ae7c6f6ecefaed7997",
+      "hoyolab_export/account_storage.py": "dcf691491f03db58239191404ce05d2581d3d93fe0c15d2670ca8c2670c34400",
+      "hoyolab_export/artifact_build_snapshot.py": "7ac6f2f60583005f2ee269bfa1b5c28a5e3619c7507b6821f6719b1835434c85",
+      "hoyolab_export/artifact_db.py": "421101e5388019a750316fa893bcd7fa3a40840dc29bef4d5f74101637336038",
+      "hoyolab_export/artifact_fingerprint.py": "04ae707143663e3671a18cbaa14074df8a9fe1639c7d78691dbbb50a7b96aa94",
+      "hoyolab_export/artifact_importer.py": "dc4a40c274a69878662cf2cb2b2af501746d3bb26f7e56fe6c0e02061ea75515",
+      "hoyolab_export/artifact_set_catalog.py": "a5143e60089051c3a3ad7e535e4849f1ce928a2d1c10af581498cc548555383a",
+      "hoyolab_export/artifact_stats.py": "35ce8615c0d8174242a5bb53914dae55c4b2658f5771d30b63dfc38b48773108",
+      "hoyolab_export/artiscan_importer.py": "2f3001dbee7e24dd8e1e0e0b8c2eaa18ade247cfbd8d80da9d201bb4750fda4e",
+      "hoyolab_export/asset_paths.py": "c13fced3ff8964c2ffeb82b43717dfff721d6b56c778973dfd3d03b4fb651fb3",
+      "hoyolab_export/auth.py": "efb57b308cdb4ae314ff39d30f92287708180e162588f2dbfdfd30a5a7fa2485",
+      "hoyolab_export/bundled_assets.py": "e396203d69c0accb252b17ab56ba879fe1fa06612e2ca9d0945e1662b4a618d0",
+      "hoyolab_export/catalog_mapping.py": "e8bffde17835f7217d4a1c744e6d47154e0b670b4d6f95a86d8957f397936750",
+      "hoyolab_export/catalog_mapping_report.py": "165b27cd75db3b988edb2299dee7db408c315c9a72cfb3eabd4f3dd1ecf296d1",
+      "hoyolab_export/catalog_sanity.py": "7574592a5db39f094d2d8cf6b1e9b5a3ba460d8329f488e3f466e6cd0fc3eb13",
+      "hoyolab_export/character_ascension_bonus.py": "c42f48504e5b06dc16f4ca00560bc75dc3584b4945fc9d4fa3771a733066bb37",
+      "hoyolab_export/character_identity.py": "34007f587f48555847b1978dc22ed3b184fa1def65de2ff571ecdf3eac0aaa1e",
+      "hoyolab_export/character_region_catalog.py": "e0e013573993c8d061889c04140eb04ed297a6760c8bc36d7c22b5d3f0526721",
+      "hoyolab_export/character_stat_snapshot.py": "b0dfc29cda8a7d36706cd4ef8750c3342a20564c92a83254dd4f3cb666859ce3",
+      "hoyolab_export/character_stats_catalog.py": "c57134b07c07879076f210d9a1eec0a5d17da174a1fd096ff36485d524beae12",
+      "hoyolab_export/character_trait_catalog.py": "c4285658c66da59d60053a5abfb4a96528252e38490a8db2f20837657d55e907",
+      "hoyolab_export/crop_manifest.py": "7670777927a60a8874ebb6423ba689db2b238951d4d42c97ac04af70420eecaf",
+      "hoyolab_export/display_stat_effects.py": "f4ae7bf50e0fe78c31ec7282274d96d1cd87c2ac1ac5c06b7d4aa52b09c2a9b3",
+      "hoyolab_export/hoyowiki_client.py": "7084edafd85d490df89b1db84c91675cf48311384042cdc6bde34f4c303cc075",
+      "hoyolab_export/import_settings.py": "86ce7b33dd8b08aff81a59f0a9c00812d89c7b54fa77b5c5e8132b27de4150bf",
+      "hoyolab_export/import_store.py": "6b70715e22b7c6966e0b6c2ea9c1b34a427f2ac5665e1a18b8e228cd7e9d2c25",
+      "hoyolab_export/offline_profile.py": "2eaf8d3bae650a6046d2df727b74a7b1fab0330109d332ed4d9404d5301441be",
+      "hoyolab_export/paths.py": "f3b40fd2154945499ec483e982332f2cdb049c28fbe92b1cfdf80d2d6eb3f2f9",
+      "hoyolab_export/stat_normalization.py": "4a325af3b009698e41ab04cad58dc95dabfa0a9ce22eb9cbfc8cb1d69c0bf609",
+      "hoyolab_export/team_card_data.py": "d465ca026707c63abe47f505a4677105b15b404d72d1f87873fcfae2b9938d1e",
+      "hoyolab_export/tournament_ruleset.py": "0391e003695c76c67c7d6c2e1daecf9e7962ff82cca72a35c8c08a0df05a5e20",
+      "hoyolab_export/traveler.py": "36130e3aa818650fd269d1a7ad535864b0e739f6f350e0b1b9d8f4e7337bc123",
+      "hoyolab_export/traveler_variants.py": "022ae5486cc8a5d1a0ec12246c000cd676c9555cfb6c9aae78aa4802b6bb5955",
+      "hoyolab_export/weapon_stats_catalog.py": "4bca67a285233034e5e3a4ba7519da9475cb5ecc7a4c9d592c0fcdab9cdffce8",
+      "localization/__init__.py": "fcf1a1dbd827e9a3ddfb8b474dbd40e4a359e992481f72501f13936fe3b34b59",
+      "localization/i18n.py": "dd0e439b163eeac31d0d15fb33a6151bbbd773f4441cb7e1c7ffdbfb60aef492",
+      "run_workspace/__init__.py": "63b84e4e1a1a82449163c436a53a54592c793977858d5fe0b3264acdc48453e9",
+      "run_workspace/abyss/__init__.py": "bb1693f7bf58068b03eec2f13c31dc9e971c015230a61a9c891a1426be6c7944",
+      "run_workspace/abyss/current_fixture.py": "c6369ba26dbda9c6d52509d71891edc5e341237025e6172842852c54dc468d97",
+      "run_workspace/abyss/fact_dps_settings.py": "d9064b205c934b337fe9076e9df415b5a2fe55fec3237067c51275cdc2301ac9",
+      "run_workspace/abyss/factual_dps.py": "cd8cba5e677c8bdfd4cf7e8fe328939b79bc1fe85bd4d15dc1d63771782db132",
+      "run_workspace/abyss/monster_icon_catalog.py": "9746fc669ca439a6cfdc24fb192cf468a907043337b2ec60739b6d1b5174e101",
+      "run_workspace/abyss/network_config.py": "fd8baac4bd1cf8a4ad8976961798ae6c2c4d568ca0b88ba3d5881b1ea989fa46",
+      "run_workspace/abyss/source_data.py": "c3ea25d84f96481e46c2664eaf567807b335c70368ba83cafc771f4c26d0ab62",
+      "run_workspace/abyss/source_data_cache.py": "f1d3ab32d48ef8e67e41a0146f2a59ff9cc14eaae5aedf2f1f3777059bb94e66",
+      "run_workspace/abyss/source_data_fetchers.py": "29b13395747a10b6649ab05ed46f1458b4740b53cb5efdd05fbce9d844c3d147",
+      "run_workspace/abyss/source_data_runtime.py": "a3aaeba2978d91285e68e7a469016734db9e1f81e93a3f80ee0f572642641167",
+      "run_workspace/account_profiles.py": "3200c2b8c9b21e3c416e39d137104cac04da11332e06c3d1ca846a223a69c4cf",
+      "run_workspace/app_settings.py": "6b4b4b6b8d54af7a06d261658e7c0019f7342e8b0f1c152156d95094045abfb4",
+      "run_workspace/display_settings.py": "b80b54134c4e38fb2d31a51f47935bee846f1b6e472ffbf65b6d2d6580697a07",
+      "run_workspace/display_stats.py": "22ee4aa362c1c88173316df488a1150f443a125a0ca0a2a01795ff611bf21f6e",
+      "run_workspace/gcsim/__init__.py": "3ddf9dee94f84f9124b9db2dfa41c597e5f6433960f711a7ccda407df841f0c2",
+      "run_workspace/gcsim/abyss_wave_scenario.py": "caadf5b645658826498f88135bde6841c68fd7241bb1b3abc7c06a17efa810b7",
+      "run_workspace/gcsim/abyss_wave_scenario_smoke.py": "0e2802257cab43f777ec3ec95a0312384c6db1fa02f46264b5907ade7d58758f",
+      "run_workspace/gcsim/account_prepared_config.py": "35c90ab8a9d91fc4ab40a7db324a74d8814f743665d30a869b0b0ab4b2e8db60",
+      "run_workspace/gcsim/artifact_build.py": "b91ed5a2494d751f104505957d954800091646f78d6351f9fb3dc682c8cf8b7e",
+      "run_workspace/gcsim/artifact_investment_rules.py": "068dedd5b7b16813c409b6e924d1232488637eb2cf34403a065012528934bba5",
+      "run_workspace/gcsim/artifact_runner.py": "6e42f3afa7632a670f0125e8ec4c405eca4fc6c60b3686c76323bbf2d05c8448",
+      "run_workspace/gcsim/artifact_set_catalog.py": "c1bbdb6838db4bf34d78c9db1bb1871af930bd7d17bb7a8a486e22aa3ceb2922",
+      "run_workspace/gcsim/cleanup.py": "8e7955541b41df4e433bfad7660e47e8945858c92a784b6865e34b6045eeac63",
+      "run_workspace/gcsim/config_assembly.py": "203a54e87f578061e72c0032435d1f5e9860248e64de8e40de6d620736378f75",
+      "run_workspace/gcsim/config_blocks.py": "eb470fadca10e842921ffca4fb423d5eeceabc535d8da59554c2229497b0faa8",
+      "run_workspace/gcsim/config_level.py": "502b8cdb68e4c3b8c725e01f01931e6ee386cf3a9812d573117c59e93da04c5f",
+      "run_workspace/gcsim/config_readiness.py": "842afeae15eccc6fe2ae58b3936e6d600ae0b1e612c759b1b0973fb9393f1489",
+      "run_workspace/gcsim/config_structure.py": "d517af5e2ff618230c59a6efceb2d7e099ac37b849438f7e5b8d73883c419490",
+      "run_workspace/gcsim/config_talents.py": "6da7e32f910115b61ff2eb7fb317ab4b2970a48abe03398e00db1071b3150106",
+      "run_workspace/gcsim/enemy_type_registry.py": "18ed6a57b55ba6504051e31ab5b09435b7ddd68d25934f8019b811c87e59c0be",
+      "run_workspace/gcsim/engine_compatibility.py": "d9da3d57511dafba470553387119c59deb912d8ad3b04f226500802b3aa63145",
+      "run_workspace/gcsim/engine_store.py": "c6af2e2d0f53385541d6868a5d4e67ca2c749db6dcf31a24e7db3b74dd3db053",
+      "run_workspace/gcsim/entity_key_readiness_report.py": "f747f45b234878c97e50bdd8c0a44924fc1f80c58eca55bdba6e8abd514f4a75",
+      "run_workspace/gcsim/key_mapping.py": "3a69a173e8ae5daf9179d34e37a1123c916830624c1482bd4d43dee9e968e834",
+      "run_workspace/gcsim/mechanic_diagnostics.py": "1203743da871562e931d1a32f7528af32e2f19a6a91b2a1ce97cb50ef9ed9cb3",
+      "run_workspace/gcsim/optimizer_artifact_database.py": "7dc0cbad3da5fff2f071b149481b52e92eedb3f9ff6ec65be27f665df59ab788",
+      "run_workspace/gcsim/optimizer_artifact_materializer.py": "dce0c292e348819e88963d0f6cbb7a7a27104ffe7ca1012476601065189e224b",
+      "run_workspace/gcsim/optimizer_cache.py": "ac23af41b2844c16a87dad69ff6f62b3b068f33bcd38cc9a38352f9e90af1502",
+      "run_workspace/gcsim/optimizer_config.py": "8342316975962f7599f73fef5b722d18e2a646722cac217f200763ff6b041dd4",
+      "run_workspace/gcsim/optimizer_config_shell.py": "72aed469bde8b8aab6bd5b07078971e911f5878965d4186488be8965ddde053d",
+      "run_workspace/gcsim/optimizer_engine_context.py": "5c43887d2c9470c739ed263062f04bc7dd20f8d58510d62c9b3801c784505e2b",
+      "run_workspace/gcsim/optimizer_error_text.py": "1f1d614995795fe6b9346effd350f0db6bb4b7637f0f318209730d1d3bebdaac",
+      "run_workspace/gcsim/optimizer_go_all.py": "9bfd87b17251d31c0a90bde9d0194af65e98ed3e85e788cf2ad53255d449145d",
+      "run_workspace/gcsim/optimizer_go_all_sources.py": "996dd4e148c7220f591a076f28800ff98304a1fdbea814fa26e89e4d107e305c",
+      "run_workspace/gcsim/optimizer_go_contracts.py": "9fd550f7a96df3d251182cf983f46100bc2688ad0d6f8b6c31be717ced103a65",
+      "run_workspace/gcsim/optimizer_go_inputs.py": "2547c79bea0389150a418b4e881168b873a40576bb17055edfc2bcef8bd6740b",
+      "run_workspace/gcsim/optimizer_go_requests.py": "a2d5c3f3da0d5faa1ad6ded8c154b8085b5e617bd1d6823776355279b706ac5b",
+      "run_workspace/gcsim/optimizer_go_result_text.py": "1f020c7ff87e83197655f32b2304ca798911a61e88e874f17ab0ed9965d6d57e",
+      "run_workspace/gcsim/optimizer_go_selected.py": "6f88f57651a8b1481ed0a2aab7164a6a00e43f5f0d50dfa35db59f5d56b48b5d",
+      "run_workspace/gcsim/optimizer_go_selected_inputs.py": "53b7c5a24715252a6386877aa6f952dd0fa2b07a1cf617e2d23c28b0eef145f6",
+      "run_workspace/gcsim/optimizer_go_session.py": "97f7c8e26bca3a6c791e0534c5a8229234ed5a9da57830e44c168bed31383587",
+      "run_workspace/gcsim/optimizer_go_theory.py": "21a1d3335189b1f9d21109f76c8262ced9e4f84cd521145ac6c9de00bee6a21b",
+      "run_workspace/gcsim/optimizer_go_theory_session.py": "929a709fd09726481d6ed1650cab3228d1e850f192a35dbfe4c979082c6ccb56",
+      "run_workspace/gcsim/optimizer_process_lifetime.py": "92f83905e62076f675f37b9019611e4d9cb20f7d9c2da36bc3ff7692fc48a5c4",
+      "run_workspace/gcsim/optimizer_process_paths.py": "5e6086ebb5ce63fdb88bb020dc58957e9a7b6c547d38caac0d02eabf2268dcf5",
+      "run_workspace/gcsim/optimizer_product_contracts.py": "00fc0b1feb60cc7358e694d218b84cbd4affafc0b9e2c9a98851e621ec51af33",
+      "run_workspace/gcsim/optimizer_rotation_policy.py": "a0bf0d9732b7eeb3aacdd1616d5e6f6ca04d61d086d4ccd19c9e6e5def2fc84b",
+      "run_workspace/gcsim/optimizer_rotation_readiness.py": "861d9288ea2cc4e6ccec432c2ec64365020e4daad8145945e04361035cc1ee1a",
+      "run_workspace/gcsim/optimizer_run_input.py": "68db6c0d565bc803fba9f05d6e84038d943eb6003e22ce1011070def7166c3c3",
+      "run_workspace/gcsim/optimizer_run_retention.py": "5a0294c527e5e83655d9b93de6f37061b5be9ef4d0d5db4384478e5ae04b4892",
+      "run_workspace/gcsim/optimizer_stat_constraints.py": "c37502dfd0bf1cdfebc037ab7f4072c1c13f5711efaff6fb6e99d1221d1f3bef",
+      "run_workspace/gcsim/optimizer_theory_presentation.py": "89ddec407e988ae0bcd7c928b2e39396782ee0c3bbaba039965bfa40aea9c6de",
+      "run_workspace/gcsim/optimizer_two_piece_signatures.py": "531729e11bdb52afaaf315b31ea82513f3ca97777681b6350a558774e3ee3192",
+      "run_workspace/gcsim/patch_backends.py": "233e0d2e3bb0e1626af24a67f463641f94bda8692cc95bc643dc7107f94d148b",
+      "run_workspace/gcsim/prepared_config_adapter.py": "9fedf18f532762ac9c65975abecebac80043fc8b0aa0cb9d7e0df68eb7f7c44d",
+      "run_workspace/gcsim/readiness_summary.py": "5f7b5199544f86103a44b37a22682947f1ab98aad7ee9796102707a077435bd9",
+      "run_workspace/gcsim/rotation_defaults.py": "da64bd86f10e6a9c31fee08e2cbf29bedfa06b680f79e8b9d86474d8313919c5",
+      "run_workspace/gcsim/rotation_editor/__init__.py": "b357b44cce8bc13e672ddbc350774dcb91979502479b3ecdd4c5b7f639ce0381",
+      "run_workspace/gcsim/rotation_editor/model.py": "5e585f8969cf50dbbc72891e4483513dededb5f463bba6ff48d6c3c883b7c2d6",
+      "run_workspace/gcsim/rotation_editor/source.py": "826580cfc5d53daa6bc4915e05708e45f1c5a864e6a3cc827843c57843efb9ca",
+      "run_workspace/gcsim/rotation_editor/syntax.py": "4c87e7648e518215831670279dade20d079fe47b5ee896e43924a8778b5a31bb",
+      "run_workspace/gcsim/rotation_editor/team.py": "d44eb10d40f706519c0703276fb00ae84a7dc80b13f978d67168cd3a54bf95d5",
+      "run_workspace/gcsim/rotation_editor/writer.py": "e3c0c0b35eda00d3d1b32ba05dd4fefd3121668b6cd093ab5e12a5515fa0e628",
+      "run_workspace/gcsim/runtime_bundle_sync.py": "9b857626859a83aa3ce63fcd10864db608b47a0fefe514150c8c9989b863f3b4",
+      "run_workspace/gcsim/runtime_probe.py": "ec79920cb00c850ef9fd8722dcdb5dd6af105943aead75ebc5f31033e5ab3ce7",
+      "run_workspace/gcsim/selected_team_config.py": "78f84cb048b6ef1e579cf6ef056765d6e54f50d37ad3ddf4cb01fbeb8d301e37",
+      "run_workspace/gcsim/settings.py": "7c08bd8f2d6790267245b2bace71766c30133a0c3356576c71d01a569866600e",
+      "run_workspace/gcsim/shipped_artifact.py": "89b98dc5977f1a7d54821bb6e4e7d39016c3c23b0e2633c41bbc6a106b357fd3",
+      "run_workspace/gcsim/snap_monster_titles.py": "70dbfeea60664c642b4924c486ed8bcfe9084c1397f6d16b67ce537665a69bc0",
+      "run_workspace/gcsim/source_manifest_build.py": "e018ba51c123f4bc0b62b649da742b152d174f60f6a70e9385b0580c05a4439a",
+      "run_workspace/gcsim/tree_identity.py": "05c4d3fd3c606a019511111316bb83337cc313c3caae012455c00d0c50a517f1",
+      "run_workspace/gcsim/virtual_roster.py": "0f8a4d1e98966ca0eaff793ad899647f9301bb23734e051140984117d8b6e8be",
+      "run_workspace/history_artwork.py": "648debd0b785e88b960df832d2c685edfd4955147a5c5ae289b5b9f616396793",
+      "run_workspace/history_browser_catalog.py": "5b3b9740b3bf3dba4abe33be0fc7185b773c26991d5d13f4fe0e2711e1d7f4a8",
+      "run_workspace/history_presentation.py": "12e36dcd316fe1d6a98ba31114776344f316e27859e3ec58930a09569b07add9",
+      "run_workspace/history_snapshot.py": "6dbe76c2c60ee39480d3ae868d5534a7c4ad5f4ed46134582f66026fce347ad2",
+      "run_workspace/history_snapshot_builder.py": "d403c79c6c4394330a3257dcb11455241a749f1bebafa46c34a340d47878cee9",
+      "run_workspace/history_snapshot_listing.py": "d3d063e6d8ccd7c4ccff7414c542a51a0fb0c8389e7ff0db43ef463972fb3f59",
+      "run_workspace/history_snapshot_right_panel.py": "d974495d8dcb69340e86433822b06eca863423d1ba9eae3ee73b0b6ea4a89119",
+      "run_workspace/models.py": "9bb7661ee504a25ae2ecd92bc2578f8f878b94eb46528b2bfe8a4aabd63aa063",
+      "run_workspace/perf.py": "5e8f476f403924a69ab78647f1ceb1677c8d152a4d4b4c61f7fc7eab4b420f21",
+      "run_workspace/profile_context.py": "a590dbb02f91b83b303c00a320b75d4c2eaf530cb35cd910275e711e3270aec6",
+      "run_workspace/profile_control.py": "1667b3a8695f988461ae9c21723b33da5e5d4be81be0a903727d341107e7fc32",
+      "run_workspace/pvp/__init__.py": "222e560ce3e7bfc96e33d1f05e62c09f3870aa92cca755adc86c56d3190cf7ad",
+      "run_workspace/pvp/abyss_client.py": "c4d8452171569e503ae24cc3d5578814990c4341d16f522ed28e6436dc65e24c",
+      "run_workspace/pvp/abyss_match_rules.py": "8444153693f2acc5e8f480035fbe462a06d23057ac74999516053216bd5a5291",
+      "run_workspace/pvp/abyss_rules.py": "3491ed828d0038b352fd7e9bd7aa15057bc6d5270ce982a8daf5dcf87f554546",
+      "run_workspace/pvp/account_deck_copy.py": "1a88438f7bbbbcc96a34f19e6795fac81eee73a67f4fabb9909d52a57c9dfaa5",
+      "run_workspace/pvp/account_deck_export.py": "bc25c9b0af5038c01fe43c700f6872ae17bf14717c8846844aa8398a33f021d8",
+      "run_workspace/pvp/deck.py": "05fd761049a71cb48ca3217a30dece9ac801846b7d91e14d4176342f142fe857",
+      "run_workspace/pvp/deck_preset.py": "5062e21bc686297b9af631dade2b172b0d494f2c1f16b9a202e9da4a62ddfd71",
+      "run_workspace/pvp/draft_clock.py": "1bd0b8fcc118fade9ce080378a6dd650af1d38ace6155c5f0bc5bcb75aed9f16",
+      "run_workspace/pvp/draft_completion.py": "42104b510b70a23fb2d92543c6aac920ce4ca0b99a4c267d363266e50c30fe55",
+      "run_workspace/pvp/draft_options.py": "3d429ad1131146b6f52ab732e4b4bd7e2564c933a47adac248dd660f28f4d0b8",
+      "run_workspace/pvp/draft_system.py": "b13fd8e281500cfc451855381cff792d26c992c9a7e8227d21f9dd49a99ada9d",
+      "run_workspace/pvp/free_draft_board.py": "23feaf9011327647419622b10379fe9b8bb52a097021ccfc3504edf6f8ba0601",
+      "run_workspace/pvp/free_draft_board_sample.py": "a48092a8c37a73447f3d04339d478580a70e76c83f7898cb6c3ffb22cb94f5fe",
+      "run_workspace/pvp/free_draft_controller.py": "2ac58f33bc4e28e6a19466448cb8fdf2ebd324b4bc2baba3ecd9f125d02c6da2",
+      "run_workspace/pvp/free_draft_planner.py": "902c04287ab5343cc41c7a83d95dcf757379978306234e4d3cd0ee98d3d82a88",
+      "run_workspace/pvp/french_cost.py": "37bb06aded206f94c038eb80fe0162ecdba98afa091ccedd324ab7f269e89d1b",
+      "run_workspace/pvp/match_result.py": "b9c75e15a548225b8bbc1d381e58662275edcd9170e3ff91006ebe795af75321",
+      "run_workspace/pvp/period_admission.py": "69ce9b001299a2da4804153ea2c6f31828af352b92630bdf4eea1399eec1142b",
+      "run_workspace/pvp/profile_assets.py": "912e4f7e1fff0551112e9d4a617881be35db1e8a193c08c57817355cb922ea6a",
+      "run_workspace/pvp/profile_package.py": "7cbbe28497526b061c60082f7ed0a9dac5555010b4e5c367e9f2ecdc408289ea",
+      "run_workspace/pvp/profile_schema.py": "ae2e504b44fe1ffe5a6d867449e14ff5c1e52ca948f7bd29be1d4bd327a7f1cb",
+      "run_workspace/pvp/ruleset_applicability.py": "2d483378bfd670d28295d0e0cad6ea312d905858f6f9412c5964e2ae76a0471c",
+      "run_workspace/pvp/ruleset_balance.py": "56ae2f2de5d800d3d685f6341479ea72df5de05c0553687dcbc6ab7baec6bb25",
+      "run_workspace/pvp/ruleset_costs.py": "c4749a00edaef9162b2fac2f438a0f238738452474fb2bcccef340d1ff2fec70",
+      "run_workspace/pvp/schedule.py": "1db5c75e099cbb2ab3295e94560a77e63eddd12051edd1a08eb45286e5579067",
+      "run_workspace/pvp/session.py": "ab1fbc44cc57994b8fa4f8c27f11047884f30b9d9fb4970c3cef1a1f12c4baee",
+      "run_workspace/pvp/session_bundle.py": "1a1e08918d839ba264cf60e36271d582b5e0f2a7daebcde76d966685cef17c50",
+      "run_workspace/pvp/tier_allocation.py": "4eb47162960a0b3614cfe6d29112f15aa4b937e2f1e53f4a3be5f363e9b63d4e",
+      "run_workspace/pvp/tournament_series.py": "8a4b5259efde2c2ffb9af647fef73cc11eb6fd660f19f2d55f76db45e9016dc2",
+      "run_workspace/pvp/validation.py": "213752c43561b539ed32d92a7783b55f3ffa3aebcb990422e79523d77497476e",
+      "run_workspace/pvp/weapon_identity.py": "371e9130b264470e834b739824fff79ca84b3047481d82e58e5ca16d75a9878a",
+      "run_workspace/pvp/weapon_roster_budget.py": "c2923a4c52893939510a8cd2f68e3e30ebce184562ace086067f54ca3238ecba",
+      "run_workspace/right_panel_prototype_view_model.py": "46fd165384eb8841a333b9bec7028cdaa60dc65350f7e281c5895fda5b724be0",
+      "run_workspace/session.py": "a68e759d80221c26a7b7c8d02e601a46ca5afe546fb4a66bff7cc8c62db2d80a",
+      "run_workspace/settings_defaults.py": "dfd075f449bae5eb9c317a142349bc2f60bb83525373ab5f4209217c4ec14fc1",
+      "run_workspace/team_builder.py": "2672183adce0d799c0a2e424880d9090e014aa80439e7f023f0672748090ee46",
+      "run_workspace/team_card_view_model.py": "c45742d1a8ebf546aec5bd7ddf6eddac9afc2b3ea2708dbf08bfbbe88d2d15e4",
+      "ui/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/app_shell.py": "b684170c0c9e866001ec3054101df186ab402e8f1c002c772ef7135e0f68102b",
+      "ui/artifact_browser/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/artifact_browser/card_delegate.py": "c3108157e6271ea4dd4846e98071e7e8b1b9172892c09cdec466037c73705c9b",
+      "ui/artifact_browser/list_model.py": "f4d94044706459fa3f8db14aadf283af0e95b5dc2d6c8a2d004d71411a91342d",
+      "ui/artifact_browser/models.py": "9454a362f444123cfbffb21ead757187c1ab7d3c19898c249517706ede2a3366",
+      "ui/artifact_browser/queries.py": "a283e4746387697285c9de224a44eee6736360196671106a8ebbb0f39b191ac9",
+      "ui/artifact_browser/stat_types.py": "3059675abf303e292576beeaf91cf448b193ce251655ac37eebce2ba93c01e4d",
+      "ui/artifact_browser/store.py": "b1b76eadb2f7e5249bc5f212d09b0273232ef3fb0884ffcdb0f4c234dfcdc3c9",
+      "ui/character_assets.py": "b18ce5cdefbc3163112d7024e8138565c64b304a61bd3eea21df3ecdef9e1fb6",
+      "ui/character_browser/__init__.py": "8ae3d61117fde41333e99705fc4ad787bfdaded429754d1c7fc5e2efa124be26",
+      "ui/character_browser/filter_bar.py": "cffe3df53b915247473619a7b54f9e18217674b36f714d8db391d5757ed8de20",
+      "ui/character_browser/icon_grid_adapter.py": "40e5f462ad8010805f14b5e9c0af89e8e886e1a53642992585bd09860a9f0600",
+      "ui/character_browser/sort_controls.py": "7c46b3f5524a5ec7dcce16a5a79519397c1931b6a728f675fb99535430d74f6b",
+      "ui/character_browser/sorting.py": "01c7e98b0461468ad0994e7f5ea4be2ae25d0cfc33a13f7bd3f773f0733fa108",
+      "ui/character_browser/traveler_selector.py": "1f6b18c78a035adb03cf4e121c8fba1114cd651b8b1d174e38a133894a82c89d",
+      "ui/gcsim_browser/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/gcsim_browser/optimizer_result.py": "aeccaf54fc540c4390bc19e1455273af40a6623e11839d8674abf7d522e57231",
+      "ui/gcsim_browser/optimizer_set_bonuses.py": "8db5c98cf1213d5239bcb1e5dcd6c86f9389fa89d2491b8442a1ea5fe5b40ff7",
+      "ui/gcsim_browser/run_worker.py": "0ddf4fa366f0458c1ba9d47beda8b7a43d76537467e7e75acc3d441aabea76bf",
+      "ui/gcsim_browser/virtual_slot_editor.py": "e3e8b63d5f2f0e9917a9f0b8427f02243a8662badd0c8b0f5809e679c36894d1",
+      "ui/gcsim_browser/window.py": "7d8903baad435c749a9658cdf5ac69b1133d71a9518e0958627d7c05ac5ded10",
+      "ui/history_browser/__init__.py": "f1d80cc3af7bdf8eb2c733646bc9041c5a60b630a8a729d83d43cb0e1844ec13",
+      "ui/history_browser/window.py": "10d5f9ccb792a7f30ef934ece9ac54fd4cd83b3f5a86eff8539c142dc09a94c8",
+      "ui/pvp_browser/__init__.py": "29a43a5379ed53762a91fb10a91f87ce051cd923a13d7a0f01924fcd9ff30e6b",
+      "ui/pvp_browser/deck_rules.py": "53542591a170e2613a8bba1b04e3eeafc5d44c2201d3f2497256017a0ab1b227",
+      "ui/pvp_browser/draft_order.py": "d2cc88641ab3c205a2a29cf3afa266e35e7eb5e7661da501ec055bca2f42149c",
+      "ui/pvp_browser/placeholders.py": "ddae65276cf2f4bc29d7c3ed52261384f1aef782384e153f15e98d1448aea26a",
+      "ui/pvp_browser/timers.py": "7081f775d166da0110f63a7828510ee3312025897e5bd68d453852f910acc8ad",
+      "ui/pvp_browser/window.py": "2a1a26f145a90753a427a716b7d6b952b63617728e38153aea23a440b909cb6f",
+      "ui/right_panel/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/right_panel/common/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/right_panel/common/history_card.py": "61a6529823323e31e17cc995ef262f69845474509c132e48105f8e298a4471eb",
+      "ui/right_panel/common/metrics.py": "693d80c72a9403e56faafc963dfd1d883be70d04b810d2509aaaee9b19bddb2a",
+      "ui/right_panel/common/seat_accent_frame.py": "d9d712f2f1f68d70c7e70498dda8ed423f5abf7010f173e9dfee0007ec025121",
+      "ui/right_panel/common/slot_card.py": "d68b09c472df36b59b31ae3057411eb14145c4ab8c61409cc3f5193d980e6f62",
+      "ui/right_panel/common/slot_parts.py": "65766eaaebe6de17d13917a3a5da55ef30106a48ce26adbd162b9bdcec5f22e8",
+      "ui/right_panel/common/team_card.py": "9a6f994a75603d77581e9943f7fd1bc16b862f3912cd8577672b869c294404e4",
+      "ui/right_panel/common/timer_input.py": "124aa8a86336712f8e12e2248f53566aae1ff370a3c24320ca577011a14752f8",
+      "ui/right_panel/constants.py": "4e98fdda6ba2ecdbf77e18005a2174851d4c3e4990c1298099b7b7b16028e0af",
+      "ui/right_panel/dock.py": "0f7222c1d949cd59d6f03cc8e6a38c449febb365464564ab88e64640749c6133",
+      "ui/right_panel/header.py": "5458416cdbf65f66e2baa00101ec47c1170dc3a570c3ced36e4c9ce6a780b30f",
+      "ui/right_panel/history/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/right_panel/history/viewer.py": "29b4838510c9b3023b553eb5aaa3a37da7a3c7213c6e030d8f890b2456920f56",
+      "ui/right_panel/live_run/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/right_panel/live_run/panel.py": "30d01763489a98d4faf989a98174cc15bf2d87b5c327d0f7ae0c706b27aaafff",
+      "ui/right_panel/pvp/__init__.py": "ce1e844924366516e0cd1fb8ac2a41e6fdab2c1100f95a1d90e43ed8a691405b",
+      "ui/right_panel/pvp/_shared.py": "4809dcaafc8421620d560bc7d09fca66019fb8e4708a9d17b89113ed02a3d1f0",
+      "ui/right_panel/pvp/decks/__init__.py": "ad096952f10fd38ce2bd25a90735572c18b2cb62a7b8480cc57f9635ec189c8b",
+      "ui/right_panel/pvp/decks/panel.py": "85e364e5209512e3503f91750f24e0304a97ceeb9ac89320f40de52baf85e9b1",
+      "ui/right_panel/pvp/draft/__init__.py": "4d3da6dbf7cccfce3e46f29ab0fde90875e5cddfbb6bd267b0d28712d834655e",
+      "ui/right_panel/pvp/draft/panel.py": "8e4767ba9c96796a3e1f09d98ada0090effa199e0b40859526a39792ab1365eb",
+      "ui/right_panel/pvp/draft/pick_ban/__init__.py": "31b8fc13b5afb3a6d5eb89e04d090b0139e4667b504c3208fa59c3e8f0bb5a88",
+      "ui/right_panel/pvp/draft/pick_ban/result_zone.py": "53e6365309275631353971dc633092e6ac9c56e50bf8f47bc3bddcd864491fc9",
+      "ui/right_panel/pvp/host.py": "dce66b3370b78a6b609e57e07300d7bf30223835095b78a920c1b59d4a479309",
+      "ui/right_panel/pvp/play/__init__.py": "ea054e09d4334ac55f87e54443bedac395a7173c78048f7ff815f19f781326f4",
+      "ui/right_panel/pvp/play/panel.py": "418d433cd7412742a7368e18e8ba57b7bab1619a546a084963928a2221208573",
+      "ui/right_panel/settings/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ui/right_panel/settings/account_data.py": "cb17033f893ef689525d1c4048da95dda2c811a99b5ebd9cb1f297981d8d0237",
+      "ui/right_panel/settings/account_profiles.py": "ad045ef96ddd4c67e9b2df4be8b5ccf1ac5d507637cc443a6f1caf3d27299268",
+      "ui/right_panel/settings/display.py": "bb67e940920f3c4c754ed81fb8c9ed92031cc550ddb0d413da45b98690e6aef0",
+      "ui/utils/character_card_layers.py": "2c9eeaa2a7d6d89594c558184ec59aec6190bd376c44e3bd0e0b02ff38a4de7a",
+      "ui/utils/character_card_pixmap.py": "943d99a2d1e9ad783eabde6a3e3753e6b78deeb5feb7a57bf3335e05c59b10d5",
+      "ui/utils/drag_scroll.py": "cb723f722fdbf66b7052fe1495a6b1863075c5dd4681add34505e086015aea4c",
+      "ui/utils/filter_button_style.py": "06c3f8bc64cdc3952c9b131423c1cd19326d96cbc5b4d3d1a48088c7fa9b589a",
+      "ui/utils/hidpi_pixmap.py": "2498f9da26f76ee47be5f0a396dc3cb52ad10b1d93df71dd49ab703024a78fcf",
+      "ui/utils/icon_utils.py": "6f1182735fa6d493393df04e025f894750d28e11a44b8d84cd280e3c30562a6b",
+      "ui/utils/marquee_label.py": "884e4466fcd3b802360f1c9bf127dd41f898821bf6ffcbd9b0db4c9a5ca52471",
+      "ui/utils/overlay_scroll.py": "b71c537f25362e61e5719bbdbb8ab7c9f268641b04a876ff15c21837d0c87996",
+      "ui/utils/owner_icon_badge.py": "2b056db01ab44ce57e2a3ecd4f5a608450286c8fcd607781021e7ad27a9251cc",
+      "ui/utils/pixel_icon_grid.py": "e81a0b5ad46648ecf9527e56c97fda28ebd3dd9e5feb76a1d5f21f8cc20c903c",
+      "ui/utils/pixmap_utils.py": "8becb2d8bcf8d08adae2d98262583aabd65b38345e5a4c28032043e35b3fda6f",
+      "ui/utils/pvp_colors.py": "6238140a3ffceeb7113c8d82c4d962a94a7ac4b8deb0abb1c70aa856ef010f3e",
+      "ui/utils/selection_outline.py": "9261fb496f043d1206027745b6eb02b15f00418cec41482386bbf981b1fa7146",
+      "ui/utils/toggle_switch.py": "1bd65ffdec1009dace7580f6cf21ec54839c7245aa31185a332be347a262e2f1",
+      "ui/utils/tooltips.py": "2caa8ffdb93ac80f318a9a801a08985d91171d3ff07786917d696b6411b6510c",
+      "ui/utils/ui_palette.py": "5251d78bf3c43dd9830c3a952c5ef9ddd22724310b0aa77e994a2c2d473479a1",
+      "ui/widgets/loader.py": "54d144bba87fd57f57c41802b7a6cb232824db1712d96634646e1f07987385b9",
+      "ui/widgets/overlays/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "ui/widgets/overlays/login_hint.py": "38ac65ded364f5250c8a91b9119d8b50c35423568a81674477c521a201cf47d4",
+      "ui/widgets/overlays/progress_bar.py": "cae773eff3b1c874352df190b1d86c20c128a486c4d58f9c478a63d3cdd492e0"
+    },
+    "runtime_dependency_envelope": "prepared-review-v1.json",
+    "source_unchanged": true,
+    "unlisted_harness_imports": []
+  },
+  "capture_witness": {
+    "R4_evidence": "../r4-run-v1/off-attribution-v1.json",
+    "R5": [
+      {
+        "channels": 372,
+        "config_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+        "mechanic_invocations_present": true,
+        "member_bytes": 9173721,
+        "member_raw_sha256": "85babc25c08d2ba0951c083342e4a576c1328263802e94d332663dac3431ab54",
+        "nodes": 89010,
+        "request": {
+          "context_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+          "ignore_burst_energy": true,
+          "include_effect_inputs": true,
+          "iterations": 1,
+          "output_mode": "compact_ir_v1",
+          "schema_version": 1,
+          "seed": "742031889",
+          "workers": 1
+        },
+        "seed": 742031889,
+        "sidecar_sha256": "4df2e1b3f483a2626f72ea6079a5beed5109ce3e90db33a4820dbb5ada5dad03",
+        "source_config_sha256": "d5f09e4157bcc54f0eecf13bbd148bf3c8a4d47774781f0cd033650167996f3a",
+        "source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+        "topology_sha256": "b27b089a5d7890ca4bd89dcfe7e2d8b58a382b3b4cae52f3152f05987393487c"
+      },
+      {
+        "channels": 366,
+        "config_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+        "mechanic_invocations_present": true,
+        "member_bytes": 9124741,
+        "member_raw_sha256": "e93999814e3e20773a86675227e1ba63f1e9d492adfc99cf9134bfbd037e1533",
+        "nodes": 88553,
+        "request": {
+          "context_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+          "ignore_burst_energy": true,
+          "include_effect_inputs": true,
+          "iterations": 1,
+          "output_mode": "compact_ir_v1",
+          "schema_version": 1,
+          "seed": "742031890",
+          "workers": 1
+        },
+        "seed": 742031890,
+        "sidecar_sha256": "a4ffd9c88c9f6f3c1d82361ca8193f1d72d410ceb4eeeb642b787a5820621a53",
+        "source_config_sha256": "d5f09e4157bcc54f0eecf13bbd148bf3c8a4d47774781f0cd033650167996f3a",
+        "source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+        "topology_sha256": "56e5f511bac2ebe64f889757a5ccad1d8c86e66af0a0bc43b5cbfa558ac583f5"
+      }
+    ],
+    "limit": "Historical R4 raw captures no longer exist; raw R5 bindings are verified, but no new pairwise semantic reconstruction of R4 raw payloads is claimed. Relocated provider binding changes do not explain all raw differences by themselves.",
+    "product_prepared_config_target_seed_options_rotation_exact_R4": true
+  },
+  "captured_utc": "2026-10-28T10:18:22.328033+00:00",
+  "consumer_sha256": "6f3027201939f0a796db8ba90a76187bdebbee8dfe9056b98ff510677b350e27",
+  "control_evidence": {
+    "closeout.json": "024611399a40e15fb71da6fd2ab47036602c0d5f10a1edc7120362692698b06e",
+    "off-attribution-v1.json": "9bb0203064aa4decc8ed594df0801b62af071284474b1e0a9245f54a292ac312",
+    "off-details.json": "10789cb86d4128710aedf33bb652b7d0c38256ad19cb3ab95c60e406763a13a4",
+    "off.json": "3e91427ca65b978977b9029a95e37f852772b23cb1b701398b2b6b461c0326e5"
+  },
+  "count_parity_exact": true,
+  "counts": {
+    "artifact.evaluate_calls": 366624,
+    "artifact.gradient_calls": 8982,
+    "engine.compact.process_attempts": 2,
+    "engine.compact.process_exit_success": 2,
+    "engine.ordinary.process_attempts": 87,
+    "engine.ordinary.process_exit_success": 87,
+    "product.rendered_candidates": 8,
+    "r1.neutral_models": 1,
+    "r3.capture_batch_workers": 2,
+    "search.selected_finalists": 9
+  },
+  "coverage": {
+    "C4_projections": 0,
+    "adaptive_events": 131,
+    "adaptive_samples": 24,
+    "extra_context_captures": 0,
+    "neutral_cycles": [
+      {
+        "CandidateSearchCalls": 1639,
+        "CandidateSearchReused": 61,
+        "Cycle": 1,
+        "HeuristicSkipped": 907,
+        "ModelDeferred": 971,
+        "ModelUnavailable": 0,
+        "NotPrepared": 1125,
+        "NotProcessed": 0,
+        "Prepared": 971,
+        "Processed": 0,
+        "Queued": 971,
+        "ReservationDeferred": 0,
+        "Sampled": 64,
+        "Total": 2096
+      },
+      {
+        "CandidateSearchCalls": 2760,
+        "CandidateSearchReused": 439,
+        "Cycle": 2,
+        "HeuristicSkipped": 2032,
+        "ModelDeferred": 2096,
+        "ModelUnavailable": 0,
+        "NotPrepared": 0,
+        "NotProcessed": 0,
+        "Prepared": 2096,
+        "Processed": 0,
+        "Queued": 2096,
+        "ReservationDeferred": 0,
+        "Sampled": 64,
+        "Total": 2096
+      }
+    ],
+    "neutral_cycles_exact_R4": true,
+    "stabilization_reports": 7
+  },
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "evidence": {
+    "ROOT_ADMISSION.md": "b1b83446ae77b0254284bf852538a9533750296c23af0676867a5e9bf5996d70",
+    "off-details.json": "04663773704fd5763d5e0b85fbb4a32928fa5efc6ea684e58ac612380a75ce3b",
+    "off-observations.json": "c5ae3f27adc20873f294dc3e2c3be0eb169a5c826ea9725ee28c80dded6cf385",
+    "off-r3-observations.json": "9efb4545ae29665813ebef77d128025444b4f96ed256129958fbce4b5a0b73c1",
+    "off-r4-observations.json": "4093329c5431c914e59076966500ded96732ef0a1a5cbd51dc9a1482a4bc12d7",
+    "off-r5-observations.json": "0d841df130bae6d885e1bad9a7d7931cb00d066738f1f33627854a051960765f",
+    "off.json": "04de9420683edfb8accd8c83338042758e5a67fcfbf528b4051bd7689061538d",
+    "owner.json": "29e76c7bf6c540c00c2eb6fc91918843f0735d9afd5948dd70395101db72b473",
+    "prepared-review-v1.json": "9f43c0ba8bd776b0be99c4ed6c97ba890efa5ae6b7c146a5070b09f694ee6b3a"
+  },
+  "inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "8d18efa8bd62fc7ad723b8e0bcf7fd358c9821a3e545c659354470c423447004",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "limits": [
+    "Local micro improvements/allocation reductions do not prove a whole-run improvement.",
+    "Same9gear/formula/config and counts establish this scope of semantic parity; not global gameplay/HP/healing acceptance.",
+    "Ordinary multithreaded samples are not claimed paired-identical or independent. DPS difference is not itself proof of quality improvement or loss.",
+    "No installation or next experiment; cleanup only original job after ROOT attribution review."
+  ],
+  "native_source_map_sha256": "48f643c2e4c7f353806513c8e00f9f5efd31d5bfe615cdb93a038d9f84b9ae09",
+  "nonowned_harness_recovery_map_sha256": "218d189c7f6838a43ec5cd19267bfe5b50d04cc85c83156fb14b1f93924f26a6",
+  "outcome": {
+    "DPS_delta": -217.01267096350784,
+    "DPS_delta_percent": -0.13706330975131742,
+    "R4_button_ms": 87656,
+    "R4_winner": {
+      "assignment": [
+        [
+          36,
+          1413,
+          1426,
+          140,
+          203
+        ],
+        [
+          1571,
+          81,
+          92,
+          88,
+          1615
+        ],
+        [
+          1395,
+          1598,
+          1466,
+          1563,
+          1614
+        ],
+        [
+          1616,
+          91,
+          241,
+          1586,
+          119
+        ]
+      ],
+      "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+      "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+      "elapsed_ms": 3267.4682,
+      "engine_result_sha256": "70b1c04f6ca545450ef4a4a37a9db248b8a8d80b712b5b52499c830b363438de",
+      "formula_dps": 156969.25165871024,
+      "formula_residual_dps": 1360.9910278626194,
+      "iterations": 500,
+      "measured_dps": 158330.24268657286,
+      "rank": 1,
+      "source": "real_candidate",
+      "standard_deviation": 2336.594999432395,
+      "standard_error": 104.49570509233835
+    },
+    "R5_button_ms": 90765,
+    "R5_winner": {
+      "assignment": [
+        [
+          36,
+          1413,
+          1426,
+          140,
+          203
+        ],
+        [
+          1571,
+          81,
+          92,
+          88,
+          1615
+        ],
+        [
+          1395,
+          1598,
+          1466,
+          1563,
+          1614
+        ],
+        [
+          1616,
+          91,
+          241,
+          1586,
+          119
+        ]
+      ],
+      "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+      "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+      "elapsed_ms": 4255.502,
+      "engine_result_sha256": "76e9dba908c78e9d2ba312377e04879b979316c73f751359c2a5492aceea4e10",
+      "formula_dps": 156969.25165871024,
+      "formula_residual_dps": 1143.9783568991115,
+      "iterations": 500,
+      "measured_dps": 158113.23001560936,
+      "rank": 1,
+      "source": "real_candidate",
+      "standard_deviation": 2296.3963007957973,
+      "standard_error": 102.69796463716914
+    },
+    "increase_ms": 3109,
+    "increase_percent": 3.546819384868116,
+    "performance_acceptance": "R5 did not improve the measured whole-button time in this single historical pair. Cause is not established; do not call the increase noise."
+  },
+  "owner_hash_scope": "This attribution pins the completed owner before release. Final owner/protected/process/removed-byte hashes belong to closeout.json.",
+  "panel": {
+    "actual_published": 8,
+    "all_nine_full_gear_evidence": "off-details.json",
+    "all_nine_full_gear_mains_substats_exact_R4": true,
+    "all_nine_ordered_assignment_formula_source_config_iterations_exact_R4": true,
+    "all_nine_summary": [
+      {
+        "R4_measured_dps": 158330.24268657286,
+        "R4_process_elapsed_ms": 3267.4682,
+        "R4_standard_error": 104.49570509233835,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+        "elapsed_ms": 4255.502,
+        "engine_result_sha256": "76e9dba908c78e9d2ba312377e04879b979316c73f751359c2a5492aceea4e10",
+        "formula_dps": 156969.25165871024,
+        "formula_residual_dps": 1143.9783568991115,
+        "gear_sha256": "8922395239c7299caa39244fb771bd96f1f86b3b7bb94555cd78af5840216e8f",
+        "iterations": 500,
+        "measured_dps": 158113.23001560936,
+        "rank": 1,
+        "source": "real_candidate",
+        "standard_deviation": 2296.3963007957973,
+        "standard_error": 102.69796463716914
+      },
+      {
+        "R4_measured_dps": 150173.0661001581,
+        "R4_process_elapsed_ms": 3241.2303,
+        "R4_standard_error": 358.800650892374,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1290
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "config_sha256": "4598c385e6330a9615bdb75b6620cfda1004e8a5e1f5a5a918df8df7828c8277",
+        "elapsed_ms": 3228.3694,
+        "engine_result_sha256": "0459f5ce63505ee08def38df7cb7ef0702cef3541ba38f568f68d9a9e437d5c2",
+        "formula_dps": 148644.3089331408,
+        "formula_residual_dps": 914.8614930200565,
+        "gear_sha256": "308521aef1c578df3bc4228b5dd2d270826bcda3ef640b05122777dc7d894b82",
+        "iterations": 100,
+        "measured_dps": 149559.17042616085,
+        "rank": 2,
+        "source": "measured_stat_response_proposal",
+        "standard_deviation": 3349.315652034234,
+        "standard_error": 334.9315652034234
+      },
+      {
+        "R4_measured_dps": 146920.32267527425,
+        "R4_process_elapsed_ms": 3303.5811,
+        "R4_standard_error": 217.37782380842245,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            132,
+            88,
+            124
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "config_sha256": "980b59b257175a45c703b163793449f7129ec5e89b6f37b7d0a99fa3f4381ef6",
+        "elapsed_ms": 3284.4338,
+        "engine_result_sha256": "fe0778467911e84102611cd54e28f7f7edfe070e73deedf06dd8a8feb84b6d65",
+        "formula_dps": 145247.14513794772,
+        "formula_residual_dps": 1522.9190273638524,
+        "gear_sha256": "cb8ab919b6521f087fca1f19f4b8101c6c408b5c82363c4f50e5dced70535066",
+        "iterations": 100,
+        "measured_dps": 146770.06416531157,
+        "rank": 3,
+        "source": "measured_stat_response_combined_proposal",
+        "standard_deviation": 2911.00471538868,
+        "standard_error": 291.10047153886796
+      },
+      {
+        "R4_measured_dps": 155927.16457984535,
+        "R4_process_elapsed_ms": 3295.4902,
+        "R4_standard_error": 204.54811839715123,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "config_sha256": "34301e5e338ae1640c265da2a6c7bbea5bca5b2e1fb89e91cd7685970a53281d",
+        "elapsed_ms": 3186.0134,
+        "engine_result_sha256": "c0de18e54cbe7e3fca64d77d74e7ea91d28ccc37927e4084c892c50bde2b8ec4",
+        "formula_dps": 154637.8107269837,
+        "formula_residual_dps": 1165.274634959991,
+        "gear_sha256": "0f330f9d23d6b73d5ea74a548bccd294570369ace51d1acdcc295c6a709e4170",
+        "iterations": 100,
+        "measured_dps": 155803.0853619437,
+        "rank": 4,
+        "source": "real_candidate",
+        "standard_deviation": 2098.397288052633,
+        "standard_error": 209.8397288052633
+      },
+      {
+        "R4_measured_dps": 155827.05663214813,
+        "R4_process_elapsed_ms": 2878.5379,
+        "R4_standard_error": 227.60570944079114,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "config_sha256": "fdb6a9852120ab6fb5882fc281890a5c6d5395c4948c505e26e8e4df006e8300",
+        "elapsed_ms": 3841.9187,
+        "engine_result_sha256": "6b360c24db10edb746fb5e1423b07b1d293f0bcd72897bd23d1775541848b752",
+        "formula_dps": 154633.2859967898,
+        "formula_residual_dps": 1648.9202691384999,
+        "gear_sha256": "8a2d26915b0c9f40826ca96f70a7b6d071f568bc108399d5ac82c0b72eebf19c",
+        "iterations": 100,
+        "measured_dps": 156282.2062659283,
+        "rank": 5,
+        "source": "single_item_replacement",
+        "standard_deviation": 2262.7555976035374,
+        "standard_error": 226.27555976035373
+      },
+      {
+        "R4_measured_dps": 155968.04910856573,
+        "R4_process_elapsed_ms": 2880.3508,
+        "R4_standard_error": 236.69452257937482,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "config_sha256": "15a97726e64b719dbf9c257fb6631f0337e952b604d8731ac10babc4b8d45304",
+        "elapsed_ms": 3580.1516,
+        "engine_result_sha256": "ea7e7e5c4062876eaa36b4dcba4b381daa2f9540ca0e129d83f3b71fc8a63f40",
+        "formula_dps": 154617.04832316763,
+        "formula_residual_dps": 1158.9163757307397,
+        "gear_sha256": "79e90eee29e6fef6186709c4a9637b9582c5d0050735a6f479f27429d1f23aef",
+        "iterations": 100,
+        "measured_dps": 155775.96469889837,
+        "rank": 6,
+        "source": "single_item_replacement",
+        "standard_deviation": 2146.112495483475,
+        "standard_error": 214.6112495483475
+      },
+      {
+        "R4_measured_dps": 154471.95450787985,
+        "R4_process_elapsed_ms": 2849.7274,
+        "R4_standard_error": 235.5781967787485,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "config_sha256": "f51f7fe797fb734d805ff21b2e0869280fc126340de29580297e1f9a22972c3a",
+        "elapsed_ms": 3725.4462,
+        "engine_result_sha256": "2b58f6347a9e7012ec278d9cd65da8e3b3c8c9ed96cb12185b6d9d80c23dce30",
+        "formula_dps": 153368.87796647247,
+        "formula_residual_dps": 1595.3417961810192,
+        "gear_sha256": "ebb7af1aa36372c9dabfc830edb917f75a10d67ef134d9876875d3280c9df8bc",
+        "iterations": 100,
+        "measured_dps": 154964.2197626535,
+        "rank": 7,
+        "source": "real_candidate",
+        "standard_deviation": 2015.7290418066143,
+        "standard_error": 201.57290418066142
+      },
+      {
+        "R4_measured_dps": 154738.82337573654,
+        "R4_process_elapsed_ms": 2933.5592,
+        "R4_standard_error": 236.5198689163746,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "config_sha256": "5b5cd779f20e7338570edcc3fc757a528a97efa08679f4371c1c515a010e48b3",
+        "elapsed_ms": 3623.4889,
+        "engine_result_sha256": "b780dfac32ca23647889972183fd5d21d7287ad89f71d95252e68270de40732a",
+        "formula_dps": 153364.3532362786,
+        "formula_residual_dps": 1669.1186952810385,
+        "gear_sha256": "8ec72133fec6b788c75d8c7d96c2ee017e4b9c20d487f07a64927041c718f1a6",
+        "iterations": 100,
+        "measured_dps": 155033.47193155964,
+        "rank": 8,
+        "source": "single_item_replacement",
+        "standard_deviation": 2144.9404102497915,
+        "standard_error": 214.49404102497914
+      },
+      {
+        "R4_measured_dps": 154698.60734655097,
+        "R4_process_elapsed_ms": 846.513,
+        "R4_standard_error": 222.97640221409605,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "config_sha256": "5579491474106a0b09769af85cd8b4170b622d05f2222f4a523814116b761f73",
+        "elapsed_ms": 947.7574,
+        "engine_result_sha256": "73be8407b1285cffdee3f8c58d4d4e4943332254bb408334b8884cf14113a025",
+        "formula_dps": 153348.1155626564,
+        "formula_residual_dps": 1111.8803768980724,
+        "gear_sha256": "9cc04370a695140ef64725bb52bc120ef4426c4c5a964d6edb553ca9d0a449a4",
+        "iterations": 100,
+        "measured_dps": 154459.99593955447,
+        "rank": 9,
+        "source": "single_item_replacement",
+        "standard_deviation": 2117.5497237445975,
+        "standard_error": 211.75497237445975
+      }
+    ],
+    "publication_limit": "All9 simulated; combined two-item proposal omitted by unchanged distance-one grouping. Fresh measured alternative ordering may differ.",
+    "published": [
+      {
+        "alternative_rank": 1,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1598,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1614,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "measured": {
+          "dps": "158113.23001560936",
+          "engine_result_sha256": "76e9dba908c78e9d2ba312377e04879b979316c73f751359c2a5492aceea4e10",
+          "iterations": 500,
+          "standard_error": "102.69796463716914"
+        },
+        "rank": 1,
+        "set_group_rank": 1,
+        "verified_source_rank": 1
+      },
+      {
+        "alternative_rank": 2,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1290,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1598,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1614,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "measured": {
+          "dps": "149559.17042616085",
+          "engine_result_sha256": "0459f5ce63505ee08def38df7cb7ef0702cef3541ba38f568f68d9a9e437d5c2",
+          "iterations": 100,
+          "standard_error": "334.9315652034234"
+        },
+        "rank": 2,
+        "set_group_rank": 1,
+        "verified_source_rank": 2
+      },
+      {
+        "alternative_rank": 1,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1302,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 7,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1309,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1318,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1566,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "measured": {
+          "dps": "156282.2062659283",
+          "engine_result_sha256": "6b360c24db10edb746fb5e1423b07b1d293f0bcd72897bd23d1775541848b752",
+          "iterations": 100,
+          "standard_error": "226.27555976035373"
+        },
+        "rank": 3,
+        "set_group_rank": 2,
+        "verified_source_rank": 5
+      },
+      {
+        "alternative_rank": 2,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1302,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 7,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1309,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1318,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "measured": {
+          "dps": "155803.0853619437",
+          "engine_result_sha256": "c0de18e54cbe7e3fca64d77d74e7ea91d28ccc37927e4084c892c50bde2b8ec4",
+          "iterations": 100,
+          "standard_error": "209.8397288052633"
+        },
+        "rank": 4,
+        "set_group_rank": 2,
+        "verified_source_rank": 4
+      },
+      {
+        "alternative_rank": 3,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1302,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 7,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1309,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1318,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1477,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "measured": {
+          "dps": "155775.96469889837",
+          "engine_result_sha256": "ea7e7e5c4062876eaa36b4dcba4b381daa2f9540ca0e129d83f3b71fc8a63f40",
+          "iterations": 100,
+          "standard_error": "214.6112495483475"
+        },
+        "rank": 5,
+        "set_group_rank": 2,
+        "verified_source_rank": 6
+      },
+      {
+        "alternative_rank": 1,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1351,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1436,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1566,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "measured": {
+          "dps": "155033.47193155964",
+          "engine_result_sha256": "b780dfac32ca23647889972183fd5d21d7287ad89f71d95252e68270de40732a",
+          "iterations": 100,
+          "standard_error": "214.49404102497914"
+        },
+        "rank": 6,
+        "set_group_rank": 3,
+        "verified_source_rank": 8
+      },
+      {
+        "alternative_rank": 2,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1351,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1436,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "measured": {
+          "dps": "154964.2197626535",
+          "engine_result_sha256": "2b58f6347a9e7012ec278d9cd65da8e3b3c8c9ed96cb12185b6d9d80c23dce30",
+          "iterations": 100,
+          "standard_error": "201.57290418066142"
+        },
+        "rank": 7,
+        "set_group_rank": 3,
+        "verified_source_rank": 7
+      },
+      {
+        "alternative_rank": 3,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1351,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1436,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1477,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "measured": {
+          "dps": "154459.99593955447",
+          "engine_result_sha256": "73be8407b1285cffdee3f8c58d4d4e4943332254bb408334b8884cf14113a025",
+          "iterations": 100,
+          "standard_error": "211.75497237445975"
+        },
+        "rank": 8,
+        "set_group_rank": 3,
+        "verified_source_rank": 9
+      }
+    ],
+    "search_work_rows_excluding_context_and_timers_exact_R4": true,
+    "winner_gear": [
+      {
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.07"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.101"
+              },
+              {
+                "key": "em",
+                "value": "82"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.047"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1413,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.14"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.179"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.078"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.047"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1426,
+            "level": 20,
+            "main_stat": {
+              "key": "em",
+              "value": "187"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.202"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.074"
+              },
+              {
+                "key": "def",
+                "value": "37"
+              },
+              {
+                "key": "hp",
+                "value": "239"
+              }
+            ]
+          },
+          {
+            "artifact_id": 140,
+            "level": 20,
+            "main_stat": {
+              "key": "pyro_damage_bonus",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "gildeddreams",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.132"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.078"
+              },
+              {
+                "key": "em",
+                "value": "63"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.058"
+              }
+            ]
+          },
+          {
+            "artifact_id": 203,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "19"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.047"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.128"
+              },
+              {
+                "key": "em",
+                "value": "63"
+              }
+            ]
+          }
+        ],
+        "owner": "bennett",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "noblesseoblige"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1571,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.111"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.027"
+              },
+              {
+                "key": "em",
+                "value": "23"
+              }
+            ]
+          },
+          {
+            "artifact_id": 81,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.053"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.148"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.136"
+              },
+              {
+                "key": "em",
+                "value": "37"
+              }
+            ]
+          },
+          {
+            "artifact_id": 92,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.311"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.062"
+              },
+              {
+                "key": "def",
+                "value": "42"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 88,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "35"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.039"
+              },
+              {
+                "key": "def",
+                "value": "19"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1615,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "19"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.105"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.097"
+              },
+              {
+                "key": "def",
+                "value": "56"
+              }
+            ]
+          }
+        ],
+        "owner": "chasca",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "obsidiancodex"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1395,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.053"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.272"
+              },
+              {
+                "key": "def",
+                "value": "44"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.099"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1598,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.111"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "em",
+                "value": "19"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.105"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1466,
+            "level": 20,
+            "main_stat": {
+              "key": "hp_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "wandererstroupe",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.187"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.128"
+              },
+              {
+                "key": "em",
+                "value": "21"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1563,
+            "level": 20,
+            "main_stat": {
+              "key": "hp_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.21"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.066"
+              },
+              {
+                "key": "em",
+                "value": "56"
+              },
+              {
+                "key": "hp",
+                "value": "269"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1614,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "45"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.082"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.031"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.117"
+              }
+            ]
+          }
+        ],
+        "owner": "furina",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "tenacityofthemillelith"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1616,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "14"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.117"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.21"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.066"
+              }
+            ]
+          },
+          {
+            "artifact_id": 91,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.146"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.124"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.109"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 241,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.218"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.074"
+              },
+              {
+                "key": "def_percent",
+                "value": "0.124"
+              },
+              {
+                "key": "hp",
+                "value": "209"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1586,
+            "level": 20,
+            "main_stat": {
+              "key": "electro_damage_bonus",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "aubadeofmorningstarandmoon",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "14"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.35"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.031"
+              },
+              {
+                "key": "def_percent",
+                "value": "0.051"
+              }
+            ]
+          },
+          {
+            "artifact_id": 119,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_rate",
+              "value": "0.311"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.264"
+              },
+              {
+                "key": "em",
+                "value": "21"
+              },
+              {
+                "key": "hp",
+                "value": "538"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.058"
+              }
+            ]
+          }
+        ],
+        "owner": "ororon",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "scrolloftheheroofcindercity"
+          }
+        ]
+      }
+    ]
+  },
+  "producer_timing": {
+    "R4_capture": [
+      {
+        "context_sha256": "ff87bde6cb36aa9ebe29da7c8df359f184c36bffcc6df43f765e756f763360ab",
+        "decode_ms": 1865.8639,
+        "process_ms": 4184.9963,
+        "result_sha256": "4a53efd5f92a12d7e6a313eb886adcdac663e20c2f8cf007e8005d39ef3fec74",
+        "seed": 742031889
+      },
+      {
+        "context_sha256": "ff87bde6cb36aa9ebe29da7c8df359f184c36bffcc6df43f765e756f763360ab",
+        "decode_ms": 1867.8789,
+        "process_ms": 4228.2592,
+        "result_sha256": "2023bb91e9853d0e872c6fb58419840c977240467844323ab8f79c8dab1cb4f9",
+        "seed": 742031890
+      }
+    ],
+    "R4_confirmation_candidate_process_ms": 3267.4682,
+    "R4_stages": [
+      {
+        "inner_ms": 12987.5076,
+        "name": "pilot-n100",
+        "waves": [
+          {
+            "candidate_count": 4,
+            "index": 1,
+            "parallelism": 4,
+            "start_rank": 1,
+            "total_elapsed_ms": 6003.7049,
+            "workers": 4
+          },
+          {
+            "candidate_count": 4,
+            "index": 2,
+            "parallelism": 4,
+            "start_rank": 5,
+            "total_elapsed_ms": 5445.4323,
+            "workers": 4
+          },
+          {
+            "candidate_count": 1,
+            "index": 3,
+            "parallelism": 1,
+            "start_rank": 9,
+            "total_elapsed_ms": 1536.8606,
+            "workers": 16
+          }
+        ]
+      },
+      {
+        "inner_ms": 3905.4299,
+        "name": "confirmation-01-n500",
+        "waves": [
+          {
+            "candidate_count": 1,
+            "index": 1,
+            "parallelism": 1,
+            "start_rank": 1,
+            "total_elapsed_ms": 3905.4299,
+            "workers": 16
+          }
+        ]
+      }
+    ],
+    "R5_capture": [
+      {
+        "context_sha256": "cde27b083ab0703890094c452f49d7d13e17bcba2a0d2d57fd09423a6f1d0d61",
+        "decode_ms": 2185.0585,
+        "process_ms": 4289.582,
+        "result_sha256": "85babc25c08d2ba0951c083342e4a576c1328263802e94d332663dac3431ab54",
+        "seed": 742031889
+      },
+      {
+        "context_sha256": "cde27b083ab0703890094c452f49d7d13e17bcba2a0d2d57fd09423a6f1d0d61",
+        "decode_ms": 2169.5386,
+        "process_ms": 4322.7989,
+        "result_sha256": "e93999814e3e20773a86675227e1ba63f1e9d492adfc99cf9134bfbd037e1533",
+        "seed": 742031890
+      }
+    ],
+    "R5_confirmation_candidate_process_ms": 4255.502,
+    "R5_stages": [
+      {
+        "inner_ms": 14168.0923,
+        "name": "pilot-n100",
+        "waves": [
+          {
+            "candidate_count": 4,
+            "index": 1,
+            "parallelism": 4,
+            "start_rank": 1,
+            "total_elapsed_ms": 6035.4817,
+            "workers": 4
+          },
+          {
+            "candidate_count": 4,
+            "index": 2,
+            "parallelism": 4,
+            "start_rank": 5,
+            "total_elapsed_ms": 6467.2943,
+            "workers": 4
+          },
+          {
+            "candidate_count": 1,
+            "index": 3,
+            "parallelism": 1,
+            "start_rank": 9,
+            "total_elapsed_ms": 1664.306,
+            "workers": 16
+          }
+        ]
+      },
+      {
+        "inner_ms": 4909.9593,
+        "name": "confirmation-01-n500",
+        "waves": [
+          {
+            "candidate_count": 1,
+            "index": 1,
+            "parallelism": 1,
+            "start_rank": 1,
+            "total_elapsed_ms": 4908.946,
+            "workers": 16
+          }
+        ]
+      }
+    ],
+    "same_artifact_sha256": true,
+    "scope": "Same f1e producer; wall process intervals include launch/engine/export/finish as recorded. No isolated engine CPU or causal attribution."
+  },
+  "product_python_map_sha256": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
+  "schema": "r5_full_button_attribution_v1",
+  "scope": "Exactly one ROOT-admitted full604/597/39 Chasca AppShell OFF. No repeats, new simulation or offline checks in export. Original owner9388 retained for ROOT readback.",
+  "source_commit": "79ab9dad0a581f992b513fc4515b9e680f805f04",
+  "timing_ms": {
+    "R4": {
+      "adaptive_wall_ms": 2877.5571,
+      "bind_ms": 3486.609,
+      "capture_batch_wall_ms": 6734.6189,
+      "capture_decode_sum_ms": 3733.7428,
+      "capture_model_ms": 8242.488299999999,
+      "capture_process_sum_ms": 8413.2555,
+      "fullbuild_inner_sum_ms": 16892.9375,
+      "joint_rule_compile_ms": 9512.5276,
+      "native_ms": 70394.4378,
+      "resolve_inclusive_ms": 14279.7077,
+      "rule_ms": 10552.159000000001,
+      "search_excluding_capture_model_ms": 31194.857300000003,
+      "search_inclusive_ms": 39437.3456,
+      "source_preparation_ms": 2386.1385999999998,
+      "staged_outer_minus_inner_ms": 2695.3316000000013,
+      "staged_outer_ms": 19588.2691,
+      "support_response_ms": 9341.532,
+      "view_ms": 214.40580000000003
+    },
+    "R5": {
+      "adaptive_wall_ms": 2933.6142999999997,
+      "bind_ms": 3564.732800000003,
+      "capture_batch_wall_ms": 7178.4129,
+      "capture_decode_sum_ms": 4354.5971,
+      "capture_model_ms": 8665.7354,
+      "capture_process_sum_ms": 8612.3809,
+      "fullbuild_inner_sum_ms": 19078.0516,
+      "joint_rule_compile_ms": 9968.072,
+      "native_ms": 73793.0389,
+      "resolve_inclusive_ms": 14850.088,
+      "rule_ms": 11048.08140000001,
+      "search_excluding_capture_model_ms": 32010.173500000004,
+      "search_inclusive_ms": 40675.9089,
+      "source_preparation_ms": 2471.5577,
+      "staged_outer_minus_inner_ms": 2758.7600999999995,
+      "staged_outer_ms": 21836.8117,
+      "support_response_ms": 9263.8321,
+      "view_ms": 212.74040000000002
+    },
+    "capture_model_increase_inside_search_ms": 423.2471000000005,
+    "delta_R5_minus_R4": {
+      "adaptive_wall_ms": 56.05719999999974,
+      "bind_ms": 78.12380000000303,
+      "capture_batch_wall_ms": 443.79399999999987,
+      "capture_decode_sum_ms": 620.8543,
+      "capture_model_ms": 423.2471000000005,
+      "capture_process_sum_ms": 199.1254000000008,
+      "fullbuild_inner_sum_ms": 2185.114099999999,
+      "joint_rule_compile_ms": 455.5444000000007,
+      "native_ms": 3398.6011,
+      "resolve_inclusive_ms": 570.3802999999989,
+      "rule_ms": 495.92240000000857,
+      "search_excluding_capture_model_ms": 815.3162000000011,
+      "search_inclusive_ms": 1238.5633000000016,
+      "source_preparation_ms": 85.41910000000007,
+      "staged_outer_minus_inner_ms": 63.42849999999817,
+      "staged_outer_ms": 2248.542599999997,
+      "support_response_ms": -77.69989999999962,
+      "view_ms": -1.6654000000000053
+    },
+    "final_inner_increase_ms": 2185.114099999999,
+    "final_outer_increase_ms": 2248.542599999997,
+    "final_outer_minus_inner_increase_ms": 63.42849999999817,
+    "limits": [
+      "Top-level adapter component delta plus outside-adapter delta exactly equals+3109ms.",
+      "Search/capture/model/rule/bind/response timers are nested or overlapping; do not add them together. Parallel per-seed process/decode sums overlap batch wall.",
+      "Final inner grew2185.1141ms of outer2248.5426ms; remaining gap grew63.4285ms. Gap includes binding/validation/I/O/etc, not an isolated SHA timer.",
+      "Producer binary and configurations are unchanged. Captured external-process and ordinary candidate intervals changed; this is timing evidence, not proof of a cause.",
+      "No full-run CPU/allocation/RSS/GC instrumentation. Zero fields in wall/count telemetry mean unavailable. R4 product Python identity was not frozen; outer-prep comparison is historical."
+    ],
+    "remaining_search_increase_ms": 815.3162000000011,
+    "top_level_additive_click_delta": {
+      "adapter_formula_inputs_ms": -484.0,
+      "adapter_optimizer_process_ms": 3562.0,
+      "adapter_prepare_inputs_ms": -94.0,
+      "adapter_request_preflight_ms": 0.0,
+      "outside_adapter_ms": 125.0
+    }
+  },
+  "top_level_click_ms": {
+    "R4": {
+      "adapter_formula_inputs_ms": 6969.0,
+      "adapter_optimizer_process_ms": 74219.0,
+      "adapter_prepare_inputs_ms": 5594.0,
+      "adapter_request_preflight_ms": 140.0,
+      "adapter_total_elapsed_ms": 86922.0,
+      "button_click_to_terminal_ms": 87656,
+      "fixture_build_ms": 6984,
+      "product_timeout_ms": 0,
+      "source_load_ms": 0,
+      "theory_finish_button_click_ms": null,
+      "theory_first_ready_elapsed_ms": null,
+      "theory_first_ready_projection_ms": null,
+      "whole_test_child_elapsed_ms": 99782,
+      "worker_output_render_ms": 453
+    },
+    "R5": {
+      "adapter_formula_inputs_ms": 6485.0,
+      "adapter_optimizer_process_ms": 77781.0,
+      "adapter_prepare_inputs_ms": 5500.0,
+      "adapter_request_preflight_ms": 140.0,
+      "adapter_total_elapsed_ms": 89906.0,
+      "button_click_to_terminal_ms": 90765,
+      "fixture_build_ms": 6828,
+      "product_timeout_ms": 0,
+      "source_load_ms": 16,
+      "theory_finish_button_click_ms": null,
+      "theory_first_ready_elapsed_ms": null,
+      "theory_first_ready_projection_ms": null,
+      "whole_test_child_elapsed_ms": 102672,
+      "worker_output_render_ms": 563
+    }
+  },
+  "verification": {
+    "actual_final_calls": 10,
+    "actual_final_iterations": 1400,
+    "adaptive_calls": 24,
+    "decisions": [
+      {
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "gap": 0,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": true,
+        "stage": "pilot_leader",
+        "threshold": 1386.2888880611256
+      },
+      {
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "gap": 1787.7395577537536,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1334.2070692732289
+      },
+      {
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "gap": 2266.860461738368,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1290.5122351771558
+      },
+      {
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "gap": 2293.9811247836915,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1303.006621435258
+      },
+      {
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "gap": 3036.47389212242,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1302.6977925614533
+      },
+      {
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "gap": 3105.726061028574,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1269.2535648081093
+      },
+      {
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "gap": 3609.9498841275927,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1295.5080601006723
+      },
+      {
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "gap": 8510.77539752121,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1660.0496662734874
+      },
+      {
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "gap": 11299.88165837049,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1522.0808759928943
+      },
+      {
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "gap": 1831.0237496810441,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 993.9617770154235
+      },
+      {
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "gap": 2310.1446536656586,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 934.4909521289861
+      },
+      {
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "gap": 2337.265316710982,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 951.6710387382423
+      },
+      {
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "gap": 3079.7580840497103,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 951.2481533298674
+      },
+      {
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "gap": 3149.0102529558644,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 904.9066925639869
+      },
+      {
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "gap": 3653.234076054883,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 941.3780559662558
+      },
+      {
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "gap": 8554.059589448501,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1401.2909779784202
+      },
+      {
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "gap": 11343.16585029778,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1234.739528618201
+      }
+    ],
+    "intermediate_calls": 77,
+    "iteration_policy": "per_candidate",
+    "merged_iterations": 0,
+    "stages": [
+      {
+        "attempted_sha256": [
+          "daeb645afdf21f241b2b649165df0bbab98ea6cb8694bf0c1c658af8c2225573",
+          "dbcfd77068065d1a995d8503c26400c5fdcce4a1261c02c7fddc17f1dd5cfb7a",
+          "1903e5e4051f6f1bcd92395544cdd744b185a443cbb55b41760e514c797a263d",
+          "b9a7770db5a15ac157cce5ad1727ca9e29e3eeb34f8f74b05d82b1c4b9114592",
+          "79fc05cacb33233b177628e889fd19f7189e17600ca940da8cceb6321da6fe7f",
+          "240be2b4902a0125ccbdd72d02c0bef5d647db0752dcf77664ed5ceb67852d0e",
+          "b9a29c7fdcaf902fcfe5ad9efbe3edcde3c35950e89f9b0559da4827b40cc60f",
+          "d109f26cb907c799491543a706cf1ae5915ae26d7336032fe7d4a389fadf0bbc",
+          "497164aa9c8074974e963a83350339207a801b2a5c076885c201fbd78f3c1275"
+        ],
+        "iterations": 100,
+        "name": "pilot-n100",
+        "result": {
+          "candidates": [
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1395,
+                  1598,
+                  1466,
+                  1563,
+                  1614
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1586,
+                  119
+                ]
+              ],
+              "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+              "config_sha256": "e700d0ac3c12996c54fc87adab04b43cd0ec09057ae496009f167eba2e5ee0f4",
+              "elapsed_ms": 3196.2748,
+              "engine_result_sha256": "ac5a9f65b3608bc1dcd8d3ccf85d47ae1b813dbb5058aa57af9ac453214859a0",
+              "formula_dps": 156969.25165871024,
+              "formula_residual_dps": 1100.694164971821,
+              "iterations": 100,
+              "measured_dps": 158069.94582368206,
+              "rank": 1,
+              "source": "real_candidate",
+              "standard_deviation": 2450.635683578951,
+              "standard_error": 245.06356835789512
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1290
+                ],
+                [
+                  1395,
+                  1598,
+                  1466,
+                  1563,
+                  1614
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1586,
+                  119
+                ]
+              ],
+              "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+              "config_sha256": "4598c385e6330a9615bdb75b6620cfda1004e8a5e1f5a5a918df8df7828c8277",
+              "elapsed_ms": 3228.3694,
+              "engine_result_sha256": "0459f5ce63505ee08def38df7cb7ef0702cef3541ba38f568f68d9a9e437d5c2",
+              "formula_dps": 148644.3089331408,
+              "formula_residual_dps": 914.8614930200565,
+              "iterations": 100,
+              "measured_dps": 149559.17042616085,
+              "rank": 2,
+              "source": "measured_stat_response_proposal",
+              "standard_deviation": 3349.315652034234,
+              "standard_error": 334.9315652034234
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  132,
+                  88,
+                  124
+                ],
+                [
+                  1395,
+                  1598,
+                  1466,
+                  1563,
+                  1614
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1586,
+                  119
+                ]
+              ],
+              "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+              "config_sha256": "980b59b257175a45c703b163793449f7129ec5e89b6f37b7d0a99fa3f4381ef6",
+              "elapsed_ms": 3284.4338,
+              "engine_result_sha256": "fe0778467911e84102611cd54e28f7f7edfe070e73deedf06dd8a8feb84b6d65",
+              "formula_dps": 145247.14513794772,
+              "formula_residual_dps": 1522.9190273638524,
+              "iterations": 100,
+              "measured_dps": 146770.06416531157,
+              "rank": 3,
+              "source": "measured_stat_response_combined_proposal",
+              "standard_deviation": 2911.00471538868,
+              "standard_error": 291.10047153886796
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1302,
+                  7,
+                  1466,
+                  1309,
+                  1318
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1586,
+                  119
+                ]
+              ],
+              "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+              "config_sha256": "34301e5e338ae1640c265da2a6c7bbea5bca5b2e1fb89e91cd7685970a53281d",
+              "elapsed_ms": 3186.0134,
+              "engine_result_sha256": "c0de18e54cbe7e3fca64d77d74e7ea91d28ccc37927e4084c892c50bde2b8ec4",
+              "formula_dps": 154637.8107269837,
+              "formula_residual_dps": 1165.274634959991,
+              "iterations": 100,
+              "measured_dps": 155803.0853619437,
+              "rank": 4,
+              "source": "real_candidate",
+              "standard_deviation": 2098.397288052633,
+              "standard_error": 209.8397288052633
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1302,
+                  7,
+                  1466,
+                  1309,
+                  1318
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1566,
+                  119
+                ]
+              ],
+              "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+              "config_sha256": "fdb6a9852120ab6fb5882fc281890a5c6d5395c4948c505e26e8e4df006e8300",
+              "elapsed_ms": 3841.9187,
+              "engine_result_sha256": "6b360c24db10edb746fb5e1423b07b1d293f0bcd72897bd23d1775541848b752",
+              "formula_dps": 154633.2859967898,
+              "formula_residual_dps": 1648.9202691384999,
+              "iterations": 100,
+              "measured_dps": 156282.2062659283,
+              "rank": 5,
+              "source": "single_item_replacement",
+              "standard_deviation": 2262.7555976035374,
+              "standard_error": 226.27555976035373
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1302,
+                  7,
+                  1466,
+                  1309,
+                  1318
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1477,
+                  119
+                ]
+              ],
+              "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+              "config_sha256": "15a97726e64b719dbf9c257fb6631f0337e952b604d8731ac10babc4b8d45304",
+              "elapsed_ms": 3580.1516,
+              "engine_result_sha256": "ea7e7e5c4062876eaa36b4dcba4b381daa2f9540ca0e129d83f3b71fc8a63f40",
+              "formula_dps": 154617.04832316763,
+              "formula_residual_dps": 1158.9163757307397,
+              "iterations": 100,
+              "measured_dps": 155775.96469889837,
+              "rank": 6,
+              "source": "single_item_replacement",
+              "standard_deviation": 2146.112495483475,
+              "standard_error": 214.6112495483475
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1395,
+                  1351,
+                  1466,
+                  1563,
+                  1436
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1586,
+                  119
+                ]
+              ],
+              "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+              "config_sha256": "f51f7fe797fb734d805ff21b2e0869280fc126340de29580297e1f9a22972c3a",
+              "elapsed_ms": 3725.4462,
+              "engine_result_sha256": "2b58f6347a9e7012ec278d9cd65da8e3b3c8c9ed96cb12185b6d9d80c23dce30",
+              "formula_dps": 153368.87796647247,
+              "formula_residual_dps": 1595.3417961810192,
+              "iterations": 100,
+              "measured_dps": 154964.2197626535,
+              "rank": 7,
+              "source": "real_candidate",
+              "standard_deviation": 2015.7290418066143,
+              "standard_error": 201.57290418066142
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1395,
+                  1351,
+                  1466,
+                  1563,
+                  1436
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1566,
+                  119
+                ]
+              ],
+              "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+              "config_sha256": "5b5cd779f20e7338570edcc3fc757a528a97efa08679f4371c1c515a010e48b3",
+              "elapsed_ms": 3623.4889,
+              "engine_result_sha256": "b780dfac32ca23647889972183fd5d21d7287ad89f71d95252e68270de40732a",
+              "formula_dps": 153364.3532362786,
+              "formula_residual_dps": 1669.1186952810385,
+              "iterations": 100,
+              "measured_dps": 155033.47193155964,
+              "rank": 8,
+              "source": "single_item_replacement",
+              "standard_deviation": 2144.9404102497915,
+              "standard_error": 214.49404102497914
+            },
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1395,
+                  1351,
+                  1466,
+                  1563,
+                  1436
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1477,
+                  119
+                ]
+              ],
+              "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+              "config_sha256": "5579491474106a0b09769af85cd8b4170b622d05f2222f4a523814116b761f73",
+              "elapsed_ms": 947.7574,
+              "engine_result_sha256": "73be8407b1285cffdee3f8c58d4d4e4943332254bb408334b8884cf14113a025",
+              "formula_dps": 153348.1155626564,
+              "formula_residual_dps": 1111.8803768980724,
+              "iterations": 100,
+              "measured_dps": 154459.99593955447,
+              "rank": 9,
+              "source": "single_item_replacement",
+              "standard_deviation": 2117.5497237445975,
+              "standard_error": 211.75497237445975
+            }
+          ],
+          "iterations": 100,
+          "total_elapsed_ms": 14168.0923,
+          "waves": [
+            {
+              "candidate_count": 4,
+              "index": 1,
+              "parallelism": 4,
+              "start_rank": 1,
+              "total_elapsed_ms": 6035.4817,
+              "workers": 4
+            },
+            {
+              "candidate_count": 4,
+              "index": 2,
+              "parallelism": 4,
+              "start_rank": 5,
+              "total_elapsed_ms": 6467.2943,
+              "workers": 4
+            },
+            {
+              "candidate_count": 1,
+              "index": 3,
+              "parallelism": 1,
+              "start_rank": 9,
+              "total_elapsed_ms": 1664.306,
+              "workers": 16
+            }
+          ],
+          "winner": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                1598,
+                1466,
+                1563,
+                1614
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+            "config_sha256": "e700d0ac3c12996c54fc87adab04b43cd0ec09057ae496009f167eba2e5ee0f4",
+            "elapsed_ms": 3196.2748,
+            "engine_result_sha256": "ac5a9f65b3608bc1dcd8d3ccf85d47ae1b813dbb5058aa57af9ac453214859a0",
+            "formula_dps": 156969.25165871024,
+            "formula_residual_dps": 1100.694164971821,
+            "iterations": 100,
+            "measured_dps": 158069.94582368206,
+            "rank": 1,
+            "source": "real_candidate",
+            "standard_deviation": 2450.635683578951,
+            "standard_error": 245.06356835789512
+          }
+        }
+      },
+      {
+        "attempted_sha256": [
+          "1903e5e4051f6f1bcd92395544cdd744b185a443cbb55b41760e514c797a263d"
+        ],
+        "iterations": 500,
+        "name": "confirmation-01-n500",
+        "result": {
+          "candidates": [
+            {
+              "assignment": [
+                [
+                  36,
+                  1413,
+                  1426,
+                  140,
+                  203
+                ],
+                [
+                  1571,
+                  81,
+                  92,
+                  88,
+                  1615
+                ],
+                [
+                  1395,
+                  1598,
+                  1466,
+                  1563,
+                  1614
+                ],
+                [
+                  1616,
+                  91,
+                  241,
+                  1586,
+                  119
+                ]
+              ],
+              "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+              "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+              "elapsed_ms": 4255.502,
+              "engine_result_sha256": "76e9dba908c78e9d2ba312377e04879b979316c73f751359c2a5492aceea4e10",
+              "formula_dps": 156969.25165871024,
+              "formula_residual_dps": 1143.9783568991115,
+              "iterations": 500,
+              "measured_dps": 158113.23001560936,
+              "rank": 1,
+              "source": "real_candidate",
+              "standard_deviation": 2296.3963007957973,
+              "standard_error": 102.69796463716914
+            }
+          ],
+          "iterations": 500,
+          "total_elapsed_ms": 4909.9593,
+          "waves": [
+            {
+              "candidate_count": 1,
+              "index": 1,
+              "parallelism": 1,
+              "start_rank": 1,
+              "total_elapsed_ms": 4908.946,
+              "workers": 16
+            }
+          ],
+          "winner": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                1598,
+                1466,
+                1563,
+                1614
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+            "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+            "elapsed_ms": 4255.502,
+            "engine_result_sha256": "76e9dba908c78e9d2ba312377e04879b979316c73f751359c2a5492aceea4e10",
+            "formula_dps": 156969.25165871024,
+            "formula_residual_dps": 1143.9783568991115,
+            "iterations": 500,
+            "measured_dps": 158113.23001560936,
+            "rank": 1,
+            "source": "real_candidate",
+            "standard_deviation": 2296.3963007957973,
+            "standard_error": 102.69796463716914
+          }
+        }
+      }
+    ],
+    "stat_response_calls": 53
+  }
+}

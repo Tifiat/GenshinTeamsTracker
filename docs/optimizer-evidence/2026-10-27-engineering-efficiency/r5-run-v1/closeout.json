@@ -1,0 +1,62 @@
+{
+  "attribution_owner_hash_scope": "off-attribution-v1.json binds the completed owner before release; this receipt binds the final closed owner.",
+  "child_disposable_removed_bytes_observed_separately": 16083327,
+  "closed_utc": "2026-10-28T10:26:41.449791+00:00",
+  "consumer_builds": 1,
+  "consumer_sha256": "6f3027201939f0a796db8ba90a76187bdebbee8dfe9056b98ff510677b350e27",
+  "docker_annotation": "User-reported recent Docker startup is a possible background CPU/RAM/I/O factor; no timing/load profile proves causality. Docker untouched.",
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "exactly_one_completed_off": true,
+  "heavy_processes_owned": 0,
+  "installations": 0,
+  "job_removed": true,
+  "native_source_map_sha256": "48f643c2e4c7f353806513c8e00f9f5efd31d5bfe615cdb93a038d9f84b9ae09",
+  "nonowned_harness_recovery_map_sha256": "218d189c7f6838a43ec5cd19267bfe5b50d04cc85c83156fb14b1f93924f26a6",
+  "original_job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-oi7e_0vw",
+  "original_owner_exit_code": 0,
+  "original_owner_session": 9388,
+  "owned_processes_after": [],
+  "owned_processes_count": 0,
+  "owner_finished": 1793182820.931303,
+  "owner_status": "closed_off_complete_waiting_root",
+  "performance_status": "Whole-button gain not demonstrated:90765ms versus87656ms. Cause unknown; regression cannot be excluded. No repeat.",
+  "preserved_state": {
+    "active_profile_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "files": {
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\gcsim\\engines\\active_engine.json": "d884c10f04bab47fe8bc660ced60ae80b7efad9baef09338a1e7dc6f8fdaf2f1",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\profiles\\57b730eff7544d0eb4e9f74ecb8fc2fa\\data\\artifacts.db": "0937e22817f3cece02ac93baaa9a9d39bb5467630f55751501f3082455c9eb85",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\profiles\\registry.json": "adbefae9c6fd33116fa63d33069f50f6531ef9bfe3c42ec224841e4ed7d8ad94",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\native\\gcsim_optimizer\\gtt-optimizer.exe": "415d995c20897d13faf70217fedd37831528e6570b249b472d154b36a61f069d"
+    }
+  },
+  "producer_builds": 0,
+  "product_python_map_sha256": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
+  "protected_exact": true,
+  "protected_sha256_after": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "protected_sha256_before": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "receipt_hashes": {
+    "ROOT_ADMISSION.md": "b1b83446ae77b0254284bf852538a9533750296c23af0676867a5e9bf5996d70",
+    "chasca-config.json": "a0906af08413c1bca5188f2e2c4d3a4a5b7fb3af4cbcb49857c9c70d62460506",
+    "chasca-rotation.txt": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+    "consumer-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "off-attribution-v1.json": "119a719c62c4666c565f2f04b2afadd4bb3d84c496842a8701a392d0fc0d53dc",
+    "off-details.json": "04663773704fd5763d5e0b85fbb4a32928fa5efc6ea684e58ac612380a75ce3b",
+    "off-observations.json": "c5ae3f27adc20873f294dc3e2c3be0eb169a5c826ea9725ee28c80dded6cf385",
+    "off-r3-observations.json": "9efb4545ae29665813ebef77d128025444b4f96ed256129958fbce4b5a0b73c1",
+    "off-r4-observations.json": "4093329c5431c914e59076966500ded96732ef0a1a5cbd51dc9a1482a4bc12d7",
+    "off-r5-observations.json": "0d841df130bae6d885e1bad9a7d7931cb00d066738f1f33627854a051960765f",
+    "off.json": "04de9420683edfb8accd8c83338042758e5a67fcfbf528b4051bd7689061538d",
+    "owner.json": "0642977a59f7a43f122e11ee8c2bdb5bf93540518be89d1c952f2b9381c778c5",
+    "prepared-review-v1.json": "9f43c0ba8bd776b0be99c4ed6c97ba890efa5ae6b7c146a5070b09f694ee6b3a"
+  },
+  "release_command_exit_code": 0,
+  "removed_bytes": 258522499,
+  "result_report": {
+    "path": "docs/optimizer-evidence/2026-10-27-engineering-efficiency/R5_RESULT_RU.md",
+    "sha256": "c9bf89ca86dd953d9fb39ea14882d8a5e6a21a08b4d023e449890084ffc5702a"
+  },
+  "schema": "r5_full_button_closeout_v1",
+  "source_commit": "79ab9dad0a581f992b513fc4515b9e680f805f04",
+  "status": "EXPORTED_CLEANED_PROTECTED_EXACT_STOP",
+  "stop": "R5 done after local result save. No installation, followup simulation, ON/warm or other team. User disk-growth inspection belongs to separate ROOT task."
+}

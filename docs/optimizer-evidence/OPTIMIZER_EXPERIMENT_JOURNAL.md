@@ -305,3 +305,23 @@ Evaluate3.4-5.2percent and hybrid non-regression, not whole-search speed guarant
 Combined19PASS/one disclosed managed-fixture SKIP; Python/source/adapter/bootstrap
 checks passed with no engine/search. Source freeze/commit and original finite
 owner prepare precede final ROOT one-OFF admission. No install/new team/cache arm.
+
+
+R5 sole admitted full OFF CLOSED: source79ab9da, consumer6f302720/producerf1e;
+444native48f643c2 +394Python e3d71c21 +111harness218d189c. Actual251 product
+imports unchanged/no unlisted harness. Full604/597/39 input, same9ordered gear,
+assignment/config/formula/source/rank/n and Counts366624/8982/87ordinary/2compact/
+1model exact R4. Winner158113.230+/-102.698SE n500 versus158330.243+/-104.496;
+same20 IDs. Button87.656 to90.765s (+3.109/+3.55percent), native70.394 to73.793s.
+Whole-button gain NOT demonstrated; regression cannot be excluded. Search+1.239s
+contains capture/model+0.423s, exclusive+0.815s. Final outer+2.249s contains
+inner+2.185s; gap+0.063s is not an isolated hashing timer. Unchanged producer's
+process intervals increased; cause unknown, no matched full CPU/RSS profile.
+User-reported recent Docker is a possible unverified CPU/RAM/I/O factor;
+Docker untouched/no causal claim/no repeat. Local allocation/work reductions
+remain measured in their own scope. [Report](2026-10-27-engineering-efficiency/R5_RESULT_RU.md),
+[attribution](2026-10-27-engineering-efficiency/r5-run-v1/off-attribution-v1.json),
+[closeout](2026-10-27-engineering-efficiency/r5-run-v1/closeout.json) retained.
+Original owner9388 exited0; job-oi7e_0vw removed258522499bytes, owned processes0,
+protected9d81 exact. No installation/ON/warm/new teams. Result save then STOP;
+ROOT owns separately queued user disk-growth inspection, not this R5 stage.

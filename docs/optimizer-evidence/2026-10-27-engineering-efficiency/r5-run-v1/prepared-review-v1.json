@@ -1,0 +1,91 @@
+{
+  "consumer_build_seconds": 10.639999999999418,
+  "consumer_builds": 1,
+  "consumer_sha256": "6f3027201939f0a796db8ba90a76187bdebbee8dfe9056b98ff510677b350e27",
+  "consumer_target": {
+    "CGO_ENABLED": "0",
+    "GOAMD64": "v1",
+    "GOARCH": "amd64",
+    "GOEXPERIMENT": "",
+    "GOOS": "windows",
+    "GoVersion": "go1.26.4"
+  },
+  "deadline": 1793192438.354642,
+  "harness_native_source_files": 5,
+  "harness_source_files": 115,
+  "installations": 0,
+  "inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "8d18efa8bd62fc7ad723b8e0bcf7fd358c9821a3e545c659354470c423447004",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-oi7e_0vw",
+  "native_source_files_verified": 444,
+  "native_source_map_sha256": "48f643c2e4c7f353806513c8e00f9f5efd31d5bfe615cdb93a038d9f84b9ae09",
+  "nonowned_harness_recovery_map_sha256": "218d189c7f6838a43ec5cd19267bfe5b50d04cc85c83156fb14b1f93924f26a6",
+  "off_authority": "ROOT final admission, then exactly one cheap tester OFF. MAIN has issued no OFF.",
+  "off_command": ".venv/Scripts/python.exe -B -m tools.experiments.gcsim.mvp_polish.r5_button --action off --output \"C:/Users/user/Desktop/GenshinTeamsTracker/docs/optimizer-evidence/2026-10-27-engineering-efficiency/r5-run-v1\"",
+  "owner_exec_session": 9388,
+  "owner_snapshot_sha256": "0cdeaf08a7cd682387fd5e730fd7da18a45c549380399f5d4b69ac3f14756908",
+  "producer": {
+    "artifact_path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-oi7e_0vw\\engine-store\\engines\\gcsim-v2.45.0-mechanic-compiler-20261025\\build\\gtt-gcsim.exe",
+    "artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+    "binding_sha256": "8d18efa8bd62fc7ad723b8e0bcf7fd358c9821a3e545c659354470c423447004",
+    "engine_tree_sha256": "5e02abee7710d80bfcf4f5e65cc8dda868eb9cadd45b5a88e666a9bdb535bf4b",
+    "trusted": true
+  },
+  "producer_builds": 0,
+  "producer_target": {
+    "CGO_ENABLED": "0",
+    "GOAMD64": "v1",
+    "GOARCH": "amd64",
+    "GOEXPERIMENT": "",
+    "GOOS": "windows",
+    "GoVersion": "go1.26.4"
+  },
+  "product_python_files": 394,
+  "product_python_map_sha256": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
+  "protected_exact": true,
+  "protected_sha256_now": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "r4_flags": {
+    "GTT_R3_ADJOINT_REUSE": "1",
+    "GTT_R3_OPERATION_SWITCH": "1",
+    "GTT_R3_PARALLEL_CAPTURE": "1",
+    "GTT_R3_PROGRAM_IDENTITY": "1",
+    "GTT_R3_TYPED_CANONICAL": "1",
+    "GTT_R4_FAST_COUNTERS": "1",
+    "GTT_R4_OWNED_DIGEST": "1",
+    "GTT_R4_TYPED_PANEL": "1"
+  },
+  "runtime_dependencies": {
+    "files": {
+      "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python311\\DLLs\\_decimal.pyd": "0f9c6cc463611a9b2c692382fe1cdd7a52fea4733ffaf645d433f716f8bbd725",
+      "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python311\\DLLs\\_sqlite3.pyd": "b1223420e475348c0bfb90fae33fc44ce35d988270294158ec366893df221a4b",
+      "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python311\\python.exe": "5be4ea9f930ff31f567d0505d76fe86ad6ffe8ee50f81e2739a142829f19a10d",
+      "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python311\\python311.dll": "de1b95d2e951fc048c84684bc7df4346138910544ee335b61fc8e65f360c3837",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Lib\\site-packages\\PySide6\\Qt6Core.dll": "89383ca8aa134bd228eac80c879e4048d2f7982f646eda53fee35547c20d0c3c",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Lib\\site-packages\\PySide6\\Qt6Gui.dll": "5731a1d41f60ab686859943225848973726f4b00fd5e8e420453a12b1a2d1b95",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Lib\\site-packages\\PySide6\\Qt6Widgets.dll": "0bc3f3d90e6090023210887ea5748d0b0800727cb407bef5090aa338089ea22a",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Lib\\site-packages\\PySide6\\QtCore.pyd": "9d9ec6d5244ec8cc93156386394fe9d0fc96e749c2969fe013bf15f5c5a9784d",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Lib\\site-packages\\PySide6\\QtGui.pyd": "f58a2f83833ff32beb8729cbcf7d17a1a0386d7b535ba1ec60c20478f68bc2bf",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Lib\\site-packages\\PySide6\\QtWidgets.pyd": "f14f92c99618246ee9a08632b46fc2493fb82607edb2f75318e44731ddcc7187",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Scripts\\python.exe": "5fec912cd3c47c125754cfbcb9b21ce0b415f860cfa8e2a3b98ceb9cd73bd30f"
+    },
+    "pyside6_version": "6.11.0",
+    "python_version": "3.11.5 (tags/v3.11.5:cce6ba9, Aug 24 2023, 14:38:34) [MSC v.1936 64 bit (AMD64)]",
+    "qt_version": "6.11.0",
+    "sqlite_version": "3.42.0"
+  },
+  "schema": "r5_prepared_review_v1",
+  "simulation_calls": 0,
+  "source_commit": "79ab9dad0a581f992b513fc4515b9e680f805f04",
+  "status": "READY_NO_NUMERIC_COMMAND",
+  "verified_utc": "2026-10-28T10:06:02.669946+00:00",
+  "wrapper_field_scope": "Inherited R1 accepted403 label. Actual R5 source is committed79ab9da, exact444 native and394 prospective product Python plus111 recovered non-R5 harness files. Data/resource dependencies stay separately checked; no retrospective R4 Python claim.",
+  "wrapper_source_closure": "accepted403 reconstruction/helper chain; not standalone checkout"
+}

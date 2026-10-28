@@ -1,0 +1,22 @@
+[
+  {
+    "r3_flags": {
+      "GTT_R3_ADJOINT_REUSE": "1",
+      "GTT_R3_OPERATION_SWITCH": "1",
+      "GTT_R3_PARALLEL_CAPTURE": "1",
+      "GTT_R3_PROGRAM_IDENTITY": "1",
+      "GTT_R3_TYPED_CANONICAL": "1"
+    },
+    "stage": "validate-request"
+  },
+  {
+    "r3_flags": {
+      "GTT_R3_ADJOINT_REUSE": "1",
+      "GTT_R3_OPERATION_SWITCH": "1",
+      "GTT_R3_PARALLEL_CAPTURE": "1",
+      "GTT_R3_PROGRAM_IDENTITY": "1",
+      "GTT_R3_TYPED_CANONICAL": "1"
+    },
+    "stage": "optimize-all-sets"
+  }
+]

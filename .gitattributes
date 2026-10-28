@@ -20,3 +20,4 @@ tools/experiments/gcsim/mvp_polish/test_r5_* text eol=lf
 docs/optimizer-evidence/2026-10-27-engineering-efficiency/r5-* -text whitespace=cr-at-eol
 docs/optimizer-evidence/2026-10-27-engineering-efficiency/r5-*.patch -text whitespace=cr-at-eol,-blank-at-eol,-space-before-tab
 docs/optimizer-evidence/2026-10-27-engineering-efficiency/r5-run-v1/* -text whitespace=cr-at-eol
+docs/optimizer-evidence/2026-10-27-engineering-efficiency/R5_RESULT_RU.md -text whitespace=cr-at-eol

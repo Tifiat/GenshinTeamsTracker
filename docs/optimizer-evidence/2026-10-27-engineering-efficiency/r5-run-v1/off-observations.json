@@ -1,0 +1,50 @@
+{
+  "native_launch_environments": [
+    {
+      "environment": {
+        "CGO_ENABLED": null,
+        "GOAMD64": null,
+        "GOARCH": null,
+        "GODEBUG": null,
+        "GOEXPERIMENT": null,
+        "GOFLAGS": null,
+        "GOGC": null,
+        "GOMAXPROCS": null,
+        "GOMEMLIMIT": null,
+        "GOOS": null,
+        "GTT_C4_LINEAGE_EXPORT": null,
+        "GTT_C4_TRACE_CUSTODY": null,
+        "GTT_MECHANIC_CACHE_ENABLED": "0",
+        "GTT_NEUTRAL_INTEGRITY": null,
+        "GTT_R1_SINGLE_NEUTRAL": "1",
+        "GTT_WHOLE_CHASCA_COUNTERS": "1"
+      },
+      "launched": true,
+      "stage": "validate-request"
+    },
+    {
+      "environment": {
+        "CGO_ENABLED": null,
+        "GOAMD64": null,
+        "GOARCH": null,
+        "GODEBUG": null,
+        "GOEXPERIMENT": null,
+        "GOFLAGS": null,
+        "GOGC": null,
+        "GOMAXPROCS": null,
+        "GOMEMLIMIT": null,
+        "GOOS": null,
+        "GTT_C4_LINEAGE_EXPORT": null,
+        "GTT_C4_TRACE_CUSTODY": null,
+        "GTT_MECHANIC_CACHE_ENABLED": "0",
+        "GTT_NEUTRAL_INTEGRITY": null,
+        "GTT_R1_SINGLE_NEUTRAL": "1",
+        "GTT_WHOLE_CHASCA_COUNTERS": "1"
+      },
+      "launched": true,
+      "stage": "optimize-all-sets"
+    }
+  ],
+  "prepared_worker_request_cache_enabled": false,
+  "worker_request_cache_enabled": false
+}

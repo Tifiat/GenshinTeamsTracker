@@ -1,0 +1,14 @@
+package theorysearch
+import("context";"reflect";"testing";"time")
+func TestTheoryCoarseFirstCheckpointPreservesSearch(t *testing.T){
+ cfg,spec:=sessionFixtureConfig(t,[4]int{2,2,1,1})
+ a,la:=newSessionFixtureWorld(spec);b,lb:=newSessionFixtureWorld(spec)
+ sa,err:=New(cfg,a);if err!=nil{t.Fatal(err)}
+ sb,err:=New(cfg,b);if err!=nil{t.Fatal(err)}
+ calls:=0;var elapsed time.Duration
+ observed:=WithFirstCheckpointTiming(context.Background(),func(d time.Duration){calls++;elapsed=d})
+ got,err:=sa.First(observed,cfg.Binding);if err!=nil{t.Fatal(err)}
+ want,err:=sb.First(context.Background(),cfg.Binding);if err!=nil{t.Fatal(err)}
+ if calls!=1||elapsed<0||!reflect.DeepEqual(got,want){t.Fatal("checkpoint observation changed First or was not emitted once")}
+ sa.Close();sb.Close();assertSessionFixtureClosed(t,la);assertSessionFixtureClosed(t,lb)
+}

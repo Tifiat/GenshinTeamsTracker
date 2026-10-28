@@ -1,0 +1,52 @@
+package main
+
+import (
+ "context"
+ "encoding/json"
+ "os"
+ "path/filepath"
+ "time"
+ "genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
+)
+
+// Coarse, sequential scope observations only. Nested spans are NOT additive.
+type theoryCoarseSpan struct {
+ Name string `json:"name"`
+ Parent string `json:"parent,omitempty"`
+ StartNS int64 `json:"start_ns"`
+ WallNS int64 `json:"wall_ns"`
+}
+type theoryCoarse struct {
+ started time.Time
+ root string
+ Spans []theoryCoarseSpan `json:"spans"`
+ Stats map[string]setcontext.NeutralModelStats `json:"cumulative_model_stats"`
+ Dropped int `json:"dropped"`
+}
+type theoryCoarseKey struct{}
+func (c *theoryCoarse) begin(name,parent string) func() {
+ start:=time.Now()
+ return func(){
+  if len(c.Spans)>=32 {c.Dropped++;return}
+  c.Spans=append(c.Spans,theoryCoarseSpan{name,parent,start.Sub(c.started).Nanoseconds(),time.Since(start).Nanoseconds()})
+ }
+}
+func theoryCoarseBegin(ctx context.Context,name,parent string) func() {
+ c,_:=ctx.Value(theoryCoarseKey{}).(*theoryCoarse)
+ if c==nil{return func(){}}
+ return c.begin(name,parent)
+}
+func (c *theoryCoarse) snapshot(name string,s setcontext.NeutralModelStats) {
+ if len(c.Stats)>=12 {c.Dropped++;return}
+ if s.R1!=nil {s.R1.Records=nil;s.R1.PackageGuides=nil;s.R1.UnmappedPackageReasons=nil}
+ c.Stats[name]=s
+}
+func (c *theoryCoarse) save() error {
+ raw,err:=json.MarshalIndent(map[string]any{
+  "schema":"theory_coarse_phases_v1","elapsed_ns":time.Since(c.started).Nanoseconds(),
+  "spans":c.Spans,"cumulative_model_stats":c.Stats,"dropped":c.Dropped,
+  "accounting":"First includes checkpoint_fork; offer_response includes support_probes. Cumulative model stats overlap spans. Do not sum inclusive/nested measurements.",
+ },"","  ")
+ if err!=nil{return err}
+ return os.WriteFile(filepath.Join(c.root,"theory-coarse-timings.json"),raw,0600)
+}

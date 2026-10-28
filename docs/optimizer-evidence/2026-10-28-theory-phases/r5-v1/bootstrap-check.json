@@ -1,0 +1,42 @@
+{
+  "actual_Popen_calls": 0,
+  "actual_child_bootstrap_in_process": true,
+  "actual_native_environment": {
+    "GODEBUG": null,
+    "GOGC": null,
+    "GOMAXPROCS": null,
+    "GOMEMLIMIT": null,
+    "GTT_MECHANIC_CACHE_ENABLED": "0",
+    "GTT_R1_SINGLE_NEUTRAL": "1",
+    "GTT_R3_ADJOINT_REUSE": "1",
+    "GTT_R3_OPERATION_SWITCH": "1",
+    "GTT_R3_PARALLEL_CAPTURE": "1",
+    "GTT_R3_PROGRAM_IDENTITY": "1",
+    "GTT_R3_TYPED_CANONICAL": "1",
+    "GTT_R4_FAST_COUNTERS": "1",
+    "GTT_R4_OWNED_DIGEST": "1",
+    "GTT_R4_TYPED_PANEL": "1"
+  },
+  "baseline_retained": true,
+  "children": [
+    {
+      "errors": 0,
+      "failures": 1,
+      "tests": 1
+    }
+  ],
+  "engine_calls": 0,
+  "exact_T1v2_flags": true,
+  "expected_failed_case_code": "unexpected_error",
+  "final_wrapper_sha256": "0555a6491f09eb166f81c5ea29a4156dde65227c178b49915106229480efd4f2",
+  "main_protected_match": true,
+  "native_boundaries": [
+    "validate-theory-request"
+  ],
+  "parent_run_one": true,
+  "post_bootstrap_change": "only explicit phase receipt presence/error handling; no bootstrap/flags logic changed",
+  "remaining_jobs": [],
+  "scratch_removed": true,
+  "status": "passed",
+  "worker_joined": true
+}

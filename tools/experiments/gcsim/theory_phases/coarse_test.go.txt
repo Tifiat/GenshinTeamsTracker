@@ -1,0 +1,19 @@
+package main
+
+import("context";"encoding/json";"os";"path/filepath";"testing";"time"
+ "genshinteamstracker/native/gcsim_optimizer/internal/setcontext")
+
+func TestTheoryCoarseScopesAndUnchangedState(t *testing.T){
+ root:=t.TempDir()
+ c:=&theoryCoarse{started:time.Now(),root:root,Stats:map[string]setcontext.NeutralModelStats{}}
+ ctx:=context.WithValue(context.Background(),theoryCoarseKey{},c)
+ end:=c.begin("first","")
+ nested:=theoryCoarseBegin(ctx,"checkpoint_fork","first");nested();end()
+ if len(c.Spans)!=2||c.Spans[0].Parent!="first"||c.Spans[0].WallNS>c.Spans[1].WallNS {t.Fatal("nested accounting lost")}
+ s:=setcontext.NeutralModelStats{};c.snapshot("before",s)
+ if s.Requests!=0{t.Fatal("observation mutated state")}
+ if err:=c.save();err!=nil{t.Fatal(err)}
+ raw,err:=os.ReadFile(filepath.Join(root,"theory-coarse-timings.json"));if err!=nil{t.Fatal(err)}
+ var saved map[string]any;if json.Unmarshal(raw,&saved)!=nil||saved["schema"]!="theory_coarse_phases_v1"{t.Fatal("receipt missing")}
+ for i:=0;i<40;i++{c.begin("bounded","")()};if len(c.Spans)!=32||c.Dropped==0{t.Fatal("unbounded observations")}
+}

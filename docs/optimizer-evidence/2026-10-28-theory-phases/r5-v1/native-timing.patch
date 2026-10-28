@@ -1,0 +1,252 @@
+--- a/cmd/gtt-optimizer/theory_session.go
++++ b/cmd/gtt-optimizer/theory_session.go
+@@ -311,6 +311,13 @@
+ 		return err
+ 	}
+ 	progress := newProgressEmitter(os.Stderr, requestSHA)
++ coarse := &theoryCoarse{started:time.Now(),root:runRoot,Stats:map[string]setcontext.NeutralModelStats{}}
++ defer func(){_ = coarse.save()}()
++ searchCtx = context.WithValue(searchCtx,theoryCoarseKey{},coarse)
++ searchCtx = theorysearch.WithFirstCheckpointTiming(searchCtx,func(d time.Duration){
++  if len(coarse.Spans)<32 {coarse.Spans=append(coarse.Spans,theoryCoarseSpan{"checkpoint_fork","first",time.Since(coarse.started).Nanoseconds()-d.Nanoseconds(),d.Nanoseconds()})} else {coarse.Dropped++}
++ })
++ stopSetup := coarse.begin("context_setup","")
+ 	var lastSearch theorysearch.Snapshot
+ 	hasSearch := false
+ 	// Search failures and cancellation cannot roll back completed ordinary
+@@ -356,15 +363,21 @@
+ 	if err != nil {
+ 		return err
+ 	}
+-	captured, err := capturedSession.Resolve(searchCtx, base, nil, nil)
++	stopSetup()
++ stopCapture := coarse.begin("capture","")
++ captured, err := capturedSession.Resolve(searchCtx, base, nil, nil)
++ stopCapture()
+ 	if err != nil {
+ 		return softStop(err)
+ 	}
+-	model, err := setcontext.NewNeutralModel(captured, sources)
+-	if err != nil {
+-		return err
+-	}
+-	cfg, err = theorySessionConfig(raw, req, sources, requestSHA, sourceSHA, captured.GraphSHA256(), cfg.SessionID)
++	stopModel := coarse.begin("model","")
++ model, err := setcontext.NewNeutralModel(captured, sources)
++ stopModel()
++	if err != nil {
++		return err
++	}
++	stopWorld := coarse.begin("config_world","")
++ cfg, err = theorySessionConfig(raw, req, sources, requestSHA, sourceSHA, captured.GraphSHA256(), cfg.SessionID)
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -372,13 +385,17 @@
+ 	if err != nil {
+ 		return err
+ 	}
+-	// A configured common response producer scores its legal proposals through
++	stopWorld()
++ coarse.snapshot("main_initial",model.Stats())
++ // A configured common response producer scores its legal proposals through
+ 	// an independent view of the same captured model. Its resolver feedback must
+ 	// never enter First/Breadth or the restored Deep branch; it performs no capture.
+ 	var proposalWorld *theorysearch.FormulaWorld
+ 	if policy.ResponseReserve > 0 || theoryverify.HasResponseProducer(overall) {
+ 		var fork theorysearch.Resolver
+-		fork, err = world.Fork()
++		stopFork := coarse.begin("response_world_fork","")
++ fork, err = world.Fork()
++ stopFork()
+ 		if err != nil {
+ 			world.Close()
+ 			return err
+@@ -397,6 +414,8 @@
+ 			commonTheoryResponseProducer(runRoot, coverageFor, supportimpact.RunResponseCheck))
+ 	}
+ 	offerResponses := func() error {
++  stopOffer := coarse.begin("offer_response",""); defer stopOffer()
++  if proposalWorld!=nil {coarse.snapshot("response_before_offer",proposalWorld.CoarseModelStats());defer func(){coarse.snapshot("response_after_offer",proposalWorld.CoarseModelStats())}()}
+ 		return verified.OfferResponseProposals(searchCtx, raw, sources.CatalogSHA256, func(candidate theoryverify.Candidate) (alloc.Objective, error) {
+ 			if proposalWorld == nil {
+ 				return nil, fmt.Errorf("Theory response proposal model is unavailable")
+@@ -417,10 +436,11 @@
+ 	}
+ 	verifySnapshot := func(snapshot theorysearch.Snapshot, terminal bool) error {
+ 		return theoryVerificationPhase(searchCtx,
+-			func() error { return verified.OfferSearch(snapshot) },
++			func() error { stopOffer:=coarse.begin("offer_search","");defer stopOffer();return verified.OfferSearch(snapshot) },
+ 			offerResponses,
+ 			func() error {
+-				return verified.Verify(searchCtx, raw, snapshot, terminal, renderer, runRoot, runtime.NumCPU(), checkBinding, progress.theorySnapshot, nil)
++				stopVerify:=coarse.begin("verify","");defer stopVerify()
++ return verified.Verify(searchCtx, raw, snapshot, terminal, renderer, runRoot, runtime.NumCPU(), checkBinding, progress.theorySnapshot, nil)
+ 			})
+ 	}
+ 	session, err := theorysearch.New(cfg, world)
+@@ -432,11 +452,16 @@
+ 	// First visits Original first. Resolve its typed source boundary through the
+ 	// same in-memory model now; an ErrNoResult abort closes the world, while the
+ 	// branch will reuse this result without another capture or context slot.
+-	initialMechanic, initialMechanicErr := world.ResolveMechanics(searchCtx, cfg.Original)
++	stopInitial:=coarse.begin("initial_resolve_binding","")
++ initialMechanic, initialMechanicErr := world.ResolveMechanics(searchCtx, cfg.Original)
+ 	if err = checkBinding(); err != nil {
+ 		return err
+ 	}
+-	snapshot, err := session.First(searchCtx, cfg.Binding)
++	stopInitial()
++ stopFirst:=coarse.begin("first","")
++ snapshot, err := session.First(searchCtx, cfg.Binding)
++ stopFirst()
++ coarse.snapshot("main_after_first",model.Stats())
+ 	finishedEarly := false
+ 	if err != nil {
+ 		receipt := theorySearchFailureReceipt{
+--- a/cmd/gtt-optimizer/theory_support_response.go
++++ b/cmd/gtt-optimizer/theory_support_response.go
+@@ -38,9 +38,11 @@
+ 		if err != nil {
+ 			return out, err
+ 		}
+-		check, err := run(ctx, request, coverage, anchor.Config.Text, runRoot,
++		stopProbe:=theoryCoarseBegin(ctx,"support_probes","offer_response")
++ check, err := run(ctx, request, coverage, anchor.Config.Text, runRoot,
+ 			supportimpact.ResponseAllowance{MaxCalls: supportResponseCalls, Timeout: 180 * time.Second})
+-		out.Status = check.Status
++		stopProbe()
++ out.Status = check.Status
+ 		if err != nil {
+ 			return out, err
+ 		}
+--- a/internal/theorysearch/session.go
++++ b/internal/theorysearch/session.go
+@@ -122,7 +122,9 @@
+ 		return Snapshot{}, err
+ 	}
+ 	s.absorb()
+-	checkpoint, err := s.active.fork()
++	stopCheckpoint:=firstCheckpointTiming(ctx)
++ checkpoint, err := s.active.fork()
++ stopCheckpoint()
+ 	if err != nil {
+ 		s.abort(err)
+ 		return Snapshot{}, err
+--- a/internal/theorysearch/coarse_stats.go
++++ b/internal/theorysearch/coarse_stats.go
+@@ -0,0 +1,3 @@
++package theorysearch
++import "genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
++func(w *FormulaWorld) CoarseModelStats() setcontext.NeutralModelStats{return w.model.Stats()}
+--- a/cmd/gtt-optimizer/theory_coarse.go
++++ b/cmd/gtt-optimizer/theory_coarse.go
+@@ -0,0 +1,52 @@
++package main
++
++import (
++ "context"
++ "encoding/json"
++ "os"
++ "path/filepath"
++ "time"
++ "genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
++)
++
++// Coarse, sequential scope observations only. Nested spans are NOT additive.
++type theoryCoarseSpan struct {
++ Name string `json:"name"`
++ Parent string `json:"parent,omitempty"`
++ StartNS int64 `json:"start_ns"`
++ WallNS int64 `json:"wall_ns"`
++}
++type theoryCoarse struct {
++ started time.Time
++ root string
++ Spans []theoryCoarseSpan `json:"spans"`
++ Stats map[string]setcontext.NeutralModelStats `json:"cumulative_model_stats"`
++ Dropped int `json:"dropped"`
++}
++type theoryCoarseKey struct{}
++func (c *theoryCoarse) begin(name,parent string) func() {
++ start:=time.Now()
++ return func(){
++  if len(c.Spans)>=32 {c.Dropped++;return}
++  c.Spans=append(c.Spans,theoryCoarseSpan{name,parent,start.Sub(c.started).Nanoseconds(),time.Since(start).Nanoseconds()})
++ }
++}
++func theoryCoarseBegin(ctx context.Context,name,parent string) func() {
++ c,_:=ctx.Value(theoryCoarseKey{}).(*theoryCoarse)
++ if c==nil{return func(){}}
++ return c.begin(name,parent)
++}
++func (c *theoryCoarse) snapshot(name string,s setcontext.NeutralModelStats) {
++ if len(c.Stats)>=12 {c.Dropped++;return}
++ if s.R1!=nil {s.R1.Records=nil;s.R1.PackageGuides=nil;s.R1.UnmappedPackageReasons=nil}
++ c.Stats[name]=s
++}
++func (c *theoryCoarse) save() error {
++ raw,err:=json.MarshalIndent(map[string]any{
++  "schema":"theory_coarse_phases_v1","elapsed_ns":time.Since(c.started).Nanoseconds(),
++  "spans":c.Spans,"cumulative_model_stats":c.Stats,"dropped":c.Dropped,
++  "accounting":"First includes checkpoint_fork; offer_response includes support_probes. Cumulative model stats overlap spans. Do not sum inclusive/nested measurements.",
++ },"","  ")
++ if err!=nil{return err}
++ return os.WriteFile(filepath.Join(c.root,"theory-coarse-timings.json"),raw,0600)
++}
+--- a/cmd/gtt-optimizer/theory_coarse_test.go
++++ b/cmd/gtt-optimizer/theory_coarse_test.go
+@@ -0,0 +1,19 @@
++package main
++
++import("context";"encoding/json";"os";"path/filepath";"testing";"time"
++ "genshinteamstracker/native/gcsim_optimizer/internal/setcontext")
++
++func TestTheoryCoarseScopesAndUnchangedState(t *testing.T){
++ root:=t.TempDir()
++ c:=&theoryCoarse{started:time.Now(),root:root,Stats:map[string]setcontext.NeutralModelStats{}}
++ ctx:=context.WithValue(context.Background(),theoryCoarseKey{},c)
++ end:=c.begin("first","")
++ nested:=theoryCoarseBegin(ctx,"checkpoint_fork","first");nested();end()
++ if len(c.Spans)!=2||c.Spans[0].Parent!="first"||c.Spans[0].WallNS>c.Spans[1].WallNS {t.Fatal("nested accounting lost")}
++ s:=setcontext.NeutralModelStats{};c.snapshot("before",s)
++ if s.Requests!=0{t.Fatal("observation mutated state")}
++ if err:=c.save();err!=nil{t.Fatal(err)}
++ raw,err:=os.ReadFile(filepath.Join(root,"theory-coarse-timings.json"));if err!=nil{t.Fatal(err)}
++ var saved map[string]any;if json.Unmarshal(raw,&saved)!=nil||saved["schema"]!="theory_coarse_phases_v1"{t.Fatal("receipt missing")}
++ for i:=0;i<40;i++{c.begin("bounded","")()};if len(c.Spans)!=32||c.Dropped==0{t.Fatal("unbounded observations")}
++}
+--- a/internal/theorysearch/coarse_checkpoint.go
++++ b/internal/theorysearch/coarse_checkpoint.go
+@@ -0,0 +1,14 @@
++package theorysearch
++
++import("context";"time")
++type firstCheckpointTimingKey struct{}
++// A single observation around the existing First checkpoint; no search feedback.
++func WithFirstCheckpointTiming(ctx context.Context, observe func(time.Duration)) context.Context {
++ return context.WithValue(ctx,firstCheckpointTimingKey{},observe)
++}
++func firstCheckpointTiming(ctx context.Context) func() {
++ observe,_:=ctx.Value(firstCheckpointTimingKey{}).(func(time.Duration))
++ if observe==nil{return func(){}}
++ started:=time.Now()
++ return func(){observe(time.Since(started))}
++}
+--- a/internal/theorysearch/coarse_checkpoint_test.go
++++ b/internal/theorysearch/coarse_checkpoint_test.go
+@@ -0,0 +1,14 @@
++package theorysearch
++import("context";"reflect";"testing";"time")
++func TestTheoryCoarseFirstCheckpointPreservesSearch(t *testing.T){
++ cfg,spec:=sessionFixtureConfig(t,[4]int{2,2,1,1})
++ a,la:=newSessionFixtureWorld(spec);b,lb:=newSessionFixtureWorld(spec)
++ sa,err:=New(cfg,a);if err!=nil{t.Fatal(err)}
++ sb,err:=New(cfg,b);if err!=nil{t.Fatal(err)}
++ calls:=0;var elapsed time.Duration
++ observed:=WithFirstCheckpointTiming(context.Background(),func(d time.Duration){calls++;elapsed=d})
++ got,err:=sa.First(observed,cfg.Binding);if err!=nil{t.Fatal(err)}
++ want,err:=sb.First(context.Background(),cfg.Binding);if err!=nil{t.Fatal(err)}
++ if calls!=1||elapsed<0||!reflect.DeepEqual(got,want){t.Fatal("checkpoint observation changed First or was not emitted once")}
++ sa.Close();sb.Close();assertSessionFixtureClosed(t,la);assertSessionFixtureClosed(t,lb)
++}

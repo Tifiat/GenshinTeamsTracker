@@ -1,0 +1,14 @@
+package theorysearch
+
+import("context";"time")
+type firstCheckpointTimingKey struct{}
+// A single observation around the existing First checkpoint; no search feedback.
+func WithFirstCheckpointTiming(ctx context.Context, observe func(time.Duration)) context.Context {
+ return context.WithValue(ctx,firstCheckpointTimingKey{},observe)
+}
+func firstCheckpointTiming(ctx context.Context) func() {
+ observe,_:=ctx.Value(firstCheckpointTimingKey{}).(func(time.Duration))
+ if observe==nil{return func(){}}
+ started:=time.Now()
+ return func(){observe(time.Since(started))}
+}

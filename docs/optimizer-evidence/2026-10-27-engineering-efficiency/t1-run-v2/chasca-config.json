@@ -1,0 +1,28 @@
+{
+  "character_details": [
+    {
+      "name": "chasca",
+      "sets": {
+        "obsidiancodex": 4
+      }
+    },
+    {
+      "name": "furina",
+      "sets": {
+        "goldentroupe": 4
+      }
+    },
+    {
+      "name": "bennett",
+      "sets": {
+        "noblesseoblige": 4
+      }
+    },
+    {
+      "name": "ororon",
+      "sets": {
+        "scrolloftheheroofcindercity": 4
+      }
+    }
+  ]
+}

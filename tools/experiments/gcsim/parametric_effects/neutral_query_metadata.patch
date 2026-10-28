@@ -1,0 +1,275 @@
+diff --git a/pkg/gtttrace/effect_read.go b/pkg/gtttrace/effect_read.go
+--- a/pkg/gtttrace/effect_read.go
++++ b/pkg/gtttrace/effect_read.go
+@@ -3,7 +3,7 @@
+ // Annotates the already existing
+ // numeric sum; no extra event, modifier evaluation or gameplay/RNG operation.
+ // Exported only through the opt-in neutral effect-input sidecar.
++func (r *Runtime) RecordEffectRead(source, channel string, owner, tag int, operator string, inputs []NumericRef, value float64, evidence DependencyEvidence, input ...EventValue) string {
+-func (r *Runtime) RecordEffectRead(source, channel string, owner, tag int, operator string, inputs []NumericRef, value float64, evidence DependencyEvidence) string {
+ 	id := r.RecordNumericEval(source, operator, inputs, value, evidence)
+ 	if id == "" || len(r.stateEvents) == 0 {
+ 		return id
+@@ -12,6 +12,8 @@
+ 	if row.EventID != id {
+ 		return id
+ 	}
++	if len(input) == 1 { value := cloneEventValues(input)[0]; row.NeutralInput = &value }
++	r.CaptureNeutralWorldAt(row.ObservationOrder)
+ 	row.Channel = optionalString("effect_input:" + channel)
+ 	row.OwnerIndex = optionalInt(owner)
+ 	row.NumericPayload = []NumericPayload{{Key: "attack_tag", Value: float64(tag), Reference: LiteralRef(float64(tag))}}
+diff --git a/pkg/gtttrace/state.go b/pkg/gtttrace/state.go
+--- a/pkg/gtttrace/state.go
++++ b/pkg/gtttrace/state.go
+@@ -191,6 +191,7 @@
+ // possible without changing the inherited v1-v5 arrays.
+ type StateEvent struct {
+ 	ObservationOrder uint64 `json:"-"`
++	NeutralInput *EventValue `json:"-"`
+ 	SequenceIndex               int                    `json:"sequence_index"`
+ 	EventID                     string                 `json:"event_id"`
+ 	Frame                       int                    `json:"frame"`
+diff --git a/pkg/core/player/character/mods.go b/pkg/core/player/character/mods.go
+--- a/pkg/core/player/character/mods.go
++++ b/pkg/core/player/character/mods.go
+@@ -439,6 +439,11 @@
+ 		return nil
+ 	}
+ 
++	if a.GTTTraceHit != nil {
++		a.GTTTraceHit.AttackModOrder = c.gttTrace.NextNeutralObservationOrder()
++		input := info.GTTCombatEventValues([]any{a})[0]
++		a.GTTTraceHit.NeutralAttack = &input
++	}
+ 	var sb strings.Builder
+ 	var logDetails []any
+ 
+@@ -716,7 +721,7 @@
+ 			operation = "literal"
+ 		}
+ 		id := c.gttTrace.RecordEffectRead(c.gttTrace.CurrentSourceID(), "reaction_bonus", c.Index(), int(atk.AttackTag), operation, bonusRefs, amt,
++			gtttrace.IncompleteEvidence("reaction_bonus_schedule_frozen"), info.GTTCombatEventValues([]any{atk})[0])
+-			gtttrace.IncompleteEvidence("reaction_bonus_schedule_frozen"))
+ 		trace.ReactionBonusRef = gtttrace.EventRef(id)
+ 	}
+ 	return amt
+diff --git a/pkg/core/info/gtt_contributor_group.go b/pkg/core/info/gtt_contributor_group.go
+--- a/pkg/core/info/gtt_contributor_group.go
++++ b/pkg/core/info/gtt_contributor_group.go
+@@ -17,6 +17,7 @@
+ }
+ 
+ type GTTContributorGroup struct {
++	runtime *gtttrace.Runtime
+ 	Version, SourceSHA256 string
+ 	Contributors          []GTTContributor
+ 	Weights               []float64
+@@ -27,7 +28,7 @@
+ 	if !rt.Enabled() {
+ 		return nil
+ 	}
++	return &GTTContributorGroup{runtime: rt}
+-	return &GTTContributorGroup{}
+ }
+ 
+ // A participant snapshot is captured after its original callbacks. It retains
+@@ -37,6 +38,9 @@
+ 		return nil
+ 	}
+ 	h := &GTTTraceHit{
++		Frame: group.runtime.Frame(), HitOrder: group.runtime.NextNeutralObservationOrder(),
++		SnapshotFrame: a.Snapshot.SourceFrame, SnapshotOrder: GTTStatsObservationOrder(a.Snapshot.GTTStatsOrigin),
++		AttackTag: int(a.Info.AttackTag), Element: a.Info.Element.String(),
+ 		ActorIndex: a.Info.ActorIndex, FlatDmg: a.Info.FlatDmg,
+ 		BaseDmgBonus: a.Info.BaseDmgBonus, FlatProducer: a.Info.GTTFlatProducer,
+ 		NumericFieldWrites: append([]GTTNumericFieldWrite(nil), a.GTTNumericFieldWrites...),
+diff --git a/pkg/core/info/gtt_trace.go b/pkg/core/info/gtt_trace.go
+--- a/pkg/core/info/gtt_trace.go
++++ b/pkg/core/info/gtt_trace.go
+@@ -293,6 +293,8 @@
+ 	SnapshotFrame      int                    `json:"snapshot_frame"`
+ 	SnapshotOrder uint64 `json:"-"`
+ 	HitOrder uint64 `json:"-"`
++	AttackModOrder uint64 `json:"-"`
++	NeutralAttack *gtttrace.EventValue `json:"-"`
+ 	ActorIndex         int                    `json:"actor_index"`
+ 	DamageSrc          int                    `json:"damage_src"`
+ 	Ability            string                 `json:"ability"`
+diff --git a/pkg/gttcompact/neutral_inputs.go b/pkg/gttcompact/neutral_inputs.go
+--- a/pkg/gttcompact/neutral_inputs.go
++++ b/pkg/gttcompact/neutral_inputs.go
+@@ -4,6 +4,7 @@
+ 	"strconv"
+ 	"strings"
+ 
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ 	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
+@@ -17,6 +18,7 @@
+ 	Order uint64 `json:"order"`
+ 	HitFrame int `json:"hit_frame"`
+ 	HitOrder uint64 `json:"hit_order"`
++	AttackOrder uint64 `json:"attack_order"`
+ 	HitID uint64 `json:"hit_id"`
+ 	TargetKey int `json:"target_key"`
+ 	EventID string `json:"event_id,omitempty"`
+@@ -40,11 +42,20 @@
+ 	Expiry *int `json:"expiry,omitempty"`
+ }
+ type NeutralHitPoint struct {
++	TargetKeys []string `json:"target_keys"`
++	Attack *gtttrace.EventValue `json:"attack,omitempty"`
+ 	HitID uint64 `json:"hit_id"`
+ 	Actor int `json:"actor"`
+ 	Point NeutralInputPoint `json:"point"`
+ }
++type NeutralEffectPoint struct {
++	EventID string `json:"event_id"`
++	Order uint64 `json:"order"`
++	Frame int `json:"frame"`
++	Input *gtttrace.EventValue `json:"input,omitempty"`
++}
+ type NeutralInputs struct {
++	Effects []NeutralEffectPoint `json:"effects"`
+ 	World *gtttrace.NeutralWorldLedger `json:"world,omitempty"`
+ 	SchemaVersion int `json:"schema_version"`
+ 	Context optstats.GTTNeutralContext `json:"context"`
+@@ -68,10 +79,17 @@
+ }
+ func neutralHitPoint(h info.GTTTraceHit) NeutralInputPoint {
+ 	return NeutralInputPoint{Frame: h.SnapshotFrame, Order: h.SnapshotOrder,
++		HitFrame: h.Frame, HitOrder: h.HitOrder, AttackOrder: h.AttackModOrder, HitID: h.HitID, TargetKey: h.TargetKey,
+-		HitFrame: h.Frame, HitOrder: h.HitOrder, HitID: h.HitID, TargetKey: h.TargetKey,
+ 		Mode: "snapshot", AttackTag: "tag/" + strconv.Itoa(h.AttackTag), Element: h.Element}
+ }
+ func (b *nodeBuilder) withNeutralStatInputs(raw compiledNode, owner, stat string) compiledNode {
++	// Direct-hit artifact coordinates historically use Element.String()+"%".
++	// The engine's physical element and stat labels differ; export the actual
++	// stat label while retaining the existing raw artifact coordinate.
++	if attributes.StrToStatType(stat) < 0 && strings.HasSuffix(stat, "%") {
++		key := attributes.EleToDmgP(attributes.StringToEle(strings.TrimSuffix(stat, "%")))
++		if key >= 0 { stat = key.String() }
++	}
+ 	add := func(kind string, point NeutralInputPoint) compiledNode {
+ 		n := b.constant(0)
+ 		b.neutralInputs = append(b.neutralInputs, NeutralStatInput{NodeID: n.id, Kind: kind, Owner: owner, Stat: stat, Point: point})
+@@ -80,8 +98,8 @@
+ 	p := b.inputPoint
+ 	if p.Mode == "" { p.Mode = "unresolved" }
+ 	node := b.add(raw, add("stat", p))
++	if p.Mode == "snapshot" && p.AttackOrder != 0 {
++		p.Frame, p.Order = p.HitFrame, p.AttackOrder
+-	if p.Mode == "snapshot" {
+-		p.Frame, p.Order = p.HitFrame, p.HitOrder
+ 		node = b.add(node, add("attack", p))
+ 	}
+ 	return node
+@@ -89,7 +107,7 @@
+ func (b *nodeBuilder) collectNeutralInputs(buffer optstats.GTTTraceEquationBuffer, channels []IRChannel) *NeutralInputs {
+ 	if !b.neutral { return nil }
+ 	out := &NeutralInputs{World: &buffer.NeutralWorld, SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
++		States: []NeutralStatePoint{}, Stats: []NeutralStatInput{}, Hits: []NeutralHitPoint{}, Effects: []NeutralEffectPoint{},
+-		States: []NeutralStatePoint{}, Stats: []NeutralStatInput{}, Hits: []NeutralHitPoint{},
+ 		Uncertainty: []string{"event_state_schedule_observed_not_counterfactual", "unresolved_query_modes_require_effect_coverage"}}
+ 	live := make([]bool, len(b.nodes)+1)
+ 	stack := []uint32{}
+@@ -102,12 +120,21 @@
+ 	}
+ 	for _, p := range b.neutralInputs { if live[p.NodeID] { out.Stats = append(out.Stats, p) } }
+ 	for _, e := range buffer.StateEvents {
++		if e.Channel != nil && strings.HasPrefix(*e.Channel, "effect_input:") {
++			out.Effects = append(out.Effects, NeutralEffectPoint{e.EventID, e.ObservationOrder, e.Frame, e.NeutralInput})
++		}
+ 		if e.OwnerIndex == nil || e.Key == nil { continue }
+ 		switch e.Kind {
+ 		case gtttrace.StateEventStatusAdd, gtttrace.StateEventStatusDelete:
+ 			out.States = append(out.States, NeutralStatePoint{e.ObservationOrder, e.Frame, e.Kind, *e.OwnerIndex, *e.Key, e.ExpiryFrame})
+ 		}
+ 	}
++	for _, h := range buffer.Hits {
++		keys, seen := []string{}, map[string]bool{}
++		for _, m := range h.TargetModContributions {
++			if m.ModifierKey != "" && !seen[m.ModifierKey] { keys = append(keys, m.ModifierKey); seen[m.ModifierKey] = true }
++		}
++		out.Hits = append(out.Hits, NeutralHitPoint{TargetKeys: keys, Attack: h.NeutralAttack, HitID: h.HitID, Actor: h.ActorIndex, Point: neutralHitPoint(h)})
++	}
+-	for _, h := range buffer.Hits { out.Hits = append(out.Hits, NeutralHitPoint{h.HitID, h.ActorIndex, neutralHitPoint(h)}) }
+ 	return out
+ }
+diff --git a/pkg/gttcompact/neutral_inputs_test.go b/pkg/gttcompact/neutral_inputs_test.go
+--- a/pkg/gttcompact/neutral_inputs_test.go
++++ b/pkg/gttcompact/neutral_inputs_test.go
+@@ -17,10 +17,10 @@
+ 	if len(b.neutralInputs) != 2 { t.Fatal("non-neutral capture gained replacement ports") }
+ }
+ func TestNeutralSnapshotAndAttackInputsHaveDifferentTimes(t *testing.T) {
++	b := &nodeBuilder{neutral: true, inputPoint: NeutralInputPoint{Mode: "snapshot", Frame: 5, Order: 10, HitFrame: 12, HitOrder: 30, AttackOrder: 20}}
+-	b := &nodeBuilder{neutral: true, inputPoint: NeutralInputPoint{Mode: "snapshot", Frame: 5, Order: 10, HitFrame: 12, HitOrder: 30}}
+ 	b.artifactDelta("owner", "cr")
+ 	if len(b.neutralInputs) != 2 || b.neutralInputs[0].Kind != "stat" ||
++		b.neutralInputs[0].Point.Order != 10 || b.neutralInputs[1].Kind != "attack" || b.neutralInputs[1].Point.Order != 20 {
+-		b.neutralInputs[0].Point.Order != 10 || b.neutralInputs[1].Kind != "attack" || b.neutralInputs[1].Point.Order != 30 {
+ 		t.Fatal("saved snapshot and per-hit bonus share one time", b.neutralInputs)
+ 	}
+ }
+@@ -30,3 +30,9 @@
+ 		NumericPayload: []gtttrace.NumericPayload{{Key: "stat_query_frame", Value: 3}, {Key: "stat_query_order", Value: 7}}})
+ 	if point.Frame != 3 || point.Order != 7 || point.Mode != "non_extra_stat" { t.Fatal(point) }
+ }
++
++func TestNeutralElementInputUsesEngineStatLabel(t *testing.T) {
++	b := &nodeBuilder{neutral: true, inputPoint: NeutralInputPoint{Mode: "snapshot", Order: 1}}
++	b.artifactDelta("owner", "physical%")
++	if len(b.neutralInputs) != 1 || b.neutralInputs[0].Stat != "phys%" { t.Fatal(b.neutralInputs) }
++}
+diff --git a/pkg/gtttrace/neutral_world.go b/pkg/gtttrace/neutral_world.go
+--- a/pkg/gtttrace/neutral_world.go
++++ b/pkg/gtttrace/neutral_world.go
+@@ -24,7 +24,11 @@
+ }
+ func (r *Runtime) NextNeutralObservationOrder() uint64 {
+  order := r.NextObservationOrder()
++ r.CaptureNeutralWorldAt(order)
++ return order
++}
++func (r *Runtime) CaptureNeutralWorldAt(order uint64) {
++ if !r.Enabled() || order == 0 || r.neutralWorldReader == nil { return }
+- if order == 0 || r.neutralWorldReader == nil { return order }
+  mods := r.neutralWorldReader()
+  sort.Slice(mods, func(i,j int) bool { if mods[i].Owner != mods[j].Owner { return mods[i].Owner < mods[j].Owner }; return mods[i].Key < mods[j].Key })
+  active := -1
+@@ -33,11 +37,10 @@
+   previous := r.neutralWorldStates[len(r.neutralWorldStates)-1]
+   equal := previous.Active == active && len(previous.Modifiers) == len(mods)
+   if equal { for i, m := range mods { if previous.Modifiers[i] != m { equal = false; break } } }
++  if equal { return }
+-  if equal { return order }
+  }
++ if len(r.neutralWorldStates) >= maxCombatEventRows { r.neutralWorldTruncated = true; return }
+- if len(r.neutralWorldStates) >= maxCombatEventRows { r.neutralWorldTruncated = true; return order }
+  r.neutralWorldStates = append(r.neutralWorldStates, NeutralWorldState{order,r.Frame(),active,append([]NeutralModifierIdentity{},mods...)})
+- return order
+ }
+ func (r *Runtime) NeutralWorld() NeutralWorldLedger {
+  out := NeutralWorldLedger{States: []NeutralWorldState{}}
+diff --git a/pkg/enemy/gtt_trace.go b/pkg/enemy/gtt_trace.go
+--- a/pkg/enemy/gtt_trace.go
++++ b/pkg/enemy/gtt_trace.go
+@@ -21,7 +21,6 @@
+ 		SourceFrame:                atk.SourceFrame,
+ 		SnapshotFrame:              atk.Snapshot.SourceFrame,
+ 		SnapshotOrder: info.GTTStatsObservationOrder(atk.Snapshot.GTTStatsOrigin),
+-		HitOrder: e.Core.GTTTrace.NextNeutralObservationOrder(),
+ 		ActorIndex:                 atk.Info.ActorIndex,
+ 		DamageSrc:                  int(atk.Info.DamageSrc),
+ 		Ability:                    atk.Info.Abil,
+@@ -91,6 +90,7 @@
+ 	if trace == nil {
+ 		return
+ 	}
++	trace.HitOrder = e.Core.GTTTrace.NextNeutralObservationOrder()
+ 	trace.ActorIndex = atk.Info.ActorIndex
+ 	trace.DamageSrc = int(atk.Info.DamageSrc)
+ 	trace.Ability = atk.Info.Abil

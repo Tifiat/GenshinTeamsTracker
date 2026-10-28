@@ -1,0 +1,287 @@
+diff --git a/pkg/gtttrace/state.go b/pkg/gtttrace/state.go
+--- a/pkg/gtttrace/state.go
++++ b/pkg/gtttrace/state.go
+@@ -190,6 +190,7 @@
+ // empty. Keeping one exact shape makes cross-language fail-closed decoding
+ // possible without changing the inherited v1-v5 arrays.
+ type StateEvent struct {
++	NeutralStatKeys *[]string `json:"-"`
+ 	ObservationOrder uint64 `json:"-"`
+ 	NeutralInput *EventValue `json:"-"`
+ 	SequenceIndex               int                    `json:"sequence_index"`
+@@ -752,17 +753,20 @@
+ 	ownerIndex int,
+ 	baseHP, hpp, hp, maxHP float64,
+ 	modifierEvalIDs []string,
++	queries ...StatQueryContext,
+ ) string {
+ 	if !r.Enabled() || ownerIndex < 0 || !finite(baseHP) || !finite(hpp) || !finite(hp) || !finite(maxHP) {
+ 		return ""
+ 	}
++	row := StateEvent{
+-	return r.appendStateEvent(StateEvent{
+ 		Frame: r.Frame(), Kind: StateEventMaxHPRead, OwnerIndex: optionalInt(ownerIndex),
+ 		ModifierEvalIDs:             modifierEvalIDs,
+ 		Output:                      map[string]float64{"base_hp": baseHP, "hp%": hpp, "hp": hp, "max_hp": maxHP},
+ 		CandidateDependencyComplete: false,
+ 		UncertaintyCodes:            []string{"max_hp_candidate_dependency_incomplete"},
++	}
++	if len(queries) == 1 { queries[0].annotate(&row) }
++	return r.appendStateEvent(row)
+-	})
+ }
+ 
+ func (r *Runtime) RecordHealthFieldBinding(operationID, fieldKey, boundEventID string, value float64) string {
+diff --git a/pkg/gtttrace/stat_query.go b/pkg/gtttrace/stat_query.go
+--- a/pkg/gtttrace/stat_query.go
++++ b/pkg/gtttrace/stat_query.go
+@@ -10,6 +10,7 @@
+ 	sequence int
+ 	order    uint64
+ 	nonExtra bool
++	selectedKeys *[]string
+ }
+ 
+ func (r *Runtime) NewStatQuery(nonExtra bool) StatQueryContext {
+@@ -28,20 +29,32 @@
+ 	if query.nonExtra {
+ 		mode = "non_extra_stat"
+ 	}
++	row := StateEvent{
+-	payload := func(key string, value float64) NumericPayload {
+-		return NumericPayload{Key: key, Value: value, Reference: LiteralRef(value)}
+-	}
+-	return r.appendStateEvent(StateEvent{
+ 		Frame: r.Frame(), Kind: StateEventNumericEval, OwnerIndex: optionalInt(owner),
+ 		Operation: optionalString("artifact_stat_read"), Key: optionalString(key),
+ 		Channel: optionalString("stat_input:" + mode),
+ 		Value: optionalFloat(value), ModifierEvalIDs: modifiers,
+-		NumericPayload: []NumericPayload{
+-			payload("stat_query_id", float64(query.id)),
+-			payload("stat_query_frame", float64(query.frame)),
+-			payload("stat_query_sequence", float64(query.sequence)),
+-			payload("stat_query_order", float64(query.order)),
+-		},
+ 		CandidateDependencyComplete: false, UncertaintyCodes: []string{"stat_read_external_dependencies_incomplete"},
++	}
++	query.annotate(&row)
++	return r.appendStateEvent(row)
++}
++
++// Selected queries differ from a full snapshot even if their output numbers
++// coincide: AffectedStat controls which modifier closures are evaluated.
++func (r *Runtime) NewSelectedStatQuery(nonExtra bool, keys []string) StatQueryContext {
++	q := r.NewStatQuery(nonExtra)
++	copy := append([]string{}, keys...)
++	q.selectedKeys = &copy
++	return q
++}
++func (q StatQueryContext) annotate(row *StateEvent) {
++	if q.id == 0 { return }
++	row.NeutralStatKeys = q.selectedKeys
++	payload := func(key string, value float64) NumericPayload {
++		return NumericPayload{Key: key, Value: value, Reference: LiteralRef(value)}
++	}
++	row.NumericPayload = append(row.NumericPayload,
++		payload("stat_query_id", float64(q.id)), payload("stat_query_frame", float64(q.frame)),
++		payload("stat_query_sequence", float64(q.sequence)), payload("stat_query_order", float64(q.order)))
+-	})
+ }
+diff --git a/pkg/core/player/character/gtt_parametric_query_test.go b/pkg/core/player/character/gtt_parametric_query_test.go
+--- a/pkg/core/player/character/gtt_parametric_query_test.go
++++ b/pkg/core/player/character/gtt_parametric_query_test.go
+@@ -45,3 +45,23 @@
+ 		t.Fatal("observer changed gameplay evaluation count", calls)
+ 	}
+ }
++
++func TestParametricQueryStartsBeforeAmountAndRetainsSelectedKeys(t *testing.T) {
++	frame := 17
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	r.BindFrame(&frame)
++	c := &CharWrapper{index: 0, f: &frame, gttTrace: r}
++	c.BaseStats[attributes.EM] = 100
++	calls := 0
++	m := &StatMod{Base: modifier.NewBase("mutating-query-test", -1), AffectedStat: attributes.EM,
++		Amount: func() []float64 { calls++; frame++; v := make([]float64, attributes.EndStatType); v[attributes.EM] = 1; return v }}
++	m.SetExpiry(frame)
++	c.mods = append(c.mods, m)
++	value, _ := c.GTTStat(attributes.EM)
++	rows := r.StateEvents()
++	row := rows[len(rows)-1]
++	queryFrame := -1
++	for _, p := range row.NumericPayload { if p.Key == "stat_query_frame" { queryFrame = int(p.Value) } }
++	if value != 101 || calls != 1 || queryFrame != 17 || row.Frame != 18 || row.NeutralStatKeys == nil || len(*row.NeutralStatKeys) != 1 || (*row.NeutralStatKeys)[0] != "em" { t.Fatal(value, calls, queryFrame, row) }
++}
+diff --git a/pkg/gttcompact/neutral_inputs.go b/pkg/gttcompact/neutral_inputs.go
+--- a/pkg/gttcompact/neutral_inputs.go
++++ b/pkg/gttcompact/neutral_inputs.go
+@@ -14,6 +14,7 @@
+ // producers are bound to a no-set capture. Missing query/branch coverage remains
+ // explicit; ports preserve zero-valued future inputs before consumer reduction.
+ type NeutralInputPoint struct {
++	StatKeys *[]string `json:"stat_keys,omitempty"`
+ 	Frame int `json:"frame"`
+ 	Order uint64 `json:"order"`
+ 	HitFrame int `json:"hit_frame"`
+@@ -66,7 +67,7 @@
+ 	Uncertainty []string `json:"uncertainty"`
+ }
+ func neutralEventPoint(e gtttrace.StateEvent) NeutralInputPoint {
++	p := NeutralInputPoint{StatKeys: e.NeutralStatKeys, Frame: e.Frame, Order: e.ObservationOrder, EventID: e.EventID, Mode: "unresolved"}
+-	p := NeutralInputPoint{Frame: e.Frame, Order: e.ObservationOrder, EventID: e.EventID, Mode: "unresolved"}
+ 	if e.Channel != nil && strings.HasPrefix(*e.Channel, "stat_input:") { p.Mode = strings.TrimPrefix(*e.Channel, "stat_input:") }
+ 	if e.Kind == gtttrace.StateEventMaxHPRead { p.Mode = "stat" }
+ 	for _, f := range e.NumericPayload {
+diff --git a/pkg/gttcompact/neutral_inputs_test.go b/pkg/gttcompact/neutral_inputs_test.go
+--- a/pkg/gttcompact/neutral_inputs_test.go
++++ b/pkg/gttcompact/neutral_inputs_test.go
+@@ -36,3 +36,9 @@
+ 	b.artifactDelta("owner", "physical%")
+ 	if len(b.neutralInputs) != 1 || b.neutralInputs[0].Stat != "phys%" { t.Fatal(b.neutralInputs) }
+ }
++
++func TestNeutralQueryRetainsSelectedStatFilter(t *testing.T) {
++	keys := []string{"base_def", "def%", "def"}
++	point := neutralEventPoint(gtttrace.StateEvent{NeutralStatKeys: &keys})
++	if point.StatKeys == nil || len(*point.StatKeys) != 3 || (*point.StatKeys)[1] != "def%" { t.Fatal(point) }
++}
+diff --git a/pkg/core/player/character/stats.go b/pkg/core/player/character/stats.go
+--- a/pkg/core/player/character/stats.go
++++ b/pkg/core/player/character/stats.go
+@@ -150,10 +150,11 @@
+ 	if !c.gttTrace.Enabled() {
+ 		return c.Stat(s), ""
+ 	}
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, false, s)
+ 	capture := c.gttTrace.BeginModifierEvalCapture()
+ 	value := c.Stat(s)
+ 	ids := c.gttTrace.EndModifierEvalCapture(capture)
++	return value, c.gttTrace.RecordStatQuery(c.Index(), s.String(), value, ids, query)
+-	return value, c.gttTrace.RecordArtifactStatRead(c.Index(), s.String(), value, ids)
+ }
+ 
+ func (c *CharWrapper) NonExtraStat(s attributes.Stat) float64 {
+@@ -186,10 +187,11 @@
+ 	if !c.gttTrace.Enabled() {
+ 		return c.NonExtraStat(s), ""
+ 	}
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, true, s)
+ 	capture := c.gttTrace.BeginModifierEvalCapture()
+ 	value := c.NonExtraStat(s)
+ 	ids := c.gttTrace.EndModifierEvalCapture(capture)
++	return value, c.gttTrace.RecordStatQuery(c.Index(), s.String(), value, ids, query)
+-	return value, c.gttTrace.RecordStatQuery(c.Index(), s.String(), value, ids, c.gttTrace.NewStatQuery(true))
+ }
+ 
+ func (c *CharWrapper) SelectStat(nonExtra bool, stat ...attributes.Stat) attributes.Stats {
+@@ -246,13 +248,14 @@
+ 		stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
+ 		return stats.MaxHP(), ""
+ 	}
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, false, attributes.BaseHP, attributes.HPP, attributes.HP)
+ 	capture := c.gttTrace.BeginModifierEvalCapture()
+ 	stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
+ 	modifierEvalIDs := c.gttTrace.EndModifierEvalCapture(capture)
+ 	value := stats.MaxHP()
+ 	eventID := c.gttTrace.RecordMaxHPRead(
+ 		c.Index(), stats[attributes.BaseHP], stats[attributes.HPP], stats[attributes.HP],
++		value, modifierEvalIDs, query,
+-		value, modifierEvalIDs,
+ 	)
+ 	return value, eventID
+ }
+@@ -264,12 +267,13 @@
+ 
+ // Same central getter, one modifier evaluation, with an immutable numeric ref.
+ func (c *CharWrapper) GTTTotalAtk() (float64, gtttrace.NumericRef) {
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
+ 	stats, ids := c.GTTSelectStat(false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
+ 	value := stats.TotalATK()
+ 	if !c.gttTrace.Enabled() {
+ 		return value, gtttrace.NumericRef{}
+ 	}
++	origin := info.GTTStatsOriginAtQuery(c.gttTrace, c.Index(), stats, ids, query)
+-	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids)
+ 	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseATK, attributes.ATKP, attributes.ATK, value)
+ }
+ 
+@@ -277,12 +281,13 @@
+ // modifier ancestry used by TotalDef.  It is the typed counterpart of
+ // GTTTotalAtk for source-generated secondary DEF scaling.
+ func (c *CharWrapper) GTTTotalDef(nonExtra bool) (float64, gtttrace.NumericRef) {
++	query := info.GTTNewSelectedStatQuery(c.gttTrace, nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
+ 	stats, ids := c.GTTSelectStat(nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
+ 	value := stats.TotalDEF()
+ 	if !c.gttTrace.Enabled() {
+ 		return value, gtttrace.NumericRef{}
+ 	}
++	origin := info.GTTStatsOriginAtQuery(c.gttTrace, c.Index(), stats, ids, query)
+-	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids, nonExtra)
+ 	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseDEF, attributes.DEFP, attributes.DEF, value)
+ }
+ 
+diff --git a/pkg/core/info/gtt_snapshot_stats.go b/pkg/core/info/gtt_snapshot_stats.go
+--- a/pkg/core/info/gtt_snapshot_stats.go
++++ b/pkg/core/info/gtt_snapshot_stats.go
+@@ -22,11 +22,12 @@
+ 		Index() int
+ 		GTTSelectStat(bool, ...attributes.Stat) (attributes.Stats, []string)
+ 	}); ok {
++		query := GTTNewSelectedStatQuery(rt, nonExtra, keys...)
+ 		value, ids := c.GTTSelectStat(nonExtra, keys...)
+ 		if !rt.Enabled() {
+ 			return value, nil
+ 		}
++		return value, GTTStatsOriginAtQuery(rt, c.Index(), value, ids, query)
+-		return value, GTTStatsOriginFromModifiers(rt, c.Index(), value, ids, nonExtra)
+ 	}
+ 	return fallback(), nil
+ }
+@@ -63,7 +64,7 @@
+ 	return record("add", []gtttrace.NumericRef{x, refs[2]}, observed)
+ }
+ 
++func GTTNewStatsOrigin(rt *gtttrace.Runtime, owner int, values attributes.Stats, contributions []GTTTraceStatContribution, queries ...gtttrace.StatQueryContext) *GTTStatsOrigin {
+-func GTTNewStatsOrigin(rt *gtttrace.Runtime, owner int, values attributes.Stats, contributions []GTTTraceStatContribution) *GTTStatsOrigin {
+ 	if !rt.Enabled() {
+ 		return nil
+ 	}
+@@ -73,6 +74,7 @@
+ 			ids = append(ids, c.ModifierEvalEventID)
+ 		}
+ 	}
++	if len(queries) == 1 { return GTTStatsOriginAtQuery(rt, owner, values, ids, queries[0]) }
+ 	return GTTStatsOriginFromModifiers(rt, owner, values, ids)
+ }
+ 
+@@ -154,3 +156,14 @@
+ 	}
+ 	return snapshot.GTTStatsOrigin.runtime
+ }
++
++// Original getter query retained by value, before any modifier Amount executes.
++func GTTStatsOriginAtQuery(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string, query gtttrace.StatQueryContext) *GTTStatsOrigin {
++	if !rt.Enabled() { return nil }
++	return &GTTStatsOrigin{runtime: rt, query: query, Owner: owner, Values: values, ModifierIDs: append([]string(nil), ids...)}
++}
++func GTTNewSelectedStatQuery(rt *gtttrace.Runtime, nonExtra bool, keys ...attributes.Stat) gtttrace.StatQueryContext {
++	names := make([]string, len(keys))
++	for i, key := range keys { names[i] = key.String() }
++	return rt.NewSelectedStatQuery(nonExtra, names)
++}
+diff --git a/internal/template/character/character.go b/internal/template/character/character.go
+--- a/internal/template/character/character.go
++++ b/internal/template/character/character.go
+@@ -74,8 +74,9 @@
+ 
+ 	// snapshot the stats
+ 	if c.Core.GTTTrace.Enabled() {
++		query := c.Core.GTTTrace.NewStatQuery(false)
+ 		s.Stats, debug, s.GTTStatContributions = c.GTTStats()
++		s.GTTStatsOrigin = info.GTTNewStatsOrigin(c.Core.GTTTrace, c.Index(), s.Stats, s.GTTStatContributions, query)
+-		s.GTTStatsOrigin = info.GTTNewStatsOrigin(c.Core.GTTTrace, c.Index(), s.Stats, s.GTTStatContributions)
+ 	} else {
+ 		s.Stats, debug = c.Stats()
+ 	}

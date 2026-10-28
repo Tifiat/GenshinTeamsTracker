@@ -1,0 +1,96 @@
+diff --git a/pkg/optimization/gtt_trace_equation_state.go b/pkg/optimization/gtt_trace_equation_state.go
+index a9a7f06..ef88207 100644
+--- a/pkg/optimization/gtt_trace_equation_state.go
++++ b/pkg/optimization/gtt_trace_equation_state.go
+@@ -369,7 +369,7 @@ func (v *gttStateValidation) validateEventShapeAndArithmetic(row gtttrace.StateE
+ 		if row.Operation == nil || row.Value == nil {
+ 			return errors.New("invalid numeric eval shape")
+ 		}
+-		if *row.Operation == "artifact_stat_read" || *row.Operation == "frozen_attack_operand" {
++		if *row.Operation == "artifact_stat_read" || *row.Operation == "frozen_attack_operand" || *row.Operation == "frozen_attack_flat_damage" {
+ 			if len(inputs) != 0 || row.CandidateDependencyComplete {
+ 				return errors.New("invalid observed attack input boundary")
+ 			}
+@@ -385,8 +385,14 @@ func (v *gttStateValidation) validateEventShapeAndArithmetic(row gtttrace.StateE
+ 					}
+ 					seen[id] = true
+ 				}
+-			} else if !containsString(row.UncertaintyCodes, "attack_field_operand_dependency_frozen") {
+-				return errors.New("undiagnosed frozen attack operand")
++			} else if !containsAnyString(row.UncertaintyCodes,
++				"attack_field_operand_dependency_frozen",
++				"stats_container_origin_unproven_or_mutated",
++				"snapshot_stat_origin_unproven_or_mutated",
++				"flat_damage_previous_producer_missing",
++				"flat_damage_previous_producer_mismatch",
++			) {
++				return errors.New("undiagnosed frozen attack boundary")
+ 			}
+ 			return nil
+ 		}
+@@ -503,6 +509,15 @@ func containsString(values []string, wanted string) bool {
+ 	return false
+ }
+ 
++func containsAnyString(values []string, wanted ...string) bool {
++	for _, candidate := range wanted {
++		if containsString(values, candidate) {
++			return true
++		}
++	}
++	return false
++}
++
+ func validateNumericArithmetic(operator string, inputs []float64, output float64) error {
+ 	want := output
+ 	switch operator {
+diff --git a/pkg/gttcompact/builder.go b/pkg/gttcompact/builder.go
+index 6e0acaf..18bedfb 100644
+--- a/pkg/gttcompact/builder.go
++++ b/pkg/gttcompact/builder.go
+@@ -20,6 +20,7 @@ type compiledNode struct {
+ type nodeBuilder struct {
+ 	nodes            []IRNode
+ 	resistanceInputs []ResistanceInput
++	resistanceByHit  map[uint64]compiledNode
+ }
+ 
+ func decimal(value float64) string {
+diff --git a/pkg/gttcompact/resistance_input.go b/pkg/gttcompact/resistance_input.go
+index fcdbc34..0ef80a2 100644
+--- a/pkg/gttcompact/resistance_input.go
++++ b/pkg/gttcompact/resistance_input.go
+@@ -14,7 +14,14 @@ type ResistanceInput struct {
+ }
+ 
+ func (c *directCompiler) resistanceInput(hit info.GTTTraceHit) compiledNode {
++	if existing, ok := c.b.resistanceByHit[hit.HitID]; ok {
++		return existing
++	}
+ 	n := c.b.constant(hit.ResMod)
++	if c.b.resistanceByHit == nil {
++		c.b.resistanceByHit = make(map[uint64]compiledNode)
++	}
++	c.b.resistanceByHit[hit.HitID] = n
+ 	c.b.resistanceInputs = append(c.b.resistanceInputs, ResistanceInput{n.id, hit.HitID, hit.TargetKey, hit.Element, decimal(hit.Resistance), decimal(hit.ResMod)})
+ 	return n
+ }
+diff --git a/pkg/gttcompact/effect_input_test.go b/pkg/gttcompact/effect_input_test.go
+index a6f600f..feedc87 100644
+--- a/pkg/gttcompact/effect_input_test.go
++++ b/pkg/gttcompact/effect_input_test.go
+@@ -40,3 +40,14 @@ func TestResistanceInputsDoNotExposeFailedFormulaNodes(t *testing.T) {
+ 		t.Fatal(got)
+ 	}
+ }
++
++func TestResistanceInputReusesOnePortPerExecutedHit(t *testing.T) {
++	b := &nodeBuilder{}
++	c := &directCompiler{b: b}
++	hit := info.GTTTraceHit{HitID: 7, TargetKey: 3, Element: "physical", Resistance: 0.1, ResMod: 0.9}
++	first := c.resistanceInput(hit)
++	second := c.resistanceInput(hit)
++	if first.id != second.id || len(b.resistanceInputs) != 1 {
++		t.Fatalf("duplicate hit created multiple resistance ports: first=%d second=%d ports=%d", first.id, second.id, len(b.resistanceInputs))
++	}
++}

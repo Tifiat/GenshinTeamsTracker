@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "name": "flins_jahoda_exact_user_input_lineage5_recheck_v1",
+  "db_path": "data/artifacts.db",
+  "runs": [
+    {
+      "id": "flins_jahoda_all_sets_lineage5_exact_input",
+      "mode": "all_sets",
+      "characters": ["Ineffa", "Columbina", "Flins", "Jahoda"],
+      "rotation_file": "data/gcsim/optimizer-go-runs/all_sets-20260917-030320-7048d16f/rotation.from-ui.txt",
+      "infinite_energy": true,
+      "database_variant": "live_read_only"
+    }
+  ]
+}

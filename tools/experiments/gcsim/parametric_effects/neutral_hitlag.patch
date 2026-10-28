@@ -1,0 +1,123 @@
+diff --git a/pkg/core/player/character/gtt_parametric_query_test.go b/pkg/core/player/character/gtt_parametric_query_test.go
+--- a/pkg/core/player/character/gtt_parametric_query_test.go
++++ b/pkg/core/player/character/gtt_parametric_query_test.go
+@@ -65,3 +65,14 @@
+ 	for _, p := range row.NumericPayload { if p.Key == "stat_query_frame" { queryFrame = int(p.Value) } }
+ 	if value != 101 || calls != 1 || queryFrame != 17 || row.Frame != 18 || row.NeutralStatKeys == nil || len(*row.NeutralStatKeys) != 1 || (*row.NeutralStatKeys)[0] != "em" { t.Fatal(value, calls, queryFrame, row) }
+ }
++
++func TestNeutralHitlagObservedWithoutAnyModifiers(t *testing.T) {
++	frame := 3
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	r.BindFrame(&frame)
++	c := &CharWrapper{index: 2, f: &frame, gttTrace: r}
++	c.ApplyHitlag(0.25, 8)
++	ledger := r.NeutralHitlag()
++	if !ledger.Complete || len(ledger.Events) != 1 || ledger.Events[0].Owner != 2 || ledger.Events[0].Target != -1 || ledger.Events[0].Extension != 6 || ledger.Events[0].Order == 0 { t.Fatal(ledger) }
++}
+diff --git a/pkg/gttcompact/neutral_inputs.go b/pkg/gttcompact/neutral_inputs.go
+--- a/pkg/gttcompact/neutral_inputs.go
++++ b/pkg/gttcompact/neutral_inputs.go
+@@ -56,6 +56,7 @@
+ 	Input *gtttrace.EventValue `json:"input,omitempty"`
+ }
+ type NeutralInputs struct {
++	Hitlag *gtttrace.NeutralHitlagLedger `json:"hitlag,omitempty"`
+ 	Effects []NeutralEffectPoint `json:"effects"`
+ 	World *gtttrace.NeutralWorldLedger `json:"world,omitempty"`
+ 	SchemaVersion int `json:"schema_version"`
+@@ -107,7 +108,7 @@
+ }
+ func (b *nodeBuilder) collectNeutralInputs(buffer optstats.GTTTraceEquationBuffer, channels []IRChannel) *NeutralInputs {
+ 	if !b.neutral { return nil }
++	out := &NeutralInputs{Hitlag: &buffer.NeutralHitlag, World: &buffer.NeutralWorld, SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
+-	out := &NeutralInputs{World: &buffer.NeutralWorld, SchemaVersion: 1, Context: buffer.NeutralContext, Ledger: buffer.CombatEvents,
+ 		States: []NeutralStatePoint{}, Stats: []NeutralStatInput{}, Hits: []NeutralHitPoint{}, Effects: []NeutralEffectPoint{},
+ 		Uncertainty: []string{"event_state_schedule_observed_not_counterfactual", "unresolved_query_modes_require_effect_coverage"}}
+ 	live := make([]bool, len(b.nodes)+1)
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -119,6 +119,8 @@
+ // Runtime belongs to exactly one core. Simulations may run concurrently, but
+ // a single core executes its event/task callbacks serially.
+ type Runtime struct {
++	neutralHitlag []NeutralHitlagEvent
++	neutralHitlagTruncated bool
+ 	enabled                           bool
+ 	frame                             *int
+ 	stack                             []ExecutionFrame
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -41,6 +41,7 @@
+ }
+ 
+ type GTTTraceEquationBuffer struct {
++	NeutralHitlag gtttrace.NeutralHitlagLedger `json:"-"`
+ 	NeutralWorld gtttrace.NeutralWorldLedger `json:"-"`
+ 	DurationFrames      int                           `json:"-"`
+ 	Seed                int64                         `json:"-"`
+@@ -286,6 +287,7 @@
+ 	b.StateEvents = core.GTTTrace.StateEvents()
+ 	b.CombatEvents = core.GTTTrace.CombatEvents()
+ 	b.NeutralWorld = core.GTTTrace.NeutralWorld()
++	b.NeutralHitlag = core.GTTTrace.NeutralHitlag()
+ 	seen := map[string]bool{
+ 		"gadget_wave_state_lineage_not_instrumented": true,
+ 		"provider_transition_timeline_incomplete":    true,
+diff --git a/pkg/enemy/hitlag.go b/pkg/enemy/hitlag.go
+--- a/pkg/enemy/hitlag.go
++++ b/pkg/enemy/hitlag.go
+@@ -24,6 +24,7 @@
+ 			SetEnded(e.Core.F + int(math.Ceil(dur)))
+ 	}
+ 
++	e.Core.GTTTrace.RecordNeutralHitlag(-1, int(e.Key()), ext)
+ 	// check resist mods
+ 	for i, v := range e.mods {
+ 		if v.AffectedByHitlag() && v.Expiry() != -1 && v.Expiry() > e.Core.F {
+diff --git a/pkg/core/player/character/hitlag.go b/pkg/core/player/character/hitlag.go
+--- a/pkg/core/player/character/hitlag.go
++++ b/pkg/core/player/character/hitlag.go
+@@ -68,6 +68,7 @@
+ 			SetEnded(*c.f + int(math.Ceil(dur)))
+ 	}
+ 
++	c.gttTrace.RecordNeutralHitlag(c.Index(), -1, ext)
+ 	for i, v := range c.mods {
+ 		if v.AffectedByHitlag() && v.Expiry() != -1 && v.Expiry() > *c.f {
+ 			mod := c.mods[i]
+diff --git a/pkg/gtttrace/neutral_hitlag.go b/pkg/gtttrace/neutral_hitlag.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/neutral_hitlag.go
+@@ -0,0 +1,27 @@
++package gtttrace
++
++// Observe the extension already computed by each central ApplyHitlag, even
++// when no modifier exists. Never calculate hitlag again or change gameplay.
++type NeutralHitlagEvent struct {
++	Order uint64 `json:"order"`
++	Frame int `json:"frame"`
++	Owner int `json:"owner"`
++	Target int `json:"target"`
++	Extension int `json:"extension"`
++}
++type NeutralHitlagLedger struct {
++	Complete bool `json:"complete"`
++	Events []NeutralHitlagEvent `json:"events"`
++}
++func (r *Runtime) RecordNeutralHitlag(owner, target, extension int) {
++	if !r.Enabled() { return }
++	if len(r.neutralHitlag) >= maxCombatEventRows { r.neutralHitlagTruncated = true; return }
++	r.neutralHitlag = append(r.neutralHitlag, NeutralHitlagEvent{r.NextNeutralObservationOrder(), r.Frame(), owner, target, extension})
++}
++func (r *Runtime) NeutralHitlag() NeutralHitlagLedger {
++	out := NeutralHitlagLedger{Events: []NeutralHitlagEvent{}}
++	if !r.Enabled() { return out }
++	out.Complete = !r.neutralHitlagTruncated
++	out.Events = append(out.Events, r.neutralHitlag...)
++	return out
++}

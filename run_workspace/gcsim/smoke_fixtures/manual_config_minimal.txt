@@ -1,0 +1,22 @@
+# Backend/dev smoke fixture only.
+# This is a tiny hand-written GCSIM config, similar to a website config.
+# It is not account-generated, not a DPS benchmark, and not Abyss enemy truth.
+# The placeholder target keeps base GCSIM syntax valid; when the smoke case runs,
+# the generated -gtt-wave-scenario payload is passed separately and controls the
+# scenario targets for the patched GTT-GCSIM artifact.
+options iteration=1 duration=10 workers=1;
+target lvl=100 hp=1000 resist=0.1 radius=2 pos=0,2.4;
+energy every interval=480,720 amount=1;
+active bennett;
+
+bennett char lvl=90/90 cons=6 talent=9,9,9;
+bennett add weapon="favoniussword" refine=5 lvl=90/90;
+bennett add set="noblesseoblige" count=4;
+bennett add stats hp=4780 atk=311 atk%=0.466 pyro%=0.466 cr=0.311 cd=0.622 er=0.518;
+
+for let i=0; i<1; i=i+1 {
+  kill_target(1);
+  wait(60);
+  kill_target(2);
+  wait(60);
+}

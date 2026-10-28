@@ -1,0 +1,7 @@
+# Preserve literal engine/research patch payloads across Windows checkouts.
+# Leading diff-context spaces are data, not source indentation errors.
+*.patch text eol=lf whitespace=-blank-at-eol,-space-before-tab
+# Stage15 receipts bind exact raw public export bytes, including CSV newlines.
+docs/optimizer-evidence/2026-10-11-theory-real-output/** -text
+# Stage16 compact controls and pins also retain their exact measured bytes.
+docs/optimizer-evidence/2026-10-11-theory-goblet-controls/** -text

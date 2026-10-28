@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+import asyncio
+import time
+from typing import Any, Awaitable, Callable
+
+
+DETAIL_URL = "https://sg-public-api.hoyolab.com/event/game_record/genshin/api/character/detail"
+ROLES_URL = "https://api-account-os.hoyolab.com/binding/api/getUserGameRolesByCookie?game_biz=hk4e_global"
+IGNORED_CHARACTER_IDS = {
+    10000118,
+    10000117,
+}
+
+
+def real_character_ids(characters: list[dict[str, Any]] | list[int]) -> list[int]:
+    ids: list[int] = []
+
+    for character in characters:
+        if isinstance(character, int):
+            character_id = character
+        elif isinstance(character, dict):
+            character_id = character.get("id")
+        else:
+            continue
+
+        if not isinstance(character_id, int):
+            continue
+        if character_id in IGNORED_CHARACTER_IDS:
+            continue
+        ids.append(character_id)
+
+    return ids
+
+
+def pick_genshin_role(payload: dict[str, Any]) -> tuple[str, str]:
+    data = payload.get("data") or {}
+    roles = data.get("list") or []
+
+    for role in roles:
+        if not isinstance(role, dict):
+            continue
+        if role.get("game_biz") != "hk4e_global":
+            continue
+
+        role_id = role.get("game_uid") or role.get("game_role_id") or role.get("role_id")
+        server = role.get("region") or role.get("server")
+        if role_id and server:
+            return str(role_id), str(server)
+
+    raise RuntimeError("Could not detect Genshin role_id/server from HoYoLAB roles response.")
+
+
+async def browser_fetch_json(
+    page,
+    url: str,
+    *,
+    method: str = "GET",
+    body: dict[str, Any] | None = None,
+    language: str | None = None,
+    timeout_sec: float = 60,
+) -> dict[str, Any]:
+    return await asyncio.wait_for(page.evaluate(
+        """
+        async ({ url, method, body, language }) => {
+            function readCookie(name) {
+                const prefix = name + "=";
+                const parts = document.cookie.split(";");
+
+                for (const part of parts) {
+                    const trimmed = part.trim();
+                    if (trimmed.startsWith(prefix)) {
+                        return decodeURIComponent(trimmed.slice(prefix.length));
+                    }
+                }
+
+                return "";
+            }
+
+            function normalizeLanguage(value) {
+                if (!value) {
+                    return "";
+                }
+
+                return String(value)
+                    .trim()
+                    .replace("_", "-")
+                    .toLowerCase();
+            }
+
+            function acceptLanguageHeader(lang) {
+                if (!lang) {
+                    return "en-US,en;q=0.9";
+                }
+
+                const parts = lang.split("-");
+                const primary = parts[0] || "en";
+                const region = parts[1] || primary;
+                const browserLang = primary + "-" + region.toUpperCase();
+
+                return `${browserLang},${primary};q=0.9,en;q=0.8`;
+            }
+
+            const requestedLanguage = normalizeLanguage(language);
+            const detectedLanguage =
+                requestedLanguage ||
+                normalizeLanguage(readCookie("mi18nLang")) ||
+                normalizeLanguage(localStorage.getItem("mi18nLang")) ||
+                normalizeLanguage(document.documentElement.lang) ||
+                normalizeLanguage(navigator.language) ||
+                "en-us";
+
+            const options = {
+                method,
+                signal: AbortSignal.timeout(60_000),
+                credentials: "include",
+                headers: {
+                    "content-type": "application/json",
+                    "accept": "application/json, text/plain, */*",
+                    "x-rpc-language": detectedLanguage,
+                    "accept-language": acceptLanguageHeader(detectedLanguage)
+                }
+            };
+
+            if (body !== null) {
+                options.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(url, options);
+            const text = await response.text();
+
+            let json = null;
+            try {
+                json = JSON.parse(text);
+            } catch (e) {}
+
+            return {
+                ok: response.ok,
+                status: response.status,
+                statusText: response.statusText,
+                url: response.url,
+                detectedLanguage,
+                requestedLanguage,
+                json,
+                textPreview: json === null ? text.slice(0, 1000) : null
+            };
+        }
+        """,
+        {
+            "url": url,
+            "method": method,
+            "body": body,
+            "language": language,
+        },
+    ), timeout=timeout_sec)
+
+
+async def fetch_character_details_batch(
+    page,
+    character_ids: list[int] | list[dict[str, Any]],
+    *,
+    language: str | None = None,
+    role_id: str | None = None,
+    server: str | None = None,
+    json_fetcher: Callable[..., Awaitable[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    fetch_json = json_fetcher or browser_fetch_json
+    ids = real_character_ids(character_ids)
+    if not ids:
+        raise RuntimeError("No real character ids found for HoYoLAB character/detail request.")
+
+    if not (role_id and server):
+        roles_result = await fetch_json(page, ROLES_URL, language=language)
+        if not roles_result.get("ok") or (roles_result.get("json") or {}).get("retcode") != 0:
+            raise RuntimeError("HoYoLAB roles request failed; check the account session.")
+        role_id, server = pick_genshin_role(roles_result.get("json") or {})
+
+    result = await fetch_json(
+        page,
+        DETAIL_URL,
+        method="POST",
+        language=language,
+        body={
+            "server": server,
+            "role_id": role_id,
+            "character_ids": ids,
+        },
+    )
+
+    payload = result.get("json") or {}
+    if not result.get("ok") or payload.get("retcode") != 0:
+        raise RuntimeError(
+            f"HoYoLAB character/detail failed: HTTP {result.get('status')}, "
+            f"retcode={payload.get('retcode')}"
+        )
+    data = payload.get("data") or {}
+    items = data.get("list")
+    if not isinstance(items, list) or not items:
+        raise RuntimeError("HoYoLAB character/detail has no non-empty data.list array")
+    returned_ids = {(item.get("base") or {}).get("id") for item in items if isinstance(item, dict)}
+    if not set(ids).issubset(returned_ids):
+        raise RuntimeError("HoYoLAB character/detail returned an incomplete character batch")
+
+    result["source"] = "character/detail"
+    result["capturedAt"] = int(time.time() * 1000)
+    result["charactersRequested"] = len(ids)
+    result["charactersReturned"] = len(items) if isinstance(items, list) else None
+    return result

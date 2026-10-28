@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "kind": "gcsim_key_mapping_seed_v1",
+  "source_kind": "curated_dev_seed",
+  "source_name": "run_workspace/gcsim/mapping_seeds/gcsim_key_mapping_seed_v1.json",
+  "coverage": "tiny_dev_seed_not_production_complete",
+  "notes": [
+    "This seed is intentionally tiny and backend/dev-only.",
+    "Records are explicit GCSIM keys already pinned by current GCSIM readiness/key-mapping tests.",
+    "Do not infer additional keys from localized names or normalized name slugs.",
+    "Traveler variants are intentionally not included."
+  ],
+  "records": [
+    {
+      "entity_type": "character",
+      "project_id": "10000021",
+      "canonical_name": "Mona",
+      "gcsim_key": "mona",
+      "source_name": "tests/test_gcsim_key_mapping.py"
+    },
+    {
+      "entity_type": "weapon",
+      "project_id": "14405",
+      "canonical_name": "Favonius Codex",
+      "gcsim_key": "favoniuscodex",
+      "source_name": "tests/test_gcsim_key_mapping.py"
+    },
+    {
+      "entity_type": "artifact_set",
+      "project_id": "NoblesseOblige",
+      "canonical_name": "Noblesse Oblige",
+      "gcsim_key": "noblesseoblige",
+      "source_name": "data/static/artifact_set_catalog.json"
+    }
+  ]
+}

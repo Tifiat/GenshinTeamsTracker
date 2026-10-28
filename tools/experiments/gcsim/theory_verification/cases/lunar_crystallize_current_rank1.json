@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "lunar_crystallize_current_rank1",
+  "team": "lunar_crystallize",
+  "infinite_energy": true,
+  "manifest_sha256": "d00ed4463c535e136590548aad8e2d20f35a7efe8ca8bcb22a49b19c13ff1c86",
+  "rotation_sha256": "b2ed3353cbc140810481fc19f7d3284423704e7c8be9e56063531faf0bf10658",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "seeds": [742031889, 742031890],
+  "ordinary_iterations": 128,
+  "candidate_source": {
+    "path": "docs/optimizer-evidence/2026-10-03-theory-current-matrix/lunar_crystallize_theory.json",
+    "sha256": "7465f9d5bc38cb8181a6857398dabe50b7eba46edc113c1122322d739fbb2484",
+    "rank": 1
+  }
+}

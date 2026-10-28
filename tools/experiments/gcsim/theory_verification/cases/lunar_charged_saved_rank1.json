@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "lunar_charged_saved_rank1",
+  "team": "lunar_charged",
+  "infinite_energy": true,
+  "manifest_sha256": "d00ed4463c535e136590548aad8e2d20f35a7efe8ca8bcb22a49b19c13ff1c86",
+  "rotation_sha256": "5b564158973910fcfd5f317db6a4c3869443c444302cb560bbae08f88596f7a3",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "seeds": [742031889, 742031890],
+  "ordinary_iterations": 128,
+  "candidate_source": {
+    "path": "tests/fixtures/gcsim_optimizer_go_v1/theory_lunar_audit_20261003_v1.json",
+    "sha256": "8b08cae1b86e1b94b2385fe080655c0e3a162a931bdec01d2bfdddb4c6eae420",
+    "rank": 1
+  }
+}

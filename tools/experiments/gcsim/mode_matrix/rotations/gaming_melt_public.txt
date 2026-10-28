@@ -1,0 +1,22 @@
+options swap_delay=12 iteration=1000;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+energy every interval=480,720 amount=1;
+
+active gaming;
+for let i=0; i<3; i=i+1 {
+  if i {
+    bennett skill;
+    gaming skill, low_plunge;
+  }
+  diona skill[hold=1], burst;
+  bennett skill, burst;
+  citlali skill, burst;
+  gaming burst;
+  wait(7);
+  gaming attack;
+  for let p=0; p<6; p=p+1 {
+    gaming skill;
+    wait(17);
+    gaming low_plunge;
+  }
+}

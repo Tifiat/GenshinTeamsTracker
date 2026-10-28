@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "source": "synthetic_dev_fixture",
+  "source_kind": "backend_dev_fixture",
+  "account_truth": false,
+  "ui_state": false,
+  "production_mapping": false,
+  "required_characters": [
+    "Chasca",
+    "Ororon",
+    "Furina",
+    "Bennett"
+  ],
+  "source_notes": {
+    "purpose": "Prepared backend fixture for full-config assembly smoke only.",
+    "not_account_truth": true,
+    "not_ui_state": true,
+    "not_production_mapping": true,
+    "character_weapon_artifact_keys": "Checked against local prepared GCSIM v2.42.2 shortcut registries.",
+    "artifact_stats": "Synthetic artifact-snapshot-only totals for parser/readiness smoke."
+  },
+  "characters": [
+    {
+      "project_character_id": "synthetic:chasca",
+      "display_name": "Chasca",
+      "level": 90,
+      "promote_level": 6,
+      "constellation": 0,
+      "mapping": {
+        "gcsim_key": "chasca",
+        "source": "synthetic_dev_fixture_registry_checked"
+      },
+      "talents": {
+        "normal": 9,
+        "skill": 9,
+        "burst": 9,
+        "source_order_confirmed": true
+      },
+      "weapon": {
+        "project_weapon_id": "synthetic:chainbreaker",
+        "display_name": "Chain Breaker",
+        "level": 90,
+        "promote_level": 6,
+        "refinement": 1,
+        "mapping": {
+          "gcsim_key": "chainbreaker",
+          "source": "synthetic_dev_fixture_registry_checked"
+        }
+      },
+      "artifact_build": {
+        "set_counts": [
+          {
+            "set_uid": "synthetic:obsidiancodex",
+            "display_name": "Obsidian Codex",
+            "count": 4,
+            "mapping": {
+              "gcsim_key": "obsidiancodex",
+              "source": "synthetic_dev_fixture_registry_checked"
+            }
+          }
+        ],
+        "stat_totals": [
+          {
+            "property_type": 2,
+            "raw_value": 4780
+          },
+          {
+            "property_type": 5,
+            "raw_value": 311
+          },
+          {
+            "property_type": 6,
+            "raw_value": 46.6
+          },
+          {
+            "property_type": 20,
+            "raw_value": 31.1
+          },
+          {
+            "property_type": 22,
+            "raw_value": 62.2
+          },
+          {
+            "property_type": 44,
+            "raw_value": 46.6
+          }
+        ]
+      }
+    },
+    {
+      "project_character_id": "synthetic:ororon",
+      "display_name": "Ororon",
+      "level": 90,
+      "promote_level": 6,
+      "constellation": 0,
+      "mapping": {
+        "gcsim_key": "ororon",
+        "source": "synthetic_dev_fixture_registry_checked"
+      },
+      "talents": {
+        "normal": 9,
+        "skill": 9,
+        "burst": 9,
+        "source_order_confirmed": true
+      },
+      "weapon": {
+        "project_weapon_id": "synthetic:thestringless",
+        "display_name": "The Stringless",
+        "level": 90,
+        "promote_level": 6,
+        "refinement": 1,
+        "mapping": {
+          "gcsim_key": "thestringless",
+          "source": "synthetic_dev_fixture_registry_checked"
+        }
+      },
+      "artifact_build": {
+        "set_counts": [
+          {
+            "set_uid": "synthetic:scrolloftheheroofcindercity",
+            "display_name": "Scroll of the Hero of Cinder City",
+            "count": 4,
+            "mapping": {
+              "gcsim_key": "scrolloftheheroofcindercity",
+              "source": "synthetic_dev_fixture_registry_checked"
+            }
+          }
+        ],
+        "stat_totals": [
+          {
+            "property_type": 2,
+            "raw_value": 4780
+          },
+          {
+            "property_type": 5,
+            "raw_value": 311
+          },
+          {
+            "property_type": 20,
+            "raw_value": 31.1
+          },
+          {
+            "property_type": 22,
+            "raw_value": 62.2
+          },
+          {
+            "property_type": 23,
+            "raw_value": 51.8
+          },
+          {
+            "property_type": 41,
+            "raw_value": 46.6
+          }
+        ]
+      }
+    },
+    {
+      "project_character_id": "synthetic:furina",
+      "display_name": "Furina",
+      "level": 90,
+      "promote_level": 6,
+      "constellation": 0,
+      "mapping": {
+        "gcsim_key": "furina",
+        "source": "synthetic_dev_fixture_registry_checked"
+      },
+      "talents": {
+        "normal": 9,
+        "skill": 9,
+        "burst": 9,
+        "source_order_confirmed": true
+      },
+      "weapon": {
+        "project_weapon_id": "synthetic:fleuvecendreferryman",
+        "display_name": "Fleuve Cendre Ferryman",
+        "level": 90,
+        "promote_level": 6,
+        "refinement": 1,
+        "mapping": {
+          "gcsim_key": "fleuvecendreferryman",
+          "source": "synthetic_dev_fixture_registry_checked"
+        }
+      },
+      "artifact_build": {
+        "set_counts": [
+          {
+            "set_uid": "synthetic:goldentroupe",
+            "display_name": "Golden Troupe",
+            "count": 4,
+            "mapping": {
+              "gcsim_key": "goldentroupe",
+              "source": "synthetic_dev_fixture_registry_checked"
+            }
+          }
+        ],
+        "stat_totals": [
+          {
+            "property_type": 2,
+            "raw_value": 4780
+          },
+          {
+            "property_type": 3,
+            "raw_value": 46.6
+          },
+          {
+            "property_type": 20,
+            "raw_value": 31.1
+          },
+          {
+            "property_type": 22,
+            "raw_value": 62.2
+          },
+          {
+            "property_type": 23,
+            "raw_value": 20
+          },
+          {
+            "property_type": 42,
+            "raw_value": 46.6
+          }
+        ]
+      }
+    },
+    {
+      "project_character_id": "synthetic:bennett",
+      "display_name": "Bennett",
+      "level": 90,
+      "promote_level": 6,
+      "constellation": 6,
+      "mapping": {
+        "gcsim_key": "bennett",
+        "source": "synthetic_dev_fixture_registry_checked"
+      },
+      "talents": {
+        "normal": 9,
+        "skill": 9,
+        "burst": 9,
+        "source_order_confirmed": true
+      },
+      "weapon": {
+        "project_weapon_id": "synthetic:sapwoodblade",
+        "display_name": "Sapwood Blade",
+        "level": 90,
+        "promote_level": 6,
+        "refinement": 1,
+        "mapping": {
+          "gcsim_key": "sapwoodblade",
+          "source": "synthetic_dev_fixture_registry_checked"
+        }
+      },
+      "artifact_build": {
+        "set_counts": [
+          {
+            "set_uid": "synthetic:noblesseoblige",
+            "display_name": "Noblesse Oblige",
+            "count": 4,
+            "mapping": {
+              "gcsim_key": "noblesseoblige",
+              "source": "synthetic_dev_fixture_registry_checked"
+            }
+          }
+        ],
+        "stat_totals": [
+          {
+            "property_type": 2,
+            "raw_value": 4780
+          },
+          {
+            "property_type": 5,
+            "raw_value": 311
+          },
+          {
+            "property_type": 20,
+            "raw_value": 31.1
+          },
+          {
+            "property_type": 22,
+            "raw_value": 62.2
+          },
+          {
+            "property_type": 23,
+            "raw_value": 51.8
+          },
+          {
+            "property_type": 40,
+            "raw_value": 46.6
+          }
+        ]
+      }
+    }
+  ]
+}

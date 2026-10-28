@@ -1,0 +1,26 @@
+options swap_delay=12 iteration=100;
+energy every interval=480,720 amount=1;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+
+active xilonen;
+for let i=0; i<4; i=i+1 {
+  xilonen burst;
+  furina skill, burst;
+  xilonen skill, attack:2;
+
+  columbina skill;
+  if .columbina.burst.ready && .columbina.energy >= .columbina.energymax {
+    columbina burst;
+  }
+
+  if .chiori.burst.ready && .chiori.energy >= .chiori.energymax {
+    chiori burst;
+  }
+  chiori skill, skill;
+
+  columbina attack:3, dash;
+  columbina attack:3, dash;
+  columbina attack:3, dash;
+  xilonen skill, attack:2;
+  columbina attack:3, dash;
+}

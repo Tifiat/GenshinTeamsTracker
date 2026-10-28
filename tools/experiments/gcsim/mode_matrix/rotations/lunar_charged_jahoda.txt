@@ -1,0 +1,29 @@
+options swap_delay=12 iteration=100;
+energy every interval=480,720 amount=1;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+
+active ineffa;
+for let i=0; i<4; i=i+1 {
+  ineffa skill;
+  if !is_even(i) {
+    ineffa burst;
+  } else {
+    ineffa attack;
+  }
+
+  columbina skill;
+  if is_even(i) {
+    columbina burst;
+  } else {
+    columbina attack;
+  }
+
+  # Jahoda stays in Shadow Pursuit until the flask resolves; no burst.
+  jahoda attack, skill;
+
+  flins skill, attack,
+        skill, attack, burst,
+        attack:4, dash, attack:4, dash, attack:2,
+        skill, attack, burst,
+        attack:4;
+}

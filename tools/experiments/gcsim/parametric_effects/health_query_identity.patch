@@ -1,0 +1,353 @@
+diff --git a/pkg/gttsourcegen/health_input.go b/pkg/gttsourcegen/health_input.go
+deleted file mode 100644
+--- a/pkg/gttsourcegen/health_input.go
++++ /dev/null
+@@ -1,89 +0,0 @@
+-package gttsourcegen
+-
+-import (
+-	"fmt"
+-	"go/ast"
+-	"go/token"
+-	"strconv"
+-)
+-
+-// Capture the original typed receiver at the original evaluation position.
+-// The narrow local case requires one definition and one use in the same block;
+-// reassignments, aliases, escaping references and shared consumers stay on the
+-// existing explicitly frozen path. Loop iterations get distinct local receipts.
+-func typedHealthInputEdits(fs *token.FileSet, tf *token.File, data []byte, file *ast.File, fn *ast.FuncDecl, lit *ast.CompositeLit, entry SourceEntry, rt string) ([]textEdit, bool) {
+-	qual := vectorInfoAlias(file)
+-	if qual == "" || expressionQualifier(lit.Type) != qual {
+-		return nil, false
+-	}
+-	field := compositeKeyValue(lit, entry.healthInput.ValueField)
+-	if field == nil {
+-		return nil, false
+-	}
+-	stmt := containingStatement(fn.Body, lit)
+-	if stmt == nil {
+-		return nil, false
+-	}
+-	original := field.Value
+-	at := stmt
+-	if id, ok := original.(*ast.Ident); ok {
+-		var block *ast.BlockStmt
+-		ast.Inspect(fn.Body, func(n ast.Node) bool {
+-			b, ok := n.(*ast.BlockStmt)
+-			if ok && b.Pos() < stmt.Pos() && b.End() > stmt.End() {
+-				if block == nil || b.End()-b.Pos() < block.End()-block.Pos() {
+-					block = b
+-				}
+-			}
+-			return true
+-		})
+-		if block == nil {
+-			return nil, false
+-		}
+-		uses := 0
+-		ast.Inspect(block, func(n ast.Node) bool {
+-			if v, ok := n.(*ast.Ident); ok && v.Name == id.Name {
+-				uses++
+-			}
+-			return true
+-		})
+-		if uses != 2 {
+-			return nil, false
+-		}
+-		var definition *ast.AssignStmt
+-		for _, s := range block.List {
+-			a, ok := s.(*ast.AssignStmt)
+-			if !ok || a.Tok != token.DEFINE || len(a.Lhs) != 1 || len(a.Rhs) != 1 || a.End() >= stmt.Pos() {
+-				continue
+-			}
+-			name, ok := a.Lhs[0].(*ast.Ident)
+-			if ok && name.Name == id.Name {
+-				definition = a
+-			}
+-		}
+-		if definition == nil {
+-			return nil, false
+-		}
+-		original = definition.Rhs[0]
+-		at = definition
+-	}
+-	// Stat APIs are typed again at runtime. Arbitrary arithmetic leaves remain
+-	// explicitly frozen, never guessed from an equal value or a variable name.
+-	if !hasFieldStatInput(original, nil, fs) {
+-		return nil, false
+-	}
+-	prefix := fmt.Sprintf("gttHealthInput_%d", field.Pos())
+-	expr := fieldExpression{fset: fs, rt: rt, source: strconv.Quote(entry.SourceID), prefix: prefix, info: qual, constants: sourceNamedConstants(file)}
+-	value, err := expr.emit(original, 0)
+-	if err != nil {
+-		return nil, false
+-	}
+-	event := prefix + "_event"
+-	capture := fmt.Sprintf("func()float64{if !%s.Enabled(){return %s};%s\n%s=%s.RecordNumericEval(%s,\"identity\",[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(\"health_input_branch_schedule_frozen\"));return float64(%s)}()", rt, rootText(fs, original), expr.code.String(), event, rt, strconv.Quote(entry.SourceID), traceImportAlias, value.ref, value.value, traceImportAlias, value.value)
+-	metadata := healthMetadataInsertion(data, tf, lit, entry, "nil") + "GTTTraceInputEventID:" + event + ","
+-	return []textEdit{
+-		{start: tf.Offset(at.Pos()), end: tf.Offset(at.Pos()), replacement: "var " + event + " string;\n" + indentationBefore(data, tf.Offset(at.Pos()))},
+-		{start: tf.Offset(original.Pos()), end: tf.Offset(original.End()), replacement: capture},
+-		{start: tf.Offset(lit.Rbrace), end: tf.Offset(lit.Rbrace), replacement: metadata},
+-	}, true
+-}
+diff --git a/pkg/gttsourcegen/health_field_capture.go b/pkg/gttsourcegen/health_field_capture.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_field_capture.go
+@@ -0,0 +1,1 @@
++package gttsourcegen
++
++import (
++ "fmt"
++ "go/ast"
++ "go/token"
++ "sort"
++ "strconv"
++)
++
++// Follow a unique scalar definition through lexical ancestor blocks. The
++// receipt is created where gameplay evaluates the expression, including before
++// a returned closure, not where that closure eventually consumes the value.
++// Name shadowing, writes, aliases and additional consumers fail conservatively.
++func healthFieldOrigin(fn *ast.FuncDecl, stmt ast.Stmt, value ast.Expr) (ast.Expr, ast.Stmt, bool) {
++ id, local := value.(*ast.Ident)
++ if !local { return value, stmt, true }
++ blocks := []*ast.BlockStmt{}
++ ast.Inspect(fn.Body,func(n ast.Node)bool{
++  if b,ok:=n.(*ast.BlockStmt);ok && b.Pos()<stmt.Pos() && b.End()>stmt.End(){blocks=append(blocks,b)}
++  return true
++ })
++ sort.Slice(blocks,func(i,j int)bool{return blocks[i].End()-blocks[i].Pos()<blocks[j].End()-blocks[j].Pos()})
++ for _,block:=range blocks {
++  for _,s:=range block.List {
++   a,ok:=s.(*ast.AssignStmt)
++   if !ok || a.End()>=stmt.Pos(){continue}
++   for _,lhs:=range a.Lhs {
++    name,ok:=lhs.(*ast.Ident);if !ok || name.Name!=id.Name{continue}
++    if a.Tok!=token.DEFINE || len(a.Lhs)!=1 || len(a.Rhs)!=1{return value,stmt,false}
++    uses:=0
++    ast.Inspect(block,func(n ast.Node)bool{if v,ok:=n.(*ast.Ident);ok&&v.Name==id.Name{uses++};return true})
++    if uses!=2{return value,stmt,false}
++    return a.Rhs[0],a,true
++   }
++  }
++ }
++ return value,stmt,false
++}
++
++// Evaluate a field exactly once and bind the actual NumericRef. A copied stat
++// array is accepted only with explicit producer provenance (healthStatsRefs).
++func healthFieldCapture(fs *token.FileSet,tf *token.File,data []byte,file *ast.File,fn *ast.FuncDecl,lit *ast.CompositeLit,field *ast.KeyValueExpr,entry SourceEntry,rt string,requireTyped bool)([]textEdit,string,bool){
++ stmt:=containingStatement(fn.Body,lit);if stmt==nil{return nil,"",false}
++ original,at,proven:=healthFieldOrigin(fn,stmt,field.Value)
++ if !proven && requireTyped{return nil,"",false}
++ if !proven {original,at=field.Value,stmt}
++ refs,originEdits:=healthStatsRefs(fs,tf,file,fn,original,rt)
++ if requireTyped && !hasFieldStatInput(original,refs,fs){return nil,"",false}
++ prefix:=fmt.Sprintf("gttHealthInput_%d",field.Pos())
++ expr:=fieldExpression{fset:fs,rt:rt,source:strconv.Quote(entry.SourceID),prefix:prefix,info:vectorInfoAlias(file),refs:refs,constants:sourceNamedConstants(file)}
++ value,err:=expr.emit(original,0);if err!=nil{return nil,"",false}
++ event:=prefix+"_event"
++ capture:=fmt.Sprintf("func()float64{if !%s.Enabled(){return %s};%s\n%s=%s.RecordNumericEval(%s,\"identity\",[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(\"health_input_branch_schedule_frozen\"));return float64(%s)}()",rt,rootText(fs,original),expr.code.String(),event,rt,strconv.Quote(entry.SourceID),traceImportAlias,value.ref,value.value,traceImportAlias,value.value)
++ edits:=append(originEdits,
++  textEdit{start:tf.Offset(at.Pos()),end:tf.Offset(at.Pos()),replacement:"var "+event+" string;\n"+indentationBefore(data,tf.Offset(at.Pos()))},
++  textEdit{start:tf.Offset(original.Pos()),end:tf.Offset(original.End()),replacement:capture})
++ return edits,event,true
++}
++
++func healthBonusCapture(fs *token.FileSet,tf *token.File,data []byte,file *ast.File,fn *ast.FuncDecl,lit *ast.CompositeLit,entry SourceEntry,rt string)([]textEdit,string){
++ if selectorFinalName(lit.Type)!="HealInfo"{return nil,""}
++ if field:=compositeKeyValue(lit,"Bonus");field!=nil {
++  edits,event,ok:=healthFieldCapture(fs,tf,data,file,fn,lit,field,entry,rt,false)
++  if ok{return edits,"GTTTraceBonusEventID:"+event+","}
++  return nil,""
++ }
++ // Omitted bonus is a literal zero, not the caller's Heal stat at heal time.
++ return nil,fmt.Sprintf("GTTTraceBonusEventID:%s.RecordNumericEval(%s,\"identity\",[]%s.NumericRef{%s.LiteralRef(0)},0,%s.IncompleteEvidence(\"health_input_branch_schedule_frozen\")),",rt,strconv.Quote(entry.SourceID),traceImportAlias,traceImportAlias,traceImportAlias)
++}
++
++func typedHealthInputEdits(fs *token.FileSet,tf *token.File,data []byte,file *ast.File,fn *ast.FuncDecl,lit *ast.CompositeLit,entry SourceEntry,rt string)([]textEdit,bool){
++ qual:=vectorInfoAlias(file)
++ if qual=="" || expressionQualifier(lit.Type)!=qual{return nil,false}
++ field:=compositeKeyValue(lit,entry.healthInput.ValueField);if field==nil{return nil,false}
++ edits,event,ok:=healthFieldCapture(fs,tf,data,file,fn,lit,field,entry,rt,true)
++ if !ok{return nil,false}
++ bonusEdits,bonusMetadata:=healthBonusCapture(fs,tf,data,file,fn,lit,entry,rt)
++ edits=append(edits,bonusEdits...)
++ metadata:=healthMetadataInsertion(data,tf,lit,entry,"nil")+"GTTTraceInputEventID:"+event+","+bonusMetadata
++ return append(edits,textEdit{start:tf.Offset(lit.Rbrace),end:tf.Offset(lit.Rbrace),replacement:metadata}),true
++}
+diff --git a/pkg/gttsourcegen/overlay.go b/pkg/gttsourcegen/overlay.go
+--- a/pkg/gttsourcegen/overlay.go
++++ b/pkg/gttsourcegen/overlay.go
+@@ -476,1 +476,2 @@
++	edits = healthOriginEditsOnce(edits)
+ 	rewritten, err := applyTextEdits(data, edits)
+@@ -505,1 +505,1 @@
+-	for _, reserved := range []string{"GTTTraceSourceID", "GTTTraceSourceTemplateSHA256", "GTTTraceSourceParameters", "GTTTraceInputEventID"} {
++	for _, reserved := range []string{"GTTTraceSourceID", "GTTTraceSourceTemplateSHA256", "GTTTraceSourceParameters", "GTTTraceInputEventID", "GTTTraceBonusEventID"} {
+@@ -580,7 +580,9 @@
+-	metadata := healthMetadataInsertion(data, tokenFile, composite, entry, parameters)
+-	return []textEdit{
++	bonusEdits, bonusMetadata := healthBonusCapture(fset, tokenFile, data, file, fn, composite, entry, traceExpression)
++	metadata := healthMetadataInsertion(data, tokenFile, composite, entry, parameters) + bonusMetadata
++	return append(bonusEdits, []textEdit{
+ 		{start: tokenFile.Offset(statement.Pos()), end: tokenFile.Offset(statement.Pos()), replacement: declarations.String()},
+ 		{start: tokenFile.Offset(value.Value.Pos()), end: tokenFile.Offset(value.Value.End()), replacement: inputTemp},
+ 		{start: tokenFile.Offset(composite.Rbrace), end: tokenFile.Offset(composite.Rbrace), replacement: metadata},
+-	}, nil
++	}...), nil
+ }
+diff --git a/pkg/core/info/heal.go b/pkg/core/info/heal.go
+--- a/pkg/core/info/heal.go
++++ b/pkg/core/info/heal.go
+@@ -13,2 +13,3 @@
+ 	GTTTraceInputEventID         string                    `json:"-"`
++	GTTTraceBonusEventID         string                    `json:"-"`
+ }
+diff --git a/internal/template/character/heal.go b/internal/template/character/heal.go
+--- a/internal/template/character/heal.go
++++ b/internal/template/character/heal.go
+@@ -145,1 +145,4 @@
++		if hi.GTTTraceBonusEventID != "" {
++			c.Core.GTTTrace.RecordHealthFieldBinding(operationID, "source_bonus", hi.GTTTraceBonusEventID, hi.Bonus)
++		}
+ 		if maxHPBeforeEventID != "" {
+diff --git a/pkg/gttcompact/support.go b/pkg/gttcompact/support.go
+--- a/pkg/gttcompact/support.go
++++ b/pkg/gttcompact/support.go
+@@ -603,4 +603,4 @@
+-		sourceBonus = c.b.constant(*operation.SourceBonus)
+-		if operation.CallerIndex != nil && *operation.CallerIndex >= 0 && *operation.CallerIndex < len(c.characterKeys) {
+-			sourceBonus = c.b.add(sourceBonus, c.b.artifactDelta(c.characterKeys[*operation.CallerIndex], "heal"))
++		sourceBonus = get("source_bonus", *operation.SourceBonus)
++		if _, bound := bindings["source_bonus"]; !bound {
++			c.markUnknown("health_source_bonus_origin_unbound")
+ 		}
+diff --git a/pkg/gttcompact/health_bonus_test.go b/pkg/gttcompact/health_bonus_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/health_bonus_test.go
+@@ -0,0 +1,1 @@
++package gttcompact
++import("testing";"github.com/genshinsim/gcsim/pkg/gtttrace")
++func TestSourceBonusUsesActualBindingNotCallerGuess(t *testing.T){
++ for _,mode:=range []string{"literal","foreign","missing"}{t.Run(mode,func(t *testing.T){
++  b:=&nodeBuilder{neutral:true,inputPoint:NeutralInputPoint{Mode:"stat",Frame:9,Order:12}}
++  id:="health";caller:=0;kind:=gtttrace.HealthHealTypeAbsolute;bonus:=.15;incoming:=0.0
++  op:=gtttrace.HealthOperation{OperationID:id,Kind:gtttrace.HealthOperationHeal,CallerIndex:&caller,TargetIndex:1,
++   HealType:&kind,SourceBonus:&bonus,HealBonusTotal:&incoming,InputValue:100,AdjustedInputValue:100,
++   MaxHPBefore:1000,MaxHPAfter:1000,HPBefore:0,HPAfter:115}
++  bindings:=map[string]compiledNode{}
++  if mode!="missing"{bindings["source_bonus"]=b.constant(.15)}
++  if mode=="foreign"{bindings["source_bonus"]=b.add(bindings["source_bonus"],b.artifactDelta("receiver","heal"))}
++  c:=supportCompiler{b:b,characterKeys:[]string{"caller","receiver"},unknown:map[string]struct{}{},
++   operationByID:map[string]gtttrace.HealthOperation{id:op},bindings:map[string]map[string]compiledNode{id:bindings},
++   previousHP:map[int]observedNode{},healthNodes:map[string]map[string]compiledNode{}}
++  c.compileHealthOperation(gtttrace.StateEvent{HealthOperationID:&id})
++  want:=115.0;if mode=="foreign"{want=135}
++  got:=evalContributorGraph(t,b,c.healthNodes[id]["raw_amount"],map[string]float64{"caller.healing_bonus":99,"receiver.healing_bonus":.2})
++  if got<want-1e-9||got>want+1e-9{t.Fatal(mode,got,want)}
++  _,unknown:=c.unknown["health_source_bonus_origin_unbound"]
++  if unknown!=(mode=="missing"){t.Fatal("missing origin must stay diagnosed",c.unknown)}
++  for _,port:=range b.neutralInputs{if port.Kind=="stat"&&port.Owner=="caller"{t.Fatal("invented caller stat",port)}}
++ })}
++}
+diff --git a/pkg/gttsourcegen/health_field_capture_test.go b/pkg/gttsourcegen/health_field_capture_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttsourcegen/health_field_capture_test.go
+@@ -0,0 +1,1 @@
++package gttsourcegen
++import("go/ast";"go/parser";"go/token";"strings";"testing")
++func TestHealthClosureCapturesBeforeDelayedConsumer(t *testing.T){
++ source:=`package arbitrary
++ import "github.com/genshinsim/gcsim/pkg/core/info"
++ func(p *provider) makeHeal()func(){
++  amount:=p.MaxHP()*0.2
++  bonus:=p.NonExtraStat(attributes.Heal)
++  changeState()
++  return func(){p.Core.Player.Heal(info.HealInfo{Caller:p.Index(),Src:amount,Bonus:bonus})}
++ }`
++ fs:=token.NewFileSet();file,err:=parser.ParseFile(fs,"test.go",source,parser.SkipObjectResolution);if err!=nil{t.Fatal(err)}
++ fn:=file.Decls[1].(*ast.FuncDecl);var lit *ast.CompositeLit
++ ast.Inspect(fn,func(n ast.Node)bool{if x,ok:=n.(*ast.CompositeLit);ok{lit=x};return true})
++ entry:=SourceEntry{SourceID:strings.Repeat("a",64),healthInput:&healthInputPlan{ValueField:"Src"}}
++ edits,ok:=typedHealthInputEdits(fs,fs.File(file.Pos()),[]byte(source),file,fn,lit,entry,"p.Core.GTTTrace")
++ if !ok{t.Fatal("outer lexical definition was rejected")}
++ out,err:=applyTextEdits([]byte(source),edits);if err!=nil{t.Fatal(err)}
++ if _,err=parser.ParseFile(token.NewFileSet(),"out.go",out,0);err!=nil{t.Fatal(err,string(out))}
++ text:=string(out)
++ for _,name:=range []string{"GTTReadMaxHP(","GTTReadNonExtraStat("}{
++  if strings.Count(text,name)!=1||strings.Index(text,name)>strings.Index(text,"changeState()"){t.Fatal(name,text)}
++ }
++ if strings.Count(text,"GTTTraceBonusEventID:")!=1{t.Fatal(text)}
++}
+diff --git a/pkg/core/info/gtt_health_stats_test.go b/pkg/core/info/gtt_health_stats_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_health_stats_test.go
+@@ -0,0 +1,1 @@
++package info
++import("testing";"github.com/genshinsim/gcsim/pkg/core/attributes";"github.com/genshinsim/gcsim/pkg/gtttrace")
++type healthStatsOwner struct {rt *gtttrace.Runtime; frame *int; calls int}
++func(c *healthStatsOwner)Index()int{return 2}
++func(c *healthStatsOwner)GTTTraceRuntime()*gtttrace.Runtime{return c.rt}
++func(c *healthStatsOwner)GTTStats()([attributes.EndStatType]float64,[]any,[]GTTTraceStatContribution){
++ c.calls++;*c.frame=9
++ var stats [attributes.EndStatType]float64;stats[attributes.Heal]=.2
++ return stats,[]any{"debug"},[]GTTTraceStatContribution{{Accepted:true,Extra:true,ModifierEvalEventID:"extra"}}
++}
++func TestGTTStatsHealthOriginKeepsGetterTimeAndSingleEvaluation(t *testing.T){
++ rt:=gtttrace.NewRuntime();rt.Enable();frame:=8;rt.BindFrame(&frame)
++ owner:=&healthStatsOwner{rt:rt,frame:&frame};fallbackCalls:=0
++ fallback:=func()([attributes.EndStatType]float64,[]any){fallbackCalls++;return [attributes.EndStatType]float64{},nil}
++ values,debug,origin:=GTTReadStats(rt,owner,fallback)
++ if owner.calls!=1||fallbackCalls!=0||origin==nil||values[attributes.Heal]!=.2||debug[0]!="debug"{t.Fatal("getter count/values changed")}
++ observations,complete:=rt.NeutralStatObservations()
++ if !complete||len(observations)!=1||observations[0].Frame!=8||observations[0].Owner!=2||observations[0].Mode!="stat"||observations[0].ExtraModifiers==nil||len(*observations[0].ExtraModifiers)!=1{t.Fatal("original full Stats query lost",observations)}
++ frame=44
++ GTTStatsCellRef(rt,origin,values,attributes.Heal,.2)
++ rows:=rt.StateEvents();last:=rows[len(rows)-1]
++ if last.Channel==nil||*last.Channel!="stat_input:stat"||last.NumericPayload[1].Value!=8||*last.OwnerIndex!=2{t.Fatal("later read replaced original query",last)}
++ values[attributes.Heal]=.3
++ GTTStatsCellRef(rt,origin,values,attributes.Heal,.3)
++ rows=rt.StateEvents();if *rows[len(rows)-1].Operation!="frozen_attack_operand"{t.Fatal("mutation was not rejected")}
++ _,_,foreign:=GTTReadStats(rt,struct{}{},fallback);if foreign!=nil||fallbackCalls!=1{t.Fatal("unknown owner inferred")}
++ _,_,disabled:=GTTReadStats(nil,owner,fallback);if disabled!=nil||owner.calls!=1||fallbackCalls!=2{t.Fatal("disabled getter changed")}
++}
+diff --git a/pkg/optimization/gtt_trace_equation_state.go b/pkg/optimization/gtt_trace_equation_state.go
+--- a/pkg/optimization/gtt_trace_equation_state.go
++++ b/pkg/optimization/gtt_trace_equation_state.go
+@@ -263,2 +263,7 @@
+ 	switch key {
++	case "source_bonus":
++		if row.SourceBonus == nil {
++			return 0, errors.New("health source bonus is absent")
++		}
++		return *row.SourceBonus, nil
+ 	case "input_value":
+diff --git a/pkg/optimization/gtt_health_bonus_test.go b/pkg/optimization/gtt_health_bonus_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_health_bonus_test.go
+@@ -0,0 +1,1 @@
++package optimization
++import("testing";"github.com/genshinsim/gcsim/pkg/gtttrace")
++func TestHealthSourceBonusBindingRequiresExactOriginalValue(t *testing.T){
++ bonus,wrong:=.2,.3
++ operation,key,boundID:="heal","source_bonus","bonus"
++ v:=gttStateValidation{health:map[string]gtttrace.HealthOperation{operation:{SourceBonus:&bonus}},events:map[string]gtttrace.StateEvent{boundID:{Kind:gtttrace.StateEventNumericEval,Value:&bonus}}}
++ row:=gtttrace.StateEvent{Kind:gtttrace.StateEventHealthFieldBinding,HealthOperationID:&operation,Key:&key,Value:&bonus,BoundEventID:&boundID}
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err!=nil{t.Fatal(err)}
++ row.Value=&wrong
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err==nil{t.Fatal("accepted changed operation value")}
++ row.Value=&bonus
++ v.events[boundID]=gtttrace.StateEvent{Kind:gtttrace.StateEventNumericEval,Value:&wrong}
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err==nil{t.Fatal("accepted changed source value")}
++ v.events[boundID]=gtttrace.StateEvent{Kind:gtttrace.StateEventNumericEval,Value:&bonus}
++ v.health[operation]=gtttrace.HealthOperation{}
++ if err:=v.validateEventShapeAndArithmetic(row,nil);err==nil{t.Fatal("accepted absent source bonus")}
++}

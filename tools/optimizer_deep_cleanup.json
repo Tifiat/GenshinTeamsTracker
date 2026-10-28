@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-17",
+  "owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "delete_directories": [
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/audit-ordered4",
+      "audited_bytes": 569831201,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/audit-verified",
+      "audited_bytes": 340774228,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/audit-final4",
+      "audited_bytes": 323451061,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/audit-final",
+      "audited_bytes": 264273078,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/archetypes",
+      "audited_bytes": 161186911,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/archetypes-repaired",
+      "audited_bytes": 52395101,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/audit-nested",
+      "audited_bytes": 48423741,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/selected-audit",
+      "audited_bytes": 40297343,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/audit-order",
+      "audited_bytes": 31180817,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/containers",
+      "audited_bytes": 17064016,
+      "reason": "Superseded intermediate diagnostics; final audit-all5/health5/hp5 witnesses retained in archive."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-audit4-20260916",
+      "audited_bytes": 142618758,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-audit3-20260916",
+      "audited_bytes": 142611763,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-audit2-20260916",
+      "audited_bytes": 142598985,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-audit-20260916",
+      "audited_bytes": 142589462,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-archetypes-20260916",
+      "audited_bytes": 142108689,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-containers-20260916",
+      "audited_bytes": 141655306,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-vectors-20260916",
+      "audited_bytes": 141473459,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916/store/engines/gcsim-v2.45.0-dependency-snapshot-20260916",
+      "audited_bytes": 141040768,
+      "reason": "Obsolete isolated engine; last accepted isolated witness is retained."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-gob11-additive2-20260913",
+      "audited_bytes": 139989730,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-gob11-helper2-20260912",
+      "audited_bytes": 139941248,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-gob11-flat-stat-20260912",
+      "audited_bytes": 139890956,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-gob11-fields2-20260909",
+      "audited_bytes": 139848693,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-gob11-scalar-20260909",
+      "audited_bytes": 139601562,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-gob11-boundary-20260908",
+      "audited_bytes": 139536537,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-compat-20260907",
+      "audited_bytes": 139519756,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-gob11a-20260907",
+      "audited_bytes": 139506487,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/engines/gcsim-v2.45.0-clean-adapter-20260901",
+      "audited_bytes": 139505659,
+      "reason": "Obsolete installed version; active, rollback and two referenced diagnostics are protected."
+    },
+    {
+      "path": "data/gcsim/engines/failed/gcsim-v2.42.2-gob10-perf-20260901",
+      "audited_bytes": 78243804,
+      "reason": "Failed copy superseded by retained working same-id engine."
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_hit_binding_v11",
+      "audited_bytes": 69085627,
+      "reason": "Earlier integrated acceptance, portable receipts retained."
+    },
+    {
+      "path": ".codex_tmp/gob11a-acceptance-20260907",
+      "audited_bytes": 18465682,
+      "reason": "Earlier integrated acceptance, portable receipts retained."
+    },
+    {
+      "path": ".codex_tmp/compat-repair-acceptance-20260907",
+      "audited_bytes": 9118821,
+      "reason": "Earlier integrated acceptance, portable receipts retained."
+    },
+    {
+      "path": ".codex_tmp/gcsim-v245-semantic-smoke-20260901",
+      "audited_bytes": 4585914,
+      "reason": "Earlier integrated acceptance, portable receipts retained."
+    },
+    {
+      "path": "debug/gcsim_patchgen_m3_20260809",
+      "audited_bytes": 77531341,
+      "reason": "Obsolete copied patch-generator source; active consolidated patch and regressions retained."
+    }
+  ],
+  "archive_directories": [
+    {
+      "path": ".codex_tmp/gob11-dependency-repair-20260916",
+      "reason": "Final response/health witnesses plus last isolated engine; intermediate children on delete list excluded."
+    },
+    {
+      "path": ".codex_tmp/gob11-bloom-winner-audit-20260916",
+      "reason": "Unresolved response boundary evidence, not runtime input."
+    },
+    {
+      "path": ".codex_tmp/gob11-bloom-4p-20260916",
+      "reason": "Bounded bloom diagnostics; exact evidence retained."
+    },
+    {
+      "path": ".codex_tmp/stochastic_expectation_pair_20260829T215823705807Z",
+      "reason": "Deferred random-skill expectation work."
+    },
+    {
+      "path": "debug/gcsim_optimizer_benchmarks",
+      "reason": "Historical launch/result/canonical trace evidence; full contents and SHA256 retained losslessly."
+    },
+    {
+      "path": "debug/gcsim_optimizer_contextual_joint_assembly_m6",
+      "reason": "Retired Python search comparisons, not active backend."
+    },
+    {
+      "path": "debug/gcsim_optimizer_contextual_frontier_m6_exact",
+      "reason": "Retired Python search comparisons, not active backend."
+    },
+    {
+      "path": ".codex_tmp/all-sets-observer-candidate-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-auto-capture-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-preflight-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-capture-pilot-20260916-run2",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-transfer-capture-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-resistance-inputs-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-coordinator-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-effect-inputs-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-auto-winner-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-observer-transport-20260916-run2",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-transfer-winner-20260917-run2",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-observer-transport-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-cli-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-source-queue-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-source-guide-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-context-curve-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-effects-channels-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-effects-final-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-coordinator-ordinary-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-effects-signals-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-effects-lineage-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-effects-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-resistance-reproduce-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-guide-grouped-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-guide-queue-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-joined-guide-20260916-pass",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-effect-inputs-reproduce-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-manifest-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-joined-guide-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-transfer-guide-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-refreshed-guide-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-refreshed-guide-20260917-anchor",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-queue-grouped-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-queue-diverse-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-proposal-queue-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-context-provider-shared-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-context-20260916-final",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-context-20260916-pass2",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-decode-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-context-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-capture-pilot-20260916",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    },
+    {
+      "path": ".codex_tmp/all-sets-transfer-winner-20260917",
+      "reason": "Accepted All Sets intermediate evidence; lossless archive until UI gate, not product runtime. N1 user run and CLI baseline remain expanded."
+    }
+  ],
+  "archive_path": ".codex_tmp/optimizer-retained-evidence-20260917.zip",
+  "archive_max_bytes": 536870912,
+  "archive_manifest_path": "tests/fixtures/gcsim_optimizer_go_v1/storage_retained_evidence_20260917.json",
+  "lifecycle": "One fixed archive, no history stacking; kept for N2 boundary/UI, deferred RNG/Theory research. Restore only needed members to managed scratch; adapt historic absolute source roots. Delete archive after these gates. Current N1 inputs, source code, user exports, profiles and dirty worktree excluded.",
+  "protected_diagnostic_engines": [
+    "gcsim-v2.45.0-gob11-gp3-20260916",
+    "gcsim-v2.42.2-gob10-perf-20260901"
+  ],
+  "audited_direct_delete_bytes": 4499946504
+}

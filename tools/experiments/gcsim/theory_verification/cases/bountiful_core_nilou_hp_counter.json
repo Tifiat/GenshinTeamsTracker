@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "case_id": "bountiful_core_nilou_hp_counter",
+  "team": "bountiful_core",
+  "infinite_energy": true,
+  "manifest_sha256": "d00ed4463c535e136590548aad8e2d20f35a7efe8ca8bcb22a49b19c13ff1c86",
+  "rotation_sha256": "cc56e5109f98e5b213f3bd601a9076a5b84f15baa8b9c15a2cafbd15e5c601a5",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "seeds": [
+    742031889,
+    742031890
+  ],
+  "ordinary_iterations": 128,
+  "baseline_source": {
+    "path": "docs/optimizer-evidence/2026-10-03-theory-current-matrix/bountiful_core_theory.json",
+    "sha256": "aed6fdd103ea68859dd7ccb63930060b36fc880484216e735f27b7ce5c449063",
+    "rank": 1,
+    "controlled_change": "Only Nilou 4p Deepwood is replaced by 2p Tenacity+2p Vourukasha; all mains/rolls and other wearers unchanged."
+  },
+  "candidate": {
+    "allocations": [
+      {
+        "main_stats": {
+          "circlet": "crit_rate",
+          "flower": "hp",
+          "goblet": "dendro_damage_bonus",
+          "plume": "atk",
+          "sands": "atk_percent"
+        },
+        "spent_roll_units": 45,
+        "substats": [
+          {
+            "roll_units": 12,
+            "stat_key": "atk_percent",
+            "stat_value": 0.6996
+          },
+          {
+            "roll_units": 3,
+            "stat_key": "crit_damage",
+            "stat_value": 0.23310000000000003
+          },
+          {
+            "roll_units": 30,
+            "stat_key": "em",
+            "stat_value": 699.3
+          }
+        ],
+        "unspent_roll_units": 0,
+        "wearer_key": "kaveh"
+      },
+      {
+        "main_stats": {
+          "circlet": "crit_rate",
+          "flower": "hp",
+          "goblet": "dendro_damage_bonus",
+          "plume": "atk",
+          "sands": "em"
+        },
+        "spent_roll_units": 45,
+        "substats": [
+          {
+            "roll_units": 14.75,
+            "stat_key": "crit_damage",
+            "stat_value": 1.1460750000000002
+          },
+          {
+            "roll_units": 10.25,
+            "stat_key": "crit_rate",
+            "stat_value": 0.398725
+          },
+          {
+            "roll_units": 20,
+            "stat_key": "em",
+            "stat_value": 466.2
+          }
+        ],
+        "unspent_roll_units": 0,
+        "wearer_key": "nahida"
+      },
+      {
+        "main_stats": {
+          "circlet": "hp_percent",
+          "flower": "hp",
+          "goblet": "hp_percent",
+          "plume": "atk",
+          "sands": "hp_percent"
+        },
+        "spent_roll_units": 45,
+        "substats": [
+          {
+            "roll_units": 9,
+            "stat_key": "em",
+            "stat_value": 209.79
+          },
+          {
+            "roll_units": 24,
+            "stat_key": "hp",
+            "stat_value": 7170
+          },
+          {
+            "roll_units": 12,
+            "stat_key": "hp_percent",
+            "stat_value": 0.6996
+          }
+        ],
+        "unspent_roll_units": 0,
+        "wearer_key": "nilou"
+      },
+      {
+        "main_stats": {
+          "circlet": "crit_rate",
+          "flower": "hp",
+          "goblet": "hydro_damage_bonus",
+          "plume": "atk",
+          "sands": "atk_percent"
+        },
+        "spent_roll_units": 45,
+        "substats": [
+          {
+            "roll_units": 4.25,
+            "stat_key": "atk_percent",
+            "stat_value": 0.247775
+          },
+          {
+            "roll_units": 6.75,
+            "stat_key": "crit_damage",
+            "stat_value": 0.524475
+          },
+          {
+            "roll_units": 4,
+            "stat_key": "crit_rate",
+            "stat_value": 0.1556
+          },
+          {
+            "roll_units": 30,
+            "stat_key": "em",
+            "stat_value": 699.3
+          }
+        ],
+        "unspent_roll_units": 0,
+        "wearer_key": "xingqiu"
+      }
+    ],
+    "formula_dps": null,
+    "opaque_reasons": [
+      "attack_field_operand_dependency_frozen",
+      "attack_mod_closure_expression_collapsed",
+      "attack_provider_unattributed",
+      "callback_provider_unattributed",
+      "flat_dmg_expression_collapsed",
+      "gadget_wave_state_lineage_not_instrumented",
+      "max_hp_candidate_dependency_incomplete",
+      "modifier_candidate_dependency_incomplete",
+      "modifier_state_read_candidate_dependency_incomplete",
+      "multiplier_source_expression_not_instrumented",
+      "numeric_expression_candidate_dependency_incomplete",
+      "post_damage_callback_state_effects_unmodeled",
+      "provider_transition_timeline_incomplete",
+      "pure_scalar_observed_schedule",
+      "reaction_bonus_schedule_frozen",
+      "reaction_topology_aggregate_only",
+      "saved_stat_vector_schedule_frozen",
+      "stat_mod_dependency_expression_collapsed",
+      "stat_read_external_dependencies_incomplete",
+      "state_write_candidate_dependency_incomplete",
+      "untyped_callback_state_effects_unmodeled"
+    ],
+    "packages": [
+      {
+        "sets": [
+          {
+            "count": 4,
+            "set_uid": "deepwoodmemories"
+          }
+        ],
+        "wearer_key": "kaveh"
+      },
+      {
+        "sets": [
+          {
+            "count": 4,
+            "set_uid": "goldentroupe"
+          }
+        ],
+        "wearer_key": "nahida"
+      },
+      {
+        "sets": [
+          {
+            "count": 2,
+            "set_uid": "tenacityofthemillelith"
+          },
+          {
+            "count": 2,
+            "set_uid": "vourukashasglow"
+          }
+        ],
+        "wearer_key": "nilou"
+      },
+      {
+        "sets": [
+          {
+            "count": 4,
+            "set_uid": "deepwoodmemories"
+          }
+        ],
+        "wearer_key": "xingqiu"
+      }
+    ],
+    "rank": 1,
+    "source": "controlled_package_override_fixed_allocation",
+    "undistinguished_set_slots": []
+  }
+}

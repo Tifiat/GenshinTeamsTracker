@@ -1,0 +1,594 @@
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -124,6 +124,7 @@
+ 	stack                             []ExecutionFrame
+ 	transitions                       []ModifierTransition
+ 	nextNodeID                        uint64
++	nextStatQueryID                   uint64
+ 	sourceOccurrences                 []SourceOccurrence
+ 	sourceValueBindings               []SourceValueBinding
+ 	healthOperations                  []HealthOperation
+diff --git a/pkg/gtttrace/state.go b/pkg/gtttrace/state.go
+--- a/pkg/gtttrace/state.go
++++ b/pkg/gtttrace/state.go
+@@ -778,15 +778,7 @@
+ // A typed character getter result, including its already executed modifiers.
+ // Reuses numeric_eval wire shape; it is not an arbitrary named source formula.
+ func (r *Runtime) RecordArtifactStatRead(owner int, key string, value float64, modifiers []string) string {
+-	if !r.Enabled() || owner < 0 || key == "" || !finite(value) {
+-		return ""
+-	}
+-	return r.appendStateEvent(StateEvent{
+-		Frame: r.Frame(), Kind: StateEventNumericEval, OwnerIndex: optionalInt(owner),
+-		Operation: optionalString("artifact_stat_read"), Key: optionalString(key),
+-		Value: optionalFloat(value), ModifierEvalIDs: modifiers,
+-		CandidateDependencyComplete: false, UncertaintyCodes: []string{"stat_read_external_dependencies_incomplete"},
+-	})
++	return r.RecordStatQuery(owner, key, value, modifiers, r.NewStatQuery(false))
+ }
+ 
+ func (r *Runtime) EnterHealthOperation(operationID string) func() {
+diff --git a/pkg/core/player/character/stats.go b/pkg/core/player/character/stats.go
+--- a/pkg/core/player/character/stats.go
++++ b/pkg/core/player/character/stats.go
+@@ -189,100 +189,100 @@
+ 	capture := c.gttTrace.BeginModifierEvalCapture()
+ 	value := c.NonExtraStat(s)
+ 	ids := c.gttTrace.EndModifierEvalCapture(capture)
+-	return value, c.gttTrace.RecordArtifactStatRead(c.Index(), s.String(), value, ids)
+-}
+-
+-func (c *CharWrapper) SelectStat(nonExtra bool, stat ...attributes.Stat) attributes.Stats {
+-	var stats attributes.Stats
+-	for _, k := range stat {
+-		stats[k] += c.BaseStats[k]
+-	}
+-
+-	for _, v := range c.mods {
+-		m, ok := v.(*StatMod)
+-		if !ok {
+-			continue
+-		}
+-		// ignore this mod if stat type doesnt match
+-		if m.AffectedStat != attributes.NoStat && !slices.Contains(stat, m.AffectedStat) {
+-			continue
+-		}
+-		// skip if extra stat
+-		if nonExtra && m.Extra {
+-			continue
+-		}
+-		// check expiry
+-		if m.Expiry() > *c.f || m.Expiry() == -1 {
+-			if amt := c.gttStatModAmount(m); amt != nil {
+-				for _, k := range stat {
+-					stats[k] += amt[k]
+-				}
+-			}
+-		}
+-	}
+-
+-	return stats
+-}
+-
+-// Observe the original container getter once, with the original Extra filter.
+-func (c *CharWrapper) GTTSelectStat(nonExtra bool, stat ...attributes.Stat) (attributes.Stats, []string) {
+-	if !c.gttTrace.Enabled() {
+-		return c.SelectStat(nonExtra, stat...), nil
+-	}
+-	capture := c.gttTrace.BeginModifierEvalCapture()
+-	value := c.SelectStat(nonExtra, stat...)
+-	return value, c.gttTrace.EndModifierEvalCapture(capture)
+-}
+-
+-func (c *CharWrapper) MaxHP() float64 {
+-	value, _ := c.GTTMaxHP()
+-	return value
+-}
+-
+-// GTTMaxHP returns the gameplay value and, when tracing is enabled, the V6
+-// max_hp_read event that proves the same central arithmetic.
+-func (c *CharWrapper) GTTMaxHP() (float64, string) {
+-	if !c.gttTrace.Enabled() {
+-		stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
+-		return stats.MaxHP(), ""
+-	}
+-	capture := c.gttTrace.BeginModifierEvalCapture()
+-	stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
+-	modifierEvalIDs := c.gttTrace.EndModifierEvalCapture(capture)
+-	value := stats.MaxHP()
+-	eventID := c.gttTrace.RecordMaxHPRead(
+-		c.Index(), stats[attributes.BaseHP], stats[attributes.HPP], stats[attributes.HP],
+-		value, modifierEvalIDs,
+-	)
+-	return value, eventID
+-}
+-
+-func (c *CharWrapper) TotalAtk() float64 {
+-	stats := c.SelectStat(false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
+-	return stats.TotalATK()
+-}
+-
+-// Same central getter, one modifier evaluation, with an immutable numeric ref.
+-func (c *CharWrapper) GTTTotalAtk() (float64, gtttrace.NumericRef) {
+-	stats, ids := c.GTTSelectStat(false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
+-	value := stats.TotalATK()
+-	if !c.gttTrace.Enabled() {
+-		return value, gtttrace.NumericRef{}
+-	}
+-	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids)
+-	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseATK, attributes.ATKP, attributes.ATK, value)
+-}
+-
+-// GTTTotalDef preserves the original Extra-filter choice and the exact
+-// modifier ancestry used by TotalDef.  It is the typed counterpart of
+-// GTTTotalAtk for source-generated secondary DEF scaling.
+-func (c *CharWrapper) GTTTotalDef(nonExtra bool) (float64, gtttrace.NumericRef) {
+-	stats, ids := c.GTTSelectStat(nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
+-	value := stats.TotalDEF()
+-	if !c.gttTrace.Enabled() {
+-		return value, gtttrace.NumericRef{}
+-	}
+-	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids)
++	return value, c.gttTrace.RecordStatQuery(c.Index(), s.String(), value, ids, c.gttTrace.NewStatQuery(true))
++}
++
++func (c *CharWrapper) SelectStat(nonExtra bool, stat ...attributes.Stat) attributes.Stats {
++	var stats attributes.Stats
++	for _, k := range stat {
++		stats[k] += c.BaseStats[k]
++	}
++
++	for _, v := range c.mods {
++		m, ok := v.(*StatMod)
++		if !ok {
++			continue
++		}
++		// ignore this mod if stat type doesnt match
++		if m.AffectedStat != attributes.NoStat && !slices.Contains(stat, m.AffectedStat) {
++			continue
++		}
++		// skip if extra stat
++		if nonExtra && m.Extra {
++			continue
++		}
++		// check expiry
++		if m.Expiry() > *c.f || m.Expiry() == -1 {
++			if amt := c.gttStatModAmount(m); amt != nil {
++				for _, k := range stat {
++					stats[k] += amt[k]
++				}
++			}
++		}
++	}
++
++	return stats
++}
++
++// Observe the original container getter once, with the original Extra filter.
++func (c *CharWrapper) GTTSelectStat(nonExtra bool, stat ...attributes.Stat) (attributes.Stats, []string) {
++	if !c.gttTrace.Enabled() {
++		return c.SelectStat(nonExtra, stat...), nil
++	}
++	capture := c.gttTrace.BeginModifierEvalCapture()
++	value := c.SelectStat(nonExtra, stat...)
++	return value, c.gttTrace.EndModifierEvalCapture(capture)
++}
++
++func (c *CharWrapper) MaxHP() float64 {
++	value, _ := c.GTTMaxHP()
++	return value
++}
++
++// GTTMaxHP returns the gameplay value and, when tracing is enabled, the V6
++// max_hp_read event that proves the same central arithmetic.
++func (c *CharWrapper) GTTMaxHP() (float64, string) {
++	if !c.gttTrace.Enabled() {
++		stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
++		return stats.MaxHP(), ""
++	}
++	capture := c.gttTrace.BeginModifierEvalCapture()
++	stats := c.SelectStat(false, attributes.BaseHP, attributes.HPP, attributes.HP)
++	modifierEvalIDs := c.gttTrace.EndModifierEvalCapture(capture)
++	value := stats.MaxHP()
++	eventID := c.gttTrace.RecordMaxHPRead(
++		c.Index(), stats[attributes.BaseHP], stats[attributes.HPP], stats[attributes.HP],
++		value, modifierEvalIDs,
++	)
++	return value, eventID
++}
++
++func (c *CharWrapper) TotalAtk() float64 {
++	stats := c.SelectStat(false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
++	return stats.TotalATK()
++}
++
++// Same central getter, one modifier evaluation, with an immutable numeric ref.
++func (c *CharWrapper) GTTTotalAtk() (float64, gtttrace.NumericRef) {
++	stats, ids := c.GTTSelectStat(false, attributes.BaseATK, attributes.ATKP, attributes.ATK)
++	value := stats.TotalATK()
++	if !c.gttTrace.Enabled() {
++		return value, gtttrace.NumericRef{}
++	}
++	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids)
++	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseATK, attributes.ATKP, attributes.ATK, value)
++}
++
++// GTTTotalDef preserves the original Extra-filter choice and the exact
++// modifier ancestry used by TotalDef.  It is the typed counterpart of
++// GTTTotalAtk for source-generated secondary DEF scaling.
++func (c *CharWrapper) GTTTotalDef(nonExtra bool) (float64, gtttrace.NumericRef) {
++	stats, ids := c.GTTSelectStat(nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
++	value := stats.TotalDEF()
++	if !c.gttTrace.Enabled() {
++		return value, gtttrace.NumericRef{}
++	}
++	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids, nonExtra)
+ 	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseDEF, attributes.DEFP, attributes.DEF, value)
+ }
+ 
+diff --git a/pkg/core/info/gtt_snapshot_stats.go b/pkg/core/info/gtt_snapshot_stats.go
+--- a/pkg/core/info/gtt_snapshot_stats.go
++++ b/pkg/core/info/gtt_snapshot_stats.go
+@@ -11,88 +11,90 @@
+ 	// Private: receipt metadata must not become a second discoverable path to
+ 	// a character's runtime (e.g. through a saved Snapshot field).
+ 	runtime     *gtttrace.Runtime
+-	Owner       int
+-	Values      attributes.Stats
+-	ModifierIDs []string
+-}
+-
+-func GTTSelectStats(rt *gtttrace.Runtime, owner any, nonExtra bool, keys []attributes.Stat, fallback func() attributes.Stats) (attributes.Stats, *GTTStatsOrigin) {
+-	if c, ok := owner.(interface {
+-		Index() int
+-		GTTSelectStat(bool, ...attributes.Stat) (attributes.Stats, []string)
+-	}); ok {
+-		value, ids := c.GTTSelectStat(nonExtra, keys...)
+-		if !rt.Enabled() {
+-			return value, nil
+-		}
+-		return value, GTTStatsOriginFromModifiers(rt, c.Index(), value, ids)
+-	}
+-	return fallback(), nil
+-}
+-
+-// Central stat-container arithmetic, not character/weapon mechanics. This is
+-// the same base*(1+percent)+flat contract already used by MaxHP/direct scaling.
+-// It consumes the saved filtered getter outputs, never a later ordinary Stat.
+-func GTTStatsTotalRef(rt *gtttrace.Runtime, origin *GTTStatsOrigin, stats attributes.Stats, base, percent, flat attributes.Stat, observed float64) gtttrace.NumericRef {
+-	freeze := func() gtttrace.NumericRef {
+-		return gtttrace.EventRef(rt.RecordNumericEval("", "frozen_attack_operand", nil, observed, gtttrace.IncompleteEvidence("stats_container_origin_unproven_or_mutated")))
+-	}
+-	if origin == nil || origin.runtime != rt || origin.Values != stats {
+-		return freeze()
+-	}
+-	refs := []gtttrace.NumericRef{}
+-	for _, key := range []attributes.Stat{base, percent, flat} {
+-		if key <= attributes.NoStat || key >= attributes.EndStatType {
+-			return freeze()
+-		}
+-		if key >= attributes.DelimBaseStat {
+-			refs = append(refs, gtttrace.LiteralRef(stats[key]))
+-		} else {
+-			refs = append(refs, gtttrace.EventRef(rt.RecordArtifactStatRead(origin.Owner, key.String(), stats[key], origin.ModifierIDs)))
+-		}
+-	}
+-	if stats[base]*(1+stats[percent])+stats[flat] != observed {
+-		return freeze()
+-	}
+-	record := func(op string, inputs []gtttrace.NumericRef, value float64) gtttrace.NumericRef {
+-		return gtttrace.EventRef(rt.RecordNumericEval("", op, inputs, value, gtttrace.IncompleteEvidence("stats_container_observed_schedule")))
+-	}
+-	p := record("add", []gtttrace.NumericRef{gtttrace.LiteralRef(1), refs[1]}, 1+stats[percent])
+-	x := record("multiply", []gtttrace.NumericRef{refs[0], p}, stats[base]*(1+stats[percent]))
+-	return record("add", []gtttrace.NumericRef{x, refs[2]}, observed)
+-}
+-
+-func GTTNewStatsOrigin(rt *gtttrace.Runtime, owner int, values attributes.Stats, contributions []GTTTraceStatContribution) *GTTStatsOrigin {
+-	if !rt.Enabled() {
+-		return nil
+-	}
+-	ids := []string{}
+-	for _, c := range contributions {
+-		if c.Accepted && c.ModifierEvalEventID != "" {
+-			ids = append(ids, c.ModifierEvalEventID)
+-		}
+-	}
+-	return GTTStatsOriginFromModifiers(rt, owner, values, ids)
+-}
+-
+-func GTTStatsOriginFromModifiers(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string) *GTTStatsOrigin {
+-	if !rt.Enabled() {
+-		return nil
+-	}
+-	return &GTTStatsOrigin{runtime: rt, Owner: owner, Values: values, ModifierIDs: append([]string(nil), ids...)}
+-}
+-
+-// observed is the value already read by gameplay, not a fresh getter call.
+-// A later unobserved mutation is a boundary, never stale snapshot ancestry.
+-func GTTSnapshotStatRef(rt *gtttrace.Runtime, snapshot Snapshot, key attributes.Stat, observed float64) gtttrace.NumericRef {
+-	origin := snapshot.GTTStatsOrigin
+-	if origin == nil || origin.runtime != rt || key <= attributes.NoStat || key >= attributes.EndStatType || origin.Values[key] != observed || snapshot.Stats[key] != observed {
+-		return gtttrace.EventRef(rt.RecordNumericEval("", "frozen_attack_operand", nil, observed, gtttrace.IncompleteEvidence("snapshot_stat_origin_unproven_or_mutated")))
+-	}
+-	if key >= attributes.DelimBaseStat {
+-		return gtttrace.LiteralRef(observed)
+-	}
+-	return gtttrace.EventRef(rt.RecordArtifactStatRead(origin.Owner, key.String(), observed, origin.ModifierIDs))
++	query       gtttrace.StatQueryContext
++	Owner       int
++	Values      attributes.Stats
++	ModifierIDs []string
++}
++
++func GTTSelectStats(rt *gtttrace.Runtime, owner any, nonExtra bool, keys []attributes.Stat, fallback func() attributes.Stats) (attributes.Stats, *GTTStatsOrigin) {
++	if c, ok := owner.(interface {
++		Index() int
++		GTTSelectStat(bool, ...attributes.Stat) (attributes.Stats, []string)
++	}); ok {
++		value, ids := c.GTTSelectStat(nonExtra, keys...)
++		if !rt.Enabled() {
++			return value, nil
++		}
++		return value, GTTStatsOriginFromModifiers(rt, c.Index(), value, ids, nonExtra)
++	}
++	return fallback(), nil
++}
++
++// Central stat-container arithmetic, not character/weapon mechanics. This is
++// the same base*(1+percent)+flat contract already used by MaxHP/direct scaling.
++// It consumes the saved filtered getter outputs, never a later ordinary Stat.
++func GTTStatsTotalRef(rt *gtttrace.Runtime, origin *GTTStatsOrigin, stats attributes.Stats, base, percent, flat attributes.Stat, observed float64) gtttrace.NumericRef {
++	freeze := func() gtttrace.NumericRef {
++		return gtttrace.EventRef(rt.RecordNumericEval("", "frozen_attack_operand", nil, observed, gtttrace.IncompleteEvidence("stats_container_origin_unproven_or_mutated")))
++	}
++	if origin == nil || origin.runtime != rt || origin.Values != stats {
++		return freeze()
++	}
++	refs := []gtttrace.NumericRef{}
++	for _, key := range []attributes.Stat{base, percent, flat} {
++		if key <= attributes.NoStat || key >= attributes.EndStatType {
++			return freeze()
++		}
++		if key >= attributes.DelimBaseStat {
++			refs = append(refs, gtttrace.LiteralRef(stats[key]))
++		} else {
++			refs = append(refs, gtttrace.EventRef(rt.RecordStatQuery(origin.Owner, key.String(), stats[key], origin.ModifierIDs, origin.query)))
++		}
++	}
++	if stats[base]*(1+stats[percent])+stats[flat] != observed {
++		return freeze()
++	}
++	record := func(op string, inputs []gtttrace.NumericRef, value float64) gtttrace.NumericRef {
++		return gtttrace.EventRef(rt.RecordNumericEval("", op, inputs, value, gtttrace.IncompleteEvidence("stats_container_observed_schedule")))
++	}
++	p := record("add", []gtttrace.NumericRef{gtttrace.LiteralRef(1), refs[1]}, 1+stats[percent])
++	x := record("multiply", []gtttrace.NumericRef{refs[0], p}, stats[base]*(1+stats[percent]))
++	return record("add", []gtttrace.NumericRef{x, refs[2]}, observed)
++}
++
++func GTTNewStatsOrigin(rt *gtttrace.Runtime, owner int, values attributes.Stats, contributions []GTTTraceStatContribution) *GTTStatsOrigin {
++	if !rt.Enabled() {
++		return nil
++	}
++	ids := []string{}
++	for _, c := range contributions {
++		if c.Accepted && c.ModifierEvalEventID != "" {
++			ids = append(ids, c.ModifierEvalEventID)
++		}
++	}
++	return GTTStatsOriginFromModifiers(rt, owner, values, ids)
++}
++
++func GTTStatsOriginFromModifiers(rt *gtttrace.Runtime, owner int, values attributes.Stats, ids []string, nonExtra ...bool) *GTTStatsOrigin {
++	if !rt.Enabled() || len(nonExtra) > 1 {
++		return nil
++	}
++	filtered := len(nonExtra) == 1 && nonExtra[0]
++	return &GTTStatsOrigin{runtime: rt, query: rt.NewStatQuery(filtered), Owner: owner, Values: values, ModifierIDs: append([]string(nil), ids...)}
++}
++
++// observed is the value already read by gameplay, not a fresh getter call.
++// A later unobserved mutation is a boundary, never stale snapshot ancestry.
++func GTTSnapshotStatRef(rt *gtttrace.Runtime, snapshot Snapshot, key attributes.Stat, observed float64) gtttrace.NumericRef {
++	origin := snapshot.GTTStatsOrigin
++	if origin == nil || origin.runtime != rt || key <= attributes.NoStat || key >= attributes.EndStatType || origin.Values[key] != observed || snapshot.Stats[key] != observed {
++		return gtttrace.EventRef(rt.RecordNumericEval("", "frozen_attack_operand", nil, observed, gtttrace.IncompleteEvidence("snapshot_stat_origin_unproven_or_mutated")))
++	}
++	if key >= attributes.DelimBaseStat {
++		return gtttrace.LiteralRef(observed)
++	}
++	return gtttrace.EventRef(rt.RecordStatQuery(origin.Owner, key.String(), observed, origin.ModifierIDs, origin.query))
+ }
+ 
+ // GTTSnapshotTotalRef preserves the three artifact-stat leaves behind the
+diff --git a/pkg/gtttrace/stat_query.go b/pkg/gtttrace/stat_query.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/stat_query.go
+@@ -0,0 +1,47 @@
++package gtttrace
++
++// A query belongs to the instant at which gameplay evaluated its getter, not
++// the later use of a saved snapshot. It records identity and Extra filtering
++// only: it does not prove a changed set's lifecycle or call any modifier again.
++type StatQueryContext struct {
++	runtime  *Runtime
++	id       uint64
++	frame    int
++	sequence int
++	order    uint64
++	nonExtra bool
++}
++
++func (r *Runtime) NewStatQuery(nonExtra bool) StatQueryContext {
++	if !r.Enabled() || r.nextStatQueryID >= 1<<53-1 {
++		return StatQueryContext{}
++	}
++	r.nextStatQueryID++
++	return StatQueryContext{runtime: r, id: r.nextStatQueryID, frame: r.Frame(), sequence: len(r.stateEvents), order: r.NextObservationOrder(), nonExtra: nonExtra}
++}
++
++func (r *Runtime) RecordStatQuery(owner int, key string, value float64, modifiers []string, query StatQueryContext) string {
++	if !r.Enabled() || query.runtime != r || query.id == 0 || owner < 0 || key == "" || !finite(value) {
++		return ""
++	}
++	mode := "stat"
++	if query.nonExtra {
++		mode = "non_extra_stat"
++	}
++	payload := func(key string, value float64) NumericPayload {
++		return NumericPayload{Key: key, Value: value, Reference: LiteralRef(value)}
++	}
++	return r.appendStateEvent(StateEvent{
++		Frame: r.Frame(), Kind: StateEventNumericEval, OwnerIndex: optionalInt(owner),
++		Operation: optionalString("artifact_stat_read"), Key: optionalString(key),
++		Channel: optionalString("stat_input:" + mode),
++		Value: optionalFloat(value), ModifierEvalIDs: modifiers,
++		NumericPayload: []NumericPayload{
++			payload("stat_query_id", float64(query.id)),
++			payload("stat_query_frame", float64(query.frame)),
++			payload("stat_query_sequence", float64(query.sequence)),
++			payload("stat_query_order", float64(query.order)),
++		},
++		CandidateDependencyComplete: false, UncertaintyCodes: []string{"stat_read_external_dependencies_incomplete"},
++	})
++}
+diff --git a/pkg/gtttrace/stat_query_test.go b/pkg/gtttrace/stat_query_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/stat_query_test.go
+@@ -0,0 +1,40 @@
++package gtttrace
++
++import "testing"
++
++func TestParametricStatQueryIdentityAndCaptureTime(t *testing.T) {
++	r := NewRuntime()
++	r.Enable()
++	frame := 10
++	r.BindFrame(&frame)
++	q := r.NewStatQuery(true)
++	frame = 35
++	a := r.RecordStatQuery(2, "em", 125, nil, q)
++	b := r.RecordStatQuery(2, "em", 125, nil, q)
++	if a == "" || a == b {
++		t.Fatal("source uses must retain separate event identities")
++	}
++	rows := r.StateEvents()
++	for _, row := range rows {
++		if row.Channel == nil || *row.Channel != "stat_input:non_extra_stat" || row.Frame != 35 ||
++			row.NumericPayload[0].Value != 1 || row.NumericPayload[1].Value != 10 ||
++			row.NumericPayload[2].Value != 0 || row.CandidateDependencyComplete {
++			t.Fatal("query time/filter lost or unproved replacement accepted", row)
++		}
++	}
++	r.RecordArtifactStatRead(2, "em", 125, nil)
++	rows = r.StateEvents()
++	last := rows[len(rows)-1]
++	if *last.Channel != "stat_input:stat" || last.NumericPayload[0].Value != 2 || last.NumericPayload[1].Value != 35 {
++		t.Fatal("equal values merged distinct reads", last)
++	}
++	other := NewRuntime()
++	other.Enable()
++	if other.RecordStatQuery(2, "em", 125, nil, q) != "" {
++		t.Fatal("foreign runtime query accepted")
++	}
++	var disabled *Runtime
++	if disabled.RecordArtifactStatRead(0, "em", 1, nil) != "" {
++		t.Fatal("disabled trace produced evidence")
++	}
++}
+diff --git a/pkg/core/info/gtt_parametric_query_test.go b/pkg/core/info/gtt_parametric_query_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/info/gtt_parametric_query_test.go
+@@ -0,0 +1,35 @@
++package info
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func TestParametricSnapshotQueryKeepsOriginalFilterAndTime(t *testing.T) {
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	frame := 8
++	r.BindFrame(&frame)
++	var values attributes.Stats
++	values[attributes.BaseDEF], values[attributes.DEFP], values[attributes.DEF] = 100, .2, 10
++	origin := GTTStatsOriginFromModifiers(r, 2, values, nil, true)
++	frame = 44
++	ref := GTTStatsTotalRef(r, origin, values, attributes.BaseDEF, attributes.DEFP, attributes.DEF, 130)
++	if ref.EventID == nil {
++		t.Fatal("missing total ref")
++	}
++	reads := 0
++	for _, row := range r.StateEvents() {
++		if row.Operation == nil || *row.Operation != "artifact_stat_read" {
++			continue
++		}
++		reads++
++		if *row.Channel != "stat_input:non_extra_stat" || row.NumericPayload[1].Value != 8 || *row.OwnerIndex != 2 {
++			t.Fatal("saved getter became an ordinary/later getter", row)
++		}
++	}
++	if reads != 2 {
++		t.Fatal("flat/percent lineage missing", reads)
++	}
++}
+diff --git a/pkg/core/player/character/gtt_parametric_query_test.go b/pkg/core/player/character/gtt_parametric_query_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/core/player/character/gtt_parametric_query_test.go
+@@ -0,0 +1,47 @@
++package character
++
++import (
++	"testing"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/modifier"
++)
++
++func TestParametricGetterFilterDoesNotReevaluateModifiers(t *testing.T) {
++	frame := 17
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	r.BindFrame(&frame)
++	c := &CharWrapper{index: 1, f: &frame, gttTrace: r}
++	c.BaseStats[attributes.EM] = 100
++	calls := 0
++	extra := &StatMod{Base: modifier.NewBase("query-test-extra", -1), AffectedStat: attributes.EM, Extra: true,
++		Amount: func() []float64 {
++			calls++
++			v := make([]float64, attributes.EndStatType)
++			v[attributes.EM] = 25
++			return v
++		}}
++	extra.SetExpiry(frame)
++	c.mods = append(c.mods, extra)
++	for _, filtered := range []bool{true, false} {
++		var got float64
++		if filtered {
++			got, _ = c.GTTNonExtraStat(attributes.EM)
++		} else {
++			got, _ = c.GTTStat(attributes.EM)
++		}
++		rows := r.StateEvents()
++		row := rows[len(rows)-1]
++		mode, want := "stat_input:stat", 125.0
++		if filtered {
++			mode, want = "stat_input:non_extra_stat", 100
++		}
++		if got != want || row.Channel == nil || *row.Channel != mode {
++			t.Fatal(got, want, row)
++		}
++	}
++	if calls != 1 {
++		t.Fatal("observer changed gameplay evaluation count", calls)
++	}
++}

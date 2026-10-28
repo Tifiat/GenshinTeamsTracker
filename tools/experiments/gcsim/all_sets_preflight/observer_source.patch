@@ -1,0 +1,540 @@
+diff --git a/pkg/core/player/character/mods.go b/pkg/core/player/character/mods.go
+--- a/pkg/core/player/character/mods.go
++++ b/pkg/core/player/character/mods.go
+@@ -715,7 +715,7 @@
+ 		if len(bonusRefs) == 0 {
+ 			operation = "literal"
+ 		}
+-		id := c.gttTrace.RecordNumericEval(c.gttTrace.CurrentSourceID(), operation, bonusRefs, amt,
++		id := c.gttTrace.RecordEffectRead(c.gttTrace.CurrentSourceID(), "reaction_bonus", c.Index(), int(atk.AttackTag), operation, bonusRefs, amt,
+ 			gtttrace.IncompleteEvidence("reaction_bonus_schedule_frozen"))
+ 		trace.ReactionBonusRef = gtttrace.EventRef(id)
+ 	}
+diff --git a/pkg/enemy/damage.go b/pkg/enemy/damage.go
+--- a/pkg/enemy/damage.go
++++ b/pkg/enemy/damage.go
+@@ -341,7 +341,7 @@
+ 			info.GTTNumericInput{Kind: "frozen", Value: mult},
+ 			info.GTTNumericInput{Kind: "reference", Value: reactBonus, Reference: trace.ReactionBonusRef},
+ 			info.GTTNumericInput{Kind: "frozen", Value: defmod},
+-			info.GTTNumericInput{Kind: "frozen", Value: resmod},
++			info.GTTNumericInput{Kind: "context_resistance_multiplier", Value: resmod},
+ 			info.GTTNumericInput{Kind: "frozen", Value: grpMult},
+ 			info.GTTNumericInput{Kind: "frozen", Value: elevation},
+ 		)
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -16,6 +16,7 @@
+ 	TraceEquationV5Capability   = "gtt_trace_equation_v5"
+ 	TraceEquationV6Capability   = "gtt_trace_equation_v6"
+ 	CompactEquationV1Capability = "gtt_compact_equation_v1"
++	EffectInputsV1Capability    = "gtt_effect_inputs_v1"
+ 	SourceManifestV1Capability  = "gtt_source_manifest_v1"
+ 	TraceProvenanceV1Capability = "gtt_trace_provenance_v1"
+ )
+@@ -35,7 +36,7 @@
+ 	return EngineInfo{
+ 		GTTEngine:                true,
+ 		GTTPatchVersion:          PatchVersion,
+-		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability},
++		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, EffectInputsV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability},
+ 		SequentialWaves:          true,
+ 		WaveSchedulerStage:       "scenario_payload_v1",
+ 		UpstreamVersion:          upstreamVersion,
+diff --git a/pkg/gttcompact/builder.go b/pkg/gttcompact/builder.go
+--- a/pkg/gttcompact/builder.go
++++ b/pkg/gttcompact/builder.go
+@@ -18,7 +18,8 @@
+ }
+ 
+ type nodeBuilder struct {
+-	nodes []IRNode
++	nodes            []IRNode
++	resistanceInputs []ResistanceInput
+ }
+ 
+ func decimal(value float64) string {
+diff --git a/pkg/gttcompact/compile.go b/pkg/gttcompact/compile.go
+--- a/pkg/gttcompact/compile.go
++++ b/pkg/gttcompact/compile.go
+@@ -62,8 +62,11 @@
+ 		Seed: uint64(buffer.Seed), DurationMS: int64(math.Round(float64(buffer.DurationFrames) * 1000 / 60)),
+ 		TopologySHA256: topology, Nodes: builder.nodes, Channels: channels, OpaqueBoundaries: boundaries,
+ 	}
++	resistanceInputs := builder.usedResistanceInputs(channels)
+ 	audit := Audit{
+-		SourceHitCount: len(buffer.Hits), AncestorStateEventCount: len(support.ancestorIDs),
++		ResistanceInputs: resistanceInputs,
++		EffectInputs:     collectEffectInputs(buffer, characterKeys, support),
++		SourceHitCount:   len(buffer.Hits), AncestorStateEventCount: len(support.ancestorIDs),
+ 		NodeCount: len(builder.nodes), ChannelCount: len(channels), OpaqueReasonCount: len(reasons),
+ 		BaselineDamage: baseline,
+ 	}
+diff --git a/pkg/gttcompact/contributor_group.go b/pkg/gttcompact/contributor_group.go
+--- a/pkg/gttcompact/contributor_group.go
++++ b/pkg/gttcompact/contributor_group.go
+@@ -156,5 +156,5 @@
+ 		states = append(states, c.b.multiply(c.b.multiply(probs...), c.b.add(terms...)))
+ 	}
+ 	c.unknown["contributor_membership_schedule_frozen"] = struct{}{}
+-	return c.b.multiply(c.b.add(states...), c.b.constant(contributorTerminalFactor(hit)))
++	return c.b.multiply(c.b.add(states...), c.resistanceInput(hit), c.b.constant(hit.DefMod*hit.DamageGroupMultiplier*hit.ElevationMultiplier))
+ }
+diff --git a/pkg/gttcompact/direct.go b/pkg/gttcompact/direct.go
+--- a/pkg/gttcompact/direct.go
++++ b/pkg/gttcompact/direct.go
+@@ -154,7 +154,7 @@
+ 	if hit.HitWeakPoint {
+ 		crit = c.b.add(c.b.constant(1), cd)
+ 	}
+-	root := c.b.multiply(base, bonus, c.b.constant(hit.DefMod), c.b.constant(hit.ResMod), crit)
++	root := c.b.multiply(base, bonus, c.b.constant(hit.DefMod), c.resistanceInput(hit), crit)
+ 	if hit.Amped {
+ 		em := stat("em")
+ 		curve := c.b.add(c.b.constant(1), c.reactionBonusNode(hit.ReactionBonus, hit.ReactionBonusRef), c.b.divide(c.b.multiply(c.b.constant(2.78), em), c.b.add(c.b.constant(1400), em)))
+@@ -220,13 +220,13 @@
+ 		crit = c.b.add(c.b.constant(1), cd)
+ 	}
+ 	if !hasFlatWriteReceipt(hit) {
+-		return c.b.multiply(c.b.constant(formula.Coefficient), core, c.b.constant(1+hit.DamageBonus), c.b.constant(hit.DefMod), c.b.constant(hit.ResMod), crit, c.b.constant(hit.DamageGroupMultiplier), c.b.constant(hit.ElevationMultiplier))
++		return c.b.multiply(c.b.constant(formula.Coefficient), core, c.b.constant(1+hit.DamageBonus), c.b.constant(hit.DefMod), c.resistanceInput(hit), crit, c.b.constant(hit.DamageGroupMultiplier), c.b.constant(hit.ElevationMultiplier))
+ 	}
+ 	flat := c.compileAttackField(hit, "FlatDmg", c.b.multiply(c.b.constant(formula.Coefficient), core), hit.FlatDmg)
+ 	return c.b.multiply(
+ 		flat,
+ 		c.b.constant(1+hit.DamageBonus),
+-		c.b.constant(hit.DefMod), c.b.constant(hit.ResMod), crit,
++		c.b.constant(hit.DefMod), c.resistanceInput(hit), crit,
+ 		c.b.constant(hit.DamageGroupMultiplier), c.b.constant(hit.ElevationMultiplier),
+ 	)
+ }
+diff --git a/pkg/gttcompact/effect_input.go b/pkg/gttcompact/effect_input.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/effect_input.go
+@@ -0,0 +1,43 @@
++package gttcompact
++
++// Observer annotation only; does NOT alter IR arithmetic or expose proof.
++// Node IDs are usable only with the exact graph of this capture, not by label
++// or float equality. Duplicate/ambiguous ports are rejected rather than guessed.
++import (
++	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
++	"strconv"
++	"strings"
++)
++
++type EffectInput struct {
++	EventID   string `json:"event_id"`
++	NodeID    uint32 `json:"node_id"`
++	Kind      string `json:"kind"`
++	Owner     string `json:"owner"`
++	AttackTag string `json:"attack_tag"`
++	Observed  string `json:"observed"`
++}
++
++func collectEffectInputs(buffer optstats.GTTTraceEquationBuffer, owners []string, support supportProgram) []EffectInput {
++	out := []EffectInput{}
++	for _, event := range buffer.StateEvents {
++		if event.Channel == nil || !strings.HasPrefix(*event.Channel, "effect_input:") || event.OwnerIndex == nil || *event.OwnerIndex < 0 || *event.OwnerIndex >= len(owners) || event.Value == nil {
++			continue
++		}
++		node, ok := support.eventNodes[event.EventID]
++		if !ok || !closeEnough(node.baseline, *event.Value) {
++			continue
++		}
++		tag := ""
++		for _, field := range event.NumericPayload {
++			if field.Key == "attack_tag" && field.Value >= 0 && field.Value == float64(int(field.Value)) {
++				tag = "tag/" + strconv.Itoa(int(field.Value))
++			}
++		}
++		if tag == "" {
++			continue
++		}
++		out = append(out, EffectInput{event.EventID, node.id, strings.TrimPrefix(*event.Channel, "effect_input:"), owners[*event.OwnerIndex], tag, decimal(*event.Value)})
++	}
++	return out
++}
+diff --git a/pkg/gttcompact/effect_input_test.go b/pkg/gttcompact/effect_input_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/effect_input_test.go
+@@ -0,0 +1,42 @@
++package gttcompact
++
++import (
++	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
++	"testing"
++)
++
++func TestEffectInputUsesActualOwnerAndExactEventBinding(t *testing.T) {
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	id := r.RecordEffectRead("", "reaction_bonus", 0, 31, "literal", nil, 0, gtttrace.IncompleteEvidence("synthetic"))
++	b := &nodeBuilder{}
++	n := b.constant(0)
++	buffer := optstats.GTTTraceEquationBuffer{StateEvents: r.StateEvents()}
++	support := supportProgram{eventNodes: map[string]compiledNode{id: n}}
++	got := collectEffectInputs(buffer, []string{"actual_owner", "display_actor"}, support)
++	if len(got) != 1 || got[0].Owner != "actual_owner" || got[0].NodeID != n.id || got[0].AttackTag != "tag/31" {
++		t.Fatal(got)
++	}
++	support.eventNodes[id] = b.constant(1)
++	if len(collectEffectInputs(buffer, []string{"actual_owner"}, support)) != 0 {
++		t.Fatal("different observed value accepted")
++	}
++	delete(support.eventNodes, id)
++	if len(collectEffectInputs(buffer, []string{"actual_owner"}, support)) != 0 {
++		t.Fatal("missing event guessed by value")
++	}
++}
++
++func TestResistanceInputsDoNotExposeFailedFormulaNodes(t *testing.T) {
++	b := &nodeBuilder{}
++	c := directCompiler{b: b}
++	accepted := c.resistanceInput(info.GTTTraceHit{HitID: 1, TargetKey: 7, Element: "electro", Resistance: 0.1, ResMod: 0.9})
++	_ = c.resistanceInput(info.GTTTraceHit{HitID: 2, TargetKey: 8, Element: "dendro", Resistance: 0.1, ResMod: 0.9})
++	root := b.multiply(accepted, b.constant(123))
++	got := b.usedResistanceInputs([]IRChannel{{RootNodeID: root.id}})
++	if len(got) != 1 || got[0].NodeID != accepted.id || got[0].HitID != 1 || got[0].TargetKey != 7 {
++		t.Fatal(got)
++	}
++}
+diff --git a/pkg/gttcompact/model.go b/pkg/gttcompact/model.go
+--- a/pkg/gttcompact/model.go
++++ b/pkg/gttcompact/model.go
+@@ -49,6 +49,8 @@
+ // include it in a GOB-2 receipt, and tests use it to prove that compaction did
+ // not silently discard an executed path.
+ type Audit struct {
++	ResistanceInputs        []ResistanceInput `json:"resistance_inputs,omitempty"`
++	EffectInputs            []EffectInput
+ 	SourceHitCount          int
+ 	AncestorStateEventCount int
+ 	NodeCount               int
+diff --git a/pkg/gttcompact/numeric_recipe.go b/pkg/gttcompact/numeric_recipe.go
+--- a/pkg/gttcompact/numeric_recipe.go
++++ b/pkg/gttcompact/numeric_recipe.go
+@@ -51,6 +51,11 @@
+ 			return fail("operand_binding_kind")
+ 		}
+ 		switch p.Kind {
++		case "context_resistance_multiplier":
++			if operand || !closeEnough(p.Value, hit.ResMod) {
++				return fail("context_resistance_binding")
++			}
++			n = c.resistanceInput(hit)
+ 		case "fixed":
+ 			// Explicit fixed input: e.g. level data outside artifact coordinates.
+ 		case "reference":
+diff --git a/pkg/gttcompact/resistance_input.go b/pkg/gttcompact/resistance_input.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gttcompact/resistance_input.go
+@@ -0,0 +1,52 @@
++package gttcompact
++
++// Provenance at actual compiler calls. No searching a graph for
++// a coincidentally equal constant, no character/reaction label registry.
++import "github.com/genshinsim/gcsim/pkg/core/info"
++
++type ResistanceInput struct {
++	NodeID     uint32 `json:"node_id"`
++	HitID      uint64 `json:"hit_id"`
++	TargetKey  int    `json:"target_key"`
++	Element    string `json:"element"`
++	Resistance string `json:"resistance"`
++	Observed   string `json:"observed"`
++}
++
++func (c *directCompiler) resistanceInput(hit info.GTTTraceHit) compiledNode {
++	n := c.b.constant(hit.ResMod)
++	c.b.resistanceInputs = append(c.b.resistanceInputs, ResistanceInput{n.id, hit.HitID, hit.TargetKey, hit.Element, decimal(hit.Resistance), decimal(hit.ResMod)})
++	return n
++}
++
++// A failed formula can leave attempted nodes behind. Only return ports that
++// actually feed an accepted channel; a frozen fallback does not gain a port.
++func (b *nodeBuilder) usedResistanceInputs(channels []IRChannel) []ResistanceInput {
++	live := map[uint32]bool{}
++	stack := []uint32{}
++	for _, ch := range channels {
++		stack = append(stack, ch.RootNodeID)
++	}
++	nodes := map[uint32]IRNode{}
++	for _, n := range b.nodes {
++		nodes[n.NodeID] = n
++	}
++	for len(stack) > 0 {
++		id := stack[len(stack)-1]
++		stack = stack[:len(stack)-1]
++		if live[id] {
++			continue
++		}
++		live[id] = true
++		for _, in := range nodes[id].Inputs {
++			stack = append(stack, in.NodeID)
++		}
++	}
++	out := []ResistanceInput{}
++	for _, p := range b.resistanceInputs {
++		if live[p.NodeID] {
++			out = append(out, p)
++		}
++	}
++	return out
++}
+diff --git a/pkg/gttsourcegen/numeric_recipe_test.go b/pkg/gttsourcegen/numeric_recipe_test.go
+--- a/pkg/gttsourcegen/numeric_recipe_test.go
++++ b/pkg/gttsourcegen/numeric_recipe_test.go
+@@ -65,6 +65,9 @@
+ 	if !strings.Contains(string(got), "info.GTTTraceAttachNumeric(") || strings.Contains(string(got), "numeric_recipe_source_slice_unsupported") {
+ 		t.Fatal("actual calculation did not produce a recipe")
+ 	}
++	if strings.Count(string(got), `Kind: "context_resistance_multiplier"`) + strings.Count(string(got), `Kind:"context_resistance_multiplier"`) != 1 {
++		t.Fatal("source contextual input marker not preserved by full engine rewrite")
++	}
+ 	// Constants and operation order are parsed from the supplied source. The
+ 	// same adapter must follow a future changed curve without editing GTT.
+ 	changed := strings.Replace(string(src), "(6 * em) / (2000 + em)", "(9 * em) / (1731 + em)", 1)
+diff --git a/pkg/gtttrace/effect_read.go b/pkg/gtttrace/effect_read.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/effect_read.go
+@@ -0,0 +1,19 @@
++package gtttrace
++
++// Annotates the already existing
++// numeric sum; no extra event, modifier evaluation or gameplay/RNG operation.
++// Exported only through the opt-in neutral effect-input sidecar.
++func (r *Runtime) RecordEffectRead(source, channel string, owner, tag int, operator string, inputs []NumericRef, value float64, evidence DependencyEvidence) string {
++	id := r.RecordNumericEval(source, operator, inputs, value, evidence)
++	if id == "" || len(r.stateEvents) == 0 {
++		return id
++	}
++	row := &r.stateEvents[len(r.stateEvents)-1]
++	if row.EventID != id {
++		return id
++	}
++	row.Channel = optionalString("effect_input:" + channel)
++	row.OwnerIndex = optionalInt(owner)
++	row.NumericPayload = []NumericPayload{{Key: "attack_tag", Value: float64(tag), Reference: LiteralRef(float64(tag))}}
++	return id
++}
+diff --git a/pkg/gtttrace/effect_read_test.go b/pkg/gtttrace/effect_read_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/effect_read_test.go
+@@ -0,0 +1,26 @@
++package gtttrace
++
++import "testing"
++
++func TestEffectReadAnnotationDoesNotAddAnEventOrLoseZeroOwner(t *testing.T) {
++	for _, enabled := range []bool{true, false} {
++		r := NewRuntime()
++		if enabled {
++			r.Enable()
++		}
++		id := r.RecordEffectRead("", "reaction_bonus", 0, 31, "literal", nil, 0, IncompleteEvidence("test"))
++		rows := r.StateEvents()
++		if !enabled {
++			if id != "" || len(rows) != 0 {
++				t.Fatal("disabled changed")
++			}
++			continue
++		}
++		if len(rows) != 1 || rows[0].EventID != id || rows[0].OwnerIndex == nil || *rows[0].OwnerIndex != 0 || rows[0].Value == nil || *rows[0].Value != 0 || rows[0].NumericPayload[0].Value != 31 {
++			t.Fatal(rows)
++		}
++		if rows[0].Operation == nil || *rows[0].Operation != "literal" || len(rows[0].Inputs) != 0 {
++			t.Fatal("arithmetic changed")
++		}
++	}
++}
+diff --git a/pkg/optimization/gtt_effect_inputs.go b/pkg/optimization/gtt_effect_inputs.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_effect_inputs.go
+@@ -0,0 +1,61 @@
++package optimization
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"fmt"
++	"os"
++
++	"github.com/genshinsim/gcsim/pkg/gtt"
++	"github.com/genshinsim/gcsim/pkg/gttcompact"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
++)
++
++// A separate opt-in product output, never a debug-stderr protocol. Its digest
++// binds the exact member file bytes (including newline), NOT a canonical object
++// digest in the consumer. Context, source/config, seed and initialization order
++// remain explicit. Neither a port nor its observed value is a set-effect proof.
++type GTTEffectInputs struct {
++	SchemaVersion            int                          `json:"schema_version"`
++	Capability               string                       `json:"capability"`
++	MemberContentSHA256      string                       `json:"member_content_sha256"`
++	ContextSHA256            string                       `json:"context_sha256"`
++	InputConfigSHA256        string                       `json:"input_config_sha256"`
++	SourceConfigSHA256       string                       `json:"source_config_sha256"`
++	SourceManifestBodySHA256 string                       `json:"source_manifest_body_sha256"`
++	Seed                     string                       `json:"seed"`
++	CharacterKeys            []string                     `json:"character_keys"`
++	EffectInputs             []gttcompact.EffectInput     `json:"effect_inputs"`
++	ResistanceInputs         []gttcompact.ResistanceInput `json:"resistance_inputs"`
++}
++
++func encodeGTTEffectInputs(member []byte, request GTTTraceEquationRequest, inputConfig, config string, owners []string, audit gttcompact.Audit) ([]byte, error) {
++	digest := sha256.Sum256(member)
++	effects, resistance := audit.EffectInputs, audit.ResistanceInputs
++	if effects == nil {
++		effects = []gttcompact.EffectInput{}
++	}
++	if resistance == nil {
++		resistance = []gttcompact.ResistanceInput{}
++	}
++	return json.Marshal(GTTEffectInputs{
++		SchemaVersion: 1, Capability: gtt.EffectInputsV1Capability,
++		MemberContentSHA256: hex.EncodeToString(digest[:]),
++		ContextSHA256:       request.ContextSHA256, InputConfigSHA256: traceTextSHA256(inputConfig), SourceConfigSHA256: traceTextSHA256(config),
++		SourceManifestBodySHA256: gttsource.ManifestBodySHA256(),
++		Seed:                     request.Seed, CharacterKeys: append([]string(nil), owners...),
++		EffectInputs: effects, ResistanceInputs: resistance,
++	})
++}
++
++func writeGTTEffectInputs(path string, member []byte, request GTTTraceEquationRequest, inputConfig, config string, owners []string, audit gttcompact.Audit) error {
++	payload, err := encodeGTTEffectInputs(member, request, inputConfig, config, owners, audit)
++	if err != nil {
++		return fmt.Errorf("gtt effect inputs: encode: %w", err)
++	}
++	if err := os.WriteFile(path+".effects.json", append(payload, '\n'), 0o644); err != nil {
++		return fmt.Errorf("gtt effect inputs: write: %w", err)
++	}
++	return nil
++}
+diff --git a/pkg/optimization/gtt_effect_inputs_test.go b/pkg/optimization/gtt_effect_inputs_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/optimization/gtt_effect_inputs_test.go
+@@ -0,0 +1,50 @@
++package optimization
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"github.com/genshinsim/gcsim/pkg/gttcompact"
++)
++
++func TestEffectInputsOptInAndByteBinding(t *testing.T) {
++	r := GTTTraceEquationRequest{SchemaVersion: 1, ContextSHA256: strings.Repeat("a", 64), Seed: "71", Iterations: 1, Workers: 1}
++	r.IncludeEffectInputs = true
++	if r.validate() == nil {
++		t.Fatal("sidecar without compact mode accepted")
++	}
++	r.OutputMode = "compact_ir_v1"
++	if err := r.validate(); err != nil {
++		t.Fatal(err)
++	}
++	member := []byte("{\"seed\":\"71\"}\n")
++	digest := sha256.Sum256(member)
++	path := filepath.Join(t.TempDir(), "member.json")
++	if err := writeGTTEffectInputs(path, member, r, "config\r\n", "config\n\n", []string{"actor_b", "actor_a"}, gttcompact.Audit{}); err != nil {
++		t.Fatal(err)
++	}
++	payload, err := os.ReadFile(path + ".effects.json")
++	if err != nil {
++		t.Fatal(err)
++	}
++	var out GTTEffectInputs
++	if err := json.Unmarshal(payload, &out); err != nil {
++		t.Fatal(err)
++	}
++	if out.MemberContentSHA256 != hex.EncodeToString(digest[:]) || out.ContextSHA256 != r.ContextSHA256 || out.Seed != r.Seed || out.CharacterKeys[0] != "actor_b" || out.EffectInputs == nil || out.ResistanceInputs == nil {
++		t.Fatalf("sidecar binding incomplete: %+v", out)
++	}
++	if out.InputConfigSHA256 != traceTextSHA256("config\r\n") || out.SourceConfigSHA256 != traceTextSHA256("config\n\n") {
++		t.Fatal("raw and engine-resolved text hashes conflated")
++	}
++	r.IncludeEffectInputs = false
++	payload, _ = json.Marshal(r)
++	if strings.Contains(string(payload), "include_effect_inputs") {
++		t.Fatal("legacy request changed")
++	}
++}
+diff --git a/pkg/optimization/gtt_trace_equation.go b/pkg/optimization/gtt_trace_equation.go
+--- a/pkg/optimization/gtt_trace_equation.go
++++ b/pkg/optimization/gtt_trace_equation.go
+@@ -54,13 +54,14 @@
+ }
+ 
+ type GTTTraceEquationRequest struct {
+-	SchemaVersion     int    `json:"schema_version"`
+-	ContextSHA256     string `json:"context_sha256"`
+-	Seed              string `json:"seed"`
+-	Iterations        int    `json:"iterations"`
+-	Workers           int    `json:"workers"`
+-	IgnoreBurstEnergy bool   `json:"ignore_burst_energy"`
+-	OutputMode        string `json:"output_mode,omitempty"`
++	SchemaVersion       int    `json:"schema_version"`
++	ContextSHA256       string `json:"context_sha256"`
++	Seed                string `json:"seed"`
++	Iterations          int    `json:"iterations"`
++	Workers             int    `json:"workers"`
++	IgnoreBurstEnergy   bool   `json:"ignore_burst_energy"`
++	OutputMode          string `json:"output_mode,omitempty"`
++	IncludeEffectInputs bool   `json:"include_effect_inputs,omitempty"`
+ }
+ 
+ type GTTTraceEquationOutput struct {
+@@ -117,6 +118,13 @@
+ 	}
+ 	seed, _ := strconv.ParseInt(request.Seed, 10, 64)
+ 
++	var inputConfig []byte
++	if request.IncludeEffectInputs {
++		inputConfig, err = os.ReadFile(opts.ConfigPath)
++		if err != nil {
++			return err
++		}
++	}
+ 	cfg, err := simulator.ReadConfig(opts.ConfigPath)
+ 	if err != nil {
+ 		return err
+@@ -183,6 +191,11 @@
+ 			return fmt.Errorf("gtt compact equation: encode output: %w", err)
+ 		}
+ 		payload = append(payload, '\n')
++		if request.IncludeEffectInputs {
++			if err := writeGTTEffectInputs(opts.ResultSaveToPath, payload, request, string(inputConfig), cfg, characterKeys, audit); err != nil {
++				return err
++			}
++		}
+ 		if err := os.WriteFile(opts.ResultSaveToPath, payload, 0o644); err != nil {
+ 			return fmt.Errorf("gtt compact equation: write output: %w", err)
+ 		}
+@@ -262,6 +275,9 @@
+ 	if r.OutputMode != "" && r.OutputMode != "compact_ir_v1" {
+ 		return errors.New("gtt trace equation: unsupported output_mode")
+ 	}
++	if r.IncludeEffectInputs && r.OutputMode != "compact_ir_v1" {
++		return errors.New("gtt effect inputs require compact_ir_v1 output")
++	}
+ 	return nil
+ }
+ 

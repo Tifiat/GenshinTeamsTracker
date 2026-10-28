@@ -1,0 +1,95 @@
+diff --git a/pkg/gttsourcegen/overlay.go b/pkg/gttsourcegen/overlay.go
+--- a/pkg/gttsourcegen/overlay.go
++++ b/pkg/gttsourcegen/overlay.go
+@@ -158,21 +158,24 @@ func BuildOverlay(root, overlayDir string, entries []SourceEntry, snapshotEntrie
+ 		if err != nil {
+ 			return OverlayResult{}, fmt.Errorf("read overlay source %s: %w", rel, err)
+ 		}
+-		rewritten, err := rewriteOverlayFileWithSnapshots(rel, data, byFile[rel], snapshotEntries[rel])
++		// Seal bounded contributor reducers before any instrumentation expands
++		// their original gameplay statements. The seal authenticates source
++		// structure; later rewrites only attach observation metadata.
++		rewritten, err := rewriteContributorGroups(rel, data)
++		if err != nil {
++			return OverlayResult{}, fmt.Errorf("contributor group %s: %w", rel, err)
++		}
++		rewritten, err = rewriteOverlayFileWithSnapshots(rel, rewritten, byFile[rel], snapshotEntries[rel])
+ 		if err != nil {
+ 			return OverlayResult{}, fmt.Errorf("rewrite %s: %w", rel, err)
+ 		}
+ 		if bytes.Equal(rewritten, data) && len(byFile[rel]) == 0 {
+ 			continue
+ 		}
+ 		rewritten, err = rewriteNumericRecipes(rel, rewritten)
+ 		if err != nil {
+ 			return OverlayResult{}, fmt.Errorf("numeric recipe %s: %w", rel, err)
+ 		}
+-		rewritten, err = rewriteContributorGroups(rel, rewritten)
+-		if err != nil {
+-			return OverlayResult{}, fmt.Errorf("contributor group %s: %w", rel, err)
+-		}
+ 		// Structural discovery may admit a file only so the snapshot rewriter can
+ 		// inspect an ambiguous runtime path.  Do not create a no-op overlay when
+ 		// the file proves to contain no supported rewrite.
+diff --git a/pkg/gttsourcegen/contributor_group_test.go b/pkg/gttsourcegen/contributor_group_test.go
+--- a/pkg/gttsourcegen/contributor_group_test.go
++++ b/pkg/gttsourcegen/contributor_group_test.go
+@@ -55,3 +55,58 @@ func TestContributorProtocolFullTree(t *testing.T) {
+ 		assert(name, []byte(changed), false)
+ 	}
+ }
++
++func TestContributorSealSurvivesLaterNumericRecipeRewrite(t *testing.T) {
++	data, err := os.ReadFile(filepath.Join("..", "reactable", "lunarcharged.go"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	sealed, err := rewriteContributorGroups("pkg/reactable/lunarcharged.go", data)
++	if err != nil {
++		t.Fatal(err)
++	}
++	rewritten, err := rewriteNumericRecipes("pkg/reactable/lunarcharged.go", sealed)
++	if err != nil {
++		t.Fatal(err)
++	}
++	line := ""
++	for _, candidate := range strings.Split(string(rewritten), "\n") {
++		if strings.Contains(candidate, "GTTAttachContributorGroup(") {
++			line = candidate
++		}
++	}
++	if line == "" || strings.Contains(line, `,""`) || strings.Contains(line, `, ""`) {
++		t.Fatalf("later numeric rewrite lost contributor seal: %s", line)
++	}
++}
++
++func TestContributorSealSurvivesFullOverlayPipeline(t *testing.T) {
++	root, err := filepath.Abs(filepath.Join("..", ".."))
++	if err != nil {
++		t.Fatal(err)
++	}
++	manifest, err := Generate(Options{ModuleRoot: root, Binding: testBinding()})
++	if err != nil {
++		t.Fatal(err)
++	}
++	overlay, err := BuildOverlay(
++		OverlayOptions{ModuleRoot: root, OverlayDir: filepath.Join(t.TempDir(), "overlay")},
++		manifest,
++	)
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, file := range overlay.Files {
++		if file.RelativeFile != "pkg/reactable/lunarcharged.go" {
++			continue
++		}
++		for _, line := range strings.Split(string(file.Contents), "\n") {
++			if strings.Contains(line, "GTTAttachContributorGroup(") &&
++				!strings.Contains(line, `,""`) && !strings.Contains(line, `, ""`) {
++				return
++			}
++		}
++		t.Fatal("full overlay pipeline emitted an unsealed Lunar Charged contributor group")
++	}
++	t.Fatal("Lunar Charged overlay absent")
++}

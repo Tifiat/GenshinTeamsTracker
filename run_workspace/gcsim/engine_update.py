@@ -1,0 +1,1107 @@
+"""Dev command for official GCSIM source update through the engine store.
+
+This command is intentionally backend-only. It downloads official source,
+prepares it through `GcsimEngineStore`, records metadata, and can optionally
+build a local executable artifact. It does not integrate GCSIM into UI.
+"""
+
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass, replace
+import hashlib
+import json
+from pathlib import Path
+from typing import Callable
+
+from .artifact_build import (
+    DEFAULT_GCSIM_ARTIFACT_RELATIVE_PATH,
+    GcsimBuildArtifactResult,
+    build_gcsim_artifact,
+)
+from .engine_store import (
+    GcsimEngineStore,
+    GcsimEngineUpdateResult,
+    OverlayPatchBackend,
+    PatchBackend,
+)
+from .patch_backends import GitApplyPatchBackend, ordered_file_stack_identity
+from .source_manifest_build import (
+    SOURCE_MANIFEST_INPUT_KIND,
+    SOURCE_MANIFEST_TRACE_CAPABILITY,
+    SOURCE_MANIFEST_TRACE_SCHEMA_VERSION,
+)
+from .source_acquisition import (
+    DEFAULT_GCSIM_SOURCE_CACHE_DIR,
+    GCSIM_UPSTREAM_REPO,
+    OfficialGcsimSourceAcquisition,
+    acquire_official_gcsim_source,
+)
+from .source_cache_retention import retain_official_source_cache
+from .tree_identity import directory_sha256
+from .engine_compatibility import verify_engine_application_bundle
+from .runtime_probe import (
+    DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
+    GcsimRuntimeProbeResult,
+    GoRunner,
+    cleanup_go_build_cache as cleanup_go_build_cache_dir,
+    run_gcsim_runtime_probe,
+)
+
+
+DEFAULT_GCSIM_PATCH_STACK_DIR = Path(__file__).resolve().parent / "patch_stack"
+GCSIM_REQUIRED_SOURCE_PATHS = (
+    "go.mod",
+    "cmd/gcsim/main.go",
+    "pkg/simulator",
+    "pkg/model",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimOfficialEngineUpdateReport:
+    success: bool
+    activated: bool
+    release: str
+    engine_id: str | None
+    previous_active_engine_id: str | None
+    active_engine_id: str | None
+    engine_path: str
+    source_dir: str
+    source_archive_path: str
+    source_archive_url: str
+    upstream_ref: str
+    upstream_repo: str
+    patch_backend: str
+    patch_count: int
+    patch_stack_path: str
+    patch_stack_status: str
+    patch_files: tuple[str, ...]
+    patch_check_status: str
+    patch_apply_status: str
+    patch_git_status: str
+    patch_git_executable: str
+    check_status: str
+    layout_check_status: str
+    runtime_check_status: str
+    runtime_ready: bool
+    go_available: bool
+    go_version: str
+    go_os: str
+    go_arch: str
+    go_env_root: str
+    runtime_probe_command: str
+    runtime_probe_stdout: str
+    runtime_probe_stderr: str
+    artifact_build_requested: bool
+    artifact_ready: bool
+    artifact_kind: str
+    artifact_path: str
+    artifact_relative_path: str
+    artifact_filename: str
+    artifact_sha256: str
+    artifact_build_status: str
+    artifact_runtime_check_status: str
+    artifact_build_command: str
+    artifact_build_stdout: str
+    artifact_build_stderr: str
+    artifact_version_command: str
+    artifact_version_stdout: str
+    artifact_version_stderr: str
+    gtt_marker_required: bool
+    gtt_marker_ready: bool
+    gtt_info_status: str
+    gtt_patch_version: str
+    gtt_capabilities: tuple[str, ...]
+    gtt_sequential_waves: str
+    gtt_upstream_version: str
+    gtt_info_command: str
+    gtt_info_stdout: str
+    gtt_info_stderr: str
+    error: str = ""
+    application_compatibility_status: str = "not_requested"
+    engine_cleanup_status: str = "not_requested"
+    engine_cleanup_deleted_paths: tuple[str, ...] = ()
+    engine_cleanup_deleted_bytes: int = 0
+    engine_cleanup_error: str = ""
+    go_build_cache_cleanup_status: str = "not_requested"
+    go_build_cache_cleanup_path: str = ""
+    go_build_cache_cleanup_deleted_bytes: int = 0
+    go_build_cache_cleanup_error: str = ""
+    source_cache_cleanup_status: str = "not_requested"
+    source_cache_cleanup_deleted_paths: tuple[str, ...] = ()
+    source_cache_cleanup_deleted_bytes: int = 0
+    source_cache_cleanup_protected_paths: tuple[str, ...] = ()
+    source_cache_cleanup_unowned_paths: tuple[str, ...] = ()
+    source_cache_cleanup_over_budget_bytes: int = 0
+    source_cache_cleanup_error: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "success": self.success,
+            "activated": self.activated,
+            "release": self.release,
+            "engine_id": self.engine_id,
+            "previous_active_engine_id": self.previous_active_engine_id,
+            "active_engine_id": self.active_engine_id,
+            "engine_path": self.engine_path,
+            "source_dir": self.source_dir,
+            "source_archive_path": self.source_archive_path,
+            "source_archive_url": self.source_archive_url,
+            "upstream_ref": self.upstream_ref,
+            "upstream_repo": self.upstream_repo,
+            "patch_backend": self.patch_backend,
+            "patch_count": self.patch_count,
+            "patch_stack_path": self.patch_stack_path,
+            "patch_stack_status": self.patch_stack_status,
+            "patch_files": list(self.patch_files),
+            "patch_check_status": self.patch_check_status,
+            "patch_apply_status": self.patch_apply_status,
+            "patch_git_status": self.patch_git_status,
+            "patch_git_executable": self.patch_git_executable,
+            "check_status": self.check_status,
+            "layout_check_status": self.layout_check_status,
+            "runtime_check_status": self.runtime_check_status,
+            "runtime_ready": self.runtime_ready,
+            "go_available": self.go_available,
+            "go_version": self.go_version,
+            "go_os": self.go_os,
+            "go_arch": self.go_arch,
+            "go_env_root": self.go_env_root,
+            "runtime_probe_command": self.runtime_probe_command,
+            "runtime_probe_stdout": self.runtime_probe_stdout,
+            "runtime_probe_stderr": self.runtime_probe_stderr,
+            "artifact_build_requested": self.artifact_build_requested,
+            "artifact_ready": self.artifact_ready,
+            "artifact_kind": self.artifact_kind,
+            "artifact_path": self.artifact_path,
+            "artifact_relative_path": self.artifact_relative_path,
+            "artifact_filename": self.artifact_filename,
+            "artifact_sha256": self.artifact_sha256,
+            "artifact_build_status": self.artifact_build_status,
+            "artifact_runtime_check_status": self.artifact_runtime_check_status,
+            "artifact_build_command": self.artifact_build_command,
+            "artifact_build_stdout": self.artifact_build_stdout,
+            "artifact_build_stderr": self.artifact_build_stderr,
+            "artifact_version_command": self.artifact_version_command,
+            "artifact_version_stdout": self.artifact_version_stdout,
+            "artifact_version_stderr": self.artifact_version_stderr,
+            "gtt_marker_required": self.gtt_marker_required,
+            "gtt_marker_ready": self.gtt_marker_ready,
+            "gtt_info_status": self.gtt_info_status,
+            "gtt_patch_version": self.gtt_patch_version,
+            "gtt_capabilities": list(self.gtt_capabilities),
+            "gtt_sequential_waves": self.gtt_sequential_waves,
+            "gtt_upstream_version": self.gtt_upstream_version,
+            "gtt_info_command": self.gtt_info_command,
+            "gtt_info_stdout": self.gtt_info_stdout,
+            "gtt_info_stderr": self.gtt_info_stderr,
+            "error": self.error,
+            "application_compatibility_status": self.application_compatibility_status,
+            "engine_cleanup_status": self.engine_cleanup_status,
+            "engine_cleanup_deleted_paths": list(self.engine_cleanup_deleted_paths),
+            "engine_cleanup_deleted_bytes": self.engine_cleanup_deleted_bytes,
+            "engine_cleanup_error": self.engine_cleanup_error,
+            "go_build_cache_cleanup_status": self.go_build_cache_cleanup_status,
+            "go_build_cache_cleanup_path": self.go_build_cache_cleanup_path,
+            "go_build_cache_cleanup_deleted_bytes": (
+                self.go_build_cache_cleanup_deleted_bytes
+            ),
+            "go_build_cache_cleanup_error": self.go_build_cache_cleanup_error,
+            "source_cache_cleanup_status": self.source_cache_cleanup_status,
+            "source_cache_cleanup_deleted_paths": list(self.source_cache_cleanup_deleted_paths),
+            "source_cache_cleanup_deleted_bytes": self.source_cache_cleanup_deleted_bytes,
+            "source_cache_cleanup_protected_paths": list(self.source_cache_cleanup_protected_paths),
+            "source_cache_cleanup_unowned_paths": list(self.source_cache_cleanup_unowned_paths),
+            "source_cache_cleanup_over_budget_bytes": self.source_cache_cleanup_over_budget_bytes,
+            "source_cache_cleanup_error": self.source_cache_cleanup_error,
+        }
+
+
+def prepare_official_gcsim_engine_update(
+    *,
+    release: str = "latest",
+    store_dir: str | Path | None = None,
+    source_cache_dir: str | Path | None = None,
+    patch_stack_dir: str | Path | None = None,
+    engine_id: str | None = None,
+    patch_backend: PatchBackend | None = None,
+    source_acquirer: Callable[..., OfficialGcsimSourceAcquisition] | None = None,
+    probe_runtime: bool = False,
+    runtime_probe_runner: GoRunner | None = None,
+    build_artifact: bool = False,
+    artifact_build_runner: GoRunner | None = None,
+    artifact_relative_path: str | Path = DEFAULT_GCSIM_ARTIFACT_RELATIVE_PATH,
+    go_executable: str = "go",
+    go_work_dir: str | Path | None = None,
+    runtime_probe_timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
+    prune_engine_store: bool = True,
+    clean_go_build_cache: bool = False,
+    activate: bool = True,
+    compatibility_check: Callable[[Path, GcsimBuildArtifactResult], str] | None = None,
+) -> GcsimOfficialEngineUpdateReport:
+    store = GcsimEngineStore(store_dir)
+    previous_active = store.active_engine_id()
+    acquirer = source_acquirer or acquire_official_gcsim_source
+    try:
+        acquisition = acquirer(
+            release=release,
+            cache_dir=source_cache_dir or DEFAULT_GCSIM_SOURCE_CACHE_DIR,
+        )
+    except Exception as exc:  # noqa: BLE001 - command/report boundary.
+        return GcsimOfficialEngineUpdateReport(
+            success=False,
+            activated=False,
+            release=str(release),
+            engine_id=None,
+            previous_active_engine_id=previous_active,
+            active_engine_id=previous_active,
+            engine_path="",
+            source_dir="",
+            source_archive_path="",
+            source_archive_url="",
+            upstream_ref="",
+            upstream_repo=GCSIM_UPSTREAM_REPO,
+            patch_backend=(patch_backend or OverlayPatchBackend()).name,
+            patch_count=0,
+            patch_stack_path="",
+            patch_stack_status="not_started",
+            patch_files=(),
+            patch_check_status="not_started",
+            patch_apply_status="not_started",
+            patch_git_status="not_started",
+            patch_git_executable="",
+            check_status="source_acquisition_failed",
+            layout_check_status="not_started",
+            runtime_check_status="not_started",
+            runtime_ready=False,
+            go_available=False,
+            go_version="",
+            go_os="",
+            go_arch="",
+            go_env_root="",
+            runtime_probe_command="",
+            runtime_probe_stdout="",
+            runtime_probe_stderr="",
+            artifact_build_requested=build_artifact,
+            artifact_ready=False,
+            artifact_kind="local_build" if build_artifact else "",
+            artifact_path="",
+            artifact_relative_path="",
+            artifact_filename=Path(artifact_relative_path).name if build_artifact else "",
+            artifact_sha256="",
+            artifact_build_status="not_started",
+            artifact_runtime_check_status="not_started",
+            artifact_build_command="",
+            artifact_build_stdout="",
+            artifact_build_stderr="",
+            artifact_version_command="",
+            artifact_version_stdout="",
+            artifact_version_stderr="",
+            gtt_marker_required=False,
+            gtt_marker_ready=False,
+            gtt_info_status="not_started",
+            gtt_patch_version="",
+            gtt_capabilities=(),
+            gtt_sequential_waves="",
+            gtt_upstream_version="",
+            gtt_info_command="",
+            gtt_info_stdout="",
+            gtt_info_stderr="",
+            error=str(exc),
+        )
+
+    backend = patch_backend or OverlayPatchBackend()
+    patch_stack = _resolve_patch_stack_dir(patch_stack_dir, backend=backend)
+    patch_stack_status = "present" if patch_stack is not None else "absent_no_patches"
+    require_gtt_marker = build_artifact and _patch_stack_has_patch_files(patch_stack)
+    metadata = _engine_manifest_metadata(
+        acquisition=acquisition,
+        requested_release=release,
+        patch_stack=patch_stack,
+        patch_stack_status=patch_stack_status,
+        probe_runtime=probe_runtime,
+        build_artifact=build_artifact,
+        artifact_relative_path=artifact_relative_path,
+        require_gtt_marker=require_gtt_marker,
+    )
+    source_manifest_binding_input = _source_manifest_binding_input(
+        acquisition=acquisition,
+        patch_stack=patch_stack,
+        patch_backend=backend,
+    )
+    runtime_probe_state: dict[str, GcsimRuntimeProbeResult | None] = {"result": None}
+    artifact_build_state: dict[str, GcsimBuildArtifactResult | None] = {"result": None}
+    update_result = store.prepare_engine_update(
+        source_dir=acquisition.source_dir,
+        patch_stack_dir=patch_stack,
+        source_label=f"gcsim-{acquisition.source_ref.tag}",
+        engine_id=engine_id,
+        patch_backend=backend,
+        capabilities=_engine_capabilities(
+            probe_runtime=probe_runtime,
+            build_artifact=build_artifact,
+            require_gtt_marker=require_gtt_marker,
+        ),
+        metadata=metadata,
+        smoke_check=_make_engine_update_smoke_check(
+            probe_runtime=probe_runtime,
+            build_artifact=build_artifact,
+            metadata=metadata,
+            runtime_probe_state=runtime_probe_state,
+            artifact_build_state=artifact_build_state,
+            go_executable=go_executable,
+            go_work_dir=go_work_dir,
+            runtime_probe_runner=runtime_probe_runner,
+            artifact_build_runner=artifact_build_runner,
+            runtime_probe_timeout_seconds=runtime_probe_timeout_seconds,
+            artifact_relative_path=artifact_relative_path,
+            require_gtt_marker=require_gtt_marker,
+            source_manifest_binding_input=source_manifest_binding_input,
+            compatibility_check=(compatibility_check or verify_engine_application_bundle) if activate and build_artifact else None,
+        ),
+        activate=bool(activate and build_artifact),
+    )
+    report = _report_from_update_result(
+        release=release,
+        store=store,
+        acquisition=acquisition,
+        patch_stack=patch_stack,
+        patch_stack_status=patch_stack_status,
+        update_result=update_result,
+        probe_runtime=probe_runtime,
+        runtime_probe_result=runtime_probe_state["result"],
+        build_artifact=build_artifact,
+        artifact_build_result=artifact_build_state["result"],
+    )
+    application_status = metadata.get("application_compatibility_status", "not_requested")
+    report = replace(report, application_compatibility_status=application_status)
+    if application_status == "failed":
+        report = replace(report, check_status="application_compatibility_failed", runtime_ready=False)
+    return _apply_post_update_cleanup(
+        report,
+        store=store,
+        acquisition=acquisition,
+        prune_engine_store=prune_engine_store,
+        clean_go_build_cache=clean_go_build_cache,
+        go_work_dir=go_work_dir,
+        go_cleanup_allowed=probe_runtime or build_artifact,
+    )
+
+
+def gcsim_source_layout_smoke_check(engine_dir: Path) -> str:
+    missing = [
+        relative
+        for relative in GCSIM_REQUIRED_SOURCE_PATHS
+        if not (engine_dir / relative).exists()
+    ]
+    if missing:
+        return "GCSIM source layout check failed; missing: " + ", ".join(missing)
+    return ""
+
+
+def _make_engine_update_smoke_check(
+    *,
+    probe_runtime: bool,
+    build_artifact: bool,
+    metadata: dict[str, str],
+    runtime_probe_state: dict[str, GcsimRuntimeProbeResult | None],
+    artifact_build_state: dict[str, GcsimBuildArtifactResult | None],
+    go_executable: str,
+    go_work_dir: str | Path | None,
+    runtime_probe_runner: GoRunner | None,
+    artifact_build_runner: GoRunner | None,
+    runtime_probe_timeout_seconds: int,
+    artifact_relative_path: str | Path,
+    require_gtt_marker: bool,
+    source_manifest_binding_input: dict[str, object],
+    compatibility_check: Callable[[Path, GcsimBuildArtifactResult], str] | None = None,
+):
+    def smoke_check(engine_dir: Path) -> str:
+        layout_error = gcsim_source_layout_smoke_check(engine_dir)
+        if layout_error:
+            metadata["layout_check_status"] = "source_layout_failed"
+            metadata["check_status"] = "source_layout_failed"
+            return layout_error
+        metadata["layout_check_status"] = "source_layout_passed"
+        metadata["check_status"] = "source_layout_passed"
+        if build_artifact:
+            result = build_gcsim_artifact(
+                engine_dir,
+                artifact_relative_path=artifact_relative_path,
+                go_executable=go_executable,
+                go_work_dir=go_work_dir,
+                timeout_seconds=runtime_probe_timeout_seconds,
+                runner=artifact_build_runner or runtime_probe_runner,
+                require_gtt_marker=require_gtt_marker,
+                source_manifest_binding_input=source_manifest_binding_input,
+            )
+            artifact_build_state["result"] = result
+            metadata.update(result.metadata())
+            if result.runtime_ready:
+                if compatibility_check is not None:
+                    try:
+                        compatibility_error = compatibility_check(engine_dir, result)
+                    except Exception as exc:  # Keep the installed engine on validator failure.
+                        compatibility_error = f"application compatibility check failed: {exc}"
+                    if compatibility_error:
+                        metadata["check_status"] = "application_compatibility_failed"
+                        metadata["application_compatibility_status"] = "failed"
+                        return compatibility_error
+                    metadata["application_compatibility_status"] = "passed"
+                metadata["check_status"] = "artifact_runtime_passed"
+                return ""
+            metadata["check_status"] = result.status
+            return result.error or result.status
+        if not probe_runtime:
+            metadata["runtime_check_status"] = "not_requested"
+            metadata["runtime_ready"] = "false"
+            return ""
+
+        result = run_gcsim_runtime_probe(
+            engine_dir,
+            go_executable=go_executable,
+            go_work_dir=go_work_dir,
+            timeout_seconds=runtime_probe_timeout_seconds,
+            runner=runtime_probe_runner,
+        )
+        runtime_probe_state["result"] = result
+        metadata.update(result.metadata())
+        if result.runtime_ready:
+            metadata["check_status"] = "runtime_probe_passed"
+            return ""
+        metadata["check_status"] = result.status
+        return result.error or result.status
+
+    return smoke_check
+
+
+def _engine_capabilities(
+    *,
+    probe_runtime: bool,
+    build_artifact: bool,
+    require_gtt_marker: bool,
+) -> tuple[str, ...]:
+    capabilities = ["official_source_layout", "gtt_patch_stack_boundary"]
+    if build_artifact:
+        capabilities.extend(["local_build_artifact", "built_artifact_runtime_probe"])
+    if require_gtt_marker:
+        capabilities.extend(["gtt_engine_marker", "gtt_info_probe"])
+    if probe_runtime and not build_artifact:
+        capabilities.append("go_runtime_probe")
+    return tuple(capabilities)
+
+
+def _source_manifest_binding_input(
+    *,
+    acquisition: OfficialGcsimSourceAcquisition,
+    patch_stack: Path | None,
+    patch_backend: PatchBackend,
+) -> dict[str, object]:
+    patch_files: list[Path] = []
+    if patch_stack is not None and patch_stack.is_dir():
+        if isinstance(patch_backend, GitApplyPatchBackend):
+            patch_files = sorted(
+                (path for path in patch_stack.rglob("*.patch") if path.is_file()),
+                key=lambda path: path.relative_to(patch_stack).as_posix(),
+            )
+        else:
+            patch_files = sorted(
+                (path for path in patch_stack.rglob("*") if path.is_file()),
+                key=lambda path: path.relative_to(patch_stack).as_posix(),
+            )
+    if patch_stack is None:
+        patch_rows, patch_stack_sha256 = ordered_file_stack_identity(Path("."), ())
+    else:
+        patch_rows, patch_stack_sha256 = ordered_file_stack_identity(
+            patch_stack,
+            patch_files,
+        )
+    formula_ids = (
+        "gtt_trace_formula_v3",
+        "gtt_transformative_reaction_v1",
+        "gtt_source_ir_v2",
+    )
+    return {
+        "schema_version": 1,
+        "kind": SOURCE_MANIFEST_INPUT_KIND,
+        "upstream_repo": acquisition.source_ref.upstream_repo,
+        "upstream_ref": acquisition.source_ref.tag,
+        "pristine_source_tree_sha256": _source_tree_sha256(acquisition.source_dir),
+        "patches": list(patch_rows),
+        "patch_stack_sha256": patch_stack_sha256,
+        "trace_schema_version": SOURCE_MANIFEST_TRACE_SCHEMA_VERSION,
+        "trace_capability": SOURCE_MANIFEST_TRACE_CAPABILITY,
+        "formula_identities": [
+            {
+                "id": formula_id,
+                "sha256": (
+                    "c5e843111092ced9e2979cc228715acaafb4701b462923bb21b2c59091d43139"
+                    if formula_id == "gtt_transformative_reaction_v1"
+                    else (
+                        "8b8dfcb9cb97e2b06145638e47ba915a"
+                        "6016a11f956708d7de7ee826ae730792"
+                        if formula_id == "gtt_source_ir_v2"
+                        else hashlib.sha256(formula_id.encode("utf-8")).hexdigest()
+                    )
+                ),
+            }
+            for formula_id in formula_ids
+        ],
+    }
+
+
+def _source_tree_sha256(path: str | Path) -> str:
+    return directory_sha256(path)
+
+
+def _engine_manifest_metadata(
+    *,
+    acquisition: OfficialGcsimSourceAcquisition,
+    requested_release: str,
+    patch_stack: Path | None,
+    patch_stack_status: str,
+    probe_runtime: bool,
+    build_artifact: bool,
+    artifact_relative_path: str | Path,
+    require_gtt_marker: bool,
+) -> dict[str, str]:
+    runtime_pending = probe_runtime or build_artifact
+    return {
+        "upstream_repo": acquisition.source_ref.upstream_repo,
+        "upstream_release_request": str(requested_release),
+        "upstream_ref": acquisition.source_ref.tag,
+        "upstream_source_archive_url": acquisition.source_ref.archive_url,
+        "upstream_html_url": acquisition.source_ref.html_url,
+        "upstream_api_url": acquisition.source_ref.api_url,
+        "source_acquisition_status": "ok",
+        "source_archive_path": str(acquisition.archive_path),
+        "source_cache_dir": str(acquisition.cache_dir),
+        "patch_stack_path": "" if patch_stack is None else str(patch_stack),
+        "patch_stack_status": patch_stack_status,
+        "check_status": "source_layout_passed",
+        "layout_check_status": "source_layout_passed",
+        "runtime_ready": "false",
+        "runtime_check_status": "pending" if runtime_pending else "not_requested",
+        "go_available": "false",
+        "go_version": "",
+        "go_os": "",
+        "go_arch": "",
+        "go_env_root": "",
+        "runtime_probe_command": "",
+        "runtime_probe_stdout": "",
+        "runtime_probe_stderr": "",
+        "artifact_build_requested": "true" if build_artifact else "false",
+        "artifact_ready": "false",
+        "artifact_kind": "local_build" if build_artifact else "",
+        "artifact_path": "",
+        "artifact_filename": Path(artifact_relative_path).name if build_artifact else "",
+        "artifact_sha256": "",
+        "artifact_build_status": "pending" if build_artifact else "not_requested",
+        "artifact_runtime_check_status": "pending" if build_artifact else "not_requested",
+        "artifact_build_command": "",
+        "artifact_build_stdout": "",
+        "artifact_build_stderr": "",
+        "artifact_version_command": "",
+        "artifact_version_stdout": "",
+        "artifact_version_stderr": "",
+        "gtt_marker_required": "true" if require_gtt_marker else "false",
+        "gtt_marker_ready": "false",
+        "gtt_info_status": "pending" if require_gtt_marker else "not_required",
+        "gtt_patch_version": "",
+        "gtt_capabilities": "[]",
+        "gtt_sequential_waves": "",
+        "gtt_upstream_version": "",
+        "gtt_info_command": "",
+        "gtt_info_stdout": "",
+        "gtt_info_stderr": "",
+        "shipped_fallback_status": "resolver_available_not_bundled",
+    }
+
+
+def _runtime_status_for_report(
+    *,
+    probe_runtime: bool,
+    runtime_probe_result: GcsimRuntimeProbeResult | None,
+    build_artifact: bool,
+    artifact_build_result: GcsimBuildArtifactResult | None,
+    update_result: GcsimEngineUpdateResult,
+) -> str:
+    if artifact_build_result is not None:
+        return artifact_build_result.status
+    if build_artifact:
+        return "not_run" if not update_result.success else "artifact_runtime_passed"
+    if runtime_probe_result is not None:
+        return runtime_probe_result.status
+    if not probe_runtime:
+        return "not_requested"
+    if update_result.success:
+        return "runtime_probe_passed"
+    return "not_run"
+
+
+def _report_from_update_result(
+    *,
+    release: str,
+    store: GcsimEngineStore,
+    acquisition: OfficialGcsimSourceAcquisition,
+    patch_stack: Path | None,
+    patch_stack_status: str,
+    update_result: GcsimEngineUpdateResult,
+    probe_runtime: bool,
+    runtime_probe_result: GcsimRuntimeProbeResult | None,
+    build_artifact: bool,
+    artifact_build_result: GcsimBuildArtifactResult | None,
+) -> GcsimOfficialEngineUpdateReport:
+    active_engine_id = store.active_engine_id()
+    patch_metadata = dict(update_result.patch_result.metadata)
+    report_metadata = dict(update_result.manifest.metadata) if update_result.manifest else {}
+    if artifact_build_result is not None:
+        report_metadata.update(artifact_build_result.metadata())
+    if runtime_probe_result is not None:
+        report_metadata.update(runtime_probe_result.metadata())
+    layout_status = (
+        "source_layout_passed"
+        if update_result.success or runtime_probe_result is not None or artifact_build_result is not None
+        else (update_result.error or "engine_update_failed")
+    )
+    runtime_status = _runtime_status_for_report(
+        probe_runtime=probe_runtime,
+        runtime_probe_result=runtime_probe_result,
+        build_artifact=build_artifact,
+        artifact_build_result=artifact_build_result,
+        update_result=update_result,
+    )
+    runtime_ready = (
+        bool(artifact_build_result and artifact_build_result.runtime_ready)
+        if build_artifact
+        else bool(runtime_probe_result and runtime_probe_result.runtime_ready)
+    )
+    check_status = (
+        runtime_status if (probe_runtime or build_artifact) else layout_status
+        if update_result.success
+        else (update_result.error or "engine_update_failed")
+    )
+    return GcsimOfficialEngineUpdateReport(
+        success=update_result.success,
+        activated=update_result.activated,
+        release=str(release),
+        engine_id=update_result.engine_id,
+        previous_active_engine_id=update_result.previous_active_engine_id,
+        active_engine_id=active_engine_id,
+        engine_path="" if update_result.engine_path is None else str(update_result.engine_path),
+        source_dir=str(acquisition.source_dir),
+        source_archive_path=str(acquisition.archive_path),
+        source_archive_url=acquisition.source_ref.archive_url,
+        upstream_ref=acquisition.source_ref.tag,
+        upstream_repo=acquisition.source_ref.upstream_repo,
+        patch_backend=update_result.patch_result.backend,
+        patch_count=update_result.patch_result.patch_count,
+        patch_stack_path="" if patch_stack is None else str(patch_stack),
+        patch_stack_status=patch_stack_status,
+        patch_files=_patch_files_for_report(patch_metadata),
+        patch_check_status=patch_metadata.get("patch_check_status", ""),
+        patch_apply_status=patch_metadata.get("patch_apply_status", ""),
+        patch_git_status=patch_metadata.get("patch_git_status", ""),
+        patch_git_executable=patch_metadata.get("git_executable", ""),
+        check_status=check_status,
+        layout_check_status=layout_status,
+        runtime_check_status=runtime_status,
+        runtime_ready=runtime_ready,
+        go_available=report_metadata.get("go_available", "false") == "true",
+        go_version=report_metadata.get("go_version", ""),
+        go_os=report_metadata.get("go_os", ""),
+        go_arch=report_metadata.get("go_arch", ""),
+        go_env_root=report_metadata.get("go_env_root", ""),
+        runtime_probe_command=""
+        if runtime_probe_result is None
+        else " ".join(runtime_probe_result.command),
+        runtime_probe_stdout="" if runtime_probe_result is None else runtime_probe_result.stdout,
+        runtime_probe_stderr="" if runtime_probe_result is None else runtime_probe_result.stderr,
+        artifact_build_requested=report_metadata.get("artifact_build_requested", "false") == "true",
+        artifact_ready=report_metadata.get("artifact_ready", "false") == "true",
+        artifact_kind=report_metadata.get("artifact_kind", ""),
+        artifact_path=_artifact_path_for_report(
+            engine_path=update_result.engine_path,
+            metadata=report_metadata,
+            artifact_build_result=artifact_build_result,
+        ),
+        artifact_relative_path=report_metadata.get("artifact_relative_path", ""),
+        artifact_filename=report_metadata.get("artifact_filename", ""),
+        artifact_sha256=report_metadata.get("artifact_sha256", ""),
+        artifact_build_status=report_metadata.get("artifact_build_status", "not_requested"),
+        artifact_runtime_check_status=report_metadata.get(
+            "artifact_runtime_check_status",
+            "not_requested",
+        ),
+        artifact_build_command=report_metadata.get("artifact_build_command", ""),
+        artifact_build_stdout=report_metadata.get("artifact_build_stdout", ""),
+        artifact_build_stderr=report_metadata.get("artifact_build_stderr", ""),
+        artifact_version_command=report_metadata.get("artifact_version_command", ""),
+        artifact_version_stdout=report_metadata.get("artifact_version_stdout", ""),
+        artifact_version_stderr=report_metadata.get("artifact_version_stderr", ""),
+        gtt_marker_required=report_metadata.get("gtt_marker_required", "false") == "true",
+        gtt_marker_ready=report_metadata.get("gtt_marker_ready", "false") == "true",
+        gtt_info_status=report_metadata.get("gtt_info_status", "not_required"),
+        gtt_patch_version=report_metadata.get("gtt_patch_version", ""),
+        gtt_capabilities=_gtt_capabilities_for_report(report_metadata),
+        gtt_sequential_waves=report_metadata.get("gtt_sequential_waves", ""),
+        gtt_upstream_version=report_metadata.get("gtt_upstream_version", ""),
+        gtt_info_command=report_metadata.get("gtt_info_command", ""),
+        gtt_info_stdout=report_metadata.get("gtt_info_stdout", ""),
+        gtt_info_stderr=report_metadata.get("gtt_info_stderr", ""),
+        error=update_result.error,
+    )
+
+
+def _artifact_path_for_report(
+    *,
+    engine_path: Path | None,
+    metadata: dict[str, str],
+    artifact_build_result: GcsimBuildArtifactResult | None,
+) -> str:
+    relative = metadata.get("artifact_relative_path", "")
+    if engine_path is not None and relative:
+        return str(engine_path / Path(relative))
+    if artifact_build_result is not None and artifact_build_result.artifact_path:
+        return artifact_build_result.artifact_path
+    return metadata.get("artifact_path", "")
+
+
+def _go_target_text(report: GcsimOfficialEngineUpdateReport) -> str:
+    if not report.go_os and not report.go_arch:
+        return ""
+    if report.go_os and report.go_arch:
+        return f"{report.go_os}/{report.go_arch}"
+    return report.go_os or report.go_arch
+
+
+def make_patch_backend(name: str) -> PatchBackend:
+    normalized = str(name).strip().lower()
+    if normalized == "overlay":
+        return OverlayPatchBackend()
+    if normalized == "git":
+        return GitApplyPatchBackend()
+    raise ValueError(f"Unsupported GCSIM patch backend: {name!r}")
+
+
+def _patch_files_for_report(metadata: dict[str, str]) -> tuple[str, ...]:
+    raw = metadata.get("patch_files", "")
+    if not raw:
+        return ()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return ()
+    if not isinstance(data, list):
+        return ()
+    return tuple(str(item) for item in data)
+
+
+def _resolve_patch_stack_dir(path: str | Path | None, *, backend: PatchBackend) -> Path | None:
+    if path is not None:
+        return Path(path).expanduser().resolve()
+    if backend.name != "git":
+        return None
+    if DEFAULT_GCSIM_PATCH_STACK_DIR.exists():
+        return DEFAULT_GCSIM_PATCH_STACK_DIR.resolve()
+    return None
+
+
+def _patch_stack_has_patch_files(path: Path | None) -> bool:
+    if path is None:
+        return False
+    path = Path(path)
+    if not path.is_dir():
+        return False
+    return any(item.is_file() for item in path.rglob("*.patch"))
+
+
+def _gtt_capabilities_for_report(metadata: dict[str, str]) -> tuple[str, ...]:
+    raw = metadata.get("gtt_capabilities", "")
+    if not raw:
+        return ()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return ()
+    if not isinstance(data, list):
+        return ()
+    return tuple(str(item) for item in data)
+
+
+def _apply_post_update_cleanup(
+    report: GcsimOfficialEngineUpdateReport,
+    *,
+    store: GcsimEngineStore,
+    acquisition: OfficialGcsimSourceAcquisition,
+    prune_engine_store: bool,
+    clean_go_build_cache: bool,
+    go_work_dir: str | Path | None,
+    go_cleanup_allowed: bool,
+) -> GcsimOfficialEngineUpdateReport:
+    updated = report
+    if prune_engine_store and report.activated:
+        try:
+            prune_result = store.prune_generated_state()
+        except Exception as exc:  # noqa: BLE001 - cleanup must not break activation.
+            updated = replace(
+                updated,
+                engine_cleanup_status="failed",
+                engine_cleanup_error=str(exc),
+            )
+        else:
+            updated = replace(
+                updated,
+                engine_cleanup_status="pruned",
+                engine_cleanup_deleted_paths=tuple(prune_result.deleted_paths),
+                engine_cleanup_deleted_bytes=prune_result.deleted_bytes,
+            )
+    try:
+        source_cleanup = retain_official_source_cache(
+            acquisition=acquisition,
+            store=store,
+            dry_run=False,
+        )
+    except Exception as exc:  # noqa: BLE001 - retention cannot change update outcome.
+        updated = replace(
+            updated,
+            source_cache_cleanup_status="failed",
+            source_cache_cleanup_error=str(exc),
+        )
+    else:
+        updated = replace(
+            updated,
+            source_cache_cleanup_status=source_cleanup.status,
+            source_cache_cleanup_deleted_paths=source_cleanup.deleted_paths,
+            source_cache_cleanup_deleted_bytes=source_cleanup.deleted_bytes,
+            source_cache_cleanup_protected_paths=source_cleanup.protected_paths,
+            source_cache_cleanup_unowned_paths=source_cleanup.unowned_paths,
+            source_cache_cleanup_over_budget_bytes=source_cleanup.over_budget_bytes,
+            source_cache_cleanup_error=source_cleanup.error,
+        )
+    if clean_go_build_cache and updated.success and go_cleanup_allowed:
+        cleanup_result = cleanup_go_build_cache_dir(go_work_dir=go_work_dir)
+        updated = replace(
+            updated,
+            go_build_cache_cleanup_status=cleanup_result.status,
+            go_build_cache_cleanup_path=cleanup_result.path,
+            go_build_cache_cleanup_deleted_bytes=cleanup_result.deleted_bytes,
+            go_build_cache_cleanup_error=cleanup_result.error,
+        )
+    elif clean_go_build_cache and not go_cleanup_allowed:
+        updated = replace(
+            updated,
+            go_build_cache_cleanup_status="skipped_no_go_check",
+        )
+    return updated
+
+
+def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
+    lines = [
+        "GCSIM engine source update",
+        f"success={report.success} activated={report.activated}",
+        f"release={report.release} upstream_ref={report.upstream_ref}",
+        f"engine_id={report.engine_id or ''}",
+        f"active_engine_id={report.active_engine_id or ''}",
+        f"previous_active_engine_id={report.previous_active_engine_id or ''}",
+        f"source_dir={report.source_dir}",
+        f"archive={report.source_archive_path}",
+        f"engine_path={report.engine_path}",
+        (
+            "patch="
+            f"backend={report.patch_backend} count={report.patch_count} "
+            f"stack_status={report.patch_stack_status} "
+            f"check={report.patch_check_status or ''} "
+            f"apply={report.patch_apply_status or ''} "
+            f"git={report.patch_git_status or ''}"
+        ),
+        (
+            "checks="
+            f"layout={report.layout_check_status} "
+            f"runtime={report.runtime_check_status} "
+            f"runtime_ready={str(report.runtime_ready).lower()}"
+        ),
+        (
+            "artifact="
+            f"requested={str(report.artifact_build_requested).lower()} "
+            f"ready={str(report.artifact_ready).lower()} "
+            f"status={report.artifact_build_status} "
+            f"path={report.artifact_path or ''} "
+            f"sha256={report.artifact_sha256 or ''}"
+        ),
+        (
+            "go="
+            f"available={str(report.go_available).lower()} "
+            f"version={report.go_version or ''} "
+            f"target={_go_target_text(report)} "
+            f"cache={report.go_env_root or ''}"
+        ),
+        (
+            "gtt="
+            f"required={str(report.gtt_marker_required).lower()} "
+            f"ready={str(report.gtt_marker_ready).lower()} "
+            f"status={report.gtt_info_status or ''} "
+            f"patch_version={report.gtt_patch_version or ''} "
+            f"capabilities={','.join(report.gtt_capabilities)} "
+            f"sequential_waves={report.gtt_sequential_waves or ''}"
+        ),
+        (
+            "cleanup="
+            f"engine_status={report.engine_cleanup_status} "
+            f"engine_deleted_bytes={report.engine_cleanup_deleted_bytes} "
+            f"go_build_cache_status={report.go_build_cache_cleanup_status} "
+            f"go_build_cache_deleted_bytes={report.go_build_cache_cleanup_deleted_bytes}"
+            f" source_cache_status={report.source_cache_cleanup_status}"
+            f" source_cache_deleted_bytes={report.source_cache_cleanup_deleted_bytes}"
+            f" source_cache_over_budget_bytes={report.source_cache_cleanup_over_budget_bytes}"
+        ),
+    ]
+    if report.runtime_probe_stdout:
+        lines.append(f"probe_stdout={report.runtime_probe_stdout}")
+    if report.runtime_probe_stderr:
+        lines.append(f"probe_stderr={report.runtime_probe_stderr}")
+    if report.artifact_build_stdout:
+        lines.append(f"artifact_build_stdout={report.artifact_build_stdout}")
+    if report.artifact_build_stderr:
+        lines.append(f"artifact_build_stderr={report.artifact_build_stderr}")
+    if report.artifact_version_stdout:
+        lines.append(f"artifact_version_stdout={report.artifact_version_stdout}")
+    if report.artifact_version_stderr:
+        lines.append(f"artifact_version_stderr={report.artifact_version_stderr}")
+    if report.gtt_info_stdout:
+        lines.append(f"gtt_info_stdout={report.gtt_info_stdout}")
+    if report.gtt_info_stderr:
+        lines.append(f"gtt_info_stderr={report.gtt_info_stderr}")
+    if report.patch_files:
+        lines.append("patch_files=" + ", ".join(report.patch_files))
+    if report.engine_cleanup_deleted_paths:
+        lines.append(
+            "engine_cleanup_deleted="
+            + ", ".join(report.engine_cleanup_deleted_paths)
+        )
+    if report.engine_cleanup_error:
+        lines.append(f"engine_cleanup_error={report.engine_cleanup_error}")
+    if report.go_build_cache_cleanup_error:
+        lines.append(
+            f"go_build_cache_cleanup_error={report.go_build_cache_cleanup_error}"
+        )
+    if report.source_cache_cleanup_deleted_paths:
+        lines.append("source_cache_cleanup_deleted=" + ", ".join(report.source_cache_cleanup_deleted_paths))
+    if report.source_cache_cleanup_protected_paths:
+        lines.append("source_cache_cleanup_protected=" + ", ".join(report.source_cache_cleanup_protected_paths))
+    if report.source_cache_cleanup_unowned_paths:
+        lines.append("source_cache_cleanup_unowned=" + ", ".join(report.source_cache_cleanup_unowned_paths))
+    if report.source_cache_cleanup_error:
+        lines.append(f"source_cache_cleanup_error={report.source_cache_cleanup_error}")
+    if report.error:
+        lines.append(f"error={report.error}")
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Fetch official genshinsim/gcsim source and prepare a local "
+            "transactional GTT engine folder."
+        )
+    )
+    parser.add_argument("--release", default="latest", help="GitHub release tag or 'latest'.")
+    parser.add_argument("--store-dir", default=None, help="Optional engine store root.")
+    parser.add_argument("--source-cache-dir", default=None, help="Optional source cache root.")
+    parser.add_argument(
+        "--patch-stack",
+        default=None,
+        help=(
+            "Optional patch-stack directory. If omitted, the command uses "
+            "run_workspace/gcsim/patch_stack only when it exists."
+        ),
+    )
+    parser.add_argument(
+        "--patch-backend",
+        choices=("overlay", "git"),
+        default="overlay",
+        help=(
+            "Patch backend to use. 'overlay' copies fixture files and remains the "
+            "conservative default; 'git' applies ordered .patch files with git apply."
+        ),
+    )
+    parser.add_argument("--engine-id", default=None, help="Optional explicit engine id.")
+    parser.add_argument("--prepare-only", action="store_true", help="Prepare/build without switching the active engine; no activation compatibility gate is claimed.")
+    parser.add_argument(
+        "--probe-runtime",
+        action="store_true",
+        help=(
+            "Run an optional development Go runtime probe. Without --build-artifact "
+            "this prepares sources only and never changes the active engine."
+        ),
+    )
+    parser.add_argument(
+        "--build-artifact",
+        action="store_true",
+        help=(
+            "Build build/gtt-gcsim.exe with `go build` and verify that executable "
+            "with `-version`. Activation also requires the complete application "
+            "capability/catalog/compact-consumer and semantic smoke checks."
+        ),
+    )
+    parser.add_argument("--go-executable", default="go", help="Go executable name/path.")
+    parser.add_argument(
+        "--go-work-dir",
+        default=None,
+        help="Project-local Go cache root. Defaults to .go under the project root.",
+    )
+    parser.add_argument(
+        "--runtime-probe-timeout",
+        type=int,
+        default=DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
+        help="Timeout in seconds for each Go probe command.",
+    )
+    parser.add_argument(
+        "--no-prune-engine-store",
+        action="store_true",
+        help=(
+            "Do not prune old generated engine folders after the update. "
+            "By default the command keeps the active engine, one previous "
+            "successful engine, and one latest failed engine."
+        ),
+    )
+    parser.add_argument(
+        "--keep-go-build-cache",
+        action="store_true",
+        help=(
+            "Keep the project-local .go/build-cache after a successful Go "
+            "probe/build. By default it is deleted because it is rebuildable "
+            "and can grow to several GB."
+        ),
+    )
+    parser.add_argument("--format", choices=("text", "json"), default="text")
+    args = parser.parse_args(argv)
+
+    report = prepare_official_gcsim_engine_update(
+        release=args.release,
+        store_dir=args.store_dir,
+        source_cache_dir=args.source_cache_dir,
+        patch_stack_dir=args.patch_stack,
+        engine_id=args.engine_id,
+        patch_backend=make_patch_backend(args.patch_backend),
+        probe_runtime=args.probe_runtime,
+        build_artifact=args.build_artifact,
+        activate=not args.prepare_only,
+        go_executable=args.go_executable,
+        go_work_dir=args.go_work_dir,
+        runtime_probe_timeout_seconds=args.runtime_probe_timeout,
+        prune_engine_store=not args.no_prune_engine_store,
+        clean_go_build_cache=(
+            not args.keep_go_build_cache and (args.probe_runtime or args.build_artifact)
+        ),
+    )
+    if args.format == "json":
+        print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False, sort_keys=True))
+    else:
+        print(_format_report_text(report))
+    return 0 if report.success else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "name": "optimizer_account_mode_matrix_v1",
+  "db_path": "data/artifacts.db",
+  "runs": [
+    {
+      "id": "chasca_selected_infinite_saved",
+      "mode": "selected",
+      "characters": ["Furina", "Chasca", "Ororon", "Bennett"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chasca.txt",
+      "infinite_energy": true,
+      "source_run": "data/gcsim/optimizer-go-runs/selected-20260916-175039-2cd071bc"
+    },
+    {
+      "id": "chasca_selected_infinite_fresh",
+      "mode": "selected",
+      "characters": ["Furina", "Chasca", "Ororon", "Bennett"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chasca.txt",
+      "infinite_energy": true
+    },
+    {
+      "id": "chasca_selected_finite",
+      "mode": "selected",
+      "characters": ["Furina", "Chasca", "Ororon", "Bennett"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chasca.txt",
+      "infinite_energy": false
+    },
+    {
+      "id": "chasca_all_sets_infinite",
+      "mode": "all_sets",
+      "characters": ["Furina", "Chasca", "Ororon", "Bennett"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chasca.txt",
+      "infinite_energy": true
+    },
+    {
+      "id": "chasca_theory_infinite",
+      "mode": "theory",
+      "characters": ["Furina", "Chasca", "Ororon", "Bennett"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chasca.txt",
+      "infinite_energy": true
+    },
+    {
+      "id": "flins_jahoda_all_sets_infinite_saved",
+      "mode": "all_sets",
+      "characters": ["Flins", "Ineffa", "Columbina", "Jahoda"],
+      "rotation_file": "tests/fixtures/gcsim_optimizer_go_v1/flins_jahoda_no_burst_rotation.txt",
+      "infinite_energy": true,
+      "source_run": "data/gcsim/optimizer-go-runs/all_sets-20260917-030320-7048d16f"
+    },
+    {
+      "id": "flins_jahoda_selected_infinite",
+      "mode": "selected",
+      "characters": ["Flins", "Ineffa", "Columbina", "Jahoda"],
+      "rotation_file": "tests/fixtures/gcsim_optimizer_go_v1/flins_jahoda_no_burst_rotation.txt",
+      "infinite_energy": true
+    },
+    {
+      "id": "flins_jahoda_theory_infinite",
+      "mode": "theory",
+      "characters": ["Flins", "Ineffa", "Columbina", "Jahoda"],
+      "rotation_file": "tests/fixtures/gcsim_optimizer_go_v1/flins_jahoda_no_burst_rotation.txt",
+      "infinite_energy": true
+    },
+    {
+      "id": "flins_sucrose_rotation_1_selected",
+      "mode": "selected",
+      "characters": ["Flins", "Ineffa", "Columbina", "Sucrose"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/flins_sucrose_1.txt",
+      "infinite_energy": true
+    },
+    {
+      "id": "flins_sucrose_rotation_2_selected",
+      "mode": "selected",
+      "characters": ["Flins", "Ineffa", "Columbina", "Sucrose"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/flins_sucrose_2.txt",
+      "infinite_energy": true
+    },
+    {
+      "id": "bloom_selected_infinite",
+      "mode": "selected",
+      "characters": ["Kuki Shinobu", "Columbina", "Nahida", "Lauma"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/bloom.txt",
+      "infinite_energy": true,
+      "database_variant": "kuki_dark_iron_test_copy"
+    },
+    {
+      "id": "bloom_all_sets_infinite",
+      "mode": "all_sets",
+      "characters": ["Kuki Shinobu", "Columbina", "Nahida", "Lauma"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/bloom.txt",
+      "infinite_energy": true,
+      "database_variant": "kuki_dark_iron_test_copy"
+    },
+    {
+      "id": "bloom_theory_infinite",
+      "mode": "theory",
+      "characters": ["Kuki Shinobu", "Columbina", "Nahida", "Lauma"],
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/bloom.txt",
+      "infinite_energy": true,
+      "database_variant": "kuki_dark_iron_test_copy"
+    }
+  ]
+}

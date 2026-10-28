@@ -1,0 +1,33 @@
+options swap_delay=12 iteration=1000;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+energy every interval=480,720 amount=1;
+
+fn nahida_normal_attack_spam() {
+  let NA = 0;
+  while !.nahida.burst.ready {
+    if NA == 4 {
+      nahida dash;
+      NA = 0;
+    }
+    if !.nahida.burst.ready {
+      nahida attack;
+      NA = NA + 1;
+    }
+  }
+}
+
+active nahida;
+for let i=0; i<4; i=i+1 {
+  nahida burst, skill;
+  fischl attack:1;
+  if .fischl.skill.ready {
+    fischl skill;
+  } else {
+    fischl burst;
+  }
+  kuki skill;
+  tighnari skill, aim:3, burst;
+  kuki burst;
+  nahida skill, attack, charge, dash, attack:2, charge, dash, attack:2, charge, dash;
+  nahida_normal_attack_spam();
+}

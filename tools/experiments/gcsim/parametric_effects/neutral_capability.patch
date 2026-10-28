@@ -1,0 +1,11 @@
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -18,6 +18,7 @@ const (
+ 	EffectInputsV1Capability    = "gtt_effect_inputs_v1"
++	NeutralInputsV1Capability   = "gtt_neutral_inputs_v1"
+ 	SourceManifestV1Capability  = "gtt_source_manifest_v1"
+@@ -37,7 +38,7 @@ func Info(upstreamVersion string) EngineInfo {
+-		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, EffectInputsV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability, EnergyLedgerV1Capability},
++		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, EffectInputsV1Capability, NeutralInputsV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability, EnergyLedgerV1Capability},
+ 		SequentialWaves:          true,

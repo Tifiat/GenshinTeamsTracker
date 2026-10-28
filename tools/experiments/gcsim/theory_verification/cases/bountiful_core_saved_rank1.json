@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "case_id": "bountiful_core_saved_rank1",
+  "team": "bountiful_core",
+  "infinite_energy": true,
+  "manifest_sha256": "d00ed4463c535e136590548aad8e2d20f35a7efe8ca8bcb22a49b19c13ff1c86",
+  "rotation_sha256": "cc56e5109f98e5b213f3bd601a9076a5b84f15baa8b9c15a2cafbd15e5c601a5",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "seeds": [
+    742031889,
+    742031890
+  ],
+  "ordinary_iterations": 128,
+  "candidate_source": {
+    "path": "tests/fixtures/gcsim_optimizer_go_v1/optimizer_archetype_full_matrix_lineage5_20260919.json",
+    "sha256": "00a0cd81711081e867faf06cad9230471ada6c4ecd956104181a69187231a152",
+    "run_id": "bountiful_core_theory",
+    "rank": 1
+  }
+}

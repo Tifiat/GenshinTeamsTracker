@@ -1,0 +1,5231 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import sys
+from contextlib import closing
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timezone
+from pathlib import Path
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from typing import Any
+from uuid import uuid4
+
+from PySide6.QtCore import QEvent, QRect, QSize, QThread, QTimer, Qt, Signal
+from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import (
+    QApplication,
+    QButtonGroup,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from hoyolab_export.account_equipment import (
+    EquipmentChangeResult,
+    EquipmentError,
+    equip_weapon,
+    get_equipped_weapon_for_character,
+    list_equipped_artifacts_for_character,
+    unequip_weapon,
+)
+from hoyolab_export.account_storage import get_account_weapon_observed_stack
+from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
+from hoyolab_export.display_stat_effects import (
+    get_weapon_passive_tooltip,
+    list_artifact_set_display_stat_effects_for_active_sets,
+    list_weapon_display_stat_effects,
+)
+from hoyolab_export.paths import PROJECT_ROOT
+from hoyolab_export.team_card_data import (
+    BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT,
+    build_current_equipment_artifact_snapshot,
+)
+from localization import get_language, tr
+from ui.artifact_browser.queries import (
+    list_all_artifacts,
+    list_build_presets_for_gcsim_character,
+    save_build_preset,
+)
+from ui.character_browser.icon_grid_adapter import build_asset_grid_items
+from ui.character_browser.filter_bar import CharacterFilterBar
+from run_workspace.right_panel_prototype_view_model import (
+    FACT_DPS_HP_MODE_MULTI_TARGET,
+    FACT_DPS_HP_MODE_SOLO,
+    MODE_ABYSS,
+    MODE_DPS_DUMMY,
+    RightPanelGcsimChamberResult,
+    RightPanelPrototypeViewModel,
+    RightPanelGcsimStatusViewModel,
+    build_abyss_chamber_rows,
+    build_right_panel_prototype_view_model,
+)
+from run_workspace.history_snapshot import HistorySnapshotBundleStore
+from run_workspace.history_browser_catalog import (
+    HISTORY_MODE_ABYSS,
+    HISTORY_MODE_DPS_DUMMY,
+)
+from run_workspace.history_snapshot_builder import (
+    HistorySnapshotBuildContext,
+    build_history_snapshot_bundle,
+)
+from run_workspace.abyss.source_data import AbyssFloorSourceData
+from run_workspace.abyss.fact_dps_settings import (
+    is_abyss_fact_dps_multi_target_enabled,
+)
+from run_workspace.abyss.source_data_runtime import (
+    load_current_cached_abyss_floor_source_data,
+)
+from run_workspace.session import (
+    RunSessionController,
+    normalize_run_mode,
+)
+from run_workspace.team_builder import TeamBuilderState
+from ui.character_assets import (
+    FILTER_ASSETS_DIR,
+    filter_icon_path,
+    refresh_imported_element_filter_icons,
+    STANDARD_FILTER_ALL,
+    WEAPON_RARITY_FILTERS,
+    WEAPON_TYPE_FILTERS,
+    character_matches_filters,
+    character_sort_key,
+    load_account_character_asset_items,
+    load_account_weapon_stack_asset_items,
+    load_weapon_owner_badges_for_fingerprints,
+    metadata_int,
+)
+from ui.right_panel.settings.account_data import AccountDataPage
+from ui.pvp_browser.placeholders import PvpRightDockPlaceholder
+from ui.pvp_browser.window import PvpWorkspace
+from ui.right_panel.pvp._shared import (
+    PVP_PAGE_DECKS,
+    PVP_PAGE_DRAFT,
+    PVP_PAGE_PLAY,
+)
+from ui.right_panel.pvp.host import PvpRightPanelHost
+from ui.gcsim_browser.window import (
+    GcsimBrowserTeamSlotPreview,
+    GcsimBrowserWorkspace,
+)
+from ui.gcsim_browser.optimizer_result import build_optimizer_result_pages
+from ui.history_browser.window import HistoryBrowserWorkspace
+from ui.right_panel.history.viewer import HistoryRightPanelHost
+from ui.gcsim_browser.run_worker import (
+    _active_run_binding,
+    GcsimBrowserBatchRunRequest,
+    GcsimBrowserBatchRunWorker,
+    GcsimBrowserDpsDummyRunRequest,
+    GcsimBrowserDpsDummyRunWorker,
+    GcsimBrowserRunRequest,
+    GcsimBrowserRunWorker,
+    GcsimBrowserSelectedOptimizerWorker,
+    format_gcsim_browser_batch_report,
+    format_gcsim_browser_dps_dummy_report,
+    format_gcsim_browser_run_report,
+    format_gcsim_optimizer_go_selected_result,
+    right_panel_gcsim_result_from_browser_selected_payload,
+    right_panel_gcsim_results_from_browser_batch_payload,
+    split_gcsim_browser_warnings,
+)
+from run_workspace.gcsim.optimizer_go_selected import (
+    GcsimOptimizerGoSelectedRequest,
+)
+from run_workspace.gcsim.engine_store import GcsimEngineStore, GcsimEngineStoreError
+from run_workspace.gcsim.virtual_roster import (
+    GcsimCatalogCharacter,
+    GcsimCatalogWeapon,
+    GcsimVirtualSetBonus,
+    GcsimVirtualRosterCatalog,
+    GcsimVirtualSlotOverride,
+    load_active_virtual_artifact_set_choices,
+    load_active_virtual_roster_catalog,
+    max_virtual_talent_level,
+)
+from ui.right_panel.constants import (
+    RIGHT_DOCK_PAGE_ACCOUNT,
+    RIGHT_DOCK_PAGE_HISTORY,
+    RIGHT_DOCK_PAGE_PVP,
+    RIGHT_DOCK_PAGE_RUN,
+    RIGHT_OPERATIONS_DOCK_WIDTH,
+)
+from ui.right_panel.dock import RightOperationsDock
+from ui.right_panel.live_run.panel import RunRightPanelWidget
+from run_workspace.gcsim.selected_team_config import (
+    build_selected_team_full_config_report,
+)
+from run_workspace.gcsim.readiness_summary import (
+    build_gcsim_readiness_summary,
+    format_gcsim_readiness_summary,
+)
+from run_workspace.gcsim.settings import (
+    GcsimRunSettings,
+    effective_gcsim_optimizer_settings,
+    effective_gcsim_run_settings,
+)
+from run_workspace.perf import log_perf, perf_ms, perf_now
+from ui.utils.filter_button_style import (
+    FILTER_BUTTON_ICON_SIZE,
+    FILTER_BUTTON_SIZE,
+    filter_button_style,
+)
+from ui.utils.hidpi_pixmap import (
+    effective_pixmap_dpr,
+    load_hidpi_pixmap,
+    logical_pixmap_size,
+)
+from ui.utils.icon_utils import auto_contrast_svg_icon, tinted_svg_pixmap
+from ui.utils.marquee_label import MarqueeButton
+from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from ui.utils.pixel_icon_grid import (
+    PixelIconGrid,
+    PixelIconGridMetrics,
+    PixelIconGridOutline,
+    PixelIconGridOverlayIcon,
+)
+from ui.utils.owner_icon_badge import (
+    make_owner_icon_badge_background,
+    owner_badge_rect_for_icon_rect,
+    owner_badge_size_for_icon,
+)
+from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.ui_palette import (
+    UI_ACCENT_TEAM_1,
+    UI_ACCENT_TEAM_2,
+    UI_BG_BUTTON,
+    UI_BG_BUTTON_HOVER,
+    UI_EQUIPPED_WEAPON_ACCENT,
+    UI_BG_PANEL,
+    UI_BG_PANEL_RAISED,
+    UI_BORDER_DEFAULT,
+    UI_BORDER_PANEL,
+    UI_SELECTION_BADGE_FILL_ALPHA,
+    UI_SELECTION_NEUTRAL_FILL,
+    UI_SELECTION_NEUTRAL_FILL_ALPHA,
+    UI_SELECTION_OUTLINE_ALPHA,
+    UI_BG_APP,
+    UI_TEXT_PRIMARY,
+    UI_TEXT_SECONDARY,
+    UI_TEXT_ON_ACCENT,
+)
+
+
+HISTORY_SNAPSHOT_ROOT = PROJECT_ROOT / "data" / "history" / "snapshots"
+LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
+LEFT_WORKSPACE_ARTIFACTS = "artifacts"
+LEFT_WORKSPACE_GCSIM = "gcsim"
+LEFT_WORKSPACE_HISTORY = "history"
+LEFT_WORKSPACE_PVP = "pvp"
+
+# Calibrated global shell minimum for the embedded Artifact Browser footprint.
+# This is intentionally a top-level contract, not a dynamic maximum of current
+# QStackedWidget/minimumSizeHint states. It should fit the Artifact Browser with
+# one artifact grid cell, Assignment, preset/current-equipment panel, at least
+# one fully visible preset row / readable no-target hint, and the full build
+# preview block without vertical squeezing.
+APP_SHELL_MIN_WIDTH = 1408
+APP_SHELL_MIN_HEIGHT = 640
+APP_SHELL_INITIAL_SIZE = QSize(APP_SHELL_MIN_WIDTH, APP_SHELL_MIN_HEIGHT)
+RIGHT_PANEL_REFRESH_DEBOUNCE_MS = 30
+RIGHT_PANEL_FAST_REFRESH_MS = 1
+WEAPON_FILTER_SYNC_DEBOUNCE_MS = 80
+PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS = 40
+TEAM_MARKER_COLORS = (UI_ACCENT_TEAM_1, UI_ACCENT_TEAM_2)
+_SCALED_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
+_OWNER_BADGE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
+_OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int, int], QPixmap] = {}
+OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+WEAPON_OWNER_OVERLAY_TRACE = os.environ.get(
+    "GTT_WEAPON_OWNER_OVERLAY_TRACE",
+    "",
+).strip().casefold() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+# Calibrated after fixing the previous double-downscale bug: the accepted visual
+# placed a 45px side-icon at x=17/y=-22 relative to a 48px weapon card.
+WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 45 / 48
+WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 14 / 45
+WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
+WEAPON_PICKER_ICON_SIZE = 48
+WEAPON_PICKER_SAFE_MARGIN = 6
+WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
+WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_EQUIPPED_WEAPON_ACCENT
+GRID_SELECTION_OUTLINE_ALPHA = UI_SELECTION_OUTLINE_ALPHA
+GRID_SELECTION_BADGE_FILL_ALPHA = UI_SELECTION_BADGE_FILL_ALPHA
+GRID_SELECTION_OUTLINE_WIDTH = 4
+GRID_SELECTION_OUTLINE_OVERHANG = 1
+GRID_SELECTION_OUTLINE_RADIUS = 3
+CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN = 4
+GRID_SELECTION_BADGE_WIDTH = 24
+GRID_SELECTION_BADGE_HEIGHT = 20
+GRID_SELECTION_BADGE_MARGIN = 4
+WEAPON_PICKER_OCCUPIED_FILL_COLOR = UI_SELECTION_NEUTRAL_FILL
+WEAPON_PICKER_OCCUPIED_FILL_ALPHA = UI_SELECTION_NEUTRAL_FILL_ALPHA
+WEAPON_TYPE_FILTER_BY_ID = {
+    1: "sword",
+    10: "catalyst",
+    11: "claymore",
+    12: "bow",
+    13: "polearm",
+}
+WEAPON_TYPE_FILTER_ALIASES = {
+    "sword": "sword",
+    "one_handed_sword": "sword",
+    "catalyst": "catalyst",
+    "claymore": "claymore",
+    "bow": "bow",
+    "polearm": "polearm",
+}
+
+FILTER_BUTTON_STYLE = filter_button_style("app_shell_filter_button")
+
+
+@dataclass(frozen=True)
+class RosterSelectionMarker:
+    team_index: int
+    slot_index: int
+    slot_number: int
+    color: str
+
+
+@dataclass(frozen=True)
+class CharacterPlacementResult:
+    changed: bool = False
+    added: bool = False
+    removed: bool = False
+    character_id: str = ""
+    team_index: int = -1
+    slot_index: int = -1
+
+
+class AssetGridItemHandle:
+    """Small compatibility handle for tests and narrow widget adapters."""
+
+    def __init__(
+        self,
+        grid: PixelIconGrid,
+        item_id: str,
+        asset: dict[str, Any],
+        *,
+        selection_marker: RosterSelectionMarker | None = None,
+    ) -> None:
+        self._grid = grid
+        self.item_id = item_id
+        self.asset = dict(asset)
+        self.selection_marker = selection_marker
+        self.base_size = grid.item(item_id).properties.get("base_size", 0) if grid.item(item_id) else 0
+        self.owner_badges = _asset_owner_badges(asset)
+
+    def set_selection_marker(self, marker: RosterSelectionMarker | None) -> None:
+        self.selection_marker = marker
+
+    def property(self, name: str) -> Any:
+        return self._grid.item_property(self.item_id, name)
+
+
+@dataclass
+class PersistentEquipmentHydration:
+    weapon: dict[str, Any] | None = None
+    current_artifacts: dict[str, int] = field(default_factory=dict)
+    artifact_snapshot: Any | None = None
+    artifact_set_effects: list[dict[str, Any]] = field(default_factory=list)
+    weapon_bonus_context: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class RunSaveResult:
+    success: bool
+    bundle_id: str = ""
+    saved_path: Path | None = None
+    error_text: str = ""
+
+
+@dataclass
+class AppShellController:
+    """Tiny boundary for the separate AppShell prototype."""
+
+    session: RunSessionController = field(default_factory=RunSessionController.empty)
+    equipment_db_path: str | Path = ARTIFACT_DB_PATH
+    equipment_state: Any | None = None
+    abyss_fact_dps_multi_target_enabled: bool = False
+    gcsim_boosted_energy_enabled: bool = False
+    last_equipment_error: str = ""
+    last_weapon_equipment_change_result: EquipmentChangeResult | None = None
+    _persistent_equipment_cache: dict[str, PersistentEquipmentHydration] = field(
+        default_factory=dict
+    )
+    _cached_abyss_source_data_loaded: bool = False
+    _cached_abyss_source_data: AbyssFloorSourceData | None = None
+    _virtual_gcsim_overrides_by_mode: dict[
+        str, dict[tuple[int, int], GcsimVirtualSlotOverride]
+    ] = field(default_factory=dict)
+
+    @classmethod
+    def empty(
+        cls,
+        *,
+        equipment_db_path: str | Path = ARTIFACT_DB_PATH,
+        equipment_state: Any | None = None,
+    ) -> "AppShellController":
+        return cls(
+            session=RunSessionController.empty(),
+            equipment_db_path=equipment_db_path,
+            equipment_state=equipment_state,
+        )
+
+    def __post_init__(self) -> None:
+        if self.session is None:
+            self.session = RunSessionController.empty()
+
+    @property
+    def state(self) -> TeamBuilderState:
+        return self.session.team_state
+
+    @state.setter
+    def state(self, value: TeamBuilderState) -> None:
+        self.session.team_state = value
+
+    @property
+    def mode(self) -> str:
+        return self.session.mode
+
+    @mode.setter
+    def mode(self, value: str) -> None:
+        self.session.set_mode(value)
+
+    @property
+    def selected_team_index(self) -> int:
+        return self.session.selected_team_index
+
+    @selected_team_index.setter
+    def selected_team_index(self, value: int) -> None:
+        self.session.set_selection(value, self.selected_slot_index)
+
+    @property
+    def selected_slot_index(self) -> int:
+        return self.session.selected_slot_index
+
+    @selected_slot_index.setter
+    def selected_slot_index(self, value: int) -> None:
+        self.session.set_selection(self.selected_team_index, value)
+
+    @property
+    def external_bonuses_enabled(self) -> bool:
+        return self.session.external_bonuses_enabled
+
+    @external_bonuses_enabled.setter
+    def external_bonuses_enabled(self, enabled: bool) -> None:
+        self.session.external_bonuses_enabled = bool(enabled)
+
+    @property
+    def abyss_timer_states(self):
+        return self.session.abyss_timer_states
+
+    @property
+    def abyss_t2_manual_by_chamber(self) -> tuple[bool, ...]:
+        return self.session.abyss_t2_manual_by_chamber
+
+    @property
+    def mode_states(self) -> dict[str, TeamBuilderState]:
+        return self.session.mode_states
+
+    @mode_states.setter
+    def mode_states(self, mode_states: dict[str, TeamBuilderState]) -> None:
+        self.session.mode_states = mode_states
+
+    @property
+    def gcsim_chamber_results(self) -> tuple[RightPanelGcsimChamberResult, ...]:
+        return self.session.gcsim_chamber_results
+
+    @gcsim_chamber_results.setter
+    def gcsim_chamber_results(
+        self,
+        results: tuple[RightPanelGcsimChamberResult, ...],
+    ) -> None:
+        self.session.gcsim_chamber_results = tuple(results)
+
+    def right_panel_model(
+        self,
+        *,
+        load_abyss_source_data: bool = True,
+        include_virtual_gcsim_overrides: bool = True,
+    ) -> RightPanelPrototypeViewModel:
+        chamber_rows = (
+            build_abyss_chamber_rows(
+                self.abyss_timer_states,
+                abyss_source_data=self._right_panel_abyss_source_data(
+                    load_if_needed=load_abyss_source_data,
+                ),
+                fact_dps_multi_target_enabled=(
+                    self.abyss_fact_dps_multi_target_enabled
+                ),
+                gcsim_results=self.gcsim_chamber_results,
+            )
+            if self.mode == MODE_ABYSS
+            else None
+        )
+        model = build_right_panel_prototype_view_model(
+            self.state,
+            mode=self.mode,
+            selected_team_index=self.selected_team_index,
+            selected_slot_index=self.selected_slot_index,
+            external_bonuses_enabled=self.external_bonuses_enabled,
+            chamber_rows=chamber_rows,
+            gcsim_status=self._gcsim_status_view_model(),
+        )
+        overrides = (
+            self._virtual_gcsim_overrides_by_mode.get(self.mode, {})
+            if include_virtual_gcsim_overrides
+            else {}
+        )
+        if not overrides:
+            return model
+        teams = []
+        for team in model.teams:
+            slots = []
+            for slot in team.slots:
+                override = overrides.get((team.team_index, slot.slot_index))
+                if override is None:
+                    slots.append(slot)
+                    continue
+                weapon_label = override.weapon_name or tr(
+                    "right_panel.virtual_gcsim.weapon_missing"
+                )
+                profile_ready = not override.missing_profile_fields
+                slots.append(
+                    replace(
+                        slot,
+                        is_empty=False,
+                        character_title=override.character_name,
+                        character_meta=(
+                            f"GCSIM · C{override.constellation} · "
+                            f"{override.character_key}"
+                        ),
+                        portrait_label="?",
+                        portrait_path=override.character_icon_path,
+                        weapon_label=weapon_label,
+                        weapon_square_label="?",
+                        weapon_image_path=override.weapon_icon_path,
+                        weapon_tooltip=weapon_label,
+                        build_label=(
+                            override.artifact_build_name
+                            or tr("right_panel.virtual_gcsim.artifacts_pending")
+                        ),
+                        artifact_square_label="+",
+                        artifact_image_path="",
+                        stat_badge=f"R{override.refinement}",
+                        warning_count=0 if profile_ready else 1,
+                        warning_tooltip=(
+                            ""
+                            if profile_ready
+                            else tr("right_panel.virtual_gcsim.profile_incomplete")
+                        ),
+                    )
+                )
+            teams.append(replace(team, slots=tuple(slots)))
+        return replace(model, teams=tuple(teams))
+
+    def _right_panel_abyss_source_data(
+        self,
+        *,
+        load_if_needed: bool,
+    ) -> AbyssFloorSourceData | None:
+        if load_if_needed:
+            return self.cached_abyss_source_data()
+        return (
+            self._cached_abyss_source_data
+            if self._cached_abyss_source_data_loaded
+            else None
+        )
+
+    def save_current_run_snapshot(
+        self,
+        *,
+        history_root: str | Path = HISTORY_SNAPSHOT_ROOT,
+        created_at: datetime | None = None,
+    ) -> RunSaveResult:
+        bundle_id = ""
+        original_team_state = self.state
+        try:
+            self.hydrate_history_snapshot_slots()
+            created_at_utc = _utc_snapshot_datetime(created_at)
+            bundle_id = _new_history_snapshot_bundle_id(
+                run_type=self.mode,
+                created_at=created_at_utc,
+            )
+            context = HistorySnapshotBuildContext(
+                bundle_id=bundle_id,
+                created_at=_format_history_snapshot_created_at(created_at_utc),
+                source="app_shell",
+                content_language=get_language(),
+                **self._history_snapshot_abyss_context_fields(),
+                provenance={
+                    "right_panel_model": (
+                        "AppShellController.right_panel_model("
+                        "load_abyss_source_data=False)"
+                    ),
+                },
+            )
+            model = self.right_panel_model(
+                load_abyss_source_data=False,
+                include_virtual_gcsim_overrides=False,
+            )
+            bundle = build_history_snapshot_bundle(
+                self.session.state,
+                model,
+                context,
+            )
+            saved_path = HistorySnapshotBundleStore(history_root).write_bundle_grouped(
+                bundle,
+                copy_assets=True,
+                asset_source_roots=(PROJECT_ROOT,),
+            )
+            return RunSaveResult(
+                success=True,
+                bundle_id=bundle.bundle_id,
+                saved_path=Path(saved_path),
+            )
+        except Exception as exc:
+            return RunSaveResult(
+                success=False,
+                bundle_id=bundle_id,
+                error_text=str(exc) or exc.__class__.__name__,
+            )
+        finally:
+            self.state = original_team_state
+
+    def hydrate_history_snapshot_slots(self) -> None:
+        visible_team_count = 2 if self.mode == MODE_ABYSS else 1
+        for team_index, team in enumerate(self.state.teams[:visible_team_count]):
+            for slot in team.slots:
+                if slot.character is None:
+                    continue
+                self.hydrate_persistent_equipment_for_slot(
+                    team_index,
+                    slot.slot_index,
+                    str(slot.character.id),
+                )
+
+    def _history_snapshot_abyss_context_fields(self) -> dict[str, Any]:
+        if self.mode != MODE_ABYSS:
+            return {}
+        source_data = self._right_panel_abyss_source_data(load_if_needed=False)
+        if source_data is None:
+            return {
+                "abyss_target_mode": self.gcsim_target_mode(),
+            }
+        return {
+            "abyss_period_start": source_data.period.start_date,
+            "abyss_period_end": source_data.period.end_date or "",
+            "abyss_floor": source_data.floor,
+            "abyss_target_mode": self.gcsim_target_mode(),
+        }
+
+    def cached_abyss_source_data(self) -> AbyssFloorSourceData | None:
+        if not self._cached_abyss_source_data_loaded:
+            self._cached_abyss_source_data = load_current_cached_abyss_floor_source_data(
+                floor=12,
+            )
+            self._cached_abyss_source_data_loaded = self._cached_abyss_source_data is not None
+        return self._cached_abyss_source_data
+
+    def invalidate_cached_abyss_source_data(self) -> None:
+        self._cached_abyss_source_data_loaded = False
+        self._cached_abyss_source_data = None
+        self.clear_gcsim_results()
+
+    def set_mode(self, mode: str) -> None:
+        self.session.set_mode(mode)
+
+    def virtual_gcsim_override(
+        self,
+        team_index: int,
+        slot_index: int,
+    ) -> GcsimVirtualSlotOverride | None:
+        return self._virtual_gcsim_overrides_by_mode.get(self.mode, {}).get(
+            (int(team_index), int(slot_index))
+        )
+
+    def virtual_gcsim_overrides(self) -> tuple[GcsimVirtualSlotOverride, ...]:
+        values = self._virtual_gcsim_overrides_by_mode.get(self.mode, {}).values()
+        return tuple(sorted(values, key=lambda item: (item.team_index, item.slot_index)))
+
+    def set_virtual_gcsim_override(
+        self,
+        override: GcsimVirtualSlotOverride,
+    ) -> bool:
+        try:
+            self.state.team(override.team_index).slot(override.slot_index)
+        except IndexError:
+            return False
+        self.state = self.state.clear_slot(override.team_index, override.slot_index)
+        mode_overrides = self._virtual_gcsim_overrides_by_mode.setdefault(self.mode, {})
+        mode_overrides[(override.team_index, override.slot_index)] = override
+        self.selected_team_index = override.team_index
+        self.selected_slot_index = override.slot_index
+        self.clear_gcsim_results()
+        self._store_current_mode_state()
+        return True
+
+    def clear_virtual_gcsim_override(self, team_index: int, slot_index: int) -> bool:
+        mode_overrides = self._virtual_gcsim_overrides_by_mode.get(self.mode, {})
+        removed = mode_overrides.pop((int(team_index), int(slot_index)), None)
+        if removed is None:
+            return False
+        self.clear_gcsim_results()
+        return True
+
+    def first_empty_account_slot(self) -> tuple[int, int] | None:
+        return self._first_empty_slot()
+
+    def gcsim_target_mode(self) -> str:
+        return (
+            FACT_DPS_HP_MODE_MULTI_TARGET
+            if self.abyss_fact_dps_multi_target_enabled
+            else FACT_DPS_HP_MODE_SOLO
+        )
+
+    def set_abyss_fact_dps_multi_target_enabled(self, enabled: bool) -> bool:
+        enabled = bool(enabled)
+        if self.abyss_fact_dps_multi_target_enabled == enabled:
+            return False
+        self.abyss_fact_dps_multi_target_enabled = enabled
+        self.clear_gcsim_results()
+        return True
+
+    def gcsim_run_settings(self) -> GcsimRunSettings:
+        return GcsimRunSettings(
+            boosted_energy_enabled=bool(self.gcsim_boosted_energy_enabled),
+        )
+
+    def clear_gcsim_results(self, team_index: int | None = None) -> None:
+        self.session.clear_gcsim_results(team_index)
+
+    def clear_gcsim_chamber_result(
+        self,
+        *,
+        team_index: int,
+        chamber: int,
+        side: int,
+    ) -> None:
+        self.session.clear_gcsim_chamber_result(
+            team_index=team_index,
+            chamber=chamber,
+            side=side,
+        )
+
+    def store_gcsim_browser_batch_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        rotation_shell_text: str,
+    ) -> bool:
+        status = str(payload.get("batch_status") or "")
+        if status not in {"passed", "partial_failed"}:
+            return False
+        results = right_panel_gcsim_results_from_browser_batch_payload(
+            payload,
+            rotation_hash=_gcsim_rotation_hash(rotation_shell_text),
+            target_mode=self.gcsim_target_mode(),
+        )
+        if not results:
+            return False
+        self.session.replace_gcsim_results_for_team(
+            int(results[0].team_index),
+            results,
+        )
+        return True
+
+    def store_gcsim_browser_selected_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        rotation_shell_text: str,
+    ) -> bool:
+        result = right_panel_gcsim_result_from_browser_selected_payload(
+            payload,
+            rotation_hash=_gcsim_rotation_hash(rotation_shell_text),
+            target_mode=self.gcsim_target_mode(),
+        )
+        if result is None:
+            return False
+        self.session.store_gcsim_chamber_result(result)
+        return True
+
+    def _gcsim_status_view_model(self) -> RightPanelGcsimStatusViewModel:
+        return self.session.gcsim_status_view_model(
+            target_mode=self.gcsim_target_mode()
+        )
+
+    def toggle_slot_selection(self, team_index: int, slot_index: int) -> None:
+        self.session.toggle_slot_selection(team_index, slot_index)
+
+    def clear_selection(self) -> None:
+        self.session.clear_selection()
+
+    def reset_active_run(self) -> None:
+        self.session.reset_active_run()
+        self._virtual_gcsim_overrides_by_mode.pop(self.mode, None)
+
+    def set_abyss_timer_seconds(
+        self,
+        chamber_index: int,
+        team_number: int,
+        seconds_left: int,
+    ) -> bool:
+        return self.session.set_abyss_timer_seconds(
+            chamber_index,
+            team_number,
+            seconds_left,
+        )
+
+    def swap_slots(
+        self,
+        source_team_index: int,
+        source_slot_index: int,
+        target_team_index: int,
+        target_slot_index: int,
+    ) -> bool:
+        source_team_index = int(source_team_index)
+        source_slot_index = int(source_slot_index)
+        target_team_index = int(target_team_index)
+        target_slot_index = int(target_slot_index)
+        if (
+            source_team_index == target_team_index
+            and source_slot_index == target_slot_index
+        ):
+            return False
+        try:
+            source_slot = self.state.team(source_team_index).slot(source_slot_index)
+            self.state.team(target_team_index).slot(target_slot_index)
+        except IndexError:
+            return False
+        mode_overrides = self._virtual_gcsim_overrides_by_mode.setdefault(
+            self.mode,
+            {},
+        )
+        source_key = (source_team_index, source_slot_index)
+        target_key = (target_team_index, target_slot_index)
+        source_virtual = mode_overrides.get(source_key)
+        target_virtual = mode_overrides.get(target_key)
+        if source_slot.is_empty and source_virtual is None:
+            return False
+        self.state = self.state.swap_slots(
+            source_team_index,
+            source_slot_index,
+            target_team_index,
+            target_slot_index,
+        )
+        mode_overrides.pop(source_key, None)
+        mode_overrides.pop(target_key, None)
+        if source_virtual is not None:
+            mode_overrides[target_key] = source_virtual.moved_to(*target_key)
+        if target_virtual is not None:
+            mode_overrides[source_key] = target_virtual.moved_to(*source_key)
+        self.clear_gcsim_results()
+        self.selected_team_index = target_team_index
+        self.selected_slot_index = target_slot_index
+        self._store_current_mode_state()
+        return True
+
+    def add_or_replace_character_fast(
+        self,
+        asset: dict[str, Any],
+    ) -> CharacterPlacementResult:
+        character = _asset_metadata_mapping(asset, "character")
+        character_id = _text(character.get("id"))
+        if not character_id:
+            return CharacterPlacementResult()
+
+        existing_slot = self._find_character_slot(character_id)
+        if existing_slot is not None:
+            team_index, slot_index = existing_slot
+            self.state = self.state.clear_slot(team_index, slot_index)
+            if (
+                self.selected_team_index == team_index
+                and self.selected_slot_index == slot_index
+            ):
+                self.clear_selection()
+            self.clear_gcsim_results()
+            self._store_current_mode_state()
+            return CharacterPlacementResult(
+                changed=True,
+                removed=True,
+                character_id=character_id,
+                team_index=team_index,
+                slot_index=slot_index,
+            )
+
+        target_slot = self._first_empty_slot()
+        if target_slot is None:
+            return CharacterPlacementResult()
+        team_index, slot_index = target_slot
+        self.clear_virtual_gcsim_override(team_index, slot_index)
+
+        self._set_character_minimal(
+            team_index,
+            slot_index,
+            character,
+            asset_path=_text(asset.get("path")),
+        )
+        self.selected_team_index = team_index
+        self.selected_slot_index = slot_index
+        self.clear_gcsim_results()
+        self._store_current_mode_state()
+        return CharacterPlacementResult(
+            changed=True,
+            added=True,
+            character_id=character_id,
+            team_index=team_index,
+            slot_index=slot_index,
+        )
+
+    def add_or_replace_character(self, asset: dict[str, Any]) -> bool:
+        result = self.add_or_replace_character_fast(asset)
+        if result.added:
+            self.hydrate_persistent_equipment_for_slot(
+                result.team_index,
+                result.slot_index,
+                result.character_id,
+            )
+            self._store_current_mode_state()
+        return result.changed
+
+    def assign_weapon_to_selected_slot(self, asset: dict[str, Any]) -> bool:
+        self.last_weapon_equipment_change_result = None
+        if self.selected_team_index < 0 or self.selected_slot_index < 0:
+            return False
+
+        try:
+            slot = self.state.team(self.selected_team_index).slot(self.selected_slot_index)
+        except IndexError:
+            return False
+        if slot.character is None:
+            return False
+
+        weapon = _normalized_weapon_image_paths(
+            _asset_metadata_mapping(asset, "weapon"),
+            asset_path=_text(asset.get("path")),
+        )
+        if not weapon:
+            return False
+
+        details = dict(slot.character_details_data or {})
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        if not _weapon_matches_character(character, weapon):
+            return False
+
+        weapon_fingerprint = _weapon_equipment_fingerprint(weapon)
+        if not weapon_fingerprint:
+            self.last_equipment_error = "weapon_fingerprint_missing"
+            return False
+        character_id = _text(character.get("id")) or _text(slot.character.id)
+        if not character_id:
+            return False
+        try:
+            if self.equipment_state is not None:
+                equipment_result, persisted_weapon = (
+                    self.equipment_state.assign_weapon_to_character(
+                        character_id,
+                        character,
+                        weapon,
+                    )
+                )
+            else:
+                with self._equipment_connection() as conn:
+                    current_weapon = get_equipped_weapon_for_character(conn, character_id)
+                    if (
+                        current_weapon is not None
+                        and current_weapon.weapon_fingerprint == weapon_fingerprint
+                    ):
+                        equipment_result = unequip_weapon(conn, character_id)
+                    else:
+                        equipment_result = equip_weapon(conn, character_id, weapon_fingerprint)
+                    persisted_weapon = self._persistent_weapon_for_character(
+                        conn,
+                        character_id,
+                        character,
+                        preferred_weapon=weapon,
+                    )
+                    conn.commit()
+        except EquipmentError as exc:
+            self.last_equipment_error = str(exc)
+            return False
+        except Exception as exc:
+            self.last_equipment_error = str(exc)
+            return False
+
+        self.last_weapon_equipment_change_result = equipment_result
+        affected_character_ids = {
+            _text(affected_character_id)
+            for affected_character_id in equipment_result.affected_character_ids
+            if _text(affected_character_id)
+        }
+        affected_character_ids.add(character_id)
+        self.invalidate_persistent_equipment_cache(affected_character_ids)
+        details["account_character"] = dict(character)
+        if persisted_weapon:
+            weapon = persisted_weapon
+            self.state = self.state.set_weapon(
+                self.selected_team_index,
+                self.selected_slot_index,
+                weapon,
+            )
+            details["account_weapon"] = dict(weapon)
+            details["weapon_image_path"] = _text(weapon.get("icon_path"))
+            details.update(_weapon_bonus_context(weapon, db_path=self.equipment_db_path))
+        else:
+            self.state = self.state.clear_weapon(
+                self.selected_team_index,
+                self.selected_slot_index,
+            )
+            details.pop("account_weapon", None)
+            details.pop("weapon_image_path", None)
+            details.update(
+                {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
+            )
+        self.state = self.state.attach_character_details_data(
+            self.selected_team_index,
+            self.selected_slot_index,
+            details,
+        )
+        self.last_equipment_error = ""
+        self.clear_gcsim_results()
+        self._store_current_mode_state()
+        for affected_character_id in sorted(affected_character_ids - {character_id}):
+            self.refresh_persistent_equipment_for_character(affected_character_id)
+        return True
+
+    def selected_character_weapon_filter_key(self) -> str:
+        if self.selected_team_index < 0 or self.selected_slot_index < 0:
+            return ""
+        try:
+            slot = self.state.team(self.selected_team_index).slot(self.selected_slot_index)
+        except IndexError:
+            return ""
+        if slot.character is None:
+            return ""
+        details = _mapping(slot.character_details_data)
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        return _character_weapon_type_filter_key(character)
+
+    def selected_operation_target(self) -> dict[str, Any] | None:
+        if self.selected_team_index < 0 or self.selected_slot_index < 0:
+            return None
+        try:
+            slot = self.state.team(self.selected_team_index).slot(self.selected_slot_index)
+        except IndexError:
+            return None
+        if slot.character is None:
+            return None
+        details = _mapping(slot.character_details_data)
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        character_id = _text(character.get("id")) or _text(slot.character.id)
+        if not character_id:
+            return None
+        try:
+            normalized_character_id: int | str = int(character_id)
+        except ValueError:
+            normalized_character_id = character_id
+        return {
+            "character_id": normalized_character_id,
+            "character_name": _text(character.get("name")) or _text(slot.character.name),
+            "team_index": self.selected_team_index,
+            "slot_index": self.selected_slot_index,
+        }
+
+    def gcsim_browser_team_previews(
+        self,
+    ) -> tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...]:
+        previews: list[tuple[GcsimBrowserTeamSlotPreview, ...]] = []
+        for team_index, team in enumerate(self.state.teams):
+            team_slots: list[GcsimBrowserTeamSlotPreview] = []
+            for slot in team.slots:
+                virtual = self.virtual_gcsim_override(
+                    team_index, slot.slot_index
+                )
+                if virtual is not None:
+                    team_slots.append(
+                        GcsimBrowserTeamSlotPreview(
+                            name=virtual.character_name,
+                            weapon=(
+                                f"Weapon: {virtual.weapon_name} R{virtual.refinement}"
+                                if virtual.weapon_name
+                                else "Weapon: pending"
+                            ),
+                            sets="Build: virtual target pending",
+                            status="GCSIM virtual profile · incomplete",
+                        )
+                    )
+                    continue
+                if slot.character is None:
+                    team_slots.append(GcsimBrowserTeamSlotPreview())
+                    continue
+                details = _mapping(slot.character_details_data)
+                character = _mapping(details.get("account_character")) or slot.character.to_dict()
+                weapon = _mapping(details.get("account_weapon"))
+                if not weapon and slot.weapon is not None:
+                    weapon = slot.weapon.to_dict()
+                selected_build = _mapping(details.get("selected_build"))
+                if not selected_build and slot.artifact_build is not None:
+                    selected_build = slot.artifact_build.to_dict()
+
+                name = _text(character.get("name")) or _text(slot.character.name)
+                weapon_name = _text(weapon.get("name")) if weapon else ""
+                build_name = _text(selected_build.get("build_name")) if selected_build else ""
+                artifact_ids = _mapping(details.get("current_equipped_artifact_ids_by_slot"))
+                sets = build_name
+                if artifact_ids and not sets:
+                    sets = f"Current artifacts: {len(artifact_ids)}/5"
+                status = "Runtime preview · readiness not checked"
+                team_slots.append(
+                    GcsimBrowserTeamSlotPreview(
+                        name=name,
+                        weapon=f"Weapon: {weapon_name}" if weapon_name else "Weapon: pending",
+                        sets=f"Build: {sets}" if sets else "Build: pending",
+                        status=status,
+                    )
+                )
+            previews.append(tuple(team_slots))
+        return tuple(previews)
+
+    def gcsim_browser_selected_team(self, team_index: int) -> dict[str, Any]:
+        try:
+            team = self.state.team(int(team_index))
+        except IndexError:
+            return {"slot_count": 0, "slots": []}
+        payload = team.to_dict()
+        for slot_payload in payload.get("slots", []):
+            slot_index = int(slot_payload.get("slot_index", 0))
+            override = self.virtual_gcsim_override(int(team_index), slot_index)
+            if override is None:
+                continue
+            slot_payload["gcsim_virtual_override"] = override.to_dict()
+            slot_payload["is_empty"] = False
+        return payload
+
+    def gcsim_browser_abyss_targets_preview(
+        self,
+    ) -> tuple[str, tuple[tuple[str, ...], ...]]:
+        if self.mode != MODE_ABYSS:
+            return "", ((), ())
+        chamber_rows = build_abyss_chamber_rows(
+            self.abyss_timer_states,
+            abyss_source_data=self.cached_abyss_source_data(),
+            fact_dps_multi_target_enabled=self.abyss_fact_dps_multi_target_enabled,
+        )
+        mode_label = (
+            "Target mode: multi target"
+            if self.abyss_fact_dps_multi_target_enabled
+            else "Target mode: solo target"
+        )
+        team1_chambers: list[str] = []
+        team2_chambers: list[str] = []
+        for row in chamber_rows:
+            team1_chambers.append(
+                self._gcsim_browser_chamber_preview_text(
+                    row.chamber_label,
+                    "Team 1 / first half",
+                    row.factual_team1_tooltip,
+                )
+            )
+            team2_chambers.append(
+                self._gcsim_browser_chamber_preview_text(
+                    row.chamber_label,
+                    "Team 2 / second half",
+                    row.factual_team2_tooltip,
+                )
+            )
+        return mode_label, (tuple(team1_chambers), tuple(team2_chambers))
+
+    def _gcsim_browser_chamber_preview_text(
+        self,
+        chamber_label: str,
+        side_label: str,
+        tooltip: object | None,
+    ) -> str:
+        lines = [f"{chamber_label} / {side_label}"]
+        lines.extend(self._gcsim_browser_fact_tooltip_lines(tooltip))
+        return "\n".join(lines)
+
+    def _gcsim_browser_fact_tooltip_lines(self, tooltip: object | None) -> list[str]:
+        if tooltip is None:
+            return ["No cached enemy data"]
+        unavailable_reason = _text(getattr(tooltip, "unavailable_reason", ""))
+        enemies = list(getattr(tooltip, "enemies", ()) or ())
+        if not enemies:
+            return [unavailable_reason or "No enemy rows"]
+        lines: list[str] = []
+        for enemy in enemies:
+            wave = getattr(enemy, "wave", None)
+            count = getattr(enemy, "enemy_count", None)
+            level = getattr(enemy, "display_level", None)
+            hp = getattr(enemy, "hp_used", None)
+            selected = bool(getattr(enemy, "selected_for_solo", False))
+            name = _text(getattr(enemy, "primary_display_name", ""))
+            pieces = [f"W{wave}" if wave is not None else "W?"]
+            pieces.append(name or "Unknown enemy")
+            if count:
+                pieces.append(f"x{count}")
+            if level is not None:
+                pieces.append(f"lvl {level}")
+            if hp is not None:
+                pieces.append(f"HP {hp}")
+            if selected:
+                pieces.append("solo")
+            lines.append(" · ".join(pieces))
+        return lines
+
+    def selected_equipment_hydration_target(
+        self,
+    ) -> CharacterPlacementResult | None:
+        if self.selected_team_index < 0 or self.selected_slot_index < 0:
+            return None
+        try:
+            slot = self.state.team(self.selected_team_index).slot(self.selected_slot_index)
+        except IndexError:
+            return None
+        if slot.character is None:
+            return None
+        details = _mapping(slot.character_details_data)
+        if bool(details.get("persistent_equipment_hydrated")):
+            return None
+        character_id = _text(slot.character.id)
+        if not character_id:
+            return None
+        return CharacterPlacementResult(
+            changed=True,
+            added=True,
+            character_id=character_id,
+            team_index=self.selected_team_index,
+            slot_index=self.selected_slot_index,
+        )
+
+    def refresh_persistent_equipment_for_character(self, character_id: int | str) -> bool:
+        character_id_text = _text(character_id)
+        if not character_id_text:
+            return False
+        slot_location = self._find_character_slot(character_id_text)
+        if slot_location is None:
+            return False
+        team_index, slot_index = slot_location
+        slot = self.state.team(team_index).slot(slot_index)
+        if slot.character is None:
+            return False
+        details = _mapping(slot.character_details_data)
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        asset_path = _text(
+            details.get("portrait_path")
+            or character.get("local_portrait_path")
+            or character.get("portrait_path")
+        )
+        self.invalidate_persistent_equipment_cache({character_id_text})
+        self._set_character_with_persistent_equipment(
+            team_index,
+            slot_index,
+            character,
+            asset_path=asset_path,
+        )
+        self.clear_gcsim_results()
+        self._store_current_mode_state()
+        return True
+
+    def roster_selection_markers(self) -> dict[str, RosterSelectionMarker]:
+        markers: dict[str, RosterSelectionMarker] = {}
+        for team_index, team in enumerate(self.state.teams):
+            for slot in team.slots:
+                if slot.character is None:
+                    continue
+                character_id = _text(slot.character.id)
+                if not character_id:
+                    continue
+                markers[character_id] = RosterSelectionMarker(
+                    team_index=team_index,
+                    slot_index=slot.slot_index,
+                    slot_number=slot.slot_index + 1,
+                    color=TEAM_MARKER_COLORS[team_index % len(TEAM_MARKER_COLORS)],
+                )
+        return markers
+
+    def _first_empty_slot(self) -> tuple[int, int] | None:
+        for team_index, team in enumerate(self.state.teams):
+            for slot in team.slots:
+                if slot.is_empty:
+                    return team_index, slot.slot_index
+        return None
+
+    def _find_character_slot(self, character_id: str) -> tuple[int, int] | None:
+        for team_index, team in enumerate(self.state.teams):
+            for slot in team.slots:
+                if slot.character is not None and _text(slot.character.id) == character_id:
+                    return team_index, slot.slot_index
+        return None
+
+    def invalidate_persistent_equipment_cache(
+        self,
+        character_ids: set[str] | set[int] | None = None,
+    ) -> None:
+        if character_ids is None:
+            self._persistent_equipment_cache.clear()
+            return
+        for character_id in character_ids:
+            self._persistent_equipment_cache.pop(_text(character_id), None)
+
+    def _set_character_with_persistent_equipment(
+        self,
+        team_index: int,
+        slot_index: int,
+        character: dict[str, Any],
+        *,
+        asset_path: str = "",
+    ) -> None:
+        character = self._set_character_minimal(
+            team_index,
+            slot_index,
+            character,
+            asset_path=asset_path,
+        )
+        self.hydrate_persistent_equipment_for_slot(
+            team_index,
+            slot_index,
+            _text(character.get("id")),
+        )
+
+    def _set_character_minimal(
+        self,
+        team_index: int,
+        slot_index: int,
+        character: dict[str, Any],
+        *,
+        asset_path: str = "",
+    ) -> dict[str, Any]:
+        character = _normalized_character_image_paths(character, asset_path=asset_path)
+        self.state = self.state.clear_slot(team_index, slot_index)
+        self.state = self.state.set_character(team_index, slot_index, character)
+        details: dict[str, Any] = {"account_character": dict(character)}
+        portrait_path = _text(character.get("local_portrait_path") or character.get("portrait_path"))
+        if portrait_path:
+            details["portrait_path"] = portrait_path
+        self.state = self.state.attach_character_details_data(team_index, slot_index, details)
+        return character
+
+    def hydrate_persistent_equipment_for_slot(
+        self,
+        team_index: int,
+        slot_index: int,
+        character_id: str,
+        *,
+        use_cache: bool = True,
+    ) -> dict[str, float]:
+        total_start = perf_now()
+        character_id = _text(character_id)
+        if not character_id:
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        try:
+            slot = self.state.team(team_index).slot(slot_index)
+        except IndexError:
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        if slot.character is None or _text(slot.character.id) != character_id:
+            log_perf(
+                "persistent_equipment_hydration",
+                total=perf_ms(total_start),
+                character=character_id,
+                applied=False,
+                stale=True,
+            )
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        details = _mapping(slot.character_details_data)
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        load_start = perf_now()
+        hydration, load_timings = self._load_persistent_equipment(
+            character_id,
+            character,
+            use_cache=use_cache,
+        )
+        load_ms = perf_ms(load_start)
+        try:
+            current_slot = self.state.team(team_index).slot(slot_index)
+        except IndexError:
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        if current_slot.character is None or _text(current_slot.character.id) != character_id:
+            log_perf(
+                "persistent_equipment_hydration",
+                total=perf_ms(total_start),
+                character=character_id,
+                applied=False,
+                stale=True,
+                load=load_ms,
+            )
+            return {
+                "hydration_total": perf_ms(total_start),
+                "hydration_load": load_ms,
+                "hydration_applied": 0.0,
+            }
+
+        attach_start = perf_now()
+        details = dict(_mapping(current_slot.character_details_data))
+        details["account_character"] = dict(character)
+        for key in (
+            "current_equipped_artifact_ids_by_slot",
+            "selected_build",
+            "stat_snapshot",
+            "artifact_set_display_stat_effects",
+            "warnings",
+            "status",
+            "weapon_passive_reference",
+            "weapon_display_stat_effects",
+        ):
+            details.pop(key, None)
+        source_notes = dict(_mapping(details.get("source_notes")))
+        for key in (
+            "current_equipped_artifacts_readonly",
+            "current_equipment_artifact_snapshot",
+            "current_equipment_snapshot_persisted_as_build",
+        ):
+            source_notes.pop(key, None)
+        if source_notes:
+            details["source_notes"] = source_notes
+        else:
+            details.pop("source_notes", None)
+
+        if hydration.current_artifacts:
+            details["current_equipped_artifact_ids_by_slot"] = dict(
+                hydration.current_artifacts
+            )
+            details.setdefault("source_notes", {})[
+                "current_equipped_artifacts_readonly"
+            ] = True
+        if hydration.artifact_snapshot is not None:
+            _apply_current_artifact_snapshot_to_details(
+                details,
+                hydration.artifact_snapshot,
+                artifact_set_effects=hydration.artifact_set_effects,
+            )
+        if hydration.weapon:
+            self.state = self.state.set_weapon(team_index, slot_index, hydration.weapon)
+            details["account_weapon"] = dict(hydration.weapon)
+            if _text(hydration.weapon.get("icon_path")):
+                details["weapon_image_path"] = _text(hydration.weapon.get("icon_path"))
+            details.update(hydration.weapon_bonus_context)
+        else:
+            self.state = self.state.clear_weapon(team_index, slot_index)
+            details.pop("account_weapon", None)
+            details.pop("weapon_image_path", None)
+            details.update(
+                {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
+            )
+        details["persistent_equipment_hydrated"] = True
+        self.state = self.state.attach_character_details_data(
+            team_index,
+            slot_index,
+            details,
+        )
+        self._store_current_mode_state()
+        attach_ms = perf_ms(attach_start)
+        total_ms = perf_ms(total_start)
+        timings = {
+            "hydration_total": total_ms,
+            "hydration_load": load_ms,
+            "hydration_attach_details": attach_ms,
+            "hydration_applied": 1.0,
+            **load_timings,
+        }
+        log_perf(
+            "persistent_equipment_hydration",
+            total=total_ms,
+            character=character_id,
+            applied=True,
+            **load_timings,
+            attach_details=attach_ms,
+        )
+        return timings
+
+    def _load_persistent_equipment(
+        self,
+        character_id: str,
+        character: dict[str, Any],
+        *,
+        use_cache: bool = True,
+    ) -> tuple[PersistentEquipmentHydration, dict[str, float]]:
+        character_id = _text(character_id)
+        if use_cache and character_id in self._persistent_equipment_cache:
+            return self._persistent_equipment_cache[character_id], {
+                "hydration_cache_hit": 1.0
+            }
+
+        if self.equipment_state is not None:
+            session_weapon = self.equipment_state.weapon_for_character(
+                character_id,
+                character,
+            )
+            current_artifacts = dict(
+                getattr(
+                    self.equipment_state,
+                    "artifact_ids_for_character",
+                    lambda _character_id: {},
+                )(character_id)
+            )
+            weapon_bonus_context = (
+                _weapon_bonus_context(session_weapon, db_path=self.equipment_db_path)
+                if session_weapon
+                else {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
+            )
+            hydration = PersistentEquipmentHydration(
+                weapon=session_weapon,
+                current_artifacts=current_artifacts,
+                artifact_snapshot=None,
+                artifact_set_effects=[],
+                weapon_bonus_context=dict(weapon_bonus_context),
+            )
+            if use_cache:
+                self._persistent_equipment_cache[character_id] = hydration
+            return hydration, {
+                "hydration_cache_hit": 0.0,
+                "hydration_scoped_equipment": 1.0,
+            }
+
+        timings: dict[str, float] = {"hydration_cache_hit": 0.0}
+        connect_start = perf_now()
+        conn = connect_db(self.equipment_db_path)
+        timings["hydration_connect_db"] = perf_ms(connect_start)
+        try:
+            weapon_start = perf_now()
+            session_weapon = self._persistent_weapon_for_character(
+                conn,
+                character_id,
+                character,
+            )
+            timings["hydration_get_weapon"] = perf_ms(weapon_start)
+
+            artifact_ids_start = perf_now()
+            current_artifacts = self._persistent_artifact_ids_for_character(
+                conn,
+                character_id,
+            )
+            timings["hydration_get_artifact_ids"] = perf_ms(artifact_ids_start)
+
+            artifact_snapshot = None
+            artifact_set_effects: list[dict[str, Any]] = []
+            if current_artifacts:
+                snapshot_start = perf_now()
+                artifact_snapshot = build_current_equipment_artifact_snapshot(
+                    conn,
+                    character_id,
+                    build_name=tr("artifact.build.current_equipment"),
+                )
+                timings["hydration_build_artifact_snapshot"] = perf_ms(snapshot_start)
+
+                effects_start = perf_now()
+                artifact_set_effects = (
+                    list_artifact_set_display_stat_effects_for_active_sets(
+                        conn,
+                        artifact_snapshot.to_dict().get("active_set_bonuses") or [],
+                        preferred_lang=_account_content_language(),
+                    )
+                    if artifact_snapshot is not None
+                    else []
+                )
+                timings["hydration_list_artifact_set_effects"] = perf_ms(effects_start)
+            else:
+                timings["hydration_build_artifact_snapshot"] = 0.0
+                timings["hydration_list_artifact_set_effects"] = 0.0
+
+            weapon_bonus_start = perf_now()
+            weapon_bonus_context = (
+                _weapon_bonus_context_from_conn(conn, session_weapon)
+                if session_weapon
+                else {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
+            )
+            timings["hydration_weapon_bonus_context"] = perf_ms(weapon_bonus_start)
+        finally:
+            conn.close()
+
+        hydration = PersistentEquipmentHydration(
+            weapon=session_weapon,
+            current_artifacts=dict(current_artifacts),
+            artifact_snapshot=artifact_snapshot,
+            artifact_set_effects=[dict(item) for item in artifact_set_effects],
+            weapon_bonus_context=dict(weapon_bonus_context),
+        )
+        if use_cache:
+            self._persistent_equipment_cache[character_id] = hydration
+        return hydration, timings
+
+    def _equipment_connection(self):
+        return closing(connect_db(self.equipment_db_path))
+
+    def _persistent_weapon_for_character(
+        self,
+        conn,
+        character_id: str,
+        character: dict[str, Any],
+        *,
+        preferred_weapon: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        if not character_id:
+            return None
+        record = get_equipped_weapon_for_character(conn, character_id)
+        if record is None:
+            return None
+        stack = get_account_weapon_observed_stack(conn, record.weapon_fingerprint)
+        if stack is None:
+            return None
+        weapon = stack.to_team_builder_weapon_ref()
+        if preferred_weapon:
+            preferred_path = _text(preferred_weapon.get("icon_path"))
+            if preferred_path:
+                weapon["icon_path"] = preferred_path
+                weapon["local_icon_path"] = preferred_path
+        weapon = _normalized_weapon_image_paths(weapon)
+        if not _weapon_matches_character(character, weapon):
+            return None
+        return weapon
+
+    def _persistent_artifact_ids_for_character(
+        self,
+        conn,
+        character_id: str,
+    ) -> dict[str, int]:
+        if not character_id:
+            return {}
+        try:
+            records = list_equipped_artifacts_for_character(conn, character_id)
+        except EquipmentError:
+            return {}
+        return {
+            record.slot_key: record.artifact_id
+            for record in records
+        }
+
+    def _store_current_mode_state(self) -> None:
+        self.session.team_state = self.state
+
+
+def _apply_current_artifact_snapshot_to_details(
+    details: dict[str, Any],
+    artifact_snapshot,
+    *,
+    artifact_set_effects: list[dict[str, Any]],
+) -> None:
+    summary = artifact_snapshot.to_dict()
+    warnings = [str(item) for item in artifact_snapshot.warnings if str(item)]
+    details["selected_build"] = {
+        "build_id": None,
+        "build_name": artifact_snapshot.build_name,
+        "identity_source": BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT,
+        "provenance_note": (
+            "Current equipment is runtime SQLite state, not an artifact_build preset."
+        ),
+    }
+    details["stat_snapshot"] = {
+        "artifact": {
+            "summary": summary,
+            "warnings": warnings,
+        }
+    }
+    details["artifact_set_display_stat_effects"] = [
+        dict(item)
+        for item in artifact_set_effects
+    ]
+    details["warnings"] = _dedupe(
+        [
+            *[str(item) for item in details.get("warnings") or []],
+            *warnings,
+        ]
+    )
+    details["status"] = "partial" if warnings else "ready"
+    source_notes = details.setdefault("source_notes", {})
+    source_notes["current_equipment_artifact_snapshot"] = True
+    source_notes["current_equipment_snapshot_persisted_as_build"] = False
+
+
+class AppShell(QWidget):
+    """Prototype entrypoint for the future app shell.
+
+    The legacy `ui.main_window.App` remains the production `main.py` target for
+    now. This shell is separately launchable for visual inspection.
+    """
+
+    def __init__(
+        self,
+        controller: AppShellController | None = None,
+        parent: QWidget | None = None,
+        *,
+        history_snapshot_root: str | Path = HISTORY_SNAPSHOT_ROOT,
+    ) -> None:
+        super().__init__(parent)
+        self.controller = controller or AppShellController.empty()
+        self.history_snapshot_root = Path(history_snapshot_root)
+        self.last_save_result: RunSaveResult | None = None
+        if controller is None:
+            self.controller.abyss_fact_dps_multi_target_enabled = (
+                is_abyss_fact_dps_multi_target_enabled()
+            )
+            self.controller.gcsim_boosted_energy_enabled = (
+                effective_gcsim_run_settings().boosted_energy_enabled
+            )
+        self.setWindowTitle(tr("app_shell.title"))
+        self.setMinimumSize(APP_SHELL_MIN_WIDTH, APP_SHELL_MIN_HEIGHT)
+        self.resize(APP_SHELL_INITIAL_SIZE)
+
+        root = QHBoxLayout(self)
+        root.setContentsMargins(6, 6, 6, 6)
+        root.setSpacing(4)
+
+        self.left_host = LeftWorkspaceHost(
+            artifact_db_path=self.controller.equipment_db_path,
+            artifact_equipment_changed=self._on_artifact_browser_equipment_changed,
+            history_snapshot_root=self.history_snapshot_root,
+        )
+        root.addWidget(self.left_host, 1)
+
+        self._virtual_gcsim_catalog = load_active_virtual_roster_catalog()
+        self._virtual_gcsim_set_choices = load_active_virtual_artifact_set_choices(
+            self.controller.equipment_db_path,
+            language=get_language(),
+        )
+
+        self.right_panel = RunRightPanelWidget(
+            self.controller.right_panel_model(),
+            show_mode_tabs=False,
+        )
+        self.pvp_right_panel = PvpRightPanelHost(self.left_host.pvp_workspace)
+        self.right_dock = RightOperationsDock(
+            self.right_panel,
+            history_operation_widget=HistoryRightPanelHost(),
+            pvp_operation_widget=self.pvp_right_panel,
+            active_mode=self.controller.mode,
+        )
+        root.addWidget(self.right_dock, 0)
+        self.right_dock.account_page.account_data_changed.connect(
+            self._on_account_data_changed
+        )
+        self.right_dock.account_page.language_changed.connect(self.retranslate_ui)
+        self.right_dock.account_page.fact_dps_multi_target_changed.connect(
+            self._on_fact_dps_multi_target_changed
+        )
+        self.right_dock.account_page.gcsim_boosted_energy_changed.connect(
+            self._on_gcsim_boosted_energy_changed
+        )
+        self.left_host.gcsim_browser_workspace.prepare_requested.connect(
+            self._on_gcsim_prepare_requested
+        )
+        self.left_host.gcsim_browser_workspace.run_selected_requested.connect(
+            self._on_gcsim_run_selected_requested
+        )
+        self.left_host.gcsim_browser_workspace.run_all_requested.connect(
+            self._on_gcsim_run_all_requested
+        )
+        self.left_host.gcsim_browser_workspace.rotation_text_changed.connect(
+            self._on_gcsim_rotation_text_changed
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_selected_requested.connect(
+            self._on_gcsim_optimizer_selected_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_all_sets_requested.connect(
+            self._on_gcsim_optimizer_all_sets_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_theory_requested.connect(
+            self._on_gcsim_optimizer_theory_requested
+        )
+        from run_workspace.gcsim.optimizer_go_all import all_sets_available
+        from run_workspace.gcsim.optimizer_go_theory import theory_available
+        self.left_host.gcsim_browser_workspace.set_optimizer_all_sets_available(all_sets_available())
+        self.left_host.gcsim_browser_workspace.set_optimizer_theory_available(theory_available())
+        self.left_host.gcsim_browser_workspace.optimizer_infinite_energy_changed.connect(
+            self._on_gcsim_optimizer_infinite_energy_changed
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_cancel_requested.connect(
+            self._on_gcsim_optimizer_cancel_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_finish_requested.connect(
+            self._on_gcsim_optimizer_finish_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_theory_continue_requested.connect(
+            self._on_gcsim_optimizer_theory_continue_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_build_save_requested.connect(
+            self._on_gcsim_optimizer_build_save_requested
+        )
+        self.left_host.history_workspace.snapshot_selected.connect(
+            self._on_history_snapshot_selected
+        )
+        self._gcsim_browser_run_thread: QThread | None = None
+        self._gcsim_browser_run_worker: (
+            GcsimBrowserRunWorker
+            | GcsimBrowserBatchRunWorker
+            | GcsimBrowserDpsDummyRunWorker
+            | GcsimBrowserSelectedOptimizerWorker
+            | None
+        ) = None
+        self._gcsim_browser_run_rotation_text = ""
+        self._gcsim_optimizer_selected_team: dict[str, Any] | None = None
+        self._right_panel_refresh_pending = False
+        self._right_panel_refresh_timer = QTimer(self)
+        self._right_panel_refresh_timer.setSingleShot(True)
+        self._right_panel_refresh_timer.timeout.connect(
+            self.flush_pending_right_panel_refresh
+        )
+        self._weapon_filter_sync_pending = False
+        self._weapon_filter_sync_timer = QTimer(self)
+        self._weapon_filter_sync_timer.setSingleShot(True)
+        self._weapon_filter_sync_timer.timeout.connect(
+            self.flush_pending_weapon_filter_sync
+        )
+        self._equipment_hydration_pending: CharacterPlacementResult | None = None
+        self._equipment_hydration_generation = 0
+        self._equipment_hydration_timer = QTimer(self)
+        self._equipment_hydration_timer.setSingleShot(True)
+        self._equipment_hydration_timer.timeout.connect(
+            self.flush_pending_equipment_hydration
+        )
+        self._resize_event_count = 0
+        self._resize_settle_timer = QTimer(self)
+        self._resize_settle_timer.setSingleShot(True)
+        self._resize_settle_timer.timeout.connect(
+            lambda: self._log_resize_geometry("settled")
+        )
+
+        self.right_dock.mode_requested.connect(self._on_mode_requested)
+        self.right_dock.history_mode_requested.connect(
+            self._on_history_mode_requested
+        )
+        self.right_dock.reset_requested.connect(self._on_reset_requested)
+        self.right_dock.save_requested.connect(self._on_save_requested)
+        self.right_panel.slot_selected.connect(self._on_slot_selected)
+        self.right_panel.slot_dropped.connect(self._on_slot_dropped)
+        self.right_panel.external_bonuses_toggled.connect(
+            self._on_external_bonuses_toggled
+        )
+        self.right_panel.abyss_timer_changed.connect(self._on_abyss_timer_changed)
+        self.left_host.gcsim_browser_workspace.virtual_character_requested.connect(
+            self._on_virtual_gcsim_character_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_weapon_requested.connect(
+            self._on_virtual_gcsim_weapon_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_constellation_requested.connect(
+            self._on_virtual_gcsim_constellation_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_refinement_requested.connect(
+            self._on_virtual_gcsim_refinement_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_profile_requested.connect(
+            self._on_virtual_gcsim_profile_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_set_bonuses_requested.connect(
+            self._on_virtual_gcsim_set_bonuses_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_clear_requested.connect(
+            self._on_virtual_gcsim_clear_requested
+        )
+        self.left_host.character_weapon_workspace.character_clicked.connect(
+            self._on_character_clicked
+        )
+        self.left_host.character_weapon_workspace.weapon_clicked.connect(
+            self._on_weapon_clicked
+        )
+        self.left_host.workspace_requested.connect(self._on_workspace_requested)
+        self.left_host.workspace_activated.connect(self._on_workspace_activated)
+        self.active_left_workspace_id = self.left_host.active_workspace_id()
+        self._refresh_character_selection_markers()
+        self._sync_artifact_browser_operation_target()
+        self._sync_gcsim_browser_context()
+        self._sync_virtual_gcsim_controls()
+
+    def retranslate_ui(self) -> None:
+        self.setWindowTitle(tr("app_shell.title"))
+        self.left_host.retranslate_ui()
+        self.right_dock.retranslate_ui()
+        self._refresh_active_virtual_gcsim_catalogs(force=True)
+        self._refresh_right_panel()
+
+    def resizeEvent(self, event) -> None:
+        if not hasattr(self, "left_host") or not hasattr(self, "_resize_settle_timer"):
+            super().resizeEvent(event)
+            return
+        self._resize_event_count += 1
+        self._log_resize_geometry(
+            "before",
+            old_size=event.oldSize(),
+            new_size=event.size(),
+        )
+        super().resizeEvent(event)
+        self._log_resize_geometry(
+            "during",
+            old_size=event.oldSize(),
+            new_size=event.size(),
+        )
+        self._resize_settle_timer.start(120)
+
+    def _log_resize_geometry(
+        self,
+        phase: str,
+        *,
+        old_size: QSize | None = None,
+        new_size: QSize | None = None,
+    ) -> None:
+        current_widget = self.left_host.stack.currentWidget()
+        current_name = type(current_widget).__name__ if current_widget is not None else "-"
+        current_min_hint = (
+            current_widget.minimumSizeHint()
+            if current_widget is not None
+            else QSize()
+        )
+        geom = self.geometry()
+        frame = self.frameGeometry()
+        right_geom = self.right_dock.geometry()
+        log_perf(
+            "app_shell_resize",
+            phase=phase,
+            count=self._resize_event_count,
+            old=f"{old_size.width()}x{old_size.height()}" if old_size else "-",
+            new=f"{new_size.width()}x{new_size.height()}" if new_size else "-",
+            geom=f"{geom.x()},{geom.y()} {geom.width()}x{geom.height()}",
+            frame=f"{frame.x()},{frame.y()} {frame.width()}x{frame.height()}",
+            min=f"{self.minimumSize().width()}x{self.minimumSize().height()}",
+            min_hint=f"{self.minimumSizeHint().width()}x{self.minimumSizeHint().height()}",
+            left=f"{self.left_host.width()}",
+            left_min_hint=f"{self.left_host.minimumSizeHint().width()}",
+            stack_min_hint=f"{self.left_host.stack.minimumSizeHint().width()}",
+            current=current_name,
+            current_min_hint=f"{current_min_hint.width()}x{current_min_hint.height()}",
+            right=f"{right_geom.x()} {right_geom.width()}",
+        )
+
+    def schedule_right_panel_refresh(
+        self,
+        delay_ms: int = RIGHT_PANEL_REFRESH_DEBOUNCE_MS,
+    ) -> None:
+        if self._right_panel_refresh_pending:
+            remaining = self._right_panel_refresh_timer.remainingTime()
+            if remaining < 0:
+                self._right_panel_refresh_timer.start(delay_ms)
+                log_perf(
+                    "right_panel_refresh_schedule",
+                    pending=True,
+                    delay=delay_ms,
+                    restarted=True,
+                )
+                return
+            if delay_ms >= remaining:
+                log_perf(
+                    "right_panel_refresh_schedule",
+                    pending=True,
+                    delay=remaining,
+                )
+                return
+            self._right_panel_refresh_timer.start(delay_ms)
+            log_perf(
+                "right_panel_refresh_schedule",
+                pending=True,
+                delay=delay_ms,
+                restarted=True,
+            )
+            return
+        self._right_panel_refresh_pending = True
+        self._right_panel_refresh_timer.start(delay_ms)
+        log_perf(
+            "right_panel_refresh_schedule",
+            pending=False,
+            delay=delay_ms,
+        )
+
+    def cancel_pending_right_panel_refresh(self, *, reason: str) -> None:
+        if not self._right_panel_refresh_pending:
+            return
+        self._right_panel_refresh_pending = False
+        if self._right_panel_refresh_timer.isActive():
+            self._right_panel_refresh_timer.stop()
+        log_perf(
+            "right_panel_refresh_cancel",
+            reason=reason,
+        )
+
+    def schedule_weapon_filter_sync(
+        self,
+        delay_ms: int = WEAPON_FILTER_SYNC_DEBOUNCE_MS,
+    ) -> None:
+        if self._weapon_filter_sync_pending:
+            self._weapon_filter_sync_timer.start(delay_ms)
+            log_perf(
+                "weapon_filter_sync_schedule",
+                pending=True,
+                delay=delay_ms,
+                restarted=True,
+            )
+            return
+        self._weapon_filter_sync_pending = True
+        self._weapon_filter_sync_timer.start(delay_ms)
+        log_perf("weapon_filter_sync_schedule", pending=False, delay=delay_ms)
+
+    def schedule_persistent_equipment_hydration(
+        self,
+        result: CharacterPlacementResult,
+    ) -> None:
+        if not result.added:
+            return
+        self._equipment_hydration_generation += 1
+        self.cancel_pending_right_panel_refresh(
+            reason="pending_equipment_hydration"
+        )
+        self._equipment_hydration_pending = result
+        self._equipment_hydration_timer.start(PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS)
+        log_perf(
+            "persistent_equipment_hydration_schedule",
+            generation=self._equipment_hydration_generation,
+            character=result.character_id,
+            delay=PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS,
+        )
+
+    def cancel_pending_equipment_hydration(
+        self,
+        result: CharacterPlacementResult | None = None,
+    ) -> None:
+        if result is not None and self._equipment_hydration_pending is not None:
+            pending = self._equipment_hydration_pending
+            if (
+                pending.character_id != result.character_id
+                or pending.team_index != result.team_index
+                or pending.slot_index != result.slot_index
+            ):
+                return
+        self._equipment_hydration_generation += 1
+        self._equipment_hydration_pending = None
+        if self._equipment_hydration_timer.isActive():
+            self._equipment_hydration_timer.stop()
+        log_perf(
+            "persistent_equipment_hydration_cancel",
+            generation=self._equipment_hydration_generation,
+        )
+
+    def flush_pending_weapon_filter_sync(self) -> bool:
+        if self._weapon_filter_sync_timer.isActive():
+            self._weapon_filter_sync_timer.stop()
+        if not self._weapon_filter_sync_pending:
+            return False
+        self._weapon_filter_sync_pending = False
+        total_start = perf_now()
+        filter_start = perf_now()
+        filter_key = self.controller.selected_character_weapon_filter_key()
+        filter_ms = perf_ms(filter_start)
+        apply_start = perf_now()
+        changed = self.left_host.character_weapon_workspace.set_auto_weapon_type_filter(
+            filter_key
+        )
+        apply_ms = perf_ms(apply_start)
+        log_perf(
+            "weapon_filter_sync",
+            total=perf_ms(total_start),
+            selected_filter=filter_ms,
+            apply=apply_ms,
+            filter=filter_key or "all",
+            changed=changed,
+        )
+        return changed
+
+    def flush_pending_equipment_hydration(self) -> dict[str, float]:
+        if self._equipment_hydration_timer.isActive():
+            self._equipment_hydration_timer.stop()
+        result = self._equipment_hydration_pending
+        self._equipment_hydration_pending = None
+        if result is None or not result.added:
+            return {}
+        total_start = perf_now()
+        timings = self.controller.hydrate_persistent_equipment_for_slot(
+            result.team_index,
+            result.slot_index,
+            result.character_id,
+        )
+        total_ms = perf_ms(total_start)
+        applied = bool(timings.get("hydration_applied"))
+        if applied:
+            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+        log_perf(
+            "persistent_equipment_hydration_flush",
+            total=total_ms,
+            character=result.character_id,
+            applied=applied,
+            **timings,
+        )
+        return timings
+
+    def flush_pending_right_panel_refresh(self) -> dict[str, float]:
+        if self._right_panel_refresh_timer.isActive():
+            self._right_panel_refresh_timer.stop()
+        if not self._right_panel_refresh_pending:
+            return {}
+        self._right_panel_refresh_pending = False
+        timings = self._refresh_right_panel()
+        log_perf("right_panel_refresh_deferred", **timings)
+        return timings
+
+    def _sync_artifact_browser_operation_target(self) -> None:
+        self.left_host.set_artifact_right_panel_operation_target(
+            self.controller.selected_operation_target()
+        )
+
+    def _sync_gcsim_browser_context(self) -> None:
+        target_mode_label, targets_preview_by_team = (
+            self.controller.gcsim_browser_abyss_targets_preview()
+        )
+        self.left_host.set_gcsim_browser_context(
+            mode=self.controller.mode,
+            team_previews=self.controller.gcsim_browser_team_previews(),
+            target_mode_label=target_mode_label,
+            targets_preview_by_team=targets_preview_by_team,
+            energy_mode_label=_gcsim_browser_energy_mode_label(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
+            infinite_energy_enabled=(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
+        )
+
+    def _on_gcsim_prepare_requested(
+        self,
+        team_index: int,
+        rotation_shell_text: str,
+    ) -> None:
+        normalized_team_index = max(0, min(1, int(team_index)))
+        selected_team = self.controller.gcsim_browser_selected_team(normalized_team_index)
+        if not _selected_team_has_characters(selected_team):
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Prepare failed: active team has no characters."
+            )
+            return
+
+        run_dir = PROJECT_ROOT / "data" / "gcsim" / "runs" / "gcsim-browser-prepare"
+        rotation_shell_path = run_dir / "rotation_shell.txt"
+        try:
+            binding = _active_run_binding(_selected_gcsim_engine_id())
+            run_dir.mkdir(parents=True, exist_ok=True)
+            rotation_shell_path.write_text(rotation_shell_text, encoding="utf-8")
+            report = build_selected_team_full_config_report(
+                db_path=self.controller.equipment_db_path,
+                selected_team=selected_team,
+                team_index=normalized_team_index,
+                rotation_shell_path=rotation_shell_path,
+                run_dir=run_dir,
+                write_config=True,
+                artifact_set_registry_source=binding.artifact_registry,
+                run_settings=self.controller.gcsim_run_settings(),
+            )
+        except Exception as exc:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                f"Prepare failed: {exc}"
+            )
+            return
+
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            _gcsim_prepare_report_text(report.to_dict())
+        )
+
+    def _on_gcsim_run_selected_requested(
+        self,
+        team_index: int,
+        chamber: int,
+        rotation_shell_text: str,
+    ) -> None:
+        if self._gcsim_browser_run_thread is not None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run selected chamber: already running."
+            )
+            return
+        normalized_team_index = max(0, min(1, int(team_index)))
+        selected_team = self.controller.gcsim_browser_selected_team(normalized_team_index)
+        if not _selected_team_has_characters(selected_team):
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run selected chamber failed: active team has no characters."
+            )
+            return
+        if self.controller.mode == MODE_DPS_DUMMY:
+            request = GcsimBrowserDpsDummyRunRequest(
+                db_path=str(self.controller.equipment_db_path),
+                selected_team=selected_team,
+                team_index=normalized_team_index,
+                rotation_shell_text=rotation_shell_text,
+                expected_engine_id=_selected_gcsim_engine_id(),
+                boosted_energy_enabled=(
+                    self.controller.gcsim_run_settings().boosted_energy_enabled
+                ),
+            )
+            worker = GcsimBrowserDpsDummyRunWorker(request)
+            thread = QThread(self)
+            worker.moveToThread(thread)
+            thread.started.connect(worker.run)
+            worker.finished.connect(self._on_gcsim_dps_dummy_finished)
+            worker.finished.connect(thread.quit)
+            worker.finished.connect(worker.deleteLater)
+            thread.finished.connect(thread.deleteLater)
+            thread.finished.connect(self._clear_gcsim_run_worker_refs)
+            self._gcsim_browser_run_worker = worker
+            self._gcsim_browser_run_thread = thread
+            self.left_host.gcsim_browser_workspace.set_actions_busy(
+                True,
+                message=f"Running DPS Dummy: Team {normalized_team_index + 1}...",
+            )
+            thread.start()
+            return
+
+        abyss_source_data = self.controller.cached_abyss_source_data()
+        if abyss_source_data is None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run selected chamber failed: current Abyss source-data cache is missing."
+            )
+            return
+
+        side = 1 if normalized_team_index == 0 else 2
+        request = GcsimBrowserRunRequest(
+            db_path=str(self.controller.equipment_db_path),
+            selected_team=selected_team,
+            team_index=normalized_team_index,
+            chamber=max(1, min(3, int(chamber))),
+            side=side,
+            rotation_shell_text=rotation_shell_text,
+            expected_engine_id=_selected_gcsim_engine_id(),
+            abyss_period_start=abyss_source_data.period.start_date,
+            abyss_floor=abyss_source_data.floor,
+            target_mode=self.controller.gcsim_target_mode(),
+            boosted_energy_enabled=(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
+        )
+        worker = GcsimBrowserRunWorker(request)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_gcsim_run_selected_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_gcsim_run_worker_refs)
+        self._gcsim_browser_run_worker = worker
+        self._gcsim_browser_run_thread = thread
+        self._gcsim_browser_run_rotation_text = rotation_shell_text
+        self.controller.clear_gcsim_chamber_result(
+            team_index=normalized_team_index,
+            chamber=request.chamber,
+            side=side,
+        )
+        self._refresh_right_panel()
+        self.left_host.gcsim_browser_workspace.set_actions_busy(
+            True,
+            message=(
+                f"Running selected chamber: Team {normalized_team_index + 1} "
+                f"/ C{request.chamber} / side {side}..."
+            ),
+        )
+        thread.start()
+
+    def _on_gcsim_run_selected_finished(self, payload: dict) -> None:
+        payload_dict = dict(payload)
+        stored = self.controller.store_gcsim_browser_selected_payload(
+            payload_dict,
+            rotation_shell_text=self._gcsim_browser_run_rotation_text,
+        )
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_run_report(payload_dict)
+        )
+        if stored:
+            self._refresh_right_panel()
+
+    def _on_gcsim_dps_dummy_finished(self, payload: dict) -> None:
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_dps_dummy_report(dict(payload))
+        )
+
+    def _on_gcsim_run_all_requested(
+        self,
+        team_index: int,
+        rotation_shell_text: str,
+    ) -> None:
+        if self._gcsim_browser_run_thread is not None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run 3 chambers: already running."
+            )
+            return
+        normalized_team_index = max(0, min(1, int(team_index)))
+        if self.controller.mode == MODE_DPS_DUMMY:
+            self._on_gcsim_run_selected_requested(
+                normalized_team_index,
+                1,
+                rotation_shell_text,
+            )
+            return
+
+        selected_team = self.controller.gcsim_browser_selected_team(normalized_team_index)
+        if not _selected_team_has_characters(selected_team):
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run 3 chambers failed: active team has no characters."
+            )
+            return
+        abyss_source_data = self.controller.cached_abyss_source_data()
+        if abyss_source_data is None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run 3 chambers failed: current Abyss source-data cache is missing."
+            )
+            return
+
+        side = 1 if normalized_team_index == 0 else 2
+        request = GcsimBrowserBatchRunRequest(
+            db_path=str(self.controller.equipment_db_path),
+            selected_team=selected_team,
+            team_index=normalized_team_index,
+            side=side,
+            rotation_shell_text=rotation_shell_text,
+            expected_engine_id=_selected_gcsim_engine_id(),
+            abyss_period_start=abyss_source_data.period.start_date,
+            abyss_floor=abyss_source_data.floor,
+            target_mode=self.controller.gcsim_target_mode(),
+            boosted_energy_enabled=(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
+        )
+        worker = GcsimBrowserBatchRunWorker(request)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_gcsim_run_all_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_gcsim_run_worker_refs)
+        self._gcsim_browser_run_worker = worker
+        self._gcsim_browser_run_thread = thread
+        self._gcsim_browser_run_rotation_text = rotation_shell_text
+        self.controller.clear_gcsim_results(normalized_team_index)
+        self._refresh_right_panel()
+        self.left_host.gcsim_browser_workspace.set_actions_busy(
+            True,
+            message=(
+                f"Running 3 chambers: Team {normalized_team_index + 1} "
+                f"/ side {side}..."
+            ),
+        )
+        thread.start()
+
+    def _on_gcsim_run_all_finished(self, payload: dict) -> None:
+        payload_dict = dict(payload)
+        stored = self.controller.store_gcsim_browser_batch_payload(
+            payload_dict,
+            rotation_shell_text=self._gcsim_browser_run_rotation_text,
+        )
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_batch_report(payload_dict)
+        )
+        if stored:
+            self._refresh_right_panel()
+
+    def _on_gcsim_optimizer_selected_requested(
+        self,
+        team_index: int,
+        rotation_shell_text: str,
+    ) -> None:
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, mode="selected")
+
+    def _on_gcsim_optimizer_all_sets_requested(self, team_index: int, rotation_shell_text: str) -> None:
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, mode="all_sets")
+
+    def _on_gcsim_optimizer_theory_requested(self, team_index: int, rotation_shell_text: str) -> None:
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, mode="theory")
+
+    def _on_gcsim_optimizer_requested(self, team_index: int, rotation_shell_text: str, *, mode: str) -> None:
+        if self._gcsim_browser_run_thread is not None:
+            self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
+                tr("gcsim.optimizer.launch_busy")
+            )
+            self.left_host.gcsim_browser_workspace.update_optimizer_progress(
+                {"stage": "failed", "completed_work": 1, "total_work": 1}
+            )
+            return
+        normalized_team_index = max(0, min(1, int(team_index)))
+        selected_team = self.controller.gcsim_browser_selected_team(
+            normalized_team_index
+        )
+        if not _selected_team_has_characters(selected_team):
+            self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
+                tr("gcsim.optimizer.launch_empty_team")
+            )
+            self.left_host.gcsim_browser_workspace.update_optimizer_progress(
+                {"stage": "failed", "completed_work": 1, "total_work": 1}
+            )
+            return
+        from run_workspace.gcsim.optimizer_go_all import GcsimOptimizerGoAllSetsRequest
+        from run_workspace.gcsim.optimizer_go_theory import GcsimOptimizerGoTheoryRequest
+        request_type = (
+            GcsimOptimizerGoAllSetsRequest
+            if mode == "all_sets"
+            else GcsimOptimizerGoTheoryRequest
+            if mode == "theory"
+            else GcsimOptimizerGoSelectedRequest
+        )
+        optimizer_request_settings: dict[str, Any] = {}
+        if mode in {"selected", "all_sets"}:
+            optimizer_settings = effective_gcsim_optimizer_settings()
+            optimizer_request_settings = {
+                "set_group_limit": (
+                    optimizer_settings.set_group_limit
+                    if mode == "all_sets"
+                    else 1
+                ),
+                "builds_per_group": optimizer_settings.builds_per_group,
+                "fast_mode": optimizer_settings.fast_mode,
+                "expanded_limits": optimizer_settings.expanded_limits,
+            }
+        request = request_type(
+            db_path=str(self.controller.equipment_db_path),
+            selected_team=selected_team,
+            team_index=normalized_team_index,
+            rotation_shell_text=rotation_shell_text,
+            expected_engine_id=_selected_gcsim_engine_id(),
+            infinite_energy_enabled=bool(
+                self.controller.gcsim_boosted_energy_enabled
+            ),
+            **optimizer_request_settings,
+        )
+        worker = GcsimBrowserSelectedOptimizerWorker(request)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.progress.connect(
+            self.left_host.gcsim_browser_workspace.update_optimizer_progress
+        )
+        worker.finished.connect(self._on_gcsim_optimizer_selected_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_gcsim_run_worker_refs)
+        self._gcsim_browser_run_worker = worker
+        self._gcsim_browser_run_thread = thread
+        self._gcsim_browser_run_rotation_text = rotation_shell_text
+        self._gcsim_optimizer_selected_team = dict(selected_team)
+        if mode == "theory":
+            self.left_host.gcsim_browser_workspace.set_optimizer_theory_context(selected_team)
+        self.left_host.gcsim_browser_workspace.set_optimizer_busy(True)
+        thread.start()
+
+    def _on_gcsim_optimizer_cancel_requested(self) -> None:
+        worker = self._gcsim_browser_run_worker
+        if isinstance(worker, GcsimBrowserSelectedOptimizerWorker):
+            self.left_host.gcsim_browser_workspace.optimizer_progress_label.setText(
+                tr("gcsim.optimizer.cancelling_all")
+                if self.left_host.gcsim_browser_workspace._optimizer_mode == "all_sets"
+                else tr("gcsim.optimizer.theory_session.cancelling")
+                if self.left_host.gcsim_browser_workspace._optimizer_mode == "theory"
+                else "Cancelling Selected Sets..."
+            )
+            worker.cancel()
+
+    def _on_gcsim_optimizer_finish_requested(self) -> None:
+        worker = self._gcsim_browser_run_worker
+        if not isinstance(worker, GcsimBrowserSelectedOptimizerWorker):
+            return
+        workspace = self.left_host.gcsim_browser_workspace
+        if workspace._optimizer_mode not in {"selected", "all_sets", "theory"}:
+            return
+        request_finish = getattr(worker, "request_finish", None)
+        if callable(request_finish):
+            request_finish()
+
+    def _on_gcsim_optimizer_theory_continue_requested(self, action: str, snapshot_version: int) -> None:
+        worker = self._gcsim_browser_run_worker
+        workspace = self.left_host.gcsim_browser_workspace
+        accepted = (
+            isinstance(worker, GcsimBrowserSelectedOptimizerWorker)
+            and workspace._optimizer_mode == "theory"
+            and worker.request_continuation(action, snapshot_version=snapshot_version)
+        )
+        workspace.set_optimizer_theory_continuation_result(bool(accepted))
+
+    def _on_gcsim_optimizer_selected_finished(self, payload: dict) -> None:
+        payload_dict = dict(payload)
+        workspace = self.left_host.gcsim_browser_workspace
+        if payload_dict.get("mode") == "theory":
+            from run_workspace.gcsim.optimizer_go_theory_session import (
+                format_gcsim_optimizer_go_theory_session_result,
+            )
+            payload_dict = workspace.set_optimizer_theory_terminal_result(payload_dict)
+            formatted = format_gcsim_optimizer_go_theory_session_result(payload_dict, include_rows=False)
+        else:
+            formatted = format_gcsim_optimizer_go_selected_result(payload_dict)
+            if _gcsim_optimizer_ranking_basis(payload_dict) == "formula":
+                formatted = _format_formula_only_optimizer_text(formatted)
+        if _gcsim_optimizer_was_finished_by_user(payload_dict):
+            finish_note = tr("gcsim.optimizer.search_finished_by_user")
+            finish_warning = tr("gcsim.optimizer.search_finished_by_user.warning")
+            formatted = formatted.replace("search_finished_by_user", finish_warning)
+            if finish_note not in formatted:
+                lines = formatted.splitlines()
+                formatted = "\n".join(
+                    [lines[0], finish_note, *lines[1:]] if lines else [finish_note]
+                )
+        workspace.set_optimizer_result_text(
+            formatted
+        )
+        pages = ()
+        if (
+            str(payload_dict.get("status") or "") == "success"
+            and payload_dict.get("mode") != "theory"
+        ):
+            try:
+                pages = build_optimizer_result_pages(
+                    payload_dict,
+                    self._gcsim_optimizer_selected_team,
+                    list_all_artifacts(db_path=self.controller.equipment_db_path),
+                )
+            except Exception as exc:
+                template = tr("gcsim.optimizer.cards_unavailable")
+                if template == "gcsim.optimizer.cards_unavailable":
+                    template = "Build cards unavailable: {error}"
+                fallback_text = format_gcsim_optimizer_go_selected_result(
+                    payload_dict
+                )
+                if _gcsim_optimizer_ranking_basis(payload_dict) == "formula":
+                    fallback_text = _format_formula_only_optimizer_text(
+                        fallback_text
+                    )
+                workspace.set_optimizer_result_text(
+                    fallback_text
+                    + "\n"
+                    + template.format(error=exc)
+                )
+        if payload_dict.get("mode") == "theory":
+            return  # The Theory handoff already bound and finalized its snapshot.
+        workspace.set_optimizer_result_pages(pages)
+        status = str(payload_dict.get("status") or "failed")
+        progress_stage = (
+            "completed" if status == "success" else "cancelled" if status == "cancelled" else "failed"
+        )
+        if payload_dict.get("error_code") == "finish_no_result":
+            progress_stage = "finish_no_result"
+        workspace.update_optimizer_progress(
+            {
+                "stage": progress_stage,
+                "completed_work": 1,
+                "total_work": 1,
+            }
+        )
+
+    def _on_gcsim_optimizer_build_save_requested(self, request: dict) -> None:
+        request_dict = dict(request)
+        wearer_key = str(request_dict.get("wearer_key") or "").casefold()
+        try:
+            name = str(request_dict.get("name") or "").strip()
+            slots = {
+                int(position): int(artifact_id)
+                for position, artifact_id in dict(request_dict.get("slots") or {}).items()
+            }
+            targets = [dict(item) for item in request_dict.get("targets") or []]
+            if not name:
+                message = tr("gcsim.optimizer.invalid_name")
+                raise ValueError(
+                    "Build name is empty"
+                    if message == "gcsim.optimizer.invalid_name"
+                    else message
+                )
+            if set(slots) != {1, 2, 3, 4, 5}:
+                message = tr("gcsim.optimizer.invalid_slots")
+                raise ValueError(
+                    "Build does not contain five artifact slots"
+                    if message == "gcsim.optimizer.invalid_slots"
+                    else message
+                )
+            if not targets:
+                message = tr("gcsim.optimizer.character_missing")
+                raise ValueError(
+                    "Character target is unavailable"
+                    if message == "gcsim.optimizer.character_missing"
+                    else message
+                )
+            save_build_preset(
+                build_id=None,
+                name=name,
+                slots=slots,
+                targets=targets,
+                db_path=self.controller.equipment_db_path,
+            )
+            browser = self.left_host.artifact_browser_workspace
+            if browser is not None:
+                browser.load_build_presets()
+                browser.refresh_build_target_list()
+                browser.update_build_panel()
+            template = tr("gcsim.optimizer.saved")
+            if template == "gcsim.optimizer.saved":
+                template = "Saved in Artifact Browser: {name}"
+            self.left_host.gcsim_browser_workspace.set_optimizer_build_save_result(
+                wearer_key,
+                success=True,
+                message=template.format(name=name),
+            )
+        except Exception as exc:
+            template = tr("gcsim.optimizer.save_failed")
+            if template == "gcsim.optimizer.save_failed":
+                template = "Could not save: {error}"
+            self.left_host.gcsim_browser_workspace.set_optimizer_build_save_result(
+                wearer_key,
+                success=False,
+                message=template.format(error=exc),
+            )
+
+    def _clear_gcsim_run_worker_refs(self) -> None:
+        self._gcsim_browser_run_thread = None
+        self._gcsim_browser_run_worker = None
+        self._gcsim_browser_run_rotation_text = ""
+        self.left_host.gcsim_browser_workspace.set_actions_busy(False)
+        self.left_host.gcsim_browser_workspace.set_optimizer_busy(False)
+
+    def _on_artifact_browser_equipment_changed(self, result: object) -> None:
+        affected_ids = {
+            str(character_id)
+            for character_id in getattr(result, "affected_character_ids", ()) or ()
+            if str(character_id)
+        }
+        if not affected_ids:
+            target = self.controller.selected_operation_target()
+            if target is not None and target.get("character_id") is not None:
+                affected_ids.add(str(target["character_id"]))
+
+        refreshed = False
+        for character_id in affected_ids:
+            refreshed = (
+                self.controller.refresh_persistent_equipment_for_character(character_id)
+                or refreshed
+            )
+        if refreshed:
+            self.controller.clear_gcsim_results()
+            self.schedule_right_panel_refresh()
+
+    def _on_account_data_changed(self, reset_runtime_state: bool) -> None:
+        self.cancel_pending_equipment_hydration()
+        self.cancel_pending_right_panel_refresh(reason="account_data_changed")
+        if self._weapon_filter_sync_timer.isActive():
+            self._weapon_filter_sync_timer.stop()
+        self._weapon_filter_sync_pending = False
+        self.controller.invalidate_cached_abyss_source_data()
+        self.controller.clear_gcsim_results()
+
+        if reset_runtime_state:
+            previous_mode = self.controller.mode
+            external_bonuses_enabled = self.controller.external_bonuses_enabled
+            abyss_fact_dps_multi_target_enabled = (
+                self.controller.abyss_fact_dps_multi_target_enabled
+            )
+            gcsim_boosted_energy_enabled = (
+                self.controller.gcsim_boosted_energy_enabled
+            )
+            controller = AppShellController.empty(
+                equipment_db_path=self.controller.equipment_db_path
+            )
+            controller.external_bonuses_enabled = external_bonuses_enabled
+            controller.abyss_fact_dps_multi_target_enabled = (
+                abyss_fact_dps_multi_target_enabled
+            )
+            controller.gcsim_boosted_energy_enabled = (
+                gcsim_boosted_energy_enabled
+            )
+            if previous_mode != MODE_ABYSS:
+                controller.set_mode(previous_mode)
+            self.controller = controller
+        else:
+            self.controller.invalidate_persistent_equipment_cache()
+
+        self.left_host.refresh_account_data()
+        refresh_imported_element_filter_icons(self)
+        self.right_panel.refresh_asset_pixmaps()
+        self._refresh_character_selection_markers()
+        self._sync_artifact_browser_operation_target()
+        self.schedule_weapon_filter_sync(delay_ms=0)
+        self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
+    def _on_fact_dps_multi_target_changed(self, enabled: bool) -> None:
+        self.controller.set_abyss_fact_dps_multi_target_enabled(enabled)
+        self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
+    def _on_gcsim_boosted_energy_changed(self, enabled: bool) -> None:
+        self.controller.gcsim_boosted_energy_enabled = bool(enabled)
+        self.controller.clear_gcsim_results()
+        self._sync_gcsim_browser_context()
+        self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
+    def _on_gcsim_optimizer_infinite_energy_changed(self, enabled: bool) -> None:
+        # The Account/GCSIM switch owns persistence. Changing the optimizer-side
+        # view drives that same switch, whose existing signal updates AppShell.
+        self.right_dock.account_page.set_gcsim_boosted_energy_enabled(enabled)
+
+    def _on_gcsim_rotation_text_changed(self) -> None:
+        if self.controller.gcsim_chamber_results:
+            self.controller.clear_gcsim_results()
+            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
+    def _refresh_right_panel(self) -> dict[str, float]:
+        total_start = perf_now()
+        vm_start = perf_now()
+        model = self.controller.right_panel_model()
+        vm_ms = perf_ms(vm_start)
+        set_model_start = perf_now()
+        self.right_panel.set_model(model)
+        self._sync_virtual_gcsim_controls()
+        set_model_ms = perf_ms(set_model_start)
+        self._sync_gcsim_browser_context()
+        total_ms = perf_ms(total_start)
+        log_perf(
+            "right_panel_refresh",
+            total=total_ms,
+            vm=vm_ms,
+            set_model=set_model_ms,
+        )
+        return {
+            "right_panel_total": total_ms,
+            "vm": vm_ms,
+            "set_model": set_model_ms,
+        }
+
+    def _refresh_active_virtual_gcsim_catalogs(self, *, force: bool = False) -> None:
+        try:
+            active_id = GcsimEngineStore().active_engine_id() or ""
+        except GcsimEngineStoreError:
+            active_id = ""
+        if not force and self._virtual_gcsim_catalog.engine_id == active_id:
+            return
+        self._virtual_gcsim_catalog = load_active_virtual_roster_catalog()
+        self._virtual_gcsim_set_choices = load_active_virtual_artifact_set_choices(
+            self.controller.equipment_db_path,
+            language=get_language(),
+        )
+
+    def _sync_virtual_gcsim_controls(self) -> None:
+        self._refresh_active_virtual_gcsim_catalogs()
+        workspace = self.left_host.gcsim_browser_workspace
+        workspace.set_virtual_gcsim_catalogs(
+            self._virtual_gcsim_catalog,
+            self._virtual_gcsim_set_choices,
+        )
+        for team_index in range(2):
+            for slot_index in range(4):
+                override = self.controller.virtual_gcsim_override(
+                    team_index,
+                    slot_index,
+                )
+                workspace.set_virtual_gcsim_slot_context(
+                    team_index,
+                    slot_index,
+                    override=override,
+                    artifact_builds=self._virtual_artifact_build_choices(
+                        override.character_key if override is not None else ""
+                    ),
+                )
+        self.left_host.set_virtual_gcsim_artifact_targets(
+            [
+                {
+                    "target_type": "gcsim_character",
+                    "gcsim_character_key": item.character_key,
+                    "character_name": item.character_name,
+                    "icon_path": item.character_icon_path,
+                }
+                for item in self.controller.virtual_gcsim_overrides()
+            ]
+        )
+
+    def _virtual_artifact_build_choices(
+        self,
+        character_key: str,
+    ) -> tuple[dict[str, object], ...]:
+        key = str(character_key or "").strip()
+        if not key:
+            return ()
+        return tuple(
+            {
+                "id": int(build.get("id") or 0),
+                "name": _text(build.get("name")),
+                "slot_count": int(build.get("slot_count") or 0),
+            }
+            for build in list_build_presets_for_gcsim_character(
+                key,
+                db_path=self.controller.equipment_db_path,
+            )
+        )
+
+    def _refresh_character_selection_markers(
+        self,
+        *,
+        affected_character_ids: set[str] | None = None,
+        markers: dict[str, RosterSelectionMarker] | None = None,
+    ) -> dict[str, float]:
+        total_start = perf_now()
+        marker_start = perf_now()
+        markers = markers if markers is not None else self.controller.roster_selection_markers()
+        marker_ms = perf_ms(marker_start)
+        workspace_start = perf_now()
+        self.left_host.character_weapon_workspace.set_character_selection_markers(
+            markers,
+            affected_character_ids=affected_character_ids,
+        )
+        workspace_ms = perf_ms(workspace_start)
+        total_ms = perf_ms(total_start)
+        log_perf(
+            "selected_marker_update",
+            total=total_ms,
+            marker_state=marker_ms,
+            workspace=workspace_ms,
+            affected="all" if affected_character_ids is None else len(affected_character_ids),
+        )
+        return {
+            "markers_total": total_ms,
+            "marker_state": marker_ms,
+            "marker_workspace": workspace_ms,
+        }
+
+    def _refresh_shell(
+        self,
+        *,
+        affected_character_ids: set[str] | None = None,
+        markers: dict[str, RosterSelectionMarker] | None = None,
+    ) -> dict[str, float]:
+        timings: dict[str, float] = {}
+        timings.update(self._refresh_right_panel())
+        timings.update(
+            self._refresh_character_selection_markers(
+                affected_character_ids=affected_character_ids,
+                markers=markers,
+            )
+        )
+        return timings
+
+    def _on_mode_requested(self, mode: str) -> None:
+        mode = normalize_run_mode(mode)
+        previous_mode = self.controller.mode
+        mode_changed = mode != previous_mode
+        self.cancel_pending_right_panel_refresh(reason="mode_switch")
+        marker_timings: dict[str, float] = {}
+        if mode_changed:
+            self.cancel_pending_equipment_hydration()
+            self.controller.set_mode(mode)
+            marker_timings = self._refresh_character_selection_markers(
+                affected_character_ids=None
+            )
+            self._sync_artifact_browser_operation_target()
+            self.schedule_weapon_filter_sync()
+        refresh_timings = self._refresh_right_panel()
+        self.right_dock.show_run_page(mode)
+        log_perf(
+            "mode_switch",
+            mode=mode,
+            previous_mode=previous_mode,
+            changed=mode_changed,
+            **marker_timings,
+            **refresh_timings,
+        )
+
+    def _on_history_mode_requested(self, mode: str) -> None:
+        if self.active_left_workspace_id != LEFT_WORKSPACE_HISTORY:
+            return
+        self.left_host.history_workspace.set_mode(mode)
+        self.right_dock.show_history_page(mode)
+
+    def _on_reset_requested(self) -> None:
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "run_reset_ignored",
+                right_page=self.right_dock.current_page(),
+            )
+            return
+        total_start = perf_now()
+        self.right_panel.clear_save_status()
+        self.cancel_pending_equipment_hydration()
+        self.cancel_pending_right_panel_refresh(reason="run_reset")
+        self.controller.reset_active_run()
+        marker_timings = self._refresh_character_selection_markers(
+            affected_character_ids=None,
+        )
+        self._sync_artifact_browser_operation_target()
+        self._sync_gcsim_browser_context()
+        self.schedule_weapon_filter_sync(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+        refresh_timings = self._refresh_right_panel()
+        log_perf(
+            "run_reset",
+            mode=self.controller.mode,
+            total=perf_ms(total_start),
+            **marker_timings,
+            **refresh_timings,
+        )
+
+    def _on_save_requested(self) -> None:
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "run_save_ignored",
+                right_page=self.right_dock.current_page(),
+            )
+            return
+        total_start = perf_now()
+        result = self.controller.save_current_run_snapshot(
+            history_root=self.history_snapshot_root,
+        )
+        self.last_save_result = result
+        self.right_panel.show_save_result(result)
+        log_perf(
+            "run_save",
+            mode=self.controller.mode,
+            success=result.success,
+            bundle_id=result.bundle_id,
+            total=perf_ms(total_start),
+        )
+
+    def _on_workspace_requested(self, workspace_id: str) -> None:
+        self.left_host.activate_workspace(workspace_id)
+
+    def _on_history_snapshot_selected(self, payload: object | None) -> None:
+        viewer = self.right_dock.history_operation_widget
+        if hasattr(viewer, "set_snapshot_details"):
+            viewer.set_snapshot_details(payload)
+        if self.active_left_workspace_id == LEFT_WORKSPACE_HISTORY:
+            self.right_dock.show_history_page(
+                self.left_host.history_workspace.mode
+            )
+
+    def _on_workspace_activated(self, workspace_id: str) -> None:
+        previous_workspace_id = self.active_left_workspace_id
+        self.active_left_workspace_id = workspace_id
+        if workspace_id == LEFT_WORKSPACE_PVP:
+            self.cancel_pending_right_panel_refresh(reason="pvp_workspace_activate")
+            self.right_dock.show_pvp_page()
+        elif workspace_id == LEFT_WORKSPACE_HISTORY:
+            self.cancel_pending_right_panel_refresh(
+                reason="history_workspace_activate"
+            )
+            history_mode = (
+                HISTORY_MODE_DPS_DUMMY
+                if self.controller.mode == MODE_DPS_DUMMY
+                else HISTORY_MODE_ABYSS
+            )
+            self.left_host.history_workspace.set_mode(history_mode)
+            self.left_host.history_workspace.reload_data()
+            self.right_dock.show_history_page(history_mode)
+        elif previous_workspace_id in (LEFT_WORKSPACE_PVP, LEFT_WORKSPACE_HISTORY):
+            self.right_dock.show_run_page(self.controller.mode)
+        if workspace_id not in (LEFT_WORKSPACE_PVP, LEFT_WORKSPACE_HISTORY):
+            # A virtual artifact build can be created or edited in the Artifact
+            # Browser. Refresh the small picker when the user changes workspace
+            # instead of polling SQLite during ordinary panel paints.
+            self._sync_virtual_gcsim_controls()
+        log_perf(
+            "left_workspace_activate",
+            workspace=workspace_id,
+            right_page=self.right_dock.current_page(),
+        )
+
+    def _on_slot_selected(self, team_index: int, slot_index: int) -> None:
+        total_start = perf_now()
+        self.controller.toggle_slot_selection(team_index, slot_index)
+        self._sync_artifact_browser_operation_target()
+        hydration_target = self.controller.selected_equipment_hydration_target()
+        if hydration_target is not None:
+            self.schedule_persistent_equipment_hydration(hydration_target)
+        else:
+            self.cancel_pending_equipment_hydration()
+        self.schedule_weapon_filter_sync()
+        self.schedule_right_panel_refresh()
+        log_perf("slot_select", total=perf_ms(total_start), scheduled=True)
+
+    def _on_slot_dropped(
+        self,
+        source_team_index: int,
+        source_slot_index: int,
+        target_team_index: int,
+        target_slot_index: int,
+    ) -> None:
+        total_start = perf_now()
+        self.cancel_pending_equipment_hydration()
+        self.cancel_pending_right_panel_refresh(reason="slot_dropped")
+        state_start = perf_now()
+        changed = self.controller.swap_slots(
+            source_team_index,
+            source_slot_index,
+            target_team_index,
+            target_slot_index,
+        )
+        state_ms = perf_ms(state_start)
+        timings: dict[str, float] = {}
+        if changed:
+            timings.update(self._refresh_character_selection_markers())
+            target_start = perf_now()
+            self._sync_artifact_browser_operation_target()
+            timings["operation_target_sync"] = perf_ms(target_start)
+            hydration_target = self.controller.selected_equipment_hydration_target()
+            if hydration_target is not None:
+                self.schedule_persistent_equipment_hydration(hydration_target)
+            self.schedule_weapon_filter_sync()
+            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+        log_perf(
+            "slot_drop",
+            total=perf_ms(total_start),
+            state=state_ms,
+            changed=changed,
+            source_team=source_team_index,
+            source_slot=source_slot_index,
+            target_team=target_team_index,
+            target_slot=target_slot_index,
+            scheduled=changed,
+            **timings,
+        )
+
+    def _on_external_bonuses_toggled(self, enabled: bool) -> None:
+        total_start = perf_now()
+        self.controller.external_bonuses_enabled = bool(enabled)
+        self.schedule_right_panel_refresh()
+        log_perf("external_bonus_toggle", total=perf_ms(total_start), scheduled=True)
+
+    def _on_abyss_timer_changed(
+        self,
+        chamber_index: int,
+        team_number: int,
+        seconds_left: int,
+    ) -> None:
+        total_start = perf_now()
+        changed = self.controller.set_abyss_timer_seconds(
+            chamber_index,
+            team_number,
+            seconds_left,
+        )
+        if changed:
+            self.cancel_pending_right_panel_refresh(reason="abyss_timer_changed")
+            self._refresh_right_panel()
+        log_perf(
+            "abyss_timer_change",
+            total=perf_ms(total_start),
+            chamber=chamber_index,
+            team=team_number,
+            seconds_left=seconds_left,
+            changed=changed,
+        )
+
+    def _on_virtual_gcsim_character_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        character_key: str,
+    ) -> None:
+        self._refresh_active_virtual_gcsim_catalogs()
+        character = next(
+            (
+                item
+                for item in self._virtual_gcsim_catalog.characters
+                if item.gcsim_key == str(character_key)
+            ),
+            None,
+        )
+        if character is None:
+            return
+        team_index = int(team_index)
+        slot_index = int(slot_index)
+        if team_index < 0 or slot_index < 0:
+            return
+        previous = self.controller.virtual_gcsim_override(team_index, slot_index)
+        same_character = (
+            previous is not None and previous.character_key == character.gcsim_key
+        )
+        weapon = None
+        if same_character and previous.weapon_type == character.weapon_type:
+            weapon = next(
+                (
+                    item
+                    for item in self._virtual_gcsim_catalog.weapons
+                    if item.gcsim_key == previous.weapon_key
+                ),
+                None,
+            )
+        override = GcsimVirtualSlotOverride(
+            team_index=team_index,
+            slot_index=slot_index,
+            character_key=character.gcsim_key,
+            character_name=character.display_name,
+            character_weapon_type=character.weapon_type,
+            character_icon_path=character.icon_path,
+            constellation=previous.constellation if same_character else 0,
+            refinement=previous.refinement if same_character else 1,
+            character_level=previous.character_level if same_character else 90,
+            character_promote_level=None,
+            talent_normal=previous.talent_normal if same_character else 10,
+            talent_skill=previous.talent_skill if same_character else 10,
+            talent_burst=previous.talent_burst if same_character else 10,
+            weapon_level=previous.weapon_level if same_character else None,
+            weapon_promote_level=(
+                previous.weapon_promote_level if same_character else None
+            ),
+            artifact_build_id=(
+                previous.artifact_build_id
+                if same_character
+                else None
+            ),
+            artifact_build_name=(
+                previous.artifact_build_name
+                if same_character
+                else ""
+            ),
+            artifact_set_bonuses=(
+                previous.artifact_set_bonuses if same_character else ()
+            ),
+        ).with_weapon(weapon)
+        if self.controller.set_virtual_gcsim_override(override):
+            self.cancel_pending_equipment_hydration()
+            self._refresh_character_selection_markers(affected_character_ids=None)
+            self._sync_artifact_browser_operation_target()
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_weapon_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        weapon_key: str,
+    ) -> None:
+        self._refresh_active_virtual_gcsim_catalogs()
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        weapon = next(
+            (
+                item
+                for item in self._virtual_gcsim_catalog.weapons
+                if item.gcsim_key == str(weapon_key)
+            ),
+            None,
+        )
+        if weapon is not None and weapon.weapon_type != override.character_weapon_type:
+            return
+        try:
+            updated = override.with_weapon(weapon)
+            if weapon is not None and not override.weapon_key:
+                updated = replace(
+                    updated,
+                    weapon_level=90,
+                    weapon_promote_level=6,
+                    refinement=1,
+                )
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_constellation_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        constellation: int,
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        try:
+            updated = replace(override, constellation=int(constellation))
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_refinement_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        refinement: int,
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None or not override.weapon_key:
+            return
+        try:
+            updated = replace(override, refinement=int(refinement))
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_profile_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        profile: dict[str, Any],
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        values: dict[str, Any] = {}
+        for field_name in (
+            "character_level",
+            "talent_normal",
+            "talent_skill",
+            "talent_burst",
+            "weapon_level",
+            "weapon_promote_level",
+            "artifact_build_id",
+        ):
+            if field_name in profile:
+                values[field_name] = _optional_int(profile.get(field_name))
+        if "artifact_build_name" in profile:
+            values["artifact_build_name"] = _text(profile.get("artifact_build_name"))
+        level = values.get("character_level", override.character_level)
+        if "character_level" in values and level is not None:
+            maximum_talent = max_virtual_talent_level(level)
+            values.update(
+                talent_normal=maximum_talent,
+                talent_skill=maximum_talent,
+                talent_burst=maximum_talent,
+            )
+        try:
+            updated = replace(override, **values)
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_set_bonuses_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        payload: list[dict[str, Any]],
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        try:
+            bonuses = tuple(
+                GcsimVirtualSetBonus(
+                    set_uid=_text(item.get("set_uid")),
+                    display_name=_text(item.get("display_name")),
+                    gcsim_key=_text(
+                        (item.get("mapping") or {}).get("gcsim_key")
+                        if isinstance(item.get("mapping"), Mapping)
+                        else ""
+                    ),
+                    piece_count=int(item.get("count") or 0),
+                )
+                for item in payload
+            )
+            updated = replace(override, artifact_set_bonuses=bonuses)
+        except (TypeError, ValueError):
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_clear_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+    ) -> None:
+        if self.controller.clear_virtual_gcsim_override(team_index, slot_index):
+            self._sync_artifact_browser_operation_target()
+            self._refresh_right_panel()
+
+    def _selected_virtual_gcsim_override(self) -> GcsimVirtualSlotOverride | None:
+        return self.controller.virtual_gcsim_override(
+            self.controller.selected_team_index,
+            self.controller.selected_slot_index,
+        )
+
+    def _on_character_clicked(self, asset: dict) -> None:
+        total_start = perf_now()
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "character_click",
+                total=perf_ms(total_start),
+                changed=False,
+                scheduled=False,
+                ignored_page=self.right_dock.current_page(),
+            )
+            return
+        character_id = _text(_asset_metadata_mapping(asset, "character").get("id"))
+        if character_id and self.controller._find_character_slot(character_id) is None:
+            target = self.controller.first_empty_account_slot()
+            virtual = (
+                self.controller.virtual_gcsim_override(*target)
+                if target is not None
+                else None
+            )
+            if virtual is not None:
+                answer = QMessageBox.question(
+                    self,
+                    tr("right_panel.virtual_gcsim.remove_title"),
+                    tr(
+                        "right_panel.virtual_gcsim.remove_confirm",
+                        name=virtual.character_name,
+                        slot=virtual.slot_index + 1,
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
+                self.controller.clear_virtual_gcsim_override(*target)
+        before_markers = self.controller.roster_selection_markers()
+        state_start = perf_now()
+        result = self.controller.add_or_replace_character_fast(asset)
+        changed = result.changed
+        state_ms = perf_ms(state_start)
+        timings: dict[str, float] = {}
+        if changed:
+            after_markers = self.controller.roster_selection_markers()
+            affected_character_ids = _changed_marker_ids(before_markers, after_markers)
+            timings = self._refresh_character_selection_markers(
+                affected_character_ids=affected_character_ids,
+                markers=after_markers,
+            )
+            target_start = perf_now()
+            self._sync_artifact_browser_operation_target()
+            target_ms = perf_ms(target_start)
+            timings["operation_target_sync"] = target_ms
+            self.schedule_weapon_filter_sync()
+            if result.added:
+                self.schedule_persistent_equipment_hydration(result)
+            elif result.removed:
+                self.cancel_pending_equipment_hydration(result)
+                self.cancel_pending_right_panel_refresh(
+                    reason="character_removed"
+                )
+                self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+            else:
+                self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+        log_perf(
+            "character_click",
+            total=perf_ms(total_start),
+            state=state_ms,
+            changed=changed,
+            scheduled=changed,
+            **timings,
+        )
+
+    def _on_weapon_clicked(self, asset: dict) -> None:
+        total_start = perf_now()
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "weapon_click",
+                total=perf_ms(total_start),
+                changed=False,
+                scheduled=False,
+                ignored_page=self.right_dock.current_page(),
+            )
+            return
+        virtual = self._selected_virtual_gcsim_override()
+        if virtual is not None:
+            QMessageBox.information(
+                self,
+                tr("right_panel.virtual_gcsim.account_weapon_blocked_title"),
+                tr("right_panel.virtual_gcsim.account_weapon_blocked"),
+            )
+            return
+        state_start = perf_now()
+        changed = self.controller.assign_weapon_to_selected_slot(asset)
+        state_ms = perf_ms(state_start)
+        timings: dict[str, float] = {}
+        if changed:
+            workspace_start = perf_now()
+            workspace = self.left_host.character_weapon_workspace
+            change_result = self.controller.last_weapon_equipment_change_result
+            fingerprints = getattr(change_result, "affected_weapon_fingerprints", ())
+            if (
+                self.controller.equipment_state is not None
+                or not workspace.refresh_weapon_owner_badges(fingerprints)
+            ):
+                workspace.refresh_weapon_asset_cache()
+                workspace.reload_weapons()
+            timings["weapon_workspace_refresh"] = perf_ms(workspace_start)
+            self.schedule_right_panel_refresh()
+        log_perf(
+            "weapon_click",
+            total=perf_ms(total_start),
+            state=state_ms,
+            changed=changed,
+            scheduled=changed,
+            **timings,
+        )
+
+
+class LeftWorkspaceHost(QWidget):
+    workspace_requested = Signal(str)
+    workspace_activated = Signal(str)
+
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        artifact_db_path: str | Path = ARTIFACT_DB_PATH,
+        artifact_equipment_changed=None,
+        history_snapshot_root: str | Path = HISTORY_SNAPSHOT_ROOT,
+    ) -> None:
+        super().__init__(parent)
+        self.artifact_db_path = artifact_db_path
+        self.artifact_equipment_changed = artifact_equipment_changed
+        self.history_snapshot_root = Path(history_snapshot_root)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        self.nav_group = QButtonGroup(self)
+        self.nav_group.setExclusive(True)
+        self.nav_layout = QHBoxLayout()
+        self.nav_layout.setContentsMargins(0, 0, 0, 0)
+        self.nav_layout.setSpacing(4)
+        layout.addLayout(self.nav_layout)
+
+        self.stack = QStackedWidget()
+        layout.addWidget(self.stack, 1)
+        self._workspace_indices_by_id: dict[str, int] = {}
+        self._workspace_ids_by_index: dict[int, str] = {}
+        self._workspace_buttons_by_id: dict[str, QPushButton] = {}
+
+        self.character_weapon_workspace = CharacterWeaponWorkspace(
+            db_path=self.artifact_db_path
+        )
+        self.character_weapon_button = self.add_workspace(
+            LEFT_WORKSPACE_CHARACTERS_WEAPONS,
+            tr("app_shell.workspace.characters_weapons"),
+            self.character_weapon_workspace,
+        )
+        self.artifact_browser_workspace = None
+        self._pending_artifact_right_panel_target: dict[str, Any] | None = None
+        self._pending_virtual_gcsim_artifact_targets: list[dict[str, Any]] = []
+        self.artifact_browser_placeholder = self._make_artifact_browser_placeholder()
+        self.artifact_browser_index = self.stack.addWidget(
+            self.artifact_browser_placeholder
+        )
+        self._register_workspace_index(
+            LEFT_WORKSPACE_ARTIFACTS,
+            self.artifact_browser_index,
+        )
+        self.artifact_browser_button = QPushButton(tr("app_shell.workspace.artifacts"))
+        self.artifact_browser_button.setCheckable(True)
+        self.artifact_browser_button.clicked.connect(
+            lambda _checked=False: self.request_workspace(LEFT_WORKSPACE_ARTIFACTS)
+        )
+        self.nav_group.addButton(self.artifact_browser_button)
+        self.nav_layout.addWidget(self.artifact_browser_button)
+        self._workspace_buttons_by_id[
+            LEFT_WORKSPACE_ARTIFACTS
+        ] = self.artifact_browser_button
+        self.gcsim_browser_workspace = GcsimBrowserWorkspace()
+        self.gcsim_browser_button = self.add_workspace(
+            LEFT_WORKSPACE_GCSIM,
+            "GCSIM",
+            self.gcsim_browser_workspace,
+        )
+        self.history_workspace = HistoryBrowserWorkspace(
+            snapshot_root=self.history_snapshot_root
+        )
+        self.history_button = self.add_workspace(
+            LEFT_WORKSPACE_HISTORY,
+            tr("app_shell.workspace.history"),
+            self.history_workspace,
+        )
+        self.pvp_workspace = PvpWorkspace(
+            db_path=self.artifact_db_path,
+            character_assets_provider=(
+                self.character_weapon_workspace.character_asset_items_snapshot
+            ),
+            weapon_assets_provider=(
+                self.character_weapon_workspace.weapon_asset_items_snapshot
+            ),
+        )
+        self.pvp_button = self.add_workspace(
+            LEFT_WORKSPACE_PVP,
+            tr("app_shell.workspace.pvp"),
+            self.pvp_workspace,
+        )
+        self.stack.currentChanged.connect(self._on_stack_current_changed)
+
+    def _make_artifact_browser_placeholder(self) -> QWidget:
+        placeholder = QFrame()
+        layout = QVBoxLayout(placeholder)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.artifact_browser_placeholder_label = QLabel(tr("artifact.browser.title"))
+        self.artifact_browser_placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.artifact_browser_placeholder_label, 1)
+        return placeholder
+
+    def add_workspace(
+        self,
+        workspace_id: str,
+        label: str,
+        widget: QWidget,
+    ) -> QPushButton:
+        index = self.stack.addWidget(widget)
+        self._register_workspace_index(workspace_id, index)
+        button = QPushButton(label)
+        button.setCheckable(True)
+        button.clicked.connect(
+            lambda _checked=False, value=workspace_id: self.request_workspace(value)
+        )
+        self.nav_group.addButton(button)
+        self.nav_layout.addWidget(button)
+        self._workspace_buttons_by_id[workspace_id] = button
+        if index == 0:
+            button.setChecked(True)
+            self.stack.setCurrentIndex(0)
+        return button
+
+    def _register_workspace_index(self, workspace_id: str, index: int) -> None:
+        self._workspace_indices_by_id[workspace_id] = int(index)
+        self._workspace_ids_by_index[int(index)] = workspace_id
+
+    def request_workspace(self, workspace_id: str) -> None:
+        if workspace_id not in self._workspace_indices_by_id:
+            return
+        self.workspace_requested.emit(workspace_id)
+
+    def activate_workspace(self, workspace_id: str) -> None:
+        if workspace_id == LEFT_WORKSPACE_ARTIFACTS:
+            self.ensure_artifact_browser_workspace()
+        index = self._workspace_indices_by_id.get(workspace_id)
+        if index is None:
+            return
+        current_index = self.stack.currentIndex()
+        self.stack.setCurrentIndex(index)
+        button = self._workspace_buttons_by_id.get(workspace_id)
+        if button is not None:
+            button.setChecked(True)
+        if index == current_index:
+            self.workspace_activated.emit(workspace_id)
+
+    def active_workspace_id(self) -> str:
+        return self._workspace_ids_by_index.get(self.stack.currentIndex(), "")
+
+    def _on_stack_current_changed(self, index: int) -> None:
+        workspace_id = self._workspace_ids_by_index.get(int(index))
+        if workspace_id:
+            self.workspace_activated.emit(workspace_id)
+
+    def show_artifact_browser_workspace(self) -> None:
+        self.activate_workspace(LEFT_WORKSPACE_ARTIFACTS)
+
+    def show_character_weapon_workspace(self) -> None:
+        self.activate_workspace(LEFT_WORKSPACE_CHARACTERS_WEAPONS)
+
+    def ensure_artifact_browser_workspace(self):
+        if self.artifact_browser_workspace is not None:
+            return self.artifact_browser_workspace
+
+        from ui.artifact_browser.window import ArtifactBrowserWindow
+
+        create_start = perf_now()
+        browser = ArtifactBrowserWindow(
+            parent=self.stack,
+            embedded=True,
+            db_path=self.artifact_db_path,
+            character_asset_items=self.character_weapon_workspace.character_asset_items_snapshot(),
+        )
+        self.stack.removeWidget(self.artifact_browser_placeholder)
+        self.artifact_browser_placeholder.deleteLater()
+        self.stack.insertWidget(self.artifact_browser_index, browser)
+        self.artifact_browser_workspace = browser
+        if self.artifact_equipment_changed is not None:
+            browser.equipment_changed.connect(self.artifact_equipment_changed)
+        browser.set_right_panel_operation_target(
+            self._pending_artifact_right_panel_target
+        )
+        browser.set_virtual_gcsim_targets(
+            self._pending_virtual_gcsim_artifact_targets
+        )
+        log_perf(
+            "artifact_workspace_lazy_create",
+            total=perf_ms(create_start),
+            artifacts=browser.model.rowCount(),
+            adaptive_runs=getattr(browser, "_adaptive_update_count", 0),
+            resize_events=getattr(browser, "_resize_event_count", 0),
+        )
+        return browser
+
+    def set_artifact_right_panel_operation_target(
+        self,
+        target: dict[str, Any] | None,
+    ) -> None:
+        self._pending_artifact_right_panel_target = target
+        if self.artifact_browser_workspace is not None:
+            self.artifact_browser_workspace.set_right_panel_operation_target(target)
+
+    def set_virtual_gcsim_artifact_targets(
+        self,
+        targets: list[dict[str, Any]],
+    ) -> None:
+        normalized = [dict(item) for item in targets]
+        if normalized == self._pending_virtual_gcsim_artifact_targets:
+            return
+        self._pending_virtual_gcsim_artifact_targets = normalized
+        if self.artifact_browser_workspace is not None:
+            self.artifact_browser_workspace.set_virtual_gcsim_targets(targets)
+
+    def refresh_account_data(self) -> None:
+        workspace = self.character_weapon_workspace
+        workspace.refresh_asset_cache()
+        if workspace._initial_grid_built:
+            workspace.update_grids()
+        self.pvp_workspace.refresh_account_data()
+        if self.artifact_browser_workspace is not None:
+            self.artifact_browser_workspace.refresh_account_data(
+                workspace.character_asset_items_snapshot()
+            )
+
+    def retranslate_ui(self) -> None:
+        self.character_weapon_button.setText(
+            tr("app_shell.workspace.characters_weapons")
+        )
+        self.artifact_browser_button.setText(tr("app_shell.workspace.artifacts"))
+        self.gcsim_browser_button.setText("GCSIM")
+        self.history_button.setText(tr("app_shell.workspace.history"))
+        self.pvp_button.setText(tr("app_shell.workspace.pvp"))
+        self.character_weapon_workspace.retranslate_ui()
+        self.gcsim_browser_workspace.retranslate_ui()
+        self.history_workspace.retranslate_ui()
+        self.pvp_workspace.retranslate_ui()
+        if self.artifact_browser_workspace is None:
+            self.artifact_browser_placeholder_label.setText(
+                tr("artifact.browser.title")
+            )
+        else:
+            self.artifact_browser_workspace.retranslate_ui()
+
+    def set_gcsim_browser_context(
+        self,
+        *,
+        mode: str,
+        team_previews: tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...],
+        target_mode_label: str = "",
+        targets_preview_by_team: tuple[tuple[str, ...], ...] = ((), ()),
+        energy_mode_label: str = "",
+        infinite_energy_enabled: bool = False,
+    ) -> None:
+        self.gcsim_browser_workspace.set_mode(mode)
+        for team_index, slots in enumerate(team_previews):
+            self.gcsim_browser_workspace.set_team_preview(
+                team_index,
+                list(slots),
+            )
+        self.gcsim_browser_workspace.set_abyss_targets_preview(
+            target_mode_label=target_mode_label,
+            preview_by_team=targets_preview_by_team,
+            energy_mode_label=energy_mode_label,
+        )
+        self.gcsim_browser_workspace.set_optimizer_infinite_energy_enabled(
+            infinite_energy_enabled
+        )
+
+
+def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Prepare status: {payload.get('status', '-')}",
+        f"Ready: {payload.get('ready', False)}",
+        f"Config path: {payload.get('config_path') or '-'}",
+        "GCSIM run: not started",
+    ]
+    summary_text = format_gcsim_readiness_summary(
+        build_gcsim_readiness_summary(payload)
+    )
+    if summary_text:
+        lines.extend(["", summary_text])
+
+    lines.extend(["", "Characters:"])
+    team = _mapping(payload.get("team"))
+    for character in team.get("characters") or []:
+        row = _mapping(character)
+        account_character = _mapping(row.get("account_character"))
+        payload_character = _mapping(row.get("payload_character"))
+        weapon = _mapping(row.get("weapon"))
+        sets = [
+            f"{item.get('set_key') or item.get('set_uid') or item.get('set_name')}:{item.get('count')}"
+            for item in row.get("artifact_set_counts") or []
+            if isinstance(item, dict)
+        ]
+        lines.append(
+            "  - "
+            f"{account_character.get('catalog_english_name') or account_character.get('name') or payload_character.get('display_name')}: "
+            f"{row.get('status')} | "
+            f"weapon={weapon.get('catalog_english_name') or weapon.get('name') or '-'} "
+            f"({row.get('weapon_selection_method') or '-'}) | "
+            f"sets={', '.join(sets) if sets else '-'}"
+        )
+    warnings = payload.get("warnings") or []
+    if warnings:
+        expected_notes, real_warnings = split_gcsim_browser_warnings(warnings)
+        if expected_notes:
+            lines.extend(
+                [
+                    "",
+                    "Expected/dev notes:",
+                    *[f"  - {warning}" for warning in _cap_text_list(expected_notes)],
+                ]
+            )
+        if real_warnings:
+            lines.extend(
+                [
+                    "",
+                    "Real warnings/issues:",
+                    *[f"  - {warning}" for warning in _cap_text_list(real_warnings)],
+                ]
+            )
+    issue_codes = _gcsim_issue_codes(payload)
+    if issue_codes:
+        lines.extend(
+            [
+                "",
+                f"Debug issue count: {len(issue_codes)}",
+                "Debug first issue codes: "
+                + ", ".join(_cap_text_list(list(issue_codes), limit=8)),
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _gcsim_browser_energy_mode_label(boosted_energy_enabled: bool) -> str:
+    key = (
+        "gcsim.browser.context_energy_boosted"
+        if boosted_energy_enabled
+        else "gcsim.browser.context_energy_normal"
+    )
+    fallback = "Energy: boosted" if boosted_energy_enabled else "Energy: normal"
+    return tr(key) if tr(key) != key else fallback
+
+
+def _gcsim_issue_codes(payload: dict[str, Any]) -> tuple[str, ...]:
+    codes: list[str] = []
+    for source in (
+        payload,
+        _mapping(payload.get("full_config")),
+        _mapping(payload.get("assembly")),
+    ):
+        for issue in source.get("issues") or []:
+            if isinstance(issue, dict) and issue.get("status"):
+                codes.append(str(issue["status"]))
+    return tuple(codes)
+
+
+def _cap_text_list(values: list[str], *, limit: int = 8) -> list[str]:
+    if len(values) <= limit:
+        return values
+    return [*values[:limit], f"... +{len(values) - limit} more"]
+
+
+def _selected_gcsim_engine_id() -> str:
+    try:
+        return GcsimEngineStore().active_engine_id() or ""
+    except GcsimEngineStoreError:
+        return ""
+
+
+def _gcsim_optimizer_ranking_basis(payload: Mapping[str, Any]) -> str:
+    result = _mapping(payload.get("result"))
+    basis = result.get("ranking_basis") or payload.get("ranking_basis")
+    if not basis:
+        candidates = result.get("candidates")
+        if isinstance(candidates, (list, tuple)) and candidates:
+            basis = _mapping(candidates[0]).get("ranking_basis")
+    return "formula" if str(basis or "").strip().casefold() == "formula" else "gcsim"
+
+
+def _gcsim_optimizer_was_finished_by_user(payload: Mapping[str, Any]) -> bool:
+    result = _mapping(payload.get("result"))
+    warnings: list[Any] = []
+    for value in (result.get("warnings"), payload.get("warnings")):
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+            warnings.extend(value)
+        elif value:
+            warnings.append(value)
+    return any(
+        str(_mapping(warning).get("code") or warning).strip().casefold()
+        == "search_finished_by_user"
+        for warning in warnings
+    )
+
+
+def _format_formula_only_optimizer_text(text: str) -> str:
+    forbidden_prefixes = (
+        "final dps:",
+        "standard error:",
+        "standard error ",
+        "se:",
+        "formula residual:",
+        "formula residual ",
+        "gain vs initial",
+        "gain over initial",
+        "improvement over initial",
+    )
+    lines = [
+        line
+        for line in str(text).splitlines()
+        if not line.strip().casefold().startswith(forbidden_prefixes)
+    ]
+    warning = tr("gcsim.optimizer.formula_unverified")
+    return "\n".join((warning, *lines))
+
+
+def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
+    slots = selected_team.get("slots") if isinstance(selected_team, dict) else []
+    if not isinstance(slots, list):
+        return False
+    for slot in slots:
+        if not isinstance(slot, dict):
+            continue
+        details = _mapping(slot.get("character_details_data"))
+        if (
+            slot.get("character")
+            or _mapping(details.get("account_character"))
+            or _mapping(slot.get("gcsim_virtual_override"))
+        ):
+            return True
+    return False
+
+
+class CharacterWeaponWorkspace(QWidget):
+    character_clicked = Signal(dict)
+    weapon_clicked = Signal(dict)
+
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        db_path: str | Path = ARTIFACT_DB_PATH,
+        show_section_titles: bool = True,
+    ) -> None:
+        super().__init__(parent)
+        self.db_path = db_path
+        self._show_section_titles = bool(show_section_titles)
+        self._resize_timer: QTimer | None = None
+        self._initial_grid_built = False
+        self._needs_visible_grid_update = False
+        self._pending_show_grid_update = False
+        self._character_element_filters: set[str] = set()
+        self._character_weapon_filters: set[str] = set()
+        self._character_rarity_filters: set[int] = set()
+        self._character_trait_filters: set[str] = set()
+        self._character_standard_filter = STANDARD_FILTER_ALL
+        self._weapon_type_filters: set[str] = set()
+        self._weapon_rarity_filters: set[int] = set()
+        self._character_selection_markers: dict[str, RosterSelectionMarker] = {}
+        self._character_cards_by_id: dict[str, Any] = {}
+        self._all_character_items: list[dict] | None = None
+        self._all_weapon_items: list[dict] | None = None
+        self._last_character_grid_keys: tuple[str, ...] = ()
+        self._last_weapon_grid_keys: tuple[str, ...] = ()
+        self._weapon_cards_by_key: dict[str, Any] = {}
+        self._character_grid_assets_by_id: dict[str, dict[str, Any]] = {}
+        self._weapon_grid_assets_by_id: dict[str, dict[str, Any]] = {}
+        self._weapon_type_buttons: dict[str, QPushButton] = {}
+        self._auto_weapon_type_filter: str = ""
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        self.weapon_title_label: QLabel | None = None
+        if self._show_section_titles:
+            self.weapon_title_label = QLabel(tr("asset_panel.weapons"))
+            root.addWidget(self.weapon_title_label)
+            root.addSpacing(6)
+        root.addLayout(
+            self._build_filter_row(
+                (
+                    (WEAPON_TYPE_FILTERS, self._weapon_type_filters, self.reload_weapons),
+                    (WEAPON_RARITY_FILTERS, self._weapon_rarity_filters, self.reload_weapons),
+                )
+            )
+        )
+        self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area(
+            surface="app_shell_weapon_grid",
+        )
+        self.weapon_grid.item_clicked.connect(
+            lambda item_id: self._emit_grid_asset_click(
+                self._weapon_grid_assets_by_id,
+                self.weapon_clicked.emit,
+                item_id,
+            )
+        )
+        root.addWidget(self.weapon_area, 1)
+
+        root.addSpacing(6)
+        self.character_title_label: QLabel | None = None
+        if self._show_section_titles:
+            self.character_title_label = QLabel(tr("asset_panel.characters"))
+            root.addWidget(self.character_title_label)
+            root.addSpacing(6)
+        self.character_filter_bar = CharacterFilterBar()
+        self._character_element_filters = self.character_filter_bar.element_filters
+        self._character_weapon_filters = self.character_filter_bar.weapon_filters
+        self._character_rarity_filters = self.character_filter_bar.rarity_filters
+        self._character_trait_filters = self.character_filter_bar.trait_filters
+        self.character_filter_bar.filters_changed.connect(
+            self._on_character_filters_changed,
+        )
+        root.addWidget(self.character_filter_bar)
+        root.addSpacing(6)
+        self.char_area, self.char_widget, self.char_grid = self._make_grid_area(
+            surface="app_shell_character_grid",
+        )
+        self.char_grid.item_clicked.connect(
+            lambda item_id: self._emit_grid_asset_click(
+                self._character_grid_assets_by_id,
+                self.character_clicked.emit,
+                item_id,
+            )
+        )
+        root.addWidget(self.char_area, 3)
+
+    def retranslate_ui(self) -> None:
+        if self.weapon_title_label is not None:
+            self.weapon_title_label.setText(tr("asset_panel.weapons"))
+        if self.character_title_label is not None:
+            self.character_title_label.setText(tr("asset_panel.characters"))
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._initial_grid_built:
+            self._initial_grid_built = True
+            self._pending_show_grid_update = True
+            QTimer.singleShot(0, self._run_pending_show_grid_update)
+        elif self._needs_visible_grid_update:
+            self._needs_visible_grid_update = False
+            self._pending_show_grid_update = True
+            QTimer.singleShot(0, self._run_pending_show_grid_update)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._initial_grid_built:
+            if self.isVisible():
+                self.update_grids_delayed()
+            else:
+                self._needs_visible_grid_update = True
+
+    def update_grids_delayed(self) -> None:
+        if self._resize_timer is None:
+            self._resize_timer = QTimer(self)
+            self._resize_timer.setSingleShot(True)
+            self._resize_timer.timeout.connect(self._run_delayed_grid_update)
+        self._resize_timer.start(75)
+
+    def _run_delayed_grid_update(self) -> None:
+        if not self.isVisible():
+            self._needs_visible_grid_update = True
+            return
+        self.update_grids()
+
+    def _run_pending_show_grid_update(self) -> None:
+        if not self._pending_show_grid_update:
+            return
+        self._pending_show_grid_update = False
+        if not self.isVisible():
+            self._needs_visible_grid_update = True
+            return
+        self.update_grids()
+
+    def update_grids(self) -> None:
+        self._pending_show_grid_update = False
+        self.reload_characters()
+        self.reload_weapons()
+
+    def refresh_asset_cache(self) -> None:
+        self._all_character_items = None
+        self._all_weapon_items = None
+        self._last_character_grid_keys = ()
+        self._last_weapon_grid_keys = ()
+
+    def refresh_weapon_asset_cache(self) -> None:
+        self._all_weapon_items = None
+        self._last_weapon_grid_keys = ()
+
+    def refresh_weapon_owner_badges(self, fingerprints: Iterable[str]) -> bool:
+        wanted = {_text(value) for value in fingerprints if _text(value)}
+        if self._all_weapon_items is None or not wanted:
+            return False
+        badges_by_fingerprint = load_weapon_owner_badges_for_fingerprints(
+            wanted,
+            db_path=self.db_path,
+        )
+        updated_items: list[dict[str, Any]] = []
+        changed = False
+        for asset in self._all_weapon_items:
+            fingerprint = _text(_asset_metadata_mapping(asset, "weapon").get("source_key"))
+            if fingerprint not in wanted:
+                updated_items.append(asset)
+                continue
+            metadata = dict(_mapping(asset.get("metadata")))
+            badges = badges_by_fingerprint.get(fingerprint, [])
+            if _asset_owner_badges(asset) == badges:
+                updated_items.append(asset)
+                continue
+            if badges:
+                metadata["owner_badges"] = list(badges)
+                metadata["extra_owner_count"] = max(0, len(badges) - 1)
+            else:
+                metadata.pop("owner_badges", None)
+                metadata.pop("extra_owner_count", None)
+            updated_items.append({**asset, "metadata": metadata})
+            changed = True
+        if changed:
+            self._all_weapon_items = updated_items
+            self.reload_weapons()
+        return True
+
+    def _character_asset_items(self) -> tuple[list[dict], float, str]:
+        load_start = perf_now()
+        source = "cache"
+        if self._all_character_items is None:
+            source = "sqlite"
+            self._all_character_items = list(
+                load_account_character_asset_items(db_path=self.db_path)
+            )
+        return list(self._all_character_items), perf_ms(load_start), source
+
+    def character_asset_items_snapshot(self) -> list[dict]:
+        items, _load_ms, _source = self._character_asset_items()
+        return items
+
+    def _weapon_asset_items(self) -> tuple[list[dict], float, str]:
+        load_start = perf_now()
+        source = "cache"
+        if self._all_weapon_items is None:
+            source = "sqlite"
+            self._all_weapon_items = list(
+                load_account_weapon_stack_asset_items(db_path=self.db_path)
+            )
+        return list(self._all_weapon_items), perf_ms(load_start), source
+
+    def weapon_asset_items_snapshot(self) -> list[dict]:
+        items, _load_ms, _source = self._weapon_asset_items()
+        return items
+
+    def _emit_grid_asset_click(
+        self,
+        assets_by_id: dict[str, dict[str, Any]],
+        emit,
+        item_id: str,
+    ) -> None:
+        asset = assets_by_id.get(_text(item_id))
+        if asset is None:
+            return
+        emit(dict(asset))
+
+    def set_character_selection_markers(
+        self,
+        markers: dict[str, RosterSelectionMarker],
+        *,
+        affected_character_ids: set[str] | None = None,
+    ) -> None:
+        if markers == self._character_selection_markers:
+            return
+        total_start = perf_now()
+        previous_markers = self._character_selection_markers
+        self._character_selection_markers = dict(markers)
+        if not self._initial_grid_built:
+            return
+
+        if affected_character_ids is None:
+            ids_to_update = set(self._character_cards_by_id)
+        else:
+            ids_to_update = {
+                _text(character_id)
+                for character_id in affected_character_ids
+                if _text(character_id)
+            }
+            ids_to_update.update(
+                character_id
+                for character_id in set(previous_markers) | set(markers)
+                if previous_markers.get(character_id) != markers.get(character_id)
+            )
+
+        updated_count = 0
+        for character_id in ids_to_update:
+            marker = markers.get(character_id)
+            grid_updated = self.char_grid.update_item(
+                character_id,
+                outline=_roster_selection_outline(marker),
+            )
+            card = self._character_cards_by_id.get(character_id)
+            if card is not None and hasattr(card, "set_selection_marker"):
+                card.set_selection_marker(marker)
+            if grid_updated or card is not None:
+                updated_count += 1
+        log_perf(
+            "marker_incremental",
+            total=perf_ms(total_start),
+            affected="all" if affected_character_ids is None else len(affected_character_ids),
+            updated=updated_count,
+            visible_cards=len(self._character_cards_by_id),
+        )
+
+    def reload_characters(self) -> None:
+        total_start = perf_now()
+        self._character_cards_by_id = {}
+        assets, load_ms, load_source = self._character_asset_items()
+        predicate_start = perf_now()
+        assets = [
+            asset
+            for asset in assets
+            if character_matches_filters(
+                asset,
+                self._character_element_filters,
+                self._character_weapon_filters,
+                self._character_rarity_filters,
+                trait_filters=self._character_trait_filters,
+                standard_filter=self._character_standard_filter,
+            )
+        ]
+        predicate_ms = perf_ms(predicate_start)
+        sort_start = perf_now()
+        assets.sort(key=character_sort_key)
+        sort_ms = perf_ms(sort_start)
+        self._last_character_grid_keys = tuple(_asset_character_id(asset) for asset in assets)
+        rebuild_ms = self._reload_icon_grid(
+            assets,
+            self.char_grid,
+            self.char_widget,
+            self.char_area,
+            icon_size=72,
+            spacing=3,
+            clicked=self.character_clicked.emit,
+            selection_markers=self._character_selection_markers,
+            grid_name="characters",
+            card_registry=self._character_cards_by_id,
+            vertical_safe_top_margin=CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
+        )
+        log_perf(
+            "filter_characters",
+            total=perf_ms(total_start),
+            load=load_ms,
+            load_source=load_source,
+            predicate=predicate_ms,
+            sort=sort_ms,
+            rebuild_cards=rebuild_ms,
+            count=len(assets),
+            standard=self._character_standard_filter,
+        )
+
+    def _on_character_filters_changed(self) -> None:
+        self._character_standard_filter = self.character_filter_bar.standard_filter
+        self.reload_characters()
+
+    def reload_weapons(self) -> None:
+        total_start = perf_now()
+        self._weapon_cards_by_key = {}
+        assets, load_ms, load_source = self._weapon_asset_items()
+        predicate_start = perf_now()
+        assets = [asset for asset in assets if self._weapon_matches_filters(asset)]
+        predicate_ms = perf_ms(predicate_start)
+        sort_start = perf_now()
+        assets.sort(key=self._weapon_sort_key)
+        sort_ms = perf_ms(sort_start)
+        self._last_weapon_grid_keys = tuple(_asset_grid_key(asset) for asset in assets)
+        rebuild_ms = self._reload_icon_grid(
+            assets,
+            self.weapon_grid,
+            self.weapon_widget,
+            self.weapon_area,
+            icon_size=WEAPON_PICKER_ICON_SIZE,
+            spacing=6,
+            clicked=self.weapon_clicked.emit,
+            grid_name="weapons",
+            card_registry=self._weapon_cards_by_key,
+            vertical_safe_margin=WEAPON_PICKER_SAFE_MARGIN,
+            vertical_safe_top_margin=(
+                WEAPON_PICKER_SAFE_MARGIN + WEAPON_PICKER_VIEWPORT_TOP_EXTENSION
+            ),
+        )
+        log_perf(
+            "filter_weapons",
+            total=perf_ms(total_start),
+            load=load_ms,
+            load_source=load_source,
+            predicate=predicate_ms,
+            sort=sort_ms,
+            rebuild_cards=rebuild_ms,
+            count=len(assets),
+        )
+
+    def set_auto_weapon_type_filter(self, weapon_type_key: str | None) -> bool:
+        key = _text(weapon_type_key)
+        known_keys = {str(value) for value, _icon_name, _tooltip_key in WEAPON_TYPE_FILTERS}
+        if key not in known_keys:
+            key = ""
+        previous_filters = set(self._weapon_type_filters)
+        self._auto_weapon_type_filter = key
+        self._weapon_type_filters.clear()
+        if key:
+            self._weapon_type_filters.add(key)
+        for value, button in self._weapon_type_buttons.items():
+            button.blockSignals(True)
+            button.setChecked(bool(key and value == key))
+            button.blockSignals(False)
+        changed = previous_filters != self._weapon_type_filters
+        if changed:
+            self.reload_weapons()
+        log_perf(
+            "weapon_auto_filter",
+            filter=key or "all",
+            changed=changed,
+        )
+        return changed
+
+    def _make_grid_area(self, *, surface: str) -> tuple[QScrollArea, PixelIconGrid, PixelIconGrid]:
+        area = OverlayVerticalScrollArea(auto_hide_ms=850)
+        area.setWidgetResizable(True)
+        area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        grid = PixelIconGrid(surface=surface)
+        area.setWidget(grid)
+        return area, grid, grid
+
+    def _make_filter_button(
+        self,
+        value: Any,
+        icon_name: str,
+        active_set: set,
+        update_callback,
+    ) -> QPushButton:
+        button = QPushButton("")
+        button.setObjectName("app_shell_filter_button")
+        button.setCheckable(True)
+        button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
+        button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
+        button.setStyleSheet(FILTER_BUTTON_STYLE)
+        if icon_name.startswith("element_"):
+            button.setProperty("elementIconName", icon_name)
+
+        icon_path = filter_icon_path(icon_name)
+        if icon_path.exists():
+            button.setIcon(QIcon(str(icon_path)))
+        else:
+            button.setText(str(value))
+
+        def toggle_filter(checked: bool, *, filter_value=value, filters=active_set) -> None:
+            total_start = perf_now()
+            if filters is self._weapon_type_filters:
+                self._auto_weapon_type_filter = ""
+            if checked:
+                filters.add(filter_value)
+            else:
+                filters.discard(filter_value)
+            update_callback()
+            log_perf(
+                "filter_button_toggle",
+                total=perf_ms(total_start),
+                value=filter_value,
+                checked=checked,
+            )
+
+        button.clicked.connect(toggle_filter)
+        return button
+
+    def _build_filter_row(self, filter_groups, *, trailing_widgets=None) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(3)
+        for filters, active_set, update_callback in filter_groups:
+            for value, icon_name, _tooltip_key in filters:
+                button = self._make_filter_button(
+                    value,
+                    icon_name,
+                    active_set,
+                    update_callback,
+                )
+                if active_set is self._weapon_type_filters:
+                    self._weapon_type_buttons[_text(value)] = button
+                row.addWidget(button)
+        for widget in trailing_widgets or ():
+            row.addWidget(widget)
+        row.addStretch()
+        return row
+
+    def _weapon_matches_filters(self, asset: dict) -> bool:
+        metadata = asset.get("metadata")
+        if not metadata:
+            return True
+        weapon = metadata.get("weapon") or {}
+        weapon_type_keys = _weapon_type_filter_keys(weapon)
+        rarity = metadata_int(weapon.get("rarity"))
+        if self._weapon_type_filters and not (
+            weapon_type_keys & self._weapon_type_filters
+        ):
+            return False
+        if self._weapon_rarity_filters and rarity not in self._weapon_rarity_filters:
+            return False
+        return True
+
+    def _weapon_sort_key(self, asset: dict):
+        metadata = asset.get("metadata") or {}
+        weapon = metadata.get("weapon") or {}
+        rarity = metadata_int(weapon.get("rarity"))
+        level = metadata_int(weapon.get("level"))
+        name = str(weapon.get("name") or metadata.get("name") or asset.get("filename") or "")
+        return (-rarity, -level, name.casefold(), str(asset.get("filename") or ""))
+
+    def _reload_icon_grid(
+        self,
+        assets: list[dict],
+        grid: PixelIconGrid,
+        container: PixelIconGrid,
+        area: QScrollArea,
+        *,
+        icon_size: int,
+        spacing: int,
+        clicked,
+        selection_markers: dict[str, RosterSelectionMarker] | None = None,
+        grid_name: str = "icons",
+        card_registry: dict[str, Any] | None = None,
+        vertical_safe_margin: int = 0,
+        vertical_safe_top_margin: int | None = None,
+    ) -> float:
+        total_start = perf_now()
+        safe_margin = max(0, int(vertical_safe_margin))
+        safe_top_margin = (
+            safe_margin
+            if vertical_safe_top_margin is None
+            else max(0, int(vertical_safe_top_margin))
+        )
+        grid.set_metrics(
+            PixelIconGridMetrics(
+                item_width=icon_size,
+                gap_x=spacing,
+                margin_top=safe_top_margin,
+                margin_bottom=safe_margin,
+            )
+        )
+        build_start = perf_now()
+        result = build_asset_grid_items(
+            assets,
+            key_for_asset=(
+                _asset_character_id if grid_name == "characters" else _asset_grid_key
+            ),
+            outline_for_asset=lambda asset, item_id: (
+                _roster_selection_outline(
+                    (selection_markers or {}).get(_asset_character_id(asset))
+                )
+                if grid_name == "characters"
+                else _weapon_occupied_outline(asset)
+            ),
+            overlay_icons_for_asset=lambda asset, item_id: (
+                _weapon_owner_overlay_icons(asset) if grid_name != "characters" else ()
+            ),
+            properties_for_asset=lambda asset, item_id: {
+                "base_size": icon_size,
+                "has_owner_badges": bool(_asset_owner_badges(asset)),
+            },
+        )
+        grid.set_items(result.items)
+        build_ms = perf_ms(build_start)
+        if grid_name == "characters":
+            self._character_grid_assets_by_id = result.assets_by_id
+        else:
+            self._weapon_grid_assets_by_id = result.assets_by_id
+        if card_registry is not None:
+            card_registry.clear()
+            for item in result.items:
+                asset = result.assets_by_id.get(item.item_id, {})
+                marker = None
+                if grid_name == "characters" and selection_markers is not None:
+                    marker = selection_markers.get(_asset_character_id(asset))
+                card_registry[item.item_id] = AssetGridItemHandle(
+                    grid,
+                    item.item_id,
+                    asset,
+                    selection_marker=marker,
+                )
+
+        container.updateGeometry()
+        area.horizontalScrollBar().setValue(0)
+        area.viewport().update()
+        total_ms = perf_ms(total_start)
+        log_perf(
+            "grid_reload",
+            grid=grid_name,
+            total=total_ms,
+            icon_create=build_ms,
+            count=len(assets),
+            pixmap_hits=0,
+            pixmap_misses=0,
+        )
+        return total_ms
+
+
+def _scaled_icon_pixmap(image_path: str, size: int, dpr: float) -> tuple[QPixmap, bool]:
+    result = load_hidpi_pixmap(
+        image_path,
+        size,
+        dpr=dpr,
+        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+        transform_mode=Qt.TransformationMode.SmoothTransformation,
+        cache=_SCALED_ICON_PIXMAP_CACHE,
+        surface="app_shell_asset_icon",
+    )
+    return result.pixmap, result.cache_hit
+
+
+def _roster_selection_outline(
+    marker: RosterSelectionMarker | None,
+) -> PixelIconGridOutline | None:
+    if marker is None:
+        return None
+    return PixelIconGridOutline(
+        color=marker.color,
+        width=GRID_SELECTION_OUTLINE_WIDTH,
+        radius=GRID_SELECTION_OUTLINE_RADIUS,
+        overhang=GRID_SELECTION_OUTLINE_OVERHANG,
+        alpha=GRID_SELECTION_OUTLINE_ALPHA,
+        badge_text=str(marker.slot_number),
+        badge_width=GRID_SELECTION_BADGE_WIDTH,
+        badge_height=GRID_SELECTION_BADGE_HEIGHT,
+        badge_margin=GRID_SELECTION_BADGE_MARGIN,
+        badge_fill_alpha=GRID_SELECTION_BADGE_FILL_ALPHA,
+        font_size=10,
+    )
+
+
+def _weapon_occupied_outline(asset: dict[str, Any]) -> PixelIconGridOutline | None:
+    if not _asset_owner_badges(asset):
+        return None
+    return PixelIconGridOutline(
+        color=WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
+        width=GRID_SELECTION_OUTLINE_WIDTH,
+        radius=GRID_SELECTION_OUTLINE_RADIUS,
+        overhang=GRID_SELECTION_OUTLINE_OVERHANG,
+        alpha=GRID_SELECTION_OUTLINE_ALPHA,
+        fill_color=WEAPON_PICKER_OCCUPIED_FILL_COLOR,
+        fill_alpha=WEAPON_PICKER_OCCUPIED_FILL_ALPHA,
+    )
+
+
+def _weapon_owner_overlay_icons(
+    asset: dict[str, Any],
+) -> tuple[PixelIconGridOverlayIcon, ...]:
+    badges = _asset_owner_badges(asset)
+    if not badges:
+        return ()
+    side_icon_path = _text(badges[0].get("side_icon_path"))
+    if not side_icon_path:
+        return ()
+    return (
+        PixelIconGridOverlayIcon(
+            icon_path=side_icon_path,
+            size_ratio=WEAPON_PICKER_OWNER_SIDE_ICON_RATIO,
+            right_overhang_ratio=WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO,
+            top_overhang_ratio=WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO,
+            background_enabled=True,
+        ),
+    )
+
+
+def _owner_badge_icon_pixmap(
+    image_path: str,
+    size: QSize,
+    *,
+    dpr: float = 1.0,
+) -> QPixmap | None:
+    result = load_hidpi_pixmap(
+        image_path,
+        size,
+        dpr=dpr,
+        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+        transform_mode=Qt.TransformationMode.SmoothTransformation,
+        cache=_OWNER_BADGE_ICON_PIXMAP_CACHE,
+        surface="weapon_owner_side_icon",
+    )
+    return None if result.pixmap.isNull() else result.pixmap
+
+
+def _owner_badge_background(size: QSize, *, dpr: float = 1.0) -> QPixmap:
+    effective_dpr = effective_pixmap_dpr(dpr)
+    key = (size.width(), size.height(), int(round(effective_dpr * 1000)))
+    cached = _OWNER_BADGE_BACKGROUND_CACHE.get(key)
+    if cached is not None and not cached.isNull():
+        return cached
+
+    pixmap = make_owner_icon_badge_background(size, dpr=effective_dpr)
+    _OWNER_BADGE_BACKGROUND_CACHE[key] = pixmap
+    return pixmap
+
+
+def _trace_rect(rect: QRect) -> str:
+    return f"{rect.x()},{rect.y()},{rect.width()}x{rect.height()}"
+
+
+def _weapon_owner_side_icon_size(weapon_rect: QRect) -> QSize:
+    return QSize(
+        max(1, int(round(weapon_rect.width() * WEAPON_PICKER_OWNER_SIDE_ICON_RATIO))),
+        max(1, int(round(weapon_rect.height() * WEAPON_PICKER_OWNER_SIDE_ICON_RATIO))),
+    )
+
+
+def _weapon_owner_target_rect(
+    weapon_rect: QRect,
+    side_icon_size: QSize,
+    *,
+    right_overhang: int | None = None,
+    top_overhang: int | None = None,
+) -> QRect:
+    if right_overhang is None:
+        right_overhang = int(
+            round(side_icon_size.width() * WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO)
+        )
+    if top_overhang is None:
+        top_overhang = int(
+            round(side_icon_size.height() * WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO)
+        )
+    return QRect(
+        weapon_rect.right() - side_icon_size.width() + 1 + int(right_overhang),
+        weapon_rect.top() - int(top_overhang),
+        side_icon_size.width(),
+        side_icon_size.height(),
+    )
+
+
+class AssetIconLabel(QLabel):
+    clicked = Signal(dict)
+
+    def __init__(
+        self,
+        image_path: str,
+        size: int,
+        *,
+        asset: dict[str, Any] | None = None,
+        selection_marker: RosterSelectionMarker | None = None,
+        paint_selection_marker: bool = True,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.image_path = image_path
+        self.asset = asset or {}
+        self.base_size = int(size)
+        self.selection_marker = selection_marker
+        self.paint_selection_marker = bool(paint_selection_marker)
+        self.owner_badges = _asset_owner_badges(self.asset)
+        self._last_pixmap_cache_hit = False
+        self._tooltip_controller = install_custom_tooltip(self)
+        self.setFixedSize(size, size)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._update_pixmap()
+
+    def set_selection_marker(self, marker: RosterSelectionMarker | None) -> None:
+        self.selection_marker = marker
+        self.update()
+
+    def setToolTip(self, text: str) -> None:
+        self._tooltip_controller.set_text(text or "")
+        super().setToolTip("")
+
+    def event(self, event) -> bool:
+        if event.type() in (
+            QEvent.Type.DevicePixelRatioChange,
+            QEvent.Type.ScreenChangeInternal,
+            QEvent.Type.Resize,
+            QEvent.Type.Show,
+        ):
+            self._update_pixmap()
+        return super().event(event)
+
+    def _update_pixmap(self) -> None:
+        dpr = self.devicePixelRatioF()
+        pixmap, cache_hit = _scaled_icon_pixmap(self.image_path, self.base_size, dpr)
+        self._last_pixmap_cache_hit = cache_hit
+        if pixmap.isNull():
+            self.clear()
+            return
+        self.setPixmap(pixmap)
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        marker = self.selection_marker
+        if marker is None or not self.paint_selection_marker:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        try:
+            _draw_selection_frame(
+                painter,
+                _selection_frame_rect(QRect(0, 0, self.width(), self.height())),
+                marker.color,
+                badge_text=str(marker.slot_number),
+                font_size=max(8, min(11, self.base_size // 7)),
+            )
+        finally:
+            painter.end()
+
+    def _displayed_icon_rect(self) -> QRect:
+        pixmap = self.pixmap()
+        if pixmap is None or pixmap.isNull():
+            return QRect()
+        pixmap_size = logical_pixmap_size(pixmap)
+        width = pixmap_size.width()
+        height = pixmap_size.height()
+        return QRect(
+            (self.width() - width) // 2,
+            (self.height() - height) // 2,
+            width,
+            height,
+        )
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(dict(self.asset))
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+
+def _selection_frame_rect(card_rect: QRect) -> QRect:
+    return card_rect.adjusted(
+        -GRID_SELECTION_OUTLINE_OVERHANG,
+        -GRID_SELECTION_OUTLINE_OVERHANG,
+        GRID_SELECTION_OUTLINE_OVERHANG,
+        GRID_SELECTION_OUTLINE_OVERHANG,
+    )
+
+
+def _draw_selection_frame(
+    painter: QPainter,
+    frame_rect: QRect,
+    color: str,
+    *,
+    badge_text: str = "",
+    font_size: int = 10,
+    fill_color: str = "",
+    fill_alpha: int = 0,
+) -> None:
+    outline = QColor(color)
+    outline.setAlpha(GRID_SELECTION_OUTLINE_ALPHA)
+    painter.setPen(
+        QPen(
+            outline,
+            GRID_SELECTION_OUTLINE_WIDTH,
+            Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.SquareCap,
+            Qt.PenJoinStyle.RoundJoin,
+        )
+    )
+    if fill_color and fill_alpha > 0:
+        fill = QColor(fill_color)
+        fill.setAlpha(max(0, min(255, int(fill_alpha))))
+        painter.setBrush(fill)
+    else:
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+    painter.drawRoundedRect(
+        frame_rect,
+        GRID_SELECTION_OUTLINE_RADIUS,
+        GRID_SELECTION_OUTLINE_RADIUS,
+    )
+
+    if not badge_text:
+        return
+    badge_rect = QRect(
+        frame_rect.left() + GRID_SELECTION_BADGE_MARGIN,
+        frame_rect.bottom() - GRID_SELECTION_BADGE_HEIGHT - GRID_SELECTION_BADGE_MARGIN + 1,
+        GRID_SELECTION_BADGE_WIDTH,
+        GRID_SELECTION_BADGE_HEIGHT,
+    )
+    badge_fill = QColor(color)
+    badge_fill.setAlpha(GRID_SELECTION_BADGE_FILL_ALPHA)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(badge_fill)
+    painter.drawRoundedRect(badge_rect, 5, 5)
+    painter.setPen(QColor(UI_TEXT_ON_ACCENT))
+    font = painter.font()
+    font.setBold(True)
+    font.setPointSize(font_size)
+    painter.setFont(font)
+    painter.drawText(
+        badge_rect,
+        Qt.AlignmentFlag.AlignCenter,
+        badge_text,
+    )
+
+
+class CharacterSelectionOverlay(QWidget):
+    """Paint roster selection frames above the character grid spacing."""
+
+    def __init__(
+        self,
+        overlay_host: QWidget,
+        scroll_area: QScrollArea,
+        cards: Callable[[], Iterable[AssetIconLabel]],
+    ) -> None:
+        super().__init__(overlay_host)
+        self._overlay_host = overlay_host
+        self._scroll_area = scroll_area
+        self._cards = cards
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._scroll_area.verticalScrollBar().valueChanged.connect(self.update)
+        self._scroll_area.horizontalScrollBar().valueChanged.connect(self.update)
+        self.sync_geometry()
+        self.show()
+
+    def sync_geometry(self) -> None:
+        self.setGeometry(self._overlay_host.rect())
+        self.raise_()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        try:
+            viewport_rect = self._viewport_rect()
+            painter.setClipRect(viewport_rect)
+            for card in tuple(self._cards()):
+                marker = card.selection_marker
+                if marker is None or not card.isVisible():
+                    continue
+                icon_rect = card._displayed_icon_rect()
+                if icon_rect.isNull() or not icon_rect.isValid():
+                    continue
+                card_rect = QRect(
+                    self.mapFromGlobal(card.mapToGlobal(icon_rect.topLeft())),
+                    icon_rect.size(),
+                )
+                if not card_rect.intersects(viewport_rect):
+                    continue
+                _draw_selection_frame(
+                    painter,
+                    _selection_frame_rect(card_rect),
+                    marker.color,
+                    badge_text=str(marker.slot_number),
+                    font_size=max(8, min(11, card.base_size // 7)),
+                )
+        finally:
+            painter.end()
+
+    def _viewport_rect(self) -> QRect:
+        viewport = self._scroll_area.viewport()
+        return QRect(
+            self.mapFromGlobal(viewport.mapToGlobal(viewport.rect().topLeft())),
+            viewport.size(),
+        )
+
+
+class WeaponOwnerBadgeOverlay(QWidget):
+    """Paint weapon owner side-icons above the weapon grid without affecting layout."""
+
+    def __init__(
+        self,
+        overlay_host: QWidget,
+        scroll_area: QScrollArea,
+        container: QWidget,
+        grid: QGridLayout,
+        cards: Callable[[], Iterable[AssetIconLabel]],
+    ) -> None:
+        super().__init__(overlay_host)
+        self._overlay_host = overlay_host
+        self._scroll_area = scroll_area
+        self._container = container
+        self._grid = grid
+        self._cards = cards
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._settle_timer = QTimer(self)
+        self._settle_timer.setSingleShot(True)
+        self._settle_timer.timeout.connect(self._settle_geometry)
+        self._scroll_area.verticalScrollBar().valueChanged.connect(self.update)
+        self._scroll_area.horizontalScrollBar().valueChanged.connect(self.update)
+        self.sync_geometry()
+        self.show()
+
+    def sync_geometry(self) -> None:
+        self.setGeometry(self._overlay_host.rect())
+        self.raise_()
+
+    def schedule_settle(self) -> None:
+        self._settle_timer.start(0)
+
+    def _settle_geometry(self) -> None:
+        self.sync_geometry()
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        try:
+            cards = tuple(self._cards())
+            viewport_rect = self._viewport_rect()
+            painter.save()
+            painter.setClipRect(viewport_rect)
+            for card in cards:
+                self._draw_card_occupied_outline(painter, card, viewport_rect)
+            painter.restore()
+            painter.save()
+            painter.setClipRect(viewport_rect)
+            for card in cards:
+                self._draw_card_owner_badge(painter, card, viewport_rect)
+            painter.restore()
+        finally:
+            painter.end()
+
+    def _viewport_rect(self) -> QRect:
+        viewport = self._scroll_area.viewport()
+        return QRect(
+            self.mapFromGlobal(viewport.mapToGlobal(viewport.rect().topLeft())),
+            viewport.size(),
+        )
+
+    def _weapon_rect_for_card(
+        self,
+        card: AssetIconLabel,
+        viewport_rect: QRect,
+    ) -> QRect:
+        if not card.isVisible() or not card.owner_badges:
+            return QRect()
+
+        icon_rect = card._displayed_icon_rect()
+        if icon_rect.isNull() or not icon_rect.isValid():
+            return QRect()
+
+        weapon_rect = QRect(
+            self.mapFromGlobal(card.mapToGlobal(icon_rect.topLeft())),
+            icon_rect.size(),
+        )
+        if not weapon_rect.intersects(viewport_rect):
+            return QRect()
+        return weapon_rect
+
+    def _draw_card_occupied_outline(
+        self,
+        painter: QPainter,
+        card: AssetIconLabel,
+        viewport_rect: QRect,
+    ) -> None:
+        weapon_rect = self._weapon_rect_for_card(card, viewport_rect)
+        if weapon_rect.isNull() or not weapon_rect.isValid():
+            return
+
+        _draw_selection_frame(
+            painter,
+            _selection_frame_rect(weapon_rect),
+            WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
+            fill_color=WEAPON_PICKER_OCCUPIED_FILL_COLOR,
+            fill_alpha=WEAPON_PICKER_OCCUPIED_FILL_ALPHA,
+        )
+
+    def _draw_card_owner_badge(
+        self,
+        painter: QPainter,
+        card: AssetIconLabel,
+        viewport_rect: QRect,
+    ) -> None:
+        weapon_rect = self._weapon_rect_for_card(card, viewport_rect)
+        if weapon_rect.isNull() or not weapon_rect.isValid():
+            return
+
+        badge = card.owner_badges[0]
+        side_icon_path = _text(badge.get("side_icon_path"))
+        if not side_icon_path:
+            return
+
+        owner_pixmap = _owner_badge_icon_pixmap(
+            side_icon_path,
+            _weapon_owner_side_icon_size(weapon_rect),
+            dpr=self.devicePixelRatioF(),
+        )
+        if owner_pixmap is None:
+            return
+
+        owner_size = logical_pixmap_size(owner_pixmap)
+        owner_target = _weapon_owner_target_rect(
+            weapon_rect,
+            owner_size,
+        )
+        if not owner_target.intersects(self.rect()):
+            return
+
+        badge_size = owner_badge_size_for_icon(owner_target.size())
+        badge_rect = owner_badge_rect_for_icon_rect(owner_target, badge_size)
+        if badge_rect.isNull() or not badge_rect.isValid():
+            return
+
+        if OWNER_BADGE_TRACE or WEAPON_OWNER_OVERLAY_TRACE:
+            container_rect = QRect(
+                self.mapFromGlobal(self._container.mapToGlobal(self._container.rect().topLeft())),
+                self._container.size(),
+            )
+            margins = self._grid.contentsMargins()
+            print(
+                "[OWNER_BADGE_TRACE] "
+                "surface=weapon_picker_owner_overlay "
+                f"overlay={_trace_rect(self.rect())} "
+                f"viewport={_trace_rect(viewport_rect)} "
+                f"container={_trace_rect(container_rect)} "
+                f"grid_margins={margins.left()},{margins.top()},{margins.right()},{margins.bottom()} "
+                f"grid_spacing={self._grid.horizontalSpacing()},{self._grid.verticalSpacing()} "
+                f"weapon_rect={_trace_rect(weapon_rect)} "
+                f"source={side_icon_path!r} "
+                f"owner_scaled={owner_pixmap.width()}x{owner_pixmap.height()} "
+                f"owner_dpr={owner_pixmap.devicePixelRatio():.3f} "
+                f"owner_target={_trace_rect(owner_target)} "
+                f"badge_size={badge_size.width()}x{badge_size.height()} "
+                f"badge_rect={_trace_rect(badge_rect)} "
+                f"owner_crosses_viewport={not viewport_rect.contains(owner_target)} "
+                f"badge_crosses_viewport={not viewport_rect.contains(badge_rect)} "
+                "computed_from=owner_icon_rect"
+            )
+
+        painter.drawPixmap(
+            badge_rect,
+            _owner_badge_background(badge_size, dpr=self.devicePixelRatioF()),
+        )
+        painter.drawPixmap(owner_target, owner_pixmap)
+
+
+def _clear_grid(grid: QGridLayout) -> None:
+    while grid.count():
+        item = grid.takeAt(0)
+        widget = item.widget()
+        if widget is not None:
+            widget.deleteLater()
+
+
+def _clear_layout(layout) -> None:
+    while layout.count():
+        item = layout.takeAt(0)
+        child_layout = item.layout()
+        widget = item.widget()
+        if child_layout is not None:
+            _clear_layout(child_layout)
+        if widget is not None:
+            widget.deleteLater()
+
+
+def _reset_grid_columns(grid: QGridLayout) -> None:
+    for column in range(grid.columnCount()):
+        grid.setColumnMinimumWidth(column, 0)
+        grid.setColumnStretch(column, 0)
+
+
+def _asset_metadata_mapping(asset: dict[str, Any], key: str) -> dict[str, Any]:
+    metadata = _mapping(asset.get("metadata"))
+    return _mapping(metadata.get(key))
+
+
+def _asset_owner_badges(asset: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = _mapping(asset.get("metadata"))
+    badges = metadata.get("owner_badges")
+    if not isinstance(badges, list):
+        return []
+    return [dict(badge) for badge in badges if isinstance(badge, dict)]
+
+
+def _asset_character_id(asset: dict[str, Any]) -> str:
+    return _text(_asset_metadata_mapping(asset, "character").get("id"))
+
+
+def _asset_grid_key(asset: dict[str, Any]) -> str:
+    character_id = _asset_character_id(asset)
+    if character_id:
+        return f"character:{character_id}"
+    weapon = _asset_metadata_mapping(asset, "weapon")
+    weapon_id = _text(weapon.get("id"))
+    variant_key = _text(weapon.get("variant_key"))
+    filename = _text(asset.get("filename"))
+    return f"weapon:{weapon_id}:{variant_key}:{filename}"
+
+
+def _existing_project_file_path(value: Any) -> str:
+    raw = _text(value)
+    if not raw:
+        return ""
+    path = Path(raw)
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    if not path.exists():
+        return ""
+    try:
+        return str(path.resolve())
+    except OSError:
+        return str(path)
+
+
+def _normalized_character_image_paths(
+    character: dict[str, Any],
+    *,
+    asset_path: str = "",
+) -> dict[str, Any]:
+    normalized = dict(character)
+    portrait_path = (
+        _existing_project_file_path(asset_path)
+        or _existing_project_file_path(normalized.get("local_portrait_path"))
+        or _existing_project_file_path(normalized.get("portrait_path"))
+        or _existing_project_file_path(normalized.get("crop"))
+    )
+    side_icon_path = (
+        _existing_project_file_path(normalized.get("local_side_icon_path"))
+        or _existing_project_file_path(normalized.get("side_icon_path"))
+    )
+    if portrait_path:
+        normalized["portrait_path"] = portrait_path
+        normalized["local_portrait_path"] = portrait_path
+    if side_icon_path or portrait_path:
+        normalized["side_icon_path"] = side_icon_path or portrait_path
+        normalized["local_side_icon_path"] = side_icon_path or portrait_path
+    return normalized
+
+
+def _normalized_weapon_image_paths(
+    weapon: dict[str, Any],
+    *,
+    asset_path: str = "",
+) -> dict[str, Any]:
+    if not weapon:
+        return {}
+    normalized = dict(weapon)
+    icon_path = (
+        _existing_project_file_path(asset_path)
+        or _existing_project_file_path(normalized.get("local_icon_path"))
+        or _existing_project_file_path(normalized.get("icon_path"))
+    )
+    if icon_path:
+        normalized["icon_path"] = icon_path
+        normalized["local_icon_path"] = icon_path
+    return normalized
+
+
+def _weapon_bonus_context(
+    weapon: dict[str, Any],
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[str, Any]:
+    try:
+        with closing(connect_db(db_path)) as conn:
+            return _weapon_bonus_context_from_conn(conn, weapon)
+    except Exception:
+        return {
+            "weapon_passive_reference": {},
+            "weapon_display_stat_effects": [],
+        }
+
+
+def _weapon_bonus_context_from_conn(conn, weapon: dict[str, Any] | None) -> dict[str, Any]:
+    weapon = weapon or {}
+    weapon_id = _text(weapon.get("id") or weapon.get("weapon_id"))
+    refinement = _optional_int(weapon.get("refinement"))
+    result: dict[str, Any] = {
+        "weapon_passive_reference": {},
+        "weapon_display_stat_effects": [],
+    }
+    if not weapon_id:
+        return result
+    try:
+        passive_reference = get_weapon_passive_tooltip(
+            conn,
+            weapon_id=weapon_id,
+            language=_account_content_language(),
+        )
+        weapon_effects = list_weapon_display_stat_effects(
+            conn,
+            weapon_id=weapon_id,
+            refinement=refinement,
+        )
+    except Exception:
+        return result
+    if passive_reference:
+        result["weapon_passive_reference"] = passive_reference
+    if weapon_effects:
+        result["weapon_display_stat_effects"] = weapon_effects
+    return result
+
+
+def _weapon_equipment_fingerprint(weapon: dict[str, Any]) -> str:
+    return (
+        _text(weapon.get("source_key"))
+        or _text(weapon.get("weapon_fingerprint"))
+        or _text(weapon.get("variant_key"))
+    )
+
+
+def _account_content_language() -> str:
+    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    return _text(data.get("contentLanguage")) if isinstance(data, dict) else ""
+
+
+def _changed_marker_ids(
+    before: dict[str, RosterSelectionMarker],
+    after: dict[str, RosterSelectionMarker],
+) -> set[str]:
+    return {
+        character_id
+        for character_id in set(before) | set(after)
+        if before.get(character_id) != after.get(character_id)
+    }
+
+
+def _character_weapon_type_filter_key(character: dict[str, Any]) -> str:
+    for numeric_key in ("weapon_type", "type"):
+        weapon_type_id = _optional_int(character.get(numeric_key))
+        if weapon_type_id is not None:
+            filter_key = WEAPON_TYPE_FILTER_BY_ID.get(weapon_type_id)
+            if filter_key:
+                return filter_key
+    for text_key in ("weapon_type_name", "type_name", "weapon_type", "type"):
+        token = _filter_token(character.get(text_key))
+        if not token:
+            continue
+        filter_key = WEAPON_TYPE_FILTER_ALIASES.get(token)
+        if filter_key:
+            return filter_key
+    return ""
+
+
+def _weapon_type_filter_keys(weapon: dict[str, Any]) -> set[str]:
+    keys: set[str] = set()
+    for numeric_key in ("weapon_type", "type"):
+        weapon_type_id = _optional_int(weapon.get(numeric_key))
+        if weapon_type_id is not None:
+            filter_key = WEAPON_TYPE_FILTER_BY_ID.get(weapon_type_id)
+            if filter_key:
+                keys.add(filter_key)
+    for text_key in ("weapon_type_name", "type_name", "type"):
+        token = _filter_token(weapon.get(text_key))
+        if not token:
+            continue
+        filter_key = WEAPON_TYPE_FILTER_ALIASES.get(token)
+        if filter_key:
+            keys.add(filter_key)
+    return keys
+
+
+def _filter_token(value: Any) -> str:
+    return (
+        _text(value)
+        .casefold()
+        .replace("-", "_")
+        .replace(" ", "_")
+        .replace("__", "_")
+    )
+
+
+def _weapon_matches_character(
+    character: dict[str, Any],
+    weapon: dict[str, Any],
+) -> bool:
+    character_type = _optional_int(character.get("weapon_type"))
+    weapon_type = _optional_int(weapon.get("weapon_type"))
+    if character_type is not None and weapon_type is not None:
+        return character_type == weapon_type
+
+    character_name = _text(character.get("weapon_type_name")).casefold()
+    weapon_name = _text(
+        weapon.get("weapon_type_name") or weapon.get("type_name")
+    ).casefold()
+    if character_name and weapon_name:
+        return character_name == weapon_name
+    return True
+
+
+def _pvp_weapon_sort_key(asset: dict[str, Any]):
+    metadata = asset.get("metadata") or {}
+    weapon = metadata.get("weapon") or {}
+    rarity = metadata_int(weapon.get("rarity"))
+    level = metadata_int(weapon.get("level"))
+    name = _text(weapon.get("name") or metadata.get("name") or asset.get("filename"))
+    key = _text(weapon.get("source_key") or weapon.get("weapon_fingerprint"))
+    return (-rarity, -level, name.casefold(), key)
+
+
+def _mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _optional_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _gcsim_rotation_hash(text: str) -> str:
+    return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
+
+
+def _utc_snapshot_datetime(value: datetime | None = None) -> datetime:
+    current = value or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return current.astimezone(timezone.utc).replace(microsecond=0)
+
+
+def _format_history_snapshot_created_at(value: datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
+def _new_history_snapshot_bundle_id(
+    *,
+    run_type: str,
+    created_at: datetime,
+) -> str:
+    timestamp = created_at.strftime("%Y%m%dT%H%M%SZ")
+    return f"app-shell-{normalize_run_mode(run_type)}-{timestamp}-{uuid4().hex[:8]}"
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    result: list[str] = []
+    for value in values:
+        if value and value not in result:
+            result.append(value)
+    return result
+
+
+def launch_app_shell() -> int:
+    app = QApplication.instance() or QApplication(sys.argv)
+    window = AppShell()
+    window.show()
+    return app.exec()
+
+
+__all__ = [
+    "AppShell",
+    "AppShellController",
+    "AssetIconLabel",
+    "CharacterWeaponWorkspace",
+    "HISTORY_SNAPSHOT_ROOT",
+    "LEFT_WORKSPACE_ARTIFACTS",
+    "LEFT_WORKSPACE_CHARACTERS_WEAPONS",
+    "LEFT_WORKSPACE_GCSIM",
+    "LEFT_WORKSPACE_HISTORY",
+    "LEFT_WORKSPACE_PVP",
+    "LeftWorkspaceHost",
+    "PVP_PAGE_DECKS",
+    "PVP_PAGE_DRAFT",
+    "PVP_PAGE_PLAY",
+    "RIGHT_DOCK_PAGE_ACCOUNT",
+    "RIGHT_DOCK_PAGE_HISTORY",
+    "RIGHT_DOCK_PAGE_PVP",
+    "RIGHT_DOCK_PAGE_RUN",
+    "RunSaveResult",
+    "RosterSelectionMarker",
+    "RightOperationsDock",
+    "launch_app_shell",
+]

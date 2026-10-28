@@ -1,0 +1,53 @@
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -11,6 +11,7 @@
+ 	"github.com/genshinsim/gcsim/pkg/core"
+ 	"github.com/genshinsim/gcsim/pkg/core/attributes"
+ 	"github.com/genshinsim/gcsim/pkg/core/event"
++	"github.com/genshinsim/gcsim/pkg/core/hacks"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
+ 	"github.com/genshinsim/gcsim/pkg/core/player/character"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+@@ -88,7 +89,14 @@
+ 	out.NeutralContext = GTTNeutralContext{NoSets: true, Moonsign: core.Player.GetMoonsignLevel(), Active: core.Player.Active()}
+ 	for _, char := range core.Player.Chars() {
+ 		if len(char.Equip.Sets) != 0 { out.NeutralContext.NoSets = false }
++		out.NeutralContext.Characters = append(out.NeutralContext.Characters, GTTNeutralCharacter{Facts: map[string]gtttrace.EventValue{
++            "IsHexerei": {Kind:"bool", Boolean:char.IsHexerei},
++            "NOCharIsSpecial": {Kind:"bool", Boolean:hacks.NOCharIsSpecial(char.Base.Key)},
++            "Weapon": {Kind:"object", Fields:map[string]gtttrace.EventValue{
++                "Class": info.GTTCombatEventValues([]any{char.Weapon.Class})[0],
++                "Refine": info.GTTCombatEventValues([]any{char.Weapon.Refine})[0],
++            }},
++        }, Index: char.Index(), Key: char.Base.Key.String(), Base: info.GTTCombatEventValues([]any{char.Base})[0], Stats: info.GTTCombatEventValues([]any{char.BaseStats})[0]})
+-		out.NeutralContext.Characters = append(out.NeutralContext.Characters, GTTNeutralCharacter{Index: char.Index(), Key: char.Base.Key.String(), Base: info.GTTCombatEventValues([]any{char.Base})[0], Stats: info.GTTCombatEventValues([]any{char.BaseStats})[0]})
+ 		out.EnergyLedger.InitialStates = append(out.EnergyLedger.InitialStates, gtttrace.EnergyCharacterState{
+ 			CharacterIndex: char.Index(), CharacterKey: char.Base.Key.String(),
+ 			Energy: char.Energy, EnergyMax: char.EnergyMax,
+diff --git a/pkg/core/info/gtt_combat_event.go b/pkg/core/info/gtt_combat_event.go
+--- a/pkg/core/info/gtt_combat_event.go
++++ b/pkg/core/info/gtt_combat_event.go
+@@ -75,9 +75,9 @@
+ 		if math.IsNaN(v.Float()) || math.IsInf(v.Float(), 0) { unknown.Text = "non_finite"; return unknown }
+ 		out.Kind, out.Number = "number", v.Float()
+ 	case reflect.Pointer:
++		// Only explicitly value-like engine health request pointers are admitted.
+-		// Only the explicitly value-like engine DrainInfo pointer is admitted.
+ 		if v.IsNil() { return gtttrace.EventValue{Kind: "nil"} }
++		if v.Type() != reflect.TypeOf((*DrainInfo)(nil)) && v.Type() != reflect.TypeOf((*HealInfo)(nil)) { return unknown }
+-		if v.Type() != reflect.TypeOf((*DrainInfo)(nil)) { return unknown }
+ 		out = eventData(v.Elem(), depth+1)
+ 		out.Type = eventType(v.Type())
+ 	case reflect.Struct:
+diff --git a/pkg/optimization/optstats/gtt_neutral_context.go b/pkg/optimization/optstats/gtt_neutral_context.go
+--- a/pkg/optimization/optstats/gtt_neutral_context.go
++++ b/pkg/optimization/optstats/gtt_neutral_context.go
+@@ -4,6 +4,7 @@
+ 
+ // Engine-owned, already computed context: no additional stat getter evaluation.
+ type GTTNeutralCharacter struct {
++	Facts map[string]gtttrace.EventValue `json:"facts"`
+ 	Index int `json:"index"`
+ 	Key string `json:"key"`
+ 	Base gtttrace.EventValue `json:"base"`

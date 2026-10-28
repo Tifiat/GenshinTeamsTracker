@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "case_id": "chiori_lunar_crystallize_saved_rank1",
+  "team": "chiori_lunar_crystallize",
+  "infinite_energy": true,
+  "manifest_sha256": "d00ed4463c535e136590548aad8e2d20f35a7efe8ca8bcb22a49b19c13ff1c86",
+  "rotation_sha256": "f32110269626d50ac9fc3c7ad31119b9fa7a802d57d55013e4dd51eb44c7197d",
+  "engine_id": "gcsim-v2.45.0-20260927011932",
+  "engine_artifact_sha256": "7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c",
+  "seeds": [
+    742031889,
+    742031890
+  ],
+  "ordinary_iterations": 128,
+  "candidate_source": {
+    "path": "tests/fixtures/gcsim_optimizer_go_v1/optimizer_archetype_full_matrix_lineage5_20260919.json",
+    "sha256": "00a0cd81711081e867faf06cad9230471ada6c4ecd956104181a69187231a152",
+    "run_id": "chiori_lunar_crystallize_theory",
+    "rank": 1
+  }
+}

@@ -1,0 +1,31 @@
+--- a/mods.go
++++ b/mods.go
+@@ -715,7 +715,7 @@
+ 		if len(bonusRefs) == 0 {
+ 			operation = "literal"
+ 		}
+-		id := c.gttTrace.RecordNumericEval(c.gttTrace.CurrentSourceID(), operation, bonusRefs, amt,
++		id := c.gttTrace.RecordEffectRead(c.gttTrace.CurrentSourceID(), "reaction_bonus", c.Index(), int(atk.AttackTag), operation, bonusRefs, amt,
+ 			gtttrace.IncompleteEvidence("reaction_bonus_schedule_frozen"))
+ 		trace.ReactionBonusRef = gtttrace.EventRef(id)
+ 	}
+--- a/model.go
++++ b/model.go
+@@ -49,6 +49,7 @@
+ // include it in a GOB-2 receipt, and tests use it to prove that compaction did
+ // not silently discard an executed path.
+ type Audit struct {
++	EffectInputs           []EffectInput
+ 	SourceHitCount          int
+ 	AncestorStateEventCount int
+ 	NodeCount               int
+--- a/compile.go
++++ b/compile.go
+@@ -63,6 +63,7 @@
+ 		TopologySHA256: topology, Nodes: builder.nodes, Channels: channels, OpaqueBoundaries: boundaries,
+ 	}
+ 	audit := Audit{
++		EffectInputs: collectEffectInputs(buffer,characterKeys,support),
+ 		SourceHitCount: len(buffer.Hits), AncestorStateEventCount: len(support.ancestorIDs),
+ 		NodeCount: len(builder.nodes), ChannelCount: len(channels), OpaqueReasonCount: len(reasons),
+ 		BaselineDamage: baseline,

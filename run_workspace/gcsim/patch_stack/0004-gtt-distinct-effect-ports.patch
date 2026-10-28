@@ -1,0 +1,77 @@
+diff --git a/pkg/gttcompact/support.go b/pkg/gttcompact/support.go
+index e05ac15..a8492e2 100644
+--- a/pkg/gttcompact/support.go
++++ b/pkg/gttcompact/support.go
+@@ -337,6 +337,11 @@ func (c *supportCompiler) compileNumericEvent(event gtttrace.StateEvent) compile
+ 		return c.b.constant(observed)
+ 	case "identity", "task_payload", "health_input":
+ 		if len(inputs) == 1 {
++			if event.Channel != nil && strings.HasPrefix(*event.Channel, "effect_input:") {
++				// Effect reads are intervention ports. Preserve one graph node per
++				// executed read even when several reads share one upstream value.
++				return c.b.add(inputs[0], c.b.constant(0))
++			}
+ 			return inputs[0]
+ 		}
+ 	case "negate":
+diff --git a/pkg/gttcompact/resistance_input.go b/pkg/gttcompact/resistance_input.go
+index 0ef80a2..f757321 100644
+--- a/pkg/gttcompact/resistance_input.go
++++ b/pkg/gttcompact/resistance_input.go
+@@ -14,6 +14,12 @@ type ResistanceInput struct {
+ }
+ 
+ func (c *directCompiler) resistanceInput(hit info.GTTTraceHit) compiledNode {
++	if hit.Element == "" {
++		// NoElement damage has no addressable resistance category. Keep the
++		// observed multiplier in the formula, but do not expose a set-effect
++		// intervention port that no elemental/physical resistance term can own.
++		return c.b.constant(hit.ResMod)
++	}
+ 	if existing, ok := c.b.resistanceByHit[hit.HitID]; ok {
+ 		return existing
+ 	}
+diff --git a/pkg/gttcompact/effect_input_test.go b/pkg/gttcompact/effect_input_test.go
+index feedc87..952fe8d 100644
+--- a/pkg/gttcompact/effect_input_test.go
++++ b/pkg/gttcompact/effect_input_test.go
+@@ -29,6 +29,26 @@ func TestEffectInputUsesActualOwnerAndExactEventBinding(t *testing.T) {
+ 	}
+ }
+ 
++func TestEffectInputsKeepDistinctPortsForSharedUpstreamValue(t *testing.T) {
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	base := r.RecordNumericEval("", "literal", nil, 0.25, gtttrace.IncompleteEvidence("synthetic"))
++	first := r.RecordEffectRead("", "reaction_bonus", 0, 31, "identity", []gtttrace.NumericRef{gtttrace.EventRef(base)}, 0.25, gtttrace.IncompleteEvidence("synthetic"))
++	second := r.RecordEffectRead("", "reaction_bonus", 0, 32, "identity", []gtttrace.NumericRef{gtttrace.EventRef(base)}, 0.25, gtttrace.IncompleteEvidence("synthetic"))
++	buffer := optstats.GTTTraceEquationBuffer{
++		StateEvents: r.StateEvents(),
++		Hits: []info.GTTTraceHit{
++			{ReactionBonusRef: gtttrace.EventRef(first)},
++			{ReactionBonusRef: gtttrace.EventRef(second)},
++		},
++	}
++	support := compileSupportProgram(&nodeBuilder{}, buffer, []string{"owner"})
++	got := collectEffectInputs(buffer, []string{"owner"}, support)
++	if len(got) != 2 || got[0].EventID != first || got[1].EventID != second || got[0].NodeID == got[1].NodeID {
++		t.Fatalf("shared upstream value collapsed effect ports: %#v", got)
++	}
++}
++
+ func TestResistanceInputsDoNotExposeFailedFormulaNodes(t *testing.T) {
+ 	b := &nodeBuilder{}
+ 	c := directCompiler{b: b}
+@@ -51,3 +71,12 @@ func TestResistanceInputReusesOnePortPerExecutedHit(t *testing.T) {
+ 		t.Fatalf("duplicate hit created multiple resistance ports: first=%d second=%d ports=%d", first.id, second.id, len(b.resistanceInputs))
+ 	}
+ }
++
++func TestResistanceInputSkipsNoElementPort(t *testing.T) {
++	b := &nodeBuilder{}
++	c := &directCompiler{b: b}
++	node := c.resistanceInput(info.GTTTraceHit{HitID: 9, TargetKey: 3, Element: "", Resistance: 0, ResMod: 1})
++	if node.baseline != 1 || len(b.resistanceInputs) != 0 {
++		t.Fatalf("NoElement hit exposed a resistance port: node=%#v ports=%#v", node, b.resistanceInputs)
++	}
++}

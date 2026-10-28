@@ -31,10 +31,12 @@ before publication.
   the published branch ranges. Large text patch blobs were checked separately.
 - README link targets exist and `git diff --cached --check` passed.
 - `tools/check_handoffs.py` reported one pre-existing size violation in the
-  shared `workers/worker1.md`; that shared file was not changed.
+  shared `workers/worker1.md` at initial publication; that shared file was not
+  changed by the publisher. The owner later shortened repeated history, and the
+  final closeout recheck passed.
 - The main checkout's other dirty work was not staged or published: at capture
   it contained 135 modified, 5 deleted and 893 untracked paths. The README and
   this receipt were the only files added by this publication task.
 
-This receipt records the refs at publication. Its own follow-up commit advances
-`master` once more.
+This receipt records the refs at publication. The receipt and its closeout update
+are follow-up commits after the README publication, so `master` advances again.

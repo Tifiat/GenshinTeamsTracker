@@ -35,6 +35,20 @@ and preserve foreign edits/data before selecting a folder; use an isolated copy
 with owned cleanup. It does not authorize copying credentials or unrelated data,
 or start new runs while the active task remains saved-data discussion only.
 
+Human28October fixes the optimizer comparison layout (actual existing paths):
+`C:/Users/user/Desktop/GenshinTeamsTracker` holds the accepted current variant;
+`C:/Users/user/Desktop/worker2 GTT` holds restored historical controls and their
+explicit adapter versions; `C:/Users/user/Desktop/worker3 GTT` holds integration
+experiments. Keep a control immutable during a comparison. Use identical input
+snapshots/settings and isolated engines/caches/temp paths; run benchmarks serially.
+Git commits and manifests identify each configuration; folders do not replace Git.
+After acceptance, promote only the verified change/runtime package to main,
+preserving unrelated work, user data and rollback. No blanket folder overwrite.
+The immediate planned stage is causal attribution of Theory105.344s vs461.797s,
+including model/rule reuse, search work, simulator calls and environment effects;
+compare quality too. Discuss findings before integration. Recording this plan
+does not itself launch runs or install versions.
+
 Use an existing owner chat when its purpose/context fit. Create a separate chat
 in the worker's saved project for a distinct workstream requiring bounded
 context. Keep the real checkout/branch; do not invent IDs or a second queue.

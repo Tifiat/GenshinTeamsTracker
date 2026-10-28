@@ -39,6 +39,21 @@ snapshot followed by actual Finish, not exhaustive search or timeout.
 Per-run scratch removed; MAIN pins and retained baseline restoration verified.
 No installation. STOP/discuss remaining replay/policy before another experiment.
 
+## 28 October: pre-experiment metrics
+
+[Worker3 evidence and principles](../../../worker3%20GTT/docs/optimizer-evidence/2026-10-28-theory-phases/theory-preexperiment/README.md).
+Preparation source ff6c233, result23537c0; one diagnostic collection,2captures/15cases x2passes,
+0search/ordinary. Actual world first Order3 versus initialization lookup Order1;
+all547/526 states contain Facts/Custom. Mixed leader-three+Clam2-pair loses all9853
+effect ports to reference freeze, including other owners; its bound program matches
+empty-package control. Berserker CurrentHPRatio fails in attack queries; concrete
+replay repeats it. All15 outputs/program identities repeat exactly;15cases map to7
+programs. This direct binding probe bypasses model dispatch; not production repeat
+frequency, damage-quality proof or attribution of all313.493s. Collector overhead
+and bounded provenance overflow are explicit. Pins/cleanup PASS. No behavior change
+or install. STOP: discuss generic initialization repair, known-API coverage/local
+failure handling and proposed comparisons before starting algorithm experiments.
+
 ## Located versions and measurements
 
 | Evidence | Input / configuration | Measured boundary and result | Interpretation |

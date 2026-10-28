@@ -171,6 +171,20 @@ button timing from strictly reproducible Python attribution. Export evidence,
 release owned scratch, verify protected state, commit useful source/results,
 report all six dispositions and STOP. No automatic next stage or repeat success.
 
+### Baseline decision after R5 — human28October
+
+The human selects R5 source79ab9da/result5d26553 as the starting configuration
+for subsequent optimizer work. This does not claim a whole-search speedup,
+authorize installation or resume execution; the next plan remains under discussion.
+R4 and earlier results remain historical controls and reconstruction points.
+
+The workspace-growth inspection is a separate deferred maintenance task, outside
+optimizer work, not a prerequisite or automatic next optimizer stage. New/changed
+optimizer modules still require bounded memory and retained references, explicit
+ownership, release of buffers/resources and joined children on success/error/
+cancellation, plus wired cleanup for their own temporary output under
+DATA_WORK_RULES. This is routine lifecycle correctness, not a broad disk audit.
+
 ## Representation decision after source review
 
 ROOT admits the typed-canonical IRSeedMember candidate described in

@@ -7,14 +7,13 @@ conversation is usually Russian.
 
 ## Work boundaries
 
-- Use narrow `rg` searches/small file slices. Delegate self-contained checks
-  and bounded low-context tasks to inexpensive suitable subagents (for example
-  `gpt-6-luna` with `max` reasoning). Give a compact task and explicit files;
-  do not fork the main chat's large history or duplicate broad project loading.
-  Optimizer experiment runs go to these inexpensive agents; the main agent
-  analyzes the compact evidence. Bounded implementation with few local files
-  may use an inexpensive coding model such as `gpt-6-sol`; delegate it only when
-  the setup does not duplicate the main agent's large architectural context.
+- Use narrow `rg` searches/small file slices. For optimizer work use the user's
+  three-chat route: ROOT/Astra (human controls effort), Sol6.1 executor, and
+  cheap Luna/low tester. Give compact briefs and explicit files; do not copy
+  full histories or load broad handoffs for a single measurement. Refresh
+  bloated execution contexts through ROOT; preserve old chats inactive.
+  The tester runs the supplied command and reports evidence; it does not audit
+  code or invent a new preparation procedure. ROOT interprets the result.
   Keep context-heavy architecture/integration with the main agent; delegation
   requiring large repeated context needs explicit user approval. Review agent
   results and serialize expensive optimizer runs/shared managed scratch; no

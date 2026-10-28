@@ -19,6 +19,13 @@ report. Ask the user only for a material ambiguity or contradiction. Ordinary
 implementation details are the execution chat's responsibility. A status
 question does not authorize an unbounded implementation assignment.
 
+Use three user-visible chats for optimizer work: human-controlled ROOT/Astra,
+Sol6.1 implementation, and cheap Luna/low testing. ROOT assigns bounded work and
+owns decisions. Keep model/effort of ROOT under human control. Refresh bloated
+execution/test chats with compact briefs instead of carrying full history; preserve
+old chats inactive. Significant workflow/scope changes require human discussion;
+the28October workflow optimization grant applies once.
+
 Use an existing owner chat when its purpose/context fit. Create a separate chat
 in the worker's saved project for a distinct workstream requiring bounded
 context. Keep the real checkout/branch; do not invent IDs or a second queue.
@@ -26,13 +33,24 @@ Only one chat writes a checkout at a time; reviewers there remain read only.
 The registry retains canonical workers; shared TODO names actual current
 execution chats. Workers write only their own status, Worker1 owns shared routing.
 
+For a measurement-only request, default to one cheap low-context tester executing
+the existing verified command and returning a compact result. Do not wake the
+context-heavy implementation chat, rebuild a preparation/admission chain, or
+create a new harness merely because MAIN owns product code. First establish a
+concrete missing capability; any necessary runner repair is a separate bounded
+task. Reuse existing guards/evidence. Identify whether the tester is a sidebar
+chat or an internal subagent; do not imply a message reached the other surface.
+Stop routine polling once a terminal failure is known; preserve evidence and
+close the owned failed job instead of waiting on a dead GUI callback.
+
 ## Evidence and dependencies
 
 Require short reports separating source, local commit, installed runtime,
 controlled tests, native UI and unverified limits. A long run or passing unit
 tests do not establish a global solution. Before dependent work resumes, its
 fixing owner supplies the exact source/package, corrected gate, cost and limits.
-Preserve the existing Chasca-before-Navia user gate.
+Preserve the existing Chasca-before-Navia user gate and the
+[first-anomaly stop/full-restart rule](TEAM_BUTTON_BENCHMARK.md#first-anomaly-stop-and-full-restart--human-order-25-october-2026).
 
 Timing comparisons use the same interpreter, data, entrypoint and cache
 conditions. Serialize expensive numerical jobs and benchmarks; implementation

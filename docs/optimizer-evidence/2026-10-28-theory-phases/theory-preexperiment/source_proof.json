@@ -1,0 +1,31 @@
+{
+  "CurrentHPRatio_operation_descriptors": [],
+  "catalog_sha256": "9049ed5ed5c33196961bf8bb2f1e8a54be37a0a658491f356d6c34079597c722",
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "limit": "Source-only path proof; actual world order1/Facts presence requires current capture. No exporter loss is inferred solely from fact(nil).",
+  "schema": "theory_preexperiment_source_proof_v1",
+  "selected_sources": [
+    {
+      "path": "internal/artifacts/berserker/berserker.go",
+      "runtime_file_equals_catalog_and_repository": true,
+      "sha256": "111bb6ee02951a04dae3fe9d0ad02d02d791732ff5d9d25ace7172aa3b9f9a24"
+    },
+    {
+      "path": "internal/artifacts/oceanhuedclam/oceanhuedclam.go",
+      "runtime_file_equals_catalog_and_repository": true,
+      "sha256": "ba67b77955ba7c4a717a4f10cdd59decfb32174d1d1742414d24aaaec0135595"
+    },
+    {
+      "path": "pkg/core/gtt_neutral_resources.go",
+      "runtime_file_equals_catalog_and_repository": true,
+      "sha256": "eb1ff9632ee149f6eb883a2204e59185bd4781d01618eaedd9d6ae12d49bc215"
+    },
+    {
+      "path": "pkg/gtttrace/neutral_world.go",
+      "runtime_file_equals_catalog_and_repository": true,
+      "sha256": "5387d91f31345fcbf0c038389d30e162212ca5d5603b3e524d0ab00e08682103"
+    }
+  ],
+  "set_sources_sha256": "cf1ab6035f5740478b1fad028cb739c96e0e3b64205068649db8e1387c26308f",
+  "source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e"
+}

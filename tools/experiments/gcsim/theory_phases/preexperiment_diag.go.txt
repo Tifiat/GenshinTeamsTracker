@@ -1,0 +1,128 @@
+package seteffects
+
+// Bounded diagnostic-only observations. Never consulted by gameplay, cache
+// admission, candidate selection, or source execution. No per-port JSON.
+import (
+ "crypto/sha256"
+ "encoding/hex"
+ "encoding/json"
+ "fmt"
+ "sort"
+ "time"
+ "genshinteamstracker/native/gcsim_optimizer/internal/contracts"
+)
+
+type PreparationPackage struct {Wearer string `json:"wearer"`; Sets []struct{Key string `json:"key"`;Pieces int `json:"pieces"`} `json:"sets"`}
+type PreparationCase struct {ID string `json:"id"`;Packages []PreparationPackage `json:"packages"`}
+type preparationCause struct {Boundary contracts.MechanicBoundary `json:"first_event"`; Count int `json:"observations"`}
+type preparationPort struct {Query RuleQuery `json:"first_query"`;Dimension int `json:"first_dimension"`;SourceNode uint32 `json:"first_source_node"`;Reason string `json:"reason"`;Count int `json:"port_observations"`}
+type preparationReplay struct {
+ Case string;Pass int;Choices string;Seed string;Symbolic bool;Seconds float64
+ Steps,Ports,UnknownPorts int
+ InitSeconds,EventQuerySeconds float64
+ FailureStage string
+ Boundary string
+ Causes []preparationCause
+ Unknown []preparationPort
+ Uncertainty []string
+ Overflow int
+ Coverage []preparationCoverage
+}
+type preparationCoverage struct {Owner int;Kind string;Known,Unknown int}
+type preparationFrozenKey struct {Seed string;Owner int;Kind string}
+type preparationFrozenCoverage struct {Seed string;Owner int;Kind string;Anchor,Reference int}
+type preparationJoint struct {Case string;Pass int;Choices string;Seconds,FreezeSeconds,ConcreteReplaySeconds,FreezeObserverSeconds,FreezeResidualSeconds float64;BeforeComplete,AfterComplete,Frozen,Tracked bool;BeforeBoundaries,AfterBoundaries,Uncertainty []string}
+type preparationFallback struct {Case string;Pass int;RejectedChoices string;Group bool;Tracked bool}
+type preparationFreeze struct {Case string;Pass int;Choices string;Seconds float64;Fallbacks,AnchorPorts,ReferencePorts,OmittedRecords,RetainedRecords int}
+type PreparationBindingEvidence struct {Seconds float64;ProgramIdentity,Error string}
+type preparationCaseResult struct {ID string;Pass int;Choices string;Seconds float64;Complete,Frozen,Tracked bool;PayloadIdentityAvailable bool;DiagnosticOutputSHA256 string;Constants,SparseEffects int;Boundaries,Uncertainty []string;Preparation NeutralPreparationStats;R1 R1FrozenStats;Binding PreparationBindingEvidence;FrozenPortObservations []preparationFrozenCoverage}
+type preparationInput struct {Seed string;WorldStates int;FirstOrder uint64;WorldPresent,WorldComplete bool;StatesWithFacts,StatesWithCustom int;OrderOneIndex int;OrderOneOrder uint64;OrderOneFacts,OrderOneCustom bool}
+type PreparationDiagnostic struct {
+ Schema string
+ Cases []preparationCaseResult
+ Replays []preparationReplay
+ Joint []preparationJoint
+ Fallbacks []preparationFallback
+ FreezeConcrete []preparationFreeze
+ Dropped int
+ ObserverSeconds float64
+ Inputs []preparationInput
+ current string
+ pass int
+ frozenCoverage map[preparationFrozenKey]preparationFrozenCoverage
+}
+
+func preparationStrings(x []string) []string {if len(x)>64{x=x[:64]};return append([]string(nil),x...)}
+func(b *NeutralBinding) preparationFrozenPort(seed string,q RuleQuery,anchor bool){d:=b.preparationDiagnostic;if d==nil{return};if d.frozenCoverage==nil{d.frozenCoverage=map[preparationFrozenKey]preparationFrozenCoverage{}};key:=preparationFrozenKey{seed,q.Owner,q.Kind};row:=d.frozenCoverage[key];row.Seed,row.Owner,row.Kind=seed,q.Owner,q.Kind;if anchor{row.Anchor++}else{row.Reference++};d.frozenCoverage[key]=row}
+func (b *NeutralBinding) preparationFreezeStarted(choices []RuleChoice)func(){
+ d:=b.preparationDiagnostic;if d==nil{return func(){}}
+ started:=time.Now();before:=b.r1Stats;key:=ruleChoicesKey(choices)
+ return func(){seconds:=time.Since(started).Seconds();observe:=time.Now();defer func(){d.ObserverSeconds+=time.Since(observe).Seconds()}();if len(d.FreezeConcrete)>=128{d.Dropped++;return};now:=b.r1Stats;d.FreezeConcrete=append(d.FreezeConcrete,preparationFreeze{d.current,d.pass,key,seconds,now.FallbackReplays-before.FallbackReplays,now.AnchorPorts-before.AnchorPorts,now.ReferencePorts-before.ReferencePorts,now.OmittedRecords-before.OmittedRecords,len(now.Records)-len(before.Records)})}
+}
+func (b *NeutralBinding) preparationJointStarted(choices []RuleChoice) func(NeutralExpressions,NeutralExpressions,float64,float64) {
+ d:=b.preparationDiagnostic
+ if d==nil{return func(NeutralExpressions,NeutralExpressions,float64,float64){}}
+ started:=time.Now();key:=ruleChoicesKey(choices);firstReplay:=len(d.Replays)
+ return func(before,after NeutralExpressions,freezeSeconds,freezeObserver float64){
+  elapsed:=time.Since(started).Seconds();observe:=time.Now();defer func(){d.ObserverSeconds+=time.Since(observe).Seconds()}()
+  if len(d.Joint)>=256 {d.Dropped++;return}
+  concrete:=0.0;for _,r:=range d.Replays[firstReplay:]{if !r.Symbolic{concrete+=r.Seconds}}
+  d.Joint=append(d.Joint,preparationJoint{d.current,d.pass,key,elapsed,freezeSeconds,concrete,freezeObserver,freezeSeconds-concrete-freezeObserver,before.Complete(),after.Complete(),after.r1Frozen,after.footprint.trackedStats(),preparationStrings(before.Boundaries),preparationStrings(after.Boundaries),preparationStrings(after.Uncertainty)})
+ }
+}
+func (b *NeutralBinding) preparationRejected(choices []RuleChoice,c neutralComponent,group bool){
+ d:=b.preparationDiagnostic;if d==nil{return};started:=time.Now();defer func(){d.ObserverSeconds+=time.Since(started).Seconds()}()
+ if len(d.Fallbacks)>=128{d.Dropped++;return};d.Fallbacks=append(d.Fallbacks,preparationFallback{d.current,d.pass,ruleChoicesKey(choices),group,c.footprint.trackedStats()})
+}
+func (b *NeutralBinding) preparationReplayObserved(choices []RuleChoice,member neutralBoundMember,symbolic bool,r RuleReplay,seconds float64){
+ d:=b.preparationDiagnostic;if d==nil{return};started:=time.Now();defer func(){d.ObserverSeconds+=time.Since(started).Seconds()}()
+ if len(d.Replays)>=512 {d.Dropped++;return}
+ row:=preparationReplay{Case:d.current,Pass:d.pass,Choices:ruleChoicesKey(choices),Seed:member.seed,Symbolic:symbolic,Seconds:seconds,Steps:r.Steps,Ports:len(r.Values),Boundary:r.Boundary,Uncertainty:preparationStrings(r.Uncertainty),InitSeconds:r.preparationInitSeconds,EventQuerySeconds:r.preparationEventSeconds,FailureStage:r.preparationStage}
+ causes:=map[string]int{};unknown:=map[string]int{};coverage:=map[string]int{}
+ for _,event:=range r.MechanicBoundaries {
+  event.Seed=member.seed
+  key:=fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%t|%d|%t|%s",event.MechanicUID,event.Kind,event.ReasonCode,event.ConsumerSite,event.Operation,event.Receiver,event.Owner,event.OwnerKnown,event.CallerOwner,event.CallerKnown,event.Reason)
+  if index,ok:=causes[key];ok{row.Causes[index].Count++;continue}
+  if len(causes)>=8{row.Overflow++;continue};causes[key]=len(row.Causes);row.Causes=append(row.Causes,preparationCause{event,1})
+ }
+ for i,value:=range r.Values {
+  if i<len(member.ports){q:=member.ports[i].query;key:=fmt.Sprintf("%d|%s",q.Owner,q.Kind);index,ok:=coverage[key];if !ok{index=len(row.Coverage);coverage[key]=index;row.Coverage=append(row.Coverage,preparationCoverage{Owner:q.Owner,Kind:q.Kind})};if value.Known{row.Coverage[index].Known++}else{row.Coverage[index].Unknown++}}
+  if value.Known{continue};row.UnknownPorts++
+  if i>=len(member.ports){row.Overflow++;continue};port:=member.ports[i];q:=port.query
+  key:=fmt.Sprintf("%d|%s|%s|%s|%s",q.Owner,q.Kind,q.Stat,q.Mode,value.Boundary)
+  if index,ok:=unknown[key];ok{row.Unknown[index].Count++;continue}
+  if len(unknown)>=8{row.Overflow++;continue};unknown[key]=len(row.Unknown)
+  // Keep query provenance only; large Attack/State/keys payloads stay in tape.
+  sample:=RuleQuery{HitID:q.HitID,Order:q.Order,Frame:q.Frame,Active:q.Active,Owner:q.Owner,Target:q.Target,Kind:q.Kind,Mode:q.Mode,Stat:q.Stat}
+  node:=uint32(0);if port.dimension>=0&&port.dimension<len(b.ports){node=b.ports[port.dimension].NodeID}
+  row.Unknown=append(row.Unknown,preparationPort{sample,port.dimension,node,value.Boundary,1})
+ }
+ d.Replays=append(d.Replays,row)
+}
+
+// Exactly two passes of <=16 explicitly selected package cases. No search,
+// allocation, ordinary verification, altered frozen policy, or capture here.
+func (b *NeutralBinding) DiagnosePreparation(cases []PreparationCase,bind func(NeutralExpressions)PreparationBindingEvidence)(*PreparationDiagnostic,error){
+ if b==nil||len(b.members)==0||len(cases)==0||len(cases)>16||b.preparationDiagnostic!=nil{return nil,fmt.Errorf("invalid bounded preparation diagnostic")}
+ d:=&PreparationDiagnostic{Schema:"theory_preparation_events_v1"};b.preparationDiagnostic=d;defer func(){b.preparationDiagnostic=nil}()
+ for _,member:=range b.members {row:=preparationInput{Seed:member.seed,OrderOneIndex:-1};world:=member.neutral.World;if world!=nil{row.WorldPresent=true;row.WorldStates=len(world.States);row.WorldComplete=world.Complete;for i,state:=range world.States{if i==0{row.FirstOrder=state.Order};if state.Facts!=nil{row.StatesWithFacts++;if _,ok:=state.Facts.Fields["Custom"];ok{row.StatesWithCustom++}};if state.Order<=1{row.OrderOneIndex=i;row.OrderOneOrder=state.Order;row.OrderOneFacts=state.Facts!=nil;row.OrderOneCustom=false;if state.Facts!=nil{_,row.OrderOneCustom=state.Facts.Fields["Custom"]}}}};d.Inputs=append(d.Inputs,row)}
+ owners:=map[string]int{};for i,c:=range b.members[0].neutral.Context.Characters {owners[c.Key]=i}
+ choices:=make([][]RuleChoice,len(cases));ids:=map[string]bool{}
+ for i,test:=range cases {
+  if test.ID==""||ids[test.ID]{return nil,fmt.Errorf("diagnostic case ID")};ids[test.ID]=true
+  for _,pkg:=range test.Packages {owner,ok:=owners[pkg.Wearer];if !ok{return nil,fmt.Errorf("unknown diagnostic wearer")};for _,set:=range pkg.Sets{choices[i]=append(choices[i],RuleChoice{owner,set.Key,set.Pieces})}}
+ }
+ for pass:=1;pass<=2;pass++ {for i,test:=range cases {
+  d.current,d.pass=test.ID,pass;d.frozenCoverage=map[preparationFrozenKey]preparationFrozenCoverage{}
+  started:=time.Now();out:=b.CompilePackagesSparse(choices[i]);elapsed:=time.Since(started).Seconds()
+  observe:=time.Now();hash:=sha256.New()
+  // This diagnostic output digest is NOT a compiled arithmetic-family identity.
+  if err:=json.NewEncoder(hash).Encode(struct{Output NeutralExpressions;Frozen bool}{out,out.r1Frozen});err!=nil{return nil,err}
+  _,identityAvailable:=out.PreparedPayloadIdentity();stats:=b.R1FrozenStats();stats.Records=nil;stats.PackageGuides=nil
+  binding:=PreparationBindingEvidence{};if bind!=nil{binding=bind(out)}
+  frozen:=[]preparationFrozenCoverage{};for _,row:=range d.frozenCoverage{frozen=append(frozen,row)};sort.Slice(frozen,func(i,j int)bool{a,z:=frozen[i],frozen[j];if a.Seed!=z.Seed{return a.Seed<z.Seed};if a.Owner!=z.Owner{return a.Owner<z.Owner};return a.Kind<z.Kind})
+  d.Cases=append(d.Cases,preparationCaseResult{test.ID,pass,ruleChoicesKey(choices[i]),elapsed,out.Complete(),out.r1Frozen,out.footprint.trackedStats(),identityAvailable,hex.EncodeToString(hash.Sum(nil)),len(out.Constants),len(out.SparseEffects),preparationStrings(out.Boundaries),preparationStrings(out.Uncertainty),b.PreparationStats(),stats,binding,frozen})
+  d.ObserverSeconds+=time.Since(observe).Seconds()-binding.Seconds
+ }}
+ return d,nil
+}

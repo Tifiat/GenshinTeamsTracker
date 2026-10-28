@@ -1,0 +1,6 @@
+=== RUN   TestPreparationDiagnosticObserverParity
+--- PASS: TestPreparationDiagnosticObserverParity (3.85s)
+=== RUN   TestPreparationDiagnosticBoundedObservations
+--- PASS: TestPreparationDiagnosticBoundedObservations (0.01s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/seteffects	3.931s

@@ -1,0 +1,8 @@
+=== RUN   TestPreparationDiagnosticObserverParity
+    preparation_diagnostic_test.go:10: mechanic source build profile: could not read Go build info: open : The system cannot find the file specified.
+--- FAIL: TestPreparationDiagnosticObserverParity (0.17s)
+=== RUN   TestPreparationDiagnosticBoundedObservations
+--- PASS: TestPreparationDiagnosticBoundedObservations (0.02s)
+FAIL
+FAIL	genshinteamstracker/native/gcsim_optimizer/internal/seteffects	0.246s
+FAIL

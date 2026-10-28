@@ -1,0 +1,10 @@
+{
+  "actual_Popen_calls": 0,
+  "engine_calls": 0,
+  "native_boundary": [
+    "optimize-theory"
+  ],
+  "preflight": "skipped only for zero-engine serialization; collect must run actual native validation before capture",
+  "scratch_removed": true,
+  "worker_joined": true
+}

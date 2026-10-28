@@ -1,0 +1,12 @@
+{
+  "schema": "theory_preexperiment_prepare_history_v1",
+  "engine_calls": 0,
+  "search_calls": 0,
+  "revisions": [
+    {"attempt": "a1", "status": "superseded", "bounds_test": "passed", "reason": "ROOT requested direct freeze timers, owner coverage, derived joint control and observer parity", "source_map": "12bf96a8f26c4d3f36d9223a94433e83896f43beb4dd92118a63de44dfbf662a", "consumer": "39f68b15cd1877ffbd224480845e9868c32bce0c7cfb63fdee4f7d133aab68e2", "compiler_scratch_removed_bytes": 172070517, "private_variant_released": true},
+    {"attempt": "a2", "status": "fixture_failed", "reason": "Legacy activeRuleCatalog supplied an incomplete engine binding for current build-profile validation", "evidence": "collector-unit-a2-failed.log", "compiler_scratch_removed_bytes": 86401457, "private_variant_released": true},
+    {"attempt": "a3", "status": "fixture_failed", "reason": "Legacy fixture helper assumed source modules were already loaded", "evidence": "collector-unit-a3-failed.log", "compiler_scratch_removed_bytes": 86407474, "private_variant_released": true},
+    {"attempt": "a4", "status": "prepared", "checks": "bounded collector and observer-off/on arithmetic/output/counter/record parity passed", "evidence": "collector-unit.log", "compiler_scratch_removed_bytes": 172199026, "raw_managed_jobs_remaining": 0}
+  ],
+  "limit": "Compiler/serialization preparation only. No collect or numerical optimizer run executed."
+}

@@ -1,0 +1,23 @@
+{
+  "baseline_consumer": "506cd4b75a4f751786ae5321e6e4e1a99df9007069dcf0e2c302a4e70eb6e202",
+  "baseline_control_sha256": "0b00580f469787067b3025f61e60d726ec94c40e2fe794950500a78ebc572ba0",
+  "cases": 15,
+  "cleanup": "per-run managed scratch; --action release removes exact owned private variant; evidence retained",
+  "created": 1793205256.9835205,
+  "engine_calls_prepare": 0,
+  "expires": 1793810056.9835205,
+  "files": {
+    "private/variants/theory-preexperiment-v1/cases.json": "700b30b92f53f9bebedb537a741e2047102035446a0ba5295d9b02f2fb24fa68",
+    "private/variants/theory-preexperiment-v1/diagnostic.exe": "483ffbd58c8319afe70aeb363b4c6e0ea06051d7d01481dd6b6c22b139d7d52e",
+    "private/variants/theory-preexperiment-v1/request.json": "2d5830359b69aa596dec9d49a391ab39f0c08aa5f9133114ef2d3e787c45265e",
+    "private/variants/theory-preexperiment-v1/set-sources.json": "cf1ab6035f5740478b1fad028cb739c96e0e3b64205068649db8e1387c26308f",
+    "tools/experiments/gcsim/t1_theory_preexperiment.py": "15a3fe84014bd94e1226ef4a45cb82a7b30fa5a3813dc8742442931ed6cb8813",
+    "tools/experiments/gcsim/theory_phases/preexperiment_saved.py": "653dcf04198abfc588c6f653d14e977de37edaf37cffd5df92e6938447d5b054"
+  },
+  "new_capture_needed": 2,
+  "ordinary_calls": 0,
+  "owner": "MAIN01a1824a / ROOT01a16b30; one preparation-only Luna diagnosis after review",
+  "passes": 2,
+  "search_calls": 0,
+  "status": "prepared"
+}

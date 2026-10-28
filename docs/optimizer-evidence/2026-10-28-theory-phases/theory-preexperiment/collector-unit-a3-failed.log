@@ -1,0 +1,8 @@
+=== RUN   TestPreparationDiagnosticObserverParity
+    preparation_diagnostic_test.go:30: constant unavailable pkg/core/event OnEnemyDamage
+--- FAIL: TestPreparationDiagnosticObserverParity (4.29s)
+=== RUN   TestPreparationDiagnosticBoundedObservations
+--- PASS: TestPreparationDiagnosticBoundedObservations (0.01s)
+FAIL
+FAIL	genshinteamstracker/native/gcsim_optimizer/internal/seteffects	4.395s
+FAIL

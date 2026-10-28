@@ -1,0 +1,1076 @@
+--- a/cmd/gtt-optimizer/theory_session.go
++++ b/cmd/gtt-optimizer/theory_session.go
+@@ -311,13 +311,17 @@
+ 		return err
+ 	}
+ 	progress := newProgressEmitter(os.Stderr, requestSHA)
+- coarse := &theoryCoarse{started:time.Now(),root:runRoot,Stats:map[string]setcontext.NeutralModelStats{}}
+- defer func(){_ = coarse.save()}()
+- searchCtx = context.WithValue(searchCtx,theoryCoarseKey{},coarse)
+- searchCtx = theorysearch.WithFirstCheckpointTiming(searchCtx,func(d time.Duration){
+-  if len(coarse.Spans)<32 {coarse.Spans=append(coarse.Spans,theoryCoarseSpan{"checkpoint_fork","first",time.Since(coarse.started).Nanoseconds()-d.Nanoseconds(),d.Nanoseconds()})} else {coarse.Dropped++}
+- })
+- stopSetup := coarse.begin("context_setup","")
++	coarse := &theoryCoarse{started: time.Now(), root: runRoot, Stats: map[string]setcontext.NeutralModelStats{}}
++	defer func() { _ = coarse.save() }()
++	searchCtx = context.WithValue(searchCtx, theoryCoarseKey{}, coarse)
++	searchCtx = theorysearch.WithFirstCheckpointTiming(searchCtx, func(d time.Duration) {
++		if len(coarse.Spans) < 32 {
++			coarse.Spans = append(coarse.Spans, theoryCoarseSpan{"checkpoint_fork", "first", time.Since(coarse.started).Nanoseconds() - d.Nanoseconds(), d.Nanoseconds()})
++		} else {
++			coarse.Dropped++
++		}
++	})
++	stopSetup := coarse.begin("context_setup", "")
+ 	var lastSearch theorysearch.Snapshot
+ 	hasSearch := false
+ 	// Search failures and cancellation cannot roll back completed ordinary
+@@ -364,20 +368,23 @@
+ 		return err
+ 	}
+ 	stopSetup()
+- stopCapture := coarse.begin("capture","")
+- captured, err := capturedSession.Resolve(searchCtx, base, nil, nil)
+- stopCapture()
++	stopCapture := coarse.begin("capture", "")
++	captured, err := capturedSession.Resolve(searchCtx, base, nil, nil)
++	stopCapture()
+ 	if err != nil {
+ 		return softStop(err)
+ 	}
+-	stopModel := coarse.begin("model","")
+- model, err := setcontext.NewNeutralModel(captured, sources)
+- stopModel()
+-	if err != nil {
+-		return err
+-	}
+-	stopWorld := coarse.begin("config_world","")
+- cfg, err = theorySessionConfig(raw, req, sources, requestSHA, sourceSHA, captured.GraphSHA256(), cfg.SessionID)
++	stopModel := coarse.begin("model", "")
++	model, err := setcontext.NewNeutralModel(captured, sources)
++	stopModel()
++	if err != nil {
++		return err
++	}
++	if os.Getenv("GTT_THEORY_PREPARATION_CASES") != "" {
++		return preparationDiagnostic(model, requestSHA, sourceSHA, captured.GraphSHA256(), runRoot)
++	}
++	stopWorld := coarse.begin("config_world", "")
++	cfg, err = theorySessionConfig(raw, req, sources, requestSHA, sourceSHA, captured.GraphSHA256(), cfg.SessionID)
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -386,16 +393,16 @@
+ 		return err
+ 	}
+ 	stopWorld()
+- coarse.snapshot("main_initial",model.Stats())
+- // A configured common response producer scores its legal proposals through
++	coarse.snapshot("main_initial", model.Stats())
++	// A configured common response producer scores its legal proposals through
+ 	// an independent view of the same captured model. Its resolver feedback must
+ 	// never enter First/Breadth or the restored Deep branch; it performs no capture.
+ 	var proposalWorld *theorysearch.FormulaWorld
+ 	if policy.ResponseReserve > 0 || theoryverify.HasResponseProducer(overall) {
+ 		var fork theorysearch.Resolver
+-		stopFork := coarse.begin("response_world_fork","")
+- fork, err = world.Fork()
+- stopFork()
++		stopFork := coarse.begin("response_world_fork", "")
++		fork, err = world.Fork()
++		stopFork()
+ 		if err != nil {
+ 			world.Close()
+ 			return err
+@@ -414,8 +421,12 @@
+ 			commonTheoryResponseProducer(runRoot, coverageFor, supportimpact.RunResponseCheck))
+ 	}
+ 	offerResponses := func() error {
+-  stopOffer := coarse.begin("offer_response",""); defer stopOffer()
+-  if proposalWorld!=nil {coarse.snapshot("response_before_offer",proposalWorld.CoarseModelStats());defer func(){coarse.snapshot("response_after_offer",proposalWorld.CoarseModelStats())}()}
++		stopOffer := coarse.begin("offer_response", "")
++		defer stopOffer()
++		if proposalWorld != nil {
++			coarse.snapshot("response_before_offer", proposalWorld.CoarseModelStats())
++			defer func() { coarse.snapshot("response_after_offer", proposalWorld.CoarseModelStats()) }()
++		}
+ 		return verified.OfferResponseProposals(searchCtx, raw, sources.CatalogSHA256, func(candidate theoryverify.Candidate) (alloc.Objective, error) {
+ 			if proposalWorld == nil {
+ 				return nil, fmt.Errorf("Theory response proposal model is unavailable")
+@@ -436,11 +447,16 @@
+ 	}
+ 	verifySnapshot := func(snapshot theorysearch.Snapshot, terminal bool) error {
+ 		return theoryVerificationPhase(searchCtx,
+-			func() error { stopOffer:=coarse.begin("offer_search","");defer stopOffer();return verified.OfferSearch(snapshot) },
++			func() error {
++				stopOffer := coarse.begin("offer_search", "")
++				defer stopOffer()
++				return verified.OfferSearch(snapshot)
++			},
+ 			offerResponses,
+ 			func() error {
+-				stopVerify:=coarse.begin("verify","");defer stopVerify()
+- return verified.Verify(searchCtx, raw, snapshot, terminal, renderer, runRoot, runtime.NumCPU(), checkBinding, progress.theorySnapshot, nil)
++				stopVerify := coarse.begin("verify", "")
++				defer stopVerify()
++				return verified.Verify(searchCtx, raw, snapshot, terminal, renderer, runRoot, runtime.NumCPU(), checkBinding, progress.theorySnapshot, nil)
+ 			})
+ 	}
+ 	session, err := theorysearch.New(cfg, world)
+@@ -452,16 +468,16 @@
+ 	// First visits Original first. Resolve its typed source boundary through the
+ 	// same in-memory model now; an ErrNoResult abort closes the world, while the
+ 	// branch will reuse this result without another capture or context slot.
+-	stopInitial:=coarse.begin("initial_resolve_binding","")
+- initialMechanic, initialMechanicErr := world.ResolveMechanics(searchCtx, cfg.Original)
++	stopInitial := coarse.begin("initial_resolve_binding", "")
++	initialMechanic, initialMechanicErr := world.ResolveMechanics(searchCtx, cfg.Original)
+ 	if err = checkBinding(); err != nil {
+ 		return err
+ 	}
+ 	stopInitial()
+- stopFirst:=coarse.begin("first","")
+- snapshot, err := session.First(searchCtx, cfg.Binding)
+- stopFirst()
+- coarse.snapshot("main_after_first",model.Stats())
++	stopFirst := coarse.begin("first", "")
++	snapshot, err := session.First(searchCtx, cfg.Binding)
++	stopFirst()
++	coarse.snapshot("main_after_first", model.Stats())
+ 	finishedEarly := false
+ 	if err != nil {
+ 		receipt := theorySearchFailureReceipt{
+@@ -475,14 +491,26 @@
+ 		}
+ 		if errors.Is(err, theorysearch.ErrNoResult) && receipt.SearchFailure.UnavailableTotal > 0 && receipt.SearchFailure.ResolvedAliasCount == 0 && initialMechanicErr == nil && initialMechanic.Boundary != nil && overall.Err() == nil {
+ 			finalCtx := searchcontrol.FinalizationContext(searchCtx)
+-			if bindingErr := checkBinding(); bindingErr != nil { return bindingErr }
++			if bindingErr := checkBinding(); bindingErr != nil {
++				return bindingErr
++			}
+ 			fallback, fallbackErr := theoryMeasuredFallback(finalCtx, raw, cfg, policy, verified, renderer, sources, receipt.SearchFailure, initialMechanic.Boundary, world.CollectMechanicBoundaries(), runRoot, searchcontrol.Requested(searchCtx))
+-			if fallbackErr != nil { return fallbackErr }
+-			if closeErr := provider.Close(); closeErr != nil { return closeErr }
++			if fallbackErr != nil {
++				return fallbackErr
++			}
++			if closeErr := provider.Close(); closeErr != nil {
++				return closeErr
++			}
+ 			closed = true
+-			if outerErr := overall.Err(); outerErr != nil { return outerErr }
+-			if bindingErr := checkBinding(); bindingErr != nil { return bindingErr }
+-			if progressErr := progress.emit("completed", 2, 2, false); progressErr != nil { return progressErr }
++			if outerErr := overall.Err(); outerErr != nil {
++				return outerErr
++			}
++			if bindingErr := checkBinding(); bindingErr != nil {
++				return bindingErr
++			}
++			if progressErr := progress.emit("completed", 2, 2, false); progressErr != nil {
++				return progressErr
++			}
+ 			return json.NewEncoder(os.Stdout).Encode(map[string]any{"product_result": fallback})
+ 		}
+ 		softFinished, failureErr := handleTheoryFirstFailure(runRoot, searchCtx, err, receipt)
+@@ -542,7 +570,9 @@
+ 		return err
+ 	}
+ 	boundMechanics := world.CollectMechanicBoundaries()
+-	if proposalWorld != nil { boundMechanics = append(boundMechanics, proposalWorld.CollectMechanicBoundaries()...) }
++	if proposalWorld != nil {
++		boundMechanics = append(boundMechanics, proposalWorld.CollectMechanicBoundaries()...)
++	}
+ 	terminal, err := session.Finish()
+ 	if err != nil {
+ 		return err
+--- a/internal/seteffects/neutral_binding.go
++++ b/internal/seteffects/neutral_binding.go
+@@ -8,6 +8,7 @@
+ 	"math"
+ 	"sort"
+ 	"strconv"
++	"time"
+ 
+ 	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
+ 	"genshinteamstracker/native/gcsim_optimizer/internal/formula"
+@@ -21,17 +22,18 @@
+ }
+ type neutralBoundMember struct {
+ 	healthRoots map[[2]string]contracts.NeutralHealthRoot
+-	seed string
+-	worldCache *ruleWorldCache
+-	neutral    *contracts.NeutralInputs
+-	ports      []neutralBoundPort
+-	queries    []RuleQuery
+-	queryOrder []int
+-	reads      *neutralReadIndex
++	seed        string
++	worldCache  *ruleWorldCache
++	neutral     *contracts.NeutralInputs
++	ports       []neutralBoundPort
++	queries     []RuleQuery
++	queryOrder  []int
++	reads       *neutralReadIndex
+ }
+ type NeutralBinding struct {
+- r1Frozen bool
+- r1Stats R1FrozenStats
++	preparationDiagnostic    *PreparationDiagnostic
++	r1Frozen                 bool
++	r1Stats                  R1FrozenStats
+ 	familySerial             uint64
+ 	twoPieceFamilies         map[[32]byte]bool
+ 	composedPayloads         map[string]NeutralExpressions
+@@ -52,10 +54,10 @@
+ }
+ type NeutralEffectVector struct {
+ 	MechanicBoundaries []contracts.MechanicBoundary
+-	Values      []float64
+-	Known       []bool
+-	Boundaries  []string
+-	Uncertainty []string
++	Values             []float64
++	Known              []bool
++	Boundaries         []string
++	Uncertainty        []string
+ }
+ 
+ // Sidecars must already have passed engineclient's exact graph/config/source
+@@ -87,11 +89,19 @@
+ 			b.reads = append(b.reads, formula.ReadRoot{Member: mi, NodeID: read.NodeID, Key: neutralReadKey(mi, read.NodeID), Observed: observed})
+ 		}
+ 		seenHealthReads := map[uint32]bool{}
+-		for _, read := range b.reads { if read.Member == mi { seenHealthReads[read.NodeID] = true } }
++		for _, read := range b.reads {
++			if read.Member == mi {
++				seenHealthReads[read.NodeID] = true
++			}
++		}
+ 		for _, root := range n.HealthRoots {
+-			if !root.Bound || seenHealthReads[root.NodeID] { continue }
++			if !root.Bound || seenHealthReads[root.NodeID] {
++				continue
++			}
+ 			observed, err := strconv.ParseFloat(root.Observed, 64)
+-			if err != nil || !finite(observed) { return nil, fmt.Errorf("invalid health read witness") }
++			if err != nil || !finite(observed) {
++				return nil, fmt.Errorf("invalid health read witness")
++			}
+ 			b.reads = append(b.reads, formula.ReadRoot{Member: mi, NodeID: root.NodeID, Key: neutralReadKey(mi, root.NodeID), Observed: observed})
+ 			seenHealthReads[root.NodeID] = true
+ 		}
+@@ -240,7 +250,9 @@
+ 	boundaries, uncertainty := map[string]bool{}, map[string]bool{}
+ 	for _, member := range b.members {
+ 		queries, order := member.preparedQueries()
++		replayStarted := time.Now()
+ 		r := b.catalog.replayNeutralRulesBound(member.neutral, choices, queries, false, order, member.worldCache)
++		b.preparationReplayObserved(choices, member, false, r, time.Since(replayStarted).Seconds())
+ 		for _, boundary := range r.MechanicBoundaries {
+ 			boundary.Seed = member.seed
+ 			out.MechanicBoundaries = append(out.MechanicBoundaries, boundary)
+--- a/internal/seteffects/neutral_composition.go
++++ b/internal/seteffects/neutral_composition.go
+@@ -293,6 +293,7 @@
+ 			b.stats.ComponentHits++
+ 		}
+ 		if !component.usable {
++			b.preparationRejected([]RuleChoice{choice}, component, false)
+ 			return fallback()
+ 		}
+ 		groups = append(groups, group{[]RuleChoice{choice}, component})
+@@ -310,6 +311,7 @@
+ 				choices := append(append([]RuleChoice(nil), groups[i].choices...), groups[j].choices...)
+ 				component := b.conflictGroup(choices)
+ 				if !component.usable {
++					b.preparationRejected(choices, component, true)
+ 					return fallback()
+ 				}
+ 				// Conservative union retains dependencies from untaken joint paths.
+--- a/internal/seteffects/neutral_expressions.go
++++ b/internal/seteffects/neutral_expressions.go
+@@ -4,27 +4,27 @@
+ // matches are preferred. A prior full-snapshot/Extra projection is explicitly
+ // approximate and must never certify pruning or changed-schedule correctness.
+ import (
+- "genshinteamstracker/native/gcsim_optimizer/internal/projectionmetrics"
+ 	"fmt"
+ 	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
+ 	"genshinteamstracker/native/gcsim_optimizer/internal/formula"
++	"genshinteamstracker/native/gcsim_optimizer/internal/projectionmetrics"
+ 	"sort"
+ 	"time"
+ )
+ 
+ type NeutralExpressions struct {
+- r1Frozen bool
++	r1Frozen           bool
+ 	MechanicBoundaries []contracts.MechanicBoundary
+-	raw       []float64
+-	footprint ruleFootprint
++	raw                []float64
++	footprint          ruleFootprint
+ 	// Constants is ordered exactly by binding.Keys() and contains every port.
+ 	// The sparse consumer replaces selected dimensions with SparseEffects;
+ 	// the public general-expression API retains Effects instead.
+-	SparseEffects map[int]*formula.InputExpression // private compact consumer path
+-	Constants     []float64
+-	Effects       map[string]*formula.InputExpression
+-	Boundaries    []string
+-	Uncertainty   []string
++	SparseEffects        map[int]*formula.InputExpression // private compact consumer path
++	Constants            []float64
++	Effects              map[string]*formula.InputExpression
++	Boundaries           []string
++	Uncertainty          []string
+ 	payloadIdentity      string
+ 	payloadIdentityValid bool
+ }
+@@ -77,7 +77,9 @@
+ }
+ 
+ func (b *NeutralBinding) compilePackagesJoint(choices []RuleChoice) NeutralExpressions {
+- end:=projectionmetrics.Begin("r1.joint_rule_compile");defer end()
++	end := projectionmetrics.Begin("r1.joint_rule_compile")
++	defer end()
++	observeJoint := b.preparationJointStarted(choices)
+ 	started := time.Now()
+ 	b.stats.Replays++
+ 	if len(choices) > 1 {
+@@ -94,7 +96,9 @@
+ 		}
+ 		resolved := map[RuleStatRead]resolvedRead{}
+ 		queries, order := member.preparedQueries()
++		replayStarted := time.Now()
+ 		replay := b.catalog.replayNeutralRulesBound(member.neutral, choices, queries, true, order, member.worldCache)
++		b.preparationReplayObserved(choices, member, true, replay, time.Since(replayStarted).Seconds())
+ 		for _, boundary := range replay.MechanicBoundaries {
+ 			boundary.Seed = member.seed
+ 			out.MechanicBoundaries = append(out.MechanicBoundaries, boundary)
+@@ -166,7 +170,18 @@
+ 	}
+ 	sort.Strings(out.Boundaries)
+ 	sort.Strings(out.Uncertainty)
+- return b.r1Freeze(choices,out)
++	freezeObserve := 0.0
++	if b.preparationDiagnostic != nil {
++		freezeObserve = b.preparationDiagnostic.ObserverSeconds
++	}
++	freezeStarted := time.Now()
++	after := b.r1Freeze(choices, out)
++	freezeSeconds := time.Since(freezeStarted).Seconds()
++	if b.preparationDiagnostic != nil {
++		freezeObserve = b.preparationDiagnostic.ObserverSeconds - freezeObserve
++	}
++	observeJoint(out, after, freezeSeconds, freezeObserve)
++	return after
+ }
+ 
+ type neutralReadIndex struct {
+--- a/internal/seteffects/r1_frozen_neutral.go
++++ b/internal/seteffects/r1_frozen_neutral.go
+@@ -76,6 +76,8 @@
+ }
+ 
+ func (b *NeutralBinding) r1FreezeConcrete(choices []RuleChoice, out NeutralExpressions, concrete NeutralEffectVector) NeutralExpressions {
++	freezeConcreteDone := b.preparationFreezeStarted(choices)
++	defer freezeConcreteDone()
+ 	out.MechanicBoundaries = append(out.MechanicBoundaries, concrete.MechanicBoundaries...)
+ 	for _, boundary := range concrete.MechanicBoundaries {
+ 		if boundary.Kind == contracts.MechanicInvalidOperation {
+@@ -119,6 +121,7 @@
+ 					recordReason = "symbolic_dependency_unbound"
+ 				}
+ 				b.r1Stats.AnchorPorts++
++				b.preparationFrozenPort(member.seed, port.query, true)
+ 				out.Uncertainty = append(out.Uncertainty, "r1_observed_package_anchor_frozen")
+ 			} else if concrete.Known[dim] {
+ 				out.Boundaries = append(out.Boundaries, "R1 nonfinite package anchor")
+@@ -134,6 +137,7 @@
+ 					recordReason = "concrete_package_response_unresolved"
+ 				}
+ 				b.r1Stats.ReferencePorts++
++				b.preparationFrozenPort(member.seed, port.query, false)
+ 				out.Uncertainty = append(out.Uncertainty, "r1_no_package_anchor_source_slot_preserved")
+ 			}
+ 			if keepRecord {
+--- a/internal/seteffects/rule_replay.go
++++ b/internal/seteffects/rule_replay.go
+@@ -11,6 +11,7 @@
+ 	"go/token"
+ 	"sort"
+ 	"strings"
++	"time"
+ 
+ 	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
+ )
+@@ -46,12 +47,14 @@
+ 	Boundary   string
+ }
+ type RuleReplay struct {
+-	MechanicBoundaries []contracts.MechanicBoundary
+-	footprint          ruleFootprint
+-	Values             []RuleValue
+-	Uncertainty        []string
+-	Boundary           string
+-	Steps              int
++	preparationInitSeconds, preparationEventSeconds float64
++	preparationStage                                string
++	MechanicBoundaries                              []contracts.MechanicBoundary
++	footprint                                       ruleFootprint
++	Values                                          []RuleValue
++	Uncertainty                                     []string
++	Boundary                                        string
++	Steps                                           int
+ }
+ type ruleRef struct {
+ 	kind              string
+@@ -90,7 +93,7 @@
+ 	valid   bool
+ }
+ type ruleReplayHost struct {
+-	healthRoots map[[2]string]contracts.NeutralHealthRoot
++	healthRoots             map[[2]string]contracts.NeutralHealthRoot
+ 	facts                   *contracts.EventValue
+ 	coreStatus              map[string]int
+ 	customFlags             *ruleMap
+@@ -140,7 +143,7 @@
+ 	return c.replayNeutralRulesBound(neutral, choices, queries, symbolic, preparedOrder, nil)
+ }
+ func (c *SourceCatalog) replayNeutralRulesBound(neutral *contracts.NeutralInputs, choices []RuleChoice, queries []RuleQuery, symbolic bool, preparedOrder []int, worldCache *ruleWorldCache) (out RuleReplay) {
+-	out = RuleReplay{Values: make([]RuleValue, len(queries)), Uncertainty: []string{}}
++	out = RuleReplay{preparationStage: "pre_initialization", Values: make([]RuleValue, len(queries)), Uncertainty: []string{}}
+ 	if neutral == nil || !neutral.Context.NoSets || neutral.Ledger.Truncated {
+ 		out.Boundary = "complete neutral event tape required"
+ 		return out
+@@ -184,6 +187,8 @@
+ 			setByKey[s.Key] = s
+ 		}
+ 	}
++	initStarted := time.Now()
++	out.preparationStage = "initialization"
+ 	vms := []*ruleVM{}
+ 	_, err := ruleTry(func() any {
+ 		counts := map[int]int{}
+@@ -259,11 +264,15 @@
+ 		}
+ 		return nil
+ 	})
++	out.preparationInitSeconds = time.Since(initStarted).Seconds()
+ 	if err != nil {
+ 		out.Boundary = err.Error()
+ 		out.MechanicBoundaries = append(out.MechanicBoundaries, h.observedFailure(err))
+ 		return out
+ 	}
++	out.preparationStage = "event_query_or_task"
++	eventStarted := time.Now()
++	defer func() { out.preparationEventSeconds = time.Since(eventStarted).Seconds() }()
+ 	indices := preparedOrder
+ 	if indices == nil {
+ 		indices = make([]int, len(queries))
+--- a/internal/seteffects/preparation_diagnostic.go
++++ b/internal/seteffects/preparation_diagnostic.go
+@@ -0,0 +1,397 @@
++package seteffects
++
++// Bounded diagnostic-only observations. Never consulted by gameplay, cache
++// admission, candidate selection, or source execution. No per-port JSON.
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"fmt"
++	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
++	"sort"
++	"time"
++)
++
++type PreparationPackage struct {
++	Wearer string `json:"wearer"`
++	Sets   []struct {
++		Key    string `json:"key"`
++		Pieces int    `json:"pieces"`
++	} `json:"sets"`
++}
++type PreparationCase struct {
++	ID       string               `json:"id"`
++	Packages []PreparationPackage `json:"packages"`
++}
++type preparationCause struct {
++	Boundary contracts.MechanicBoundary `json:"first_event"`
++	Count    int                        `json:"observations"`
++}
++type preparationPort struct {
++	Query      RuleQuery `json:"first_query"`
++	Dimension  int       `json:"first_dimension"`
++	SourceNode uint32    `json:"first_source_node"`
++	Reason     string    `json:"reason"`
++	Count      int       `json:"port_observations"`
++}
++type preparationReplay struct {
++	Case                           string
++	Pass                           int
++	Choices                        string
++	Seed                           string
++	Symbolic                       bool
++	Seconds                        float64
++	Steps, Ports, UnknownPorts     int
++	InitSeconds, EventQuerySeconds float64
++	FailureStage                   string
++	Boundary                       string
++	Causes                         []preparationCause
++	Unknown                        []preparationPort
++	Uncertainty                    []string
++	Overflow                       int
++	Coverage                       []preparationCoverage
++}
++type preparationCoverage struct {
++	Owner          int
++	Kind           string
++	Known, Unknown int
++}
++type preparationFrozenKey struct {
++	Seed  string
++	Owner int
++	Kind  string
++}
++type preparationFrozenCoverage struct {
++	Seed              string
++	Owner             int
++	Kind              string
++	Anchor, Reference int
++}
++type preparationJoint struct {
++	Case                                                                                        string
++	Pass                                                                                        int
++	Choices                                                                                     string
++	Seconds, FreezeSeconds, ConcreteReplaySeconds, FreezeObserverSeconds, FreezeResidualSeconds float64
++	BeforeComplete, AfterComplete, Frozen, Tracked                                              bool
++	BeforeBoundaries, AfterBoundaries, Uncertainty                                              []string
++}
++type preparationFallback struct {
++	Case            string
++	Pass            int
++	RejectedChoices string
++	Group           bool
++	Tracked         bool
++}
++type preparationFreeze struct {
++	Case                                                                    string
++	Pass                                                                    int
++	Choices                                                                 string
++	Seconds                                                                 float64
++	Fallbacks, AnchorPorts, ReferencePorts, OmittedRecords, RetainedRecords int
++}
++type PreparationBindingEvidence struct {
++	Seconds                float64
++	ProgramIdentity, Error string
++}
++type preparationCaseResult struct {
++	ID                        string
++	Pass                      int
++	Choices                   string
++	Seconds                   float64
++	Complete, Frozen, Tracked bool
++	PayloadIdentityAvailable  bool
++	DiagnosticOutputSHA256    string
++	Constants, SparseEffects  int
++	Boundaries, Uncertainty   []string
++	Preparation               NeutralPreparationStats
++	R1                        R1FrozenStats
++	Binding                   PreparationBindingEvidence
++	FrozenPortObservations    []preparationFrozenCoverage
++}
++type preparationInput struct {
++	Seed                              string
++	WorldStates                       int
++	FirstOrder                        uint64
++	WorldPresent, WorldComplete       bool
++	StatesWithFacts, StatesWithCustom int
++	OrderOneIndex                     int
++	OrderOneOrder                     uint64
++	OrderOneFacts, OrderOneCustom     bool
++}
++type PreparationDiagnostic struct {
++	Schema          string
++	Cases           []preparationCaseResult
++	Replays         []preparationReplay
++	Joint           []preparationJoint
++	Fallbacks       []preparationFallback
++	FreezeConcrete  []preparationFreeze
++	Dropped         int
++	ObserverSeconds float64
++	Inputs          []preparationInput
++	current         string
++	pass            int
++	frozenCoverage  map[preparationFrozenKey]preparationFrozenCoverage
++}
++
++func preparationStrings(x []string) []string {
++	if len(x) > 64 {
++		x = x[:64]
++	}
++	return append([]string(nil), x...)
++}
++func (b *NeutralBinding) preparationFrozenPort(seed string, q RuleQuery, anchor bool) {
++	d := b.preparationDiagnostic
++	if d == nil {
++		return
++	}
++	if d.frozenCoverage == nil {
++		d.frozenCoverage = map[preparationFrozenKey]preparationFrozenCoverage{}
++	}
++	key := preparationFrozenKey{seed, q.Owner, q.Kind}
++	row := d.frozenCoverage[key]
++	row.Seed, row.Owner, row.Kind = seed, q.Owner, q.Kind
++	if anchor {
++		row.Anchor++
++	} else {
++		row.Reference++
++	}
++	d.frozenCoverage[key] = row
++}
++func (b *NeutralBinding) preparationFreezeStarted(choices []RuleChoice) func() {
++	d := b.preparationDiagnostic
++	if d == nil {
++		return func() {}
++	}
++	started := time.Now()
++	before := b.r1Stats
++	key := ruleChoicesKey(choices)
++	return func() {
++		seconds := time.Since(started).Seconds()
++		observe := time.Now()
++		defer func() { d.ObserverSeconds += time.Since(observe).Seconds() }()
++		if len(d.FreezeConcrete) >= 128 {
++			d.Dropped++
++			return
++		}
++		now := b.r1Stats
++		d.FreezeConcrete = append(d.FreezeConcrete, preparationFreeze{d.current, d.pass, key, seconds, now.FallbackReplays - before.FallbackReplays, now.AnchorPorts - before.AnchorPorts, now.ReferencePorts - before.ReferencePorts, now.OmittedRecords - before.OmittedRecords, len(now.Records) - len(before.Records)})
++	}
++}
++func (b *NeutralBinding) preparationJointStarted(choices []RuleChoice) func(NeutralExpressions, NeutralExpressions, float64, float64) {
++	d := b.preparationDiagnostic
++	if d == nil {
++		return func(NeutralExpressions, NeutralExpressions, float64, float64) {}
++	}
++	started := time.Now()
++	key := ruleChoicesKey(choices)
++	firstReplay := len(d.Replays)
++	return func(before, after NeutralExpressions, freezeSeconds, freezeObserver float64) {
++		elapsed := time.Since(started).Seconds()
++		observe := time.Now()
++		defer func() { d.ObserverSeconds += time.Since(observe).Seconds() }()
++		if len(d.Joint) >= 256 {
++			d.Dropped++
++			return
++		}
++		concrete := 0.0
++		for _, r := range d.Replays[firstReplay:] {
++			if !r.Symbolic {
++				concrete += r.Seconds
++			}
++		}
++		d.Joint = append(d.Joint, preparationJoint{d.current, d.pass, key, elapsed, freezeSeconds, concrete, freezeObserver, freezeSeconds - concrete - freezeObserver, before.Complete(), after.Complete(), after.r1Frozen, after.footprint.trackedStats(), preparationStrings(before.Boundaries), preparationStrings(after.Boundaries), preparationStrings(after.Uncertainty)})
++	}
++}
++func (b *NeutralBinding) preparationRejected(choices []RuleChoice, c neutralComponent, group bool) {
++	d := b.preparationDiagnostic
++	if d == nil {
++		return
++	}
++	started := time.Now()
++	defer func() { d.ObserverSeconds += time.Since(started).Seconds() }()
++	if len(d.Fallbacks) >= 128 {
++		d.Dropped++
++		return
++	}
++	d.Fallbacks = append(d.Fallbacks, preparationFallback{d.current, d.pass, ruleChoicesKey(choices), group, c.footprint.trackedStats()})
++}
++func (b *NeutralBinding) preparationReplayObserved(choices []RuleChoice, member neutralBoundMember, symbolic bool, r RuleReplay, seconds float64) {
++	d := b.preparationDiagnostic
++	if d == nil {
++		return
++	}
++	started := time.Now()
++	defer func() { d.ObserverSeconds += time.Since(started).Seconds() }()
++	if len(d.Replays) >= 512 {
++		d.Dropped++
++		return
++	}
++	row := preparationReplay{Case: d.current, Pass: d.pass, Choices: ruleChoicesKey(choices), Seed: member.seed, Symbolic: symbolic, Seconds: seconds, Steps: r.Steps, Ports: len(r.Values), Boundary: r.Boundary, Uncertainty: preparationStrings(r.Uncertainty), InitSeconds: r.preparationInitSeconds, EventQuerySeconds: r.preparationEventSeconds, FailureStage: r.preparationStage}
++	causes := map[string]int{}
++	unknown := map[string]int{}
++	coverage := map[string]int{}
++	for _, event := range r.MechanicBoundaries {
++		event.Seed = member.seed
++		key := fmt.Sprintf("%s|%s|%s|%s|%s|%s|%d|%t|%d|%t|%s", event.MechanicUID, event.Kind, event.ReasonCode, event.ConsumerSite, event.Operation, event.Receiver, event.Owner, event.OwnerKnown, event.CallerOwner, event.CallerKnown, event.Reason)
++		if index, ok := causes[key]; ok {
++			row.Causes[index].Count++
++			continue
++		}
++		if len(causes) >= 8 {
++			row.Overflow++
++			continue
++		}
++		causes[key] = len(row.Causes)
++		row.Causes = append(row.Causes, preparationCause{event, 1})
++	}
++	for i, value := range r.Values {
++		if i < len(member.ports) {
++			q := member.ports[i].query
++			key := fmt.Sprintf("%d|%s", q.Owner, q.Kind)
++			index, ok := coverage[key]
++			if !ok {
++				index = len(row.Coverage)
++				coverage[key] = index
++				row.Coverage = append(row.Coverage, preparationCoverage{Owner: q.Owner, Kind: q.Kind})
++			}
++			if value.Known {
++				row.Coverage[index].Known++
++			} else {
++				row.Coverage[index].Unknown++
++			}
++		}
++		if value.Known {
++			continue
++		}
++		row.UnknownPorts++
++		if i >= len(member.ports) {
++			row.Overflow++
++			continue
++		}
++		port := member.ports[i]
++		q := port.query
++		key := fmt.Sprintf("%d|%s|%s|%s|%s", q.Owner, q.Kind, q.Stat, q.Mode, value.Boundary)
++		if index, ok := unknown[key]; ok {
++			row.Unknown[index].Count++
++			continue
++		}
++		if len(unknown) >= 8 {
++			row.Overflow++
++			continue
++		}
++		unknown[key] = len(row.Unknown)
++		// Keep query provenance only; large Attack/State/keys payloads stay in tape.
++		sample := RuleQuery{HitID: q.HitID, Order: q.Order, Frame: q.Frame, Active: q.Active, Owner: q.Owner, Target: q.Target, Kind: q.Kind, Mode: q.Mode, Stat: q.Stat}
++		node := uint32(0)
++		if port.dimension >= 0 && port.dimension < len(b.ports) {
++			node = b.ports[port.dimension].NodeID
++		}
++		row.Unknown = append(row.Unknown, preparationPort{sample, port.dimension, node, value.Boundary, 1})
++	}
++	d.Replays = append(d.Replays, row)
++}
++
++// Exactly two passes of <=16 explicitly selected package cases. No search,
++// allocation, ordinary verification, altered frozen policy, or capture here.
++func (b *NeutralBinding) DiagnosePreparation(cases []PreparationCase, bind func(NeutralExpressions) PreparationBindingEvidence) (*PreparationDiagnostic, error) {
++	if b == nil || len(b.members) == 0 || len(cases) == 0 || len(cases) > 16 || b.preparationDiagnostic != nil {
++		return nil, fmt.Errorf("invalid bounded preparation diagnostic")
++	}
++	d := &PreparationDiagnostic{Schema: "theory_preparation_events_v1"}
++	b.preparationDiagnostic = d
++	defer func() { b.preparationDiagnostic = nil }()
++	for _, member := range b.members {
++		row := preparationInput{Seed: member.seed, OrderOneIndex: -1}
++		world := member.neutral.World
++		if world != nil {
++			row.WorldPresent = true
++			row.WorldStates = len(world.States)
++			row.WorldComplete = world.Complete
++			for i, state := range world.States {
++				if i == 0 {
++					row.FirstOrder = state.Order
++				}
++				if state.Facts != nil {
++					row.StatesWithFacts++
++					if _, ok := state.Facts.Fields["Custom"]; ok {
++						row.StatesWithCustom++
++					}
++				}
++				if state.Order <= 1 {
++					row.OrderOneIndex = i
++					row.OrderOneOrder = state.Order
++					row.OrderOneFacts = state.Facts != nil
++					row.OrderOneCustom = false
++					if state.Facts != nil {
++						_, row.OrderOneCustom = state.Facts.Fields["Custom"]
++					}
++				}
++			}
++		}
++		d.Inputs = append(d.Inputs, row)
++	}
++	owners := map[string]int{}
++	for i, c := range b.members[0].neutral.Context.Characters {
++		owners[c.Key] = i
++	}
++	choices := make([][]RuleChoice, len(cases))
++	ids := map[string]bool{}
++	for i, test := range cases {
++		if test.ID == "" || ids[test.ID] {
++			return nil, fmt.Errorf("diagnostic case ID")
++		}
++		ids[test.ID] = true
++		for _, pkg := range test.Packages {
++			owner, ok := owners[pkg.Wearer]
++			if !ok {
++				return nil, fmt.Errorf("unknown diagnostic wearer")
++			}
++			for _, set := range pkg.Sets {
++				choices[i] = append(choices[i], RuleChoice{owner, set.Key, set.Pieces})
++			}
++		}
++	}
++	for pass := 1; pass <= 2; pass++ {
++		for i, test := range cases {
++			d.current, d.pass = test.ID, pass
++			d.frozenCoverage = map[preparationFrozenKey]preparationFrozenCoverage{}
++			started := time.Now()
++			out := b.CompilePackagesSparse(choices[i])
++			elapsed := time.Since(started).Seconds()
++			observe := time.Now()
++			hash := sha256.New()
++			// This diagnostic output digest is NOT a compiled arithmetic-family identity.
++			if err := json.NewEncoder(hash).Encode(struct {
++				Output NeutralExpressions
++				Frozen bool
++			}{out, out.r1Frozen}); err != nil {
++				return nil, err
++			}
++			_, identityAvailable := out.PreparedPayloadIdentity()
++			stats := b.R1FrozenStats()
++			stats.Records = nil
++			stats.PackageGuides = nil
++			binding := PreparationBindingEvidence{}
++			if bind != nil {
++				binding = bind(out)
++			}
++			frozen := []preparationFrozenCoverage{}
++			for _, row := range d.frozenCoverage {
++				frozen = append(frozen, row)
++			}
++			sort.Slice(frozen, func(i, j int) bool {
++				a, z := frozen[i], frozen[j]
++				if a.Seed != z.Seed {
++					return a.Seed < z.Seed
++				}
++				if a.Owner != z.Owner {
++					return a.Owner < z.Owner
++				}
++				return a.Kind < z.Kind
++			})
++			d.Cases = append(d.Cases, preparationCaseResult{test.ID, pass, ruleChoicesKey(choices[i]), elapsed, out.Complete(), out.r1Frozen, out.footprint.trackedStats(), identityAvailable, hex.EncodeToString(hash.Sum(nil)), len(out.Constants), len(out.SparseEffects), preparationStrings(out.Boundaries), preparationStrings(out.Uncertainty), b.PreparationStats(), stats, binding, frozen})
++			d.ObserverSeconds += time.Since(observe).Seconds() - binding.Seconds
++		}
++	}
++	return d, nil
++}
+--- a/cmd/gtt-optimizer/preparation_diagnostic.go
++++ b/cmd/gtt-optimizer/preparation_diagnostic.go
+@@ -0,0 +1,41 @@
++package main
++
++import (
++	"encoding/json"
++	"fmt"
++	"genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
++	"genshinteamstracker/native/gcsim_optimizer/internal/seteffects"
++	"os"
++	"path/filepath"
++)
++
++func preparationDiagnostic(model *setcontext.NeutralModel, requestSHA, sourceSHA, graphSHA, root string) error {
++	path := os.Getenv("GTT_THEORY_PREPARATION_CASES")
++	if path == "" {
++		return fmt.Errorf("diagnostic cases required")
++	}
++	raw, err := os.ReadFile(path)
++	if err != nil {
++		return err
++	}
++	if len(raw) > 65536 {
++		return fmt.Errorf("diagnostic case payload exceeds64KiB")
++	}
++	var cases []seteffects.PreparationCase
++	if err = json.Unmarshal(raw, &cases); err != nil {
++		return err
++	}
++	result, err := model.DiagnosePreparation(cases)
++	if err != nil {
++		return err
++	}
++	file, err := os.OpenFile(filepath.Join(root, "preparation-diagnostic.json"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
++	if err != nil {
++		return err
++	}
++	defer file.Close()
++	return json.NewEncoder(file).Encode(struct {
++		RequestSHA, SourceSHA, GraphSHA string
++		Evidence                        *seteffects.PreparationDiagnostic
++	}{requestSHA, sourceSHA, graphSHA, result})
++}
+--- a/internal/seteffects/preparation_diagnostic_test.go
++++ b/internal/seteffects/preparation_diagnostic_test.go
+@@ -0,0 +1,118 @@
++package seteffects
++
++import (
++	"encoding/json"
++	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
++	"os"
++	"reflect"
++	"testing"
++)
++
++func TestPreparationDiagnosticObserverParity(t *testing.T) {
++	var bundle SourceBundle
++	var request struct{ Engine contracts.EngineBinding }
++	read := func(path string, value any) {
++		raw, err := os.ReadFile(path)
++		if err != nil {
++			t.Fatal(err)
++		}
++		if err = json.Unmarshal(raw, value); err != nil {
++			t.Fatal(err)
++		}
++	}
++	read(os.Getenv("GTT_RULE_SOURCE_BUNDLE"), &bundle)
++	read(os.Getenv("GTT_RULE_REQUEST"), &request)
++	c, err := CompileNeutralTheorySources(bundle, request.Engine, NewRuleParseCache("", ""))
++	if err != nil {
++		t.Fatal(err)
++	}
++	n := ruleTestNeutral()
++	// Existing fixture constants, resolved through the current lazy repository
++	// API instead of the legacy helper's already-loaded-module assumption.
++	constant := func(module, name string) float64 {
++		for _, s := range c.Sets {
++			if s.rule != nil {
++				m := s.rule.module(gcsimImport + module)
++				if m != nil {
++					v := newRuleVM(s.rule, nil, 1000)
++					out, err := ruleTry(func() any { return v.lookup(m.envs[m.files[0]], name) })
++					if err != nil {
++						t.Fatal(err)
++					}
++					return ruleNumber(out)
++				}
++			}
++		}
++		t.Fatal("fixture source constant absent", module, name)
++		return 0
++	}
++	enemyDamage := int(constant("pkg/core/event", "OnEnemyDamage"))
++	lunarEvent := int(constant("pkg/core/event", "OnLunarCharged"))
++	skill := constant("pkg/core/attacks", "AttackTagElementalArt")
++	hydro := constant("pkg/core/attributes", "Hydro")
++	first := ruleTestEvent(enemyDamage, 2, skill, hydro, 1)
++	second := ruleTestEvent(lunarEvent, 2, skill, hydro, 1)
++	second.Order = 12
++	second.EndOrder = 13
++	third := ruleTestEvent(enemyDamage, 0, skill, hydro, 1)
++	third.Order = 14
++	third.EndOrder = 15
++	n.Ledger.Events = []contracts.CombatEvent{first, second, third}
++	for i, stat := range []string{"em", "cr", "atk%"} {
++		n.Stats = append(n.Stats, contracts.NeutralStatInput{NodeID: uint32(i + 1), Owner: "beta", Kind: "stat", Stat: stat, Point: contracts.NeutralInputPoint{Mode: "snapshot", Order: 20, Frame: 11}})
++	}
++	makeBinding := func(observer bool) *NeutralBinding {
++		b, err := NewNeutralBinding(c, []contracts.EffectInputsOutput{{SourceManifestBodySHA256: c.SourceManifestSHA256, Neutral: n}})
++		if err != nil {
++			t.Fatal(err)
++		}
++		b.EnableR1FrozenResiduals()
++		if observer {
++			b.preparationDiagnostic = &PreparationDiagnostic{current: "fixture", pass: 1}
++		}
++		return b
++	}
++	off, on := makeBinding(false), makeBinding(true)
++	cases := [][]RuleChoice{{{1, "nightoftheskysunveiling", 4}, {2, "silkenmoonsserenade", 4}}, {{0, "silkenmoonsserenade", 4}, {2, "silkenmoonsserenade", 4}}, {{0, "tenacityofthemillelith", 4}, {1, "nightoftheskysunveiling", 2}, {1, "emblemofseveredfate", 2}}, {{0, "noblesseoblige", 4}, {2, "noblesseoblige", 4}, {1, "nightoftheskysunveiling", 4}}, {{0, "berserker", 4}}, {{0, "oceanhuedclam", 2}, {0, "emblemofseveredfate", 2}}}
++	for pass := 0; pass < 2; pass++ {
++		for _, choices := range cases {
++			a, b := off.CompilePackagesSparse(choices), on.CompilePackagesSparse(choices)
++			if !reflect.DeepEqual(a, b) {
++				t.Fatal("observer changed arithmetic/output", choices)
++			}
++			x, y := off.PreparationStats(), on.PreparationStats()
++			x.ReplaySeconds, y.ReplaySeconds = 0, 0
++			if !reflect.DeepEqual(x, y) || !reflect.DeepEqual(off.R1FrozenStats(), on.R1FrozenStats()) {
++				t.Fatal("observer changed integer counters/frozen records")
++			}
++		}
++	}
++	if len(on.preparationDiagnostic.Joint) == 0 || len(on.preparationDiagnostic.FreezeConcrete) == 0 {
++		t.Fatal("fixture did not exercise diagnostic joint/freeze hooks")
++	}
++}
++
++func TestPreparationDiagnosticBoundedObservations(t *testing.T) {
++	b := r1TestBinding()
++	d := &PreparationDiagnostic{current: "fixture", pass: 1}
++	b.preparationDiagnostic = d
++	r := RuleReplay{Values: []RuleValue{{Known: false, Boundary: "unobserved"}}}
++	for i := 0; i < 20; i++ {
++		r.MechanicBoundaries = append(r.MechanicBoundaries, contracts.MechanicBoundary{MechanicUID: "fixture", Reason: "unobserved"})
++	}
++	b.preparationReplayObserved(nil, b.members[0], true, r, 0.25)
++	if len(d.Replays) != 1 || d.Replays[0].Causes[0].Count != 20 || d.Replays[0].UnknownPorts != 1 || d.Replays[0].Seconds != 0.25 {
++		t.Fatal("observation grouping")
++	}
++	for i := 0; i < 520; i++ {
++		b.preparationReplayObserved(nil, b.members[0], false, r, 0)
++	}
++	if len(d.Replays) != 512 || d.Dropped != 9 {
++		t.Fatal("finite rows", len(d.Replays), d.Dropped)
++	}
++	b.preparationDiagnostic = nil
++	b.preparationReplayObserved(nil, b.members[0], false, r, 1)
++	if len(d.Replays) != 512 {
++		t.Fatal("disabled observer changed records")
++	}
++}
+--- a/internal/setcontext/preparation_diagnostic.go
++++ b/internal/setcontext/preparation_diagnostic.go
+@@ -0,0 +1,37 @@
++package setcontext
++
++import (
++	"encoding/hex"
++	"genshinteamstracker/native/gcsim_optimizer/internal/formula"
++	"genshinteamstracker/native/gcsim_optimizer/internal/seteffects"
++	"time"
++)
++
++func (m *NeutralModel) DiagnosePreparation(cases []seteffects.PreparationCase) (*seteffects.PreparationDiagnostic, error) {
++	return m.binding.DiagnosePreparation(cases, func(out seteffects.NeutralExpressions) seteffects.PreparationBindingEvidence {
++		result := seteffects.PreparationBindingEvidence{}
++		if !out.Complete() {
++			result.Error = "unavailable_before_binding"
++			return result
++		}
++		started := time.Now()
++		var program *formula.ParametricProgram
++		var err error
++		if out.SparseEffects != nil {
++			program, err = m.bindMixed(out.Constants, out.SparseEffects)
++		} else if out.Constants != nil {
++			program, err = m.bindConstants(out.Constants)
++		} else {
++			program, err = m.bindProgram(out.Effects)
++		}
++		result.Seconds = time.Since(started).Seconds()
++		if err != nil {
++			result.Error = err.Error()
++			return result
++		}
++		if key, ok := m.r3ProgramKey(program); ok {
++			result.ProgramIdentity = hex.EncodeToString(key[:])
++		}
++		return result
++	})
++}

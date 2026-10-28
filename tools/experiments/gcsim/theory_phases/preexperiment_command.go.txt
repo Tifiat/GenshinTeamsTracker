@@ -1,0 +1,21 @@
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "path/filepath"
+ "genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
+ "genshinteamstracker/native/gcsim_optimizer/internal/seteffects"
+)
+
+func preparationDiagnostic(model *setcontext.NeutralModel,requestSHA,sourceSHA,graphSHA,root string)error {
+ path:=os.Getenv("GTT_THEORY_PREPARATION_CASES")
+ if path=="" {return fmt.Errorf("diagnostic cases required")}
+ raw,err:=os.ReadFile(path);if err!=nil{return err}
+ if len(raw)>65536{return fmt.Errorf("diagnostic case payload exceeds64KiB")}
+ var cases []seteffects.PreparationCase;if err=json.Unmarshal(raw,&cases);err!=nil{return err}
+ result,err:=model.DiagnosePreparation(cases);if err!=nil{return err}
+ file,err:=os.OpenFile(filepath.Join(root,"preparation-diagnostic.json"),os.O_CREATE|os.O_EXCL|os.O_WRONLY,0600);if err!=nil{return err};defer file.Close()
+ return json.NewEncoder(file).Encode(struct{RequestSHA,SourceSHA,GraphSHA string;Evidence *seteffects.PreparationDiagnostic}{requestSHA,sourceSHA,graphSHA,result})
+}

@@ -1,0 +1,396 @@
+{
+  "bounded_fragment": [
+    {
+      "characters": 4096,
+      "sha256": "98e3b523969ddcb81fccdb11ace02e1f08cdc966aafb16e945b3718b22a8618d"
+    }
+  ],
+  "complete_recovered_old_rows": [
+    {
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "nightoftheskysunveiling"
+            },
+            {
+              "count": 2,
+              "set_uid": "oceanhuedclam"
+            }
+          ],
+          "wearer_key": "bennett"
+        },
+        {
+          "sets": [],
+          "wearer_key": "chasca"
+        },
+        {
+          "sets": [],
+          "wearer_key": "furina"
+        },
+        {
+          "sets": [],
+          "wearer_key": "ororon"
+        }
+      ],
+      "reasons": [
+        "neutral resource facts are unobserved: Custom"
+      ],
+      "tuple_key": "nightoftheskysunveiling:2+oceanhuedclam:2|none|none|none"
+    },
+    {
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "nighttimewhispersintheechoingwoods"
+            },
+            {
+              "count": 2,
+              "set_uid": "oceanhuedclam"
+            }
+          ],
+          "wearer_key": "bennett"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "crimsonwitchofflames"
+            },
+            {
+              "count": 2,
+              "set_uid": "fragmentofharmonicwhimsy"
+            }
+          ],
+          "wearer_key": "chasca"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "crimsonwitchofflames"
+            },
+            {
+              "count": 2,
+              "set_uid": "theexile"
+            }
+          ],
+          "wearer_key": "furina"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "flowerofparadiselost"
+            },
+            {
+              "count": 2,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer_key": "ororon"
+        }
+      ],
+      "reasons": [
+        "neutral resource facts are unobserved: Custom"
+      ],
+      "tuple_key": "nighttimewhispersintheechoingwoods:2+oceanhuedclam:2|crimsonwitchofflames:2+fragmentofharmonicwhimsy:2|crimsonwitchofflames:2+theexile:2|flowerofparadiselost:2+noblesseoblige:2"
+    },
+    {
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "nighttimewhispersintheechoingwoods"
+            },
+            {
+              "count": 2,
+              "set_uid": "oceanhuedclam"
+            }
+          ],
+          "wearer_key": "bennett"
+        },
+        {
+          "sets": [],
+          "wearer_key": "chasca"
+        },
+        {
+          "sets": [],
+          "wearer_key": "furina"
+        },
+        {
+          "sets": [],
+          "wearer_key": "ororon"
+        }
+      ],
+      "reasons": [
+        "neutral resource facts are unobserved: Custom"
+      ],
+      "tuple_key": "nighttimewhispersintheechoingwoods:2+oceanhuedclam:2|none|none|none"
+    },
+    {
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "noblesseoblige"
+            },
+            {
+              "count": 2,
+              "set_uid": "oceanhuedclam"
+            }
+          ],
+          "wearer_key": "bennett"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "crimsonwitchofflames"
+            },
+            {
+              "count": 2,
+              "set_uid": "fragmentofharmonicwhimsy"
+            }
+          ],
+          "wearer_key": "chasca"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "crimsonwitchofflames"
+            },
+            {
+              "count": 2,
+              "set_uid": "theexile"
+            }
+          ],
+          "wearer_key": "furina"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "flowerofparadiselost"
+            },
+            {
+              "count": 2,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer_key": "ororon"
+        }
+      ],
+      "reasons": [
+        "neutral resource facts are unobserved: Custom"
+      ],
+      "tuple_key": "noblesseoblige:2+oceanhuedclam:2|crimsonwitchofflames:2+fragmentofharmonicwhimsy:2|crimsonwitchofflames:2+theexile:2|flowerofparadiselost:2+noblesseoblige:2"
+    },
+    {
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "noblesseoblige"
+            },
+            {
+              "count": 2,
+              "set_uid": "oceanhuedclam"
+            }
+          ],
+          "wearer_key": "bennett"
+        },
+        {
+          "sets": [],
+          "wearer_key": "chasca"
+        },
+        {
+          "sets": [],
+          "wearer_key": "furina"
+        },
+        {
+          "sets": [],
+          "wearer_key": "ororon"
+        }
+      ],
+      "reasons": [
+        "neutral resource facts are unobserved: Custom"
+      ],
+      "tuple_key": "noblesseoblige:2+oceanhuedclam:2|none|none|none"
+    },
+    {
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer_key": "bennett"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "adaycarvedfromrisingwinds"
+            },
+            {
+              "count": 2,
+              "set_uid": "oceanhuedclam"
+            }
+          ],
+          "wearer_key": "chasca"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "crimsonwitchofflames"
+            },
+            {
+              "count": 2,
+              "set_uid": "theexile"
+            }
+          ],
+          "wearer_key": "furina"
+        },
+        {
+          "sets": [
+            {
+              "count": 2,
+              "set_uid": "flowerofparadiselost"
+            },
+            {
+              "count": 2,
+              "set_uid": "noblesseoblige"
+            }
+          ],
+          "wearer_key": "ororon"
+        }
+      ],
+      "reasons": [
+        "neutral resource facts are unobserved: Custom"
+      ],
+      "tuple_key": "noblesseoblige:4|adaycarvedfromrisingwinds:2+oceanhuedclam:2|crimsonwitchofflames:2+theexile:2|flowerofparadiselost:2+noblesseoblige:2"
+    }
+  ],
+  "control_reason_groups": [
+    {
+      "count": 1016,
+      "mechanic_uid": "berserker",
+      "operation": "CurrentHPRatio",
+      "reason_code": "unknown_operation"
+    },
+    {
+      "consumer_site": "rule_resources.go:23",
+      "count": 8,
+      "mechanic_uid": "oceanhuedclam",
+      "operation": "unknown",
+      "reason_code": "unobserved_runtime_fact"
+    }
+  ],
+  "control_unavailable_count": 476,
+  "current_prepared_config_sha256": "1aa4befe7292c0d4b03fdc9e05a842b29a8a6787e3ce5b11a7ed43fd508f0c8c",
+  "current_reason_groups": [],
+  "current_unavailable_count": 0,
+  "engine_calls": 0,
+  "finalist_packages_identical": true,
+  "finalist_uncertainty_identical_41": [
+    "artifact_stat_read_binding_unresolved",
+    "attack_field_operand_dependency_frozen",
+    "attack_mod_closure_expression_collapsed",
+    "callback_provider_unattributed",
+    "flat_dmg_expression_collapsed",
+    "flat_source_parameter_dependencies_incomplete",
+    "gadget_wave_state_lineage_not_instrumented",
+    "heal_bonus_modifier_aggregate_incomplete",
+    "health_context_candidate_dependency_incomplete",
+    "health_field_candidate_dependency_incomplete",
+    "health_field_origin_unresolved",
+    "health_incoming_heal_bonus_origin_unbound",
+    "health_initial_hp_origin_unresolved",
+    "health_input_branch_schedule_frozen",
+    "health_source_bonus_origin_unbound",
+    "max_hp_candidate_dependency_incomplete",
+    "modifier_candidate_dependency_incomplete",
+    "modifier_output_provenance_unresolved",
+    "modifier_state_read_candidate_dependency_incomplete",
+    "multiplier_source_expression_not_instrumented",
+    "numeric_expression_candidate_dependency_incomplete",
+    "numeric_marker_replay_not_recomputed",
+    "ordinary_helper_argument_dependency_incomplete",
+    "post_damage_callback_state_effects_unmodeled",
+    "provider_transition_timeline_incomplete",
+    "reaction_bonus_schedule_frozen",
+    "reaction_parent_lineage_not_instrumented",
+    "reaction_topology_aggregate_only",
+    "saved_stat_vector_schedule_frozen",
+    "scalar_modifier_output_branch_schedule_frozen",
+    "stat_mod_dependency_expression_collapsed",
+    "stat_read_external_dependencies_incomplete",
+    "state_read_candidate_dependency_incomplete",
+    "state_write_candidate_dependency_incomplete",
+    "task_numeric_transition_dependency_incomplete",
+    "task_payload_source_expression_unbound",
+    "untyped_callback_state_effects_unmodeled",
+    "counterfactual_callback_phase_observed_schedule",
+    "energy_activation_uses_observed_particle_ER",
+    "set_energy_change_callbacks_not_reemitted",
+    "shield_absorption_feedback_unmodeled"
+  ],
+  "full_old_to_new_tuple_join_available": false,
+  "historical_unavailable_count": 476,
+  "inputs": {
+    "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\docs\\optimizer-evidence\\2026-10-25-cache-team-matrix\\corpus-main14-v2\\chasca_600_fixture-theory\\off-details\\native-causes.json": "d56313c7ea005eef2f38e1a7a406bc3b45f4f130f1e5c552d36d47e3b0290f1d",
+    "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\docs\\optimizer-evidence\\2026-10-25-cache-team-matrix\\corpus-main14-v2\\chasca_600_fixture-theory\\off.json": "b6ec4651306a97b92f44b08a4fa34c1cc60a2d3544797ab94c3f24058500a105",
+    "C:\\Users\\user\\Desktop\\worker2 GTT\\docs\\optimizer-evidence\\2026-10-28-theory-control\\control-v2\\native.json": "c744a5d18c7ce1933ab2d16d7f9e203c7afdb76f55e0d73fcd0ec74b95289504",
+    "C:\\Users\\user\\Desktop\\worker2 GTT\\docs\\optimizer-evidence\\2026-10-28-theory-control\\control-v2\\off.json": "b5eb510e313015feeff62ecc34ea776cf680d6e412025ea39805a2aa2f5c809e",
+    "C:\\Users\\user\\Desktop\\worker3 GTT\\docs\\optimizer-evidence\\2026-10-28-theory-phases\\r5-bookkeeping-v1\\native.json": "901fc74daad87ff8ddfe75126b4bf30a05e9c79347251e82610053f33402f231",
+    "C:\\Users\\user\\Desktop\\worker3 GTT\\docs\\optimizer-evidence\\2026-10-28-theory-phases\\r5-bookkeeping-v1\\off.json": "4ce964c278519333942fec44a8b0be6d57495ad962e44be7dfd5cdef028805e1",
+    "C:\\Users\\user\\Desktop\\worker3 GTT\\docs\\optimizer-evidence\\2026-10-28-theory-phases\\r5-bookkeeping-v1\\phases.json": "3fba04ede6c7574670748e2be1eaa57f89ba636451189d8c8d5a975b76c842e7"
+  },
+  "interpretation_limit": "Reason groups count diagnostic observations, not unique tuples, rules, or share of313s. A fragment cannot establish complete distribution. Equal41 uncertainty is inherited model coverage, not newly introduced41 R1 failures.",
+  "legacy_capture_config_sha256": "9c06f02e04da55fd6655bf13acccab1ade36520aaa3f3a02899ed1ff449760d0",
+  "legacy_capture_has_mechanic_invocations": [
+    false,
+    false
+  ],
+  "legacy_capture_representativeness": "Real historical Chasca capture pair. Not the removed R2 job payload; different producer manifest/context, and no mechanic-invocation section. Member and legacy neutral-sidecar codec/allocation work is measurable; current f1e invocation extension is not represented.",
+  "missing": [
+    "complete old476 unavailable keys/reasons",
+    "current per-tuple resolution/fallback events",
+    "per-rule/member symbolic/concrete replay cost",
+    "full fallback cause/choice frequency",
+    "source event linkage for frozen ports",
+    "search start/incumbent lineage",
+    "matching current neutral capture pair after raw cleanup"
+  ],
+  "no_r1_code_in_retained_leader_aliases": true,
+  "old_bound_boundary_source_available": false,
+  "old_reason_groups": [
+    {
+      "count": 1016,
+      "mechanic_uid": "berserker",
+      "operation": "CurrentHPRatio",
+      "reason_code": "unknown_operation"
+    },
+    {
+      "consumer_site": "rule_resources.go:23",
+      "count": 8,
+      "mechanic_uid": "oceanhuedclam",
+      "operation": "unknown",
+      "reason_code": "unobserved_runtime_fact"
+    }
+  ],
+  "recovered_rows_are_complete_unavailable_corpus": false,
+  "schema": "theory_preexperiment_saved_v1",
+  "search_calls": 0
+}

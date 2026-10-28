@@ -1,0 +1,46 @@
+{
+  "schema": "r5_bookkeeping_result_verification_v1",
+  "status": "passed",
+  "comparison": "r5-v1 versus r5-bookkeeping-v1; read-only result and file checks",
+  "non_timing_counter_leaves_equal": 180,
+  "all_four_model_snapshots_equal_except_seconds": true,
+  "build_identity_occurrences_in_off_equal": 4,
+  "finalists": [
+    {
+      "family": "acc727d5b79bf2aff45a825f5c1f9d5e4532d7ab6ddcc79cfb8ac4350a5e5e3a",
+      "formula_dps": 196428.78621118117,
+      "candidate_sha256": "acc727d5b79bf2aff45a825f5c1f9d5e4532d7ab6ddcc79cfb8ac4350a5e5e3a",
+      "config_sha256": "4da71dba3d8e6e199cbe0e4da7ebe43c0996217eba2a49baee8aea97711e300f",
+      "build_identity_sha256": "fea189a9f509e0f3eafd0a867c0313f0e4504a43bf18cd34b68cd51d50818397",
+      "measured_dps": 198102.28114667308,
+      "standard_error": 144.37797822623352
+    },
+    {
+      "family": "a94933d33e060063ab24b885cbdbc7d657af9bccc685e0d81d3ac52ad6cef8b1",
+      "formula_dps": 193330.1079494707,
+      "candidate_sha256": "a94933d33e060063ab24b885cbdbc7d657af9bccc685e0d81d3ac52ad6cef8b1",
+      "config_sha256": "f997b2003dce94cbb18d2c87be90954dd15d99b64729c22cd73754c90ed76ea8",
+      "build_identity_sha256": "b93287d0b639a78c3b81d91012a56478e51859d806e93e3cbb4df2e6436af65c",
+      "measured_dps": 196106.78265855135,
+      "standard_error": 134.40933776966736
+    }
+  ],
+  "identity_hash_encoding": "SHA256 of json.dumps(build_identity,sort_keys=True,separators=(',',':')).encode()",
+  "finalist_build_formula_witness_allocations_aliases_refinement_equal": true,
+  "search_work_equal": true,
+  "counts_equal": true,
+  "config_join_equal": true,
+  "ambient_and_actual_flags_equal": true,
+  "main_four_file_hashes_equal": true,
+  "baseline_manifest_exact_bytes_restored": true,
+  "baseline_all_pinned_files_equal": true,
+  "variant_binary_and_files_pinned": true,
+  "patch_and_phase_hashes_equal_receipts": true,
+  "managed_jobs_remaining": 0,
+  "worker_joined": true,
+  "button_seconds": 404.703,
+  "first_verified_seconds": 402.313,
+  "source_map": "8848afb8ed0a44600d1d5d3b80a7b29d2a1996569ce06240ec77afcf4682d3dd",
+  "consumer": "4d6586bbad6fa01f20ce7831f11317e696c17a3b7e65a42495250165938df304",
+  "scope_limit": "Ordinary measurement outputs, origin program-family suffix, measured reference/deficit and session_id differ; no exact simulation-output or global quality claim. No new numerical run."
+}

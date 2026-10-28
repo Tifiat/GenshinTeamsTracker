@@ -1,8 +1,8 @@
 # Theory Chasca: исторические 105 с, control-v2 и timed R5
 
 28 октября 2026. Завершённые наблюдения: исторический OFF105,344 с,
-worker2 control-v2 и worker3 r5-v1. Новый r5-bookkeeping-v1 сюда пока не включён:
-его единственный прогон отдельно поручён Luna решением ROOT. Для этого отчёта
+worker2 control-v2, worker3 r5-v1 и один завершённый r5-bookkeeping-v1,
+выполненный Luna по решению ROOT. Для этого отчёта
 не запускались движок, численные тесты, приложение или новые сборки.
 
 **Доказанный результат:** старый native415d с общей текущей обвязкой остаётся
@@ -10,7 +10,9 @@ worker2 control-v2 и worker3 r5-v1. Новый r5-bookkeeping-v1 сюда по�
 внутри подготовки правил измерено372,930 с inclusive replay. Исторические105 с
 не восстановлены как точная среда Python/env. R1 frozen policy действительно
 доходит до Theory и меняет допустимость неполных моделей. Какую часть времени
-занимает выбрасываемая диагностика R1, пока не измерено.
+занимает выбрасываемая диагностика R1, уточнил узкий эксперимент: около59 с
+внутри First/replay, однако313,493 с replay остаётся. Проблема не решена,
+к переносу в MAIN результат не принят.
 
 ## 1. Что сравниваем
 
@@ -184,9 +186,11 @@ AnchorPorts26076661 + ReferencePorts4677622 =30754283 повторных port ev
 
 В старой функции R1FrozenPort и ruleChoicesKey строятся до проверки лимита128.
 **Гипотеза:** значимая доля372,930 с — это работа над выбрасываемыми diagnostic
-records/ключами. Подготовленный bookkeeping-вариант меняет только её; parity
-и lazy-key тесты прошли. До результата Luna нельзя объявлять ни выигрыш,
-ни численную эквивалентность нового прогона. FrozenOFF не реализован.
+records/ключами. Bookkeeping-вариант меняет только её; parity
+и lazy-key тесты прошли. Результат ниже подтверждает узкий эффект порядка59 с
+при совпавших формульных результатах и work counters этого прогона; он не
+объясняет оставшийся replay и не доказывает общий выигрыш на других входах.
+FrozenOFF не реализован.
 Подробная [привязка к исходникам](r5-bookkeeping-v1/DIAGNOSIS.md) отделена
 от measured result и не подменяет фазовый замер.
 
@@ -194,22 +198,103 @@ records/ключами. Подготовленный bookkeeping-вариант 
 
 Квитанции обоих завершённых прогонов: success, worker_thread_joined,
 job_removed, main_protected_after_match, package_retained=true. В control сейчас
-0 job-*; raw scratch r5-v1 удалён по его квитанции. Scratch нового
-Luna-прогона не трогали и не объявляем остатком старого теста.
+0 job-*; raw scratch r5-v1 удалён по его квитанции. После нового Luna-прогона
+worker3 managed root также проверен:0 job-*, worker joined, cleanup removed.
 
 При подготовке отчёта read-only проверены4 защищённых MAIN файла (active engine,
 artifact DB, profile registry, optimizer binary): hashes совпадают с обеими
 сохранёнными квитанциями. Consumer и все pinned nonbinary файлы worker2 baseline
 совпадают; сохранённый worker3 timed baseline.exe соответствует506cd4b7…,
-его pinned nonbinary файлы также совпадают. Временное переключение canonical
-worker3 binary принадлежит новому Luna-прогону; в него не вмешивались.
+его pinned nonbinary файлы также совпадают. После нового прогона canonical
+worker3 binary восстановлен в506cd4b7…, control.json восстановлен побайтово;
+совпали все baseline pinned files. Candidate4d6586bb… остаётся отдельным файлом.
 Completed JSON evidence control-v2/r5-v1 совпадает с HEAD по содержимому,
 tracked diff этих evidence отсутствует. Различия LF/CRLF не считаются изменением
-JSON; новый bookkeeping registry не входит в этот baseline-check.
+JSON; bookkeeping registry относится к отдельному новому результату.
 
-Для этого этапа меняется только COMPARISON_RU.md. Нет установки, правки алгоритма,
-переноса в MAIN/worker2 или удаления retained apps. ROOT отдельно обновит current
-handoffs/shared queue и добавит новый численный итог после Luna.
+Этот closeout сохраняет отчёт и компактные результаты нового прогона вместе
+с уже зафиксированным узким патчем291a1ef. Нет установки, новой правки алгоритма,
+переноса в MAIN/worker2 или удаления retained apps. ROOT обновит current
+handoffs/shared queue отдельно.
+
+Closeout checker с --root worker3 сообщил одну внешнюю ошибку:
+общий GTT coordination/GIT_JOURNAL.md превышает20000 байт. Других ошибок
+не сообщил; ROOT-owned журнал не изменяли. Ссылки отчёта, JSON и whitespace
+проверки прошли. Полный handoff PASS на этом closeout не заявляется.
+
+## 8. Один r5-bookkeeping-v1: фактический итог
+
+| Метрика,с | r5-v1 | bookkeeping | Сокращение |
+| --- | ---: | ---: | ---: |
+| Кнопка→terminal |462,079|404,703|57,376|
+| Первый verified snapshot от кнопки |459,594|402,313|57,281|
+| Adapter optimizer process |449,906|391,781|58,125|
+| First |396,606654|337,113444|59,493209|
+| Main Preparation.ReplaySeconds |372,929676|313,492932|59,436745|
+| Main RuleSeconds |374,185143|314,692151|59,492992|
+| OfferSearch |11,706204|11,581281|0,124923|
+| OfferResponse (включая probes) |10,225756|11,332591|−1,106835|
+| ↳ support_probes |9,930071|10,987144|−1,057073|
+| Verify |13,999735|13,760153|0,239583|
+
+Checkpoint fork0,086728 с остаётся внутри First; capture8,744381 с.
+Сокращение кнопочного времени не обязано равняться replay delta: остальные
+фазы и внешняя обвязка колеблются. Один узкий source delta и совпавшая работа
+поддерживают причинный вывод о стоимости discarded-record bookkeeping около59 с
+в этой паре. Это не точный универсальный процент ускорения и не доказательство,
+что оставшиеся313 с принадлежат той же диагностике.
+
+Leader formula196428,78621118117 точно совпала; ordinary198102,28114667308 DPS,
+n500, SE144,37797822623352. Второй finalist formula193330,1079494707 также совпал,
+ordinary196106,78265855135, SE134,40933776966736. Оба build_identity (packages,
+mains, Lines/Upgrades), witness45, allocations, aliases, refinement levels,
+candidate/config/frame/engine identities равны исходному r5-v1. Все4 экземпляра
+build_identity в off.json также равны. Это точное совпадение формульных билдов,
+а не побайтовая идентичность stochastic engine output.
+
+Полное сравнение native.json обнаружило только отличия ordinary measurement
+(DPS/SD/SE/result hash и origin program-family suffix), зависящий от measured DPS
+reference_score/deficit и новый session_id. Finalist candidate families неизменны;
+origin family suffix не следует путать с identity билдов. Все search work и
+прочие поля native совпали. Во всех4 cumulative model snapshots равны180
+нетайминговых scalar fields, включая все R1/Preparation/RegionReuse/
+Specialization counters; различаются только поля Seconds. Counts2/52/2,
+config_join целиком, ambient и9 фактических flags также совпали.
+
+Pins проверены: consumer4d6586bb… и source map8848afb8… соответствуют source.json,
+registry и off.json; hash патча соответствует source.json; phases hash совпал
+в off/registry, schema валидна, dropped0, все12 scope names присутствуют.
+Activation baseline_restored=true независимо подтверждён чтением файлов.
+MAIN4 hashes и все pinned baseline files совпали; per-run managed scratch0.
+Сводная квитанция проверки — [verification.json](r5-bookkeeping-v1/verification.json),
+подробный [RESULT](r5-bookkeeping-v1/RESULT.md). Численные прогоны не повторялись.
+
+## 9. Предлагаемый следующий этап — без выполнения
+
+1. Явно разделить две политики: фиксированный neutral universe без recapture
+   и допуск frozen-residual guides в Theory. Начать с простейшей сравнительной
+   конфигурации с явным frozen policy на границе модели, сохраняя R5 engineering,
+   входы, capture universe, бюджеты и Finish boundary. Это будущий отдельный
+   согласованный этап; сейчас ни конфигурация, ни её прогоны не выполнены.
+2. Сравнение должно показать availability/uncertainty, attained builds/formula,
+   ordinary quality и work/time. Strict policy может вернуть unsupported tuples;
+   их нельзя молча считать исправленной поддержкой неизвестного или доказательством
+   качества. Frozen guides сохранять как явно uncertain путь с обычной проверкой;
+   выбор product default отложить до оценки покрытия и качества обеих политик.
+3. Только после этого отдельно разобрать повторное совместное выполнение rules.
+   Проверить, какие unusable components действительно требуют нового joint/concrete
+   replay и какие результаты допустимо использовать повторно при одинаковом
+   semantic context. Сначала доказать invariants существующего reuse: choices,
+   source/seed/context, anchor/source-slot ownership, uncertainty и fork lifetime.
+   Затем рассматривать минимальное расширение существующего reuse, если оно
+   безопасно; не объявлять frozen output composable одной отменой guard.
+4. Сохранить явную поддержку unknown, provenance/uncertainty, ограничения поиска
+   и ordinary verification. Не решать скорость выбрасыванием трудных пакетов,
+   добавочными captures или снижением finalist quality budget. После source
+   review и отдельных bounded parity/quality проверок ROOT решит следующий запуск.
+
+STOP после этого closeout. Bookkeeping — локализованный диагностический выигрыш;
+основной replay остаётся, общей готовности к переносу/установке нет.
 
 Основные доказательства: [control-v2 RESULT](../../../../worker2%20GTT/docs/optimizer-evidence/2026-10-28-theory-control/control-v2/RESULT.md),
 [r5-v1 RESULT](r5-v1/RESULT.md), [phases.json](r5-v1/phases.json),

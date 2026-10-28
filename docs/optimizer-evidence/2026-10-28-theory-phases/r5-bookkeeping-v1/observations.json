@@ -1,0 +1,60 @@
+{
+  "ambient": {
+    "cpu_budget": 16,
+    "environment": {
+      "GODEBUG": null,
+      "GOFLAGS": null,
+      "GOGC": null,
+      "GOMAXPROCS": null,
+      "GOMEMLIMIT": null
+    },
+    "executable": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Scripts\\python.exe",
+    "pyside6": "6.11.0",
+    "python": "3.11.5 (tags/v3.11.5:cce6ba9, Aug 24 2023, 14:38:34) [MSC v.1936 64 bit (AMD64)]",
+    "qt_platform": "offscreen"
+  },
+  "launches": [
+    {
+      "environment": {
+        "GODEBUG": null,
+        "GOGC": null,
+        "GOMAXPROCS": null,
+        "GOMEMLIMIT": null,
+        "GTT_MECHANIC_CACHE_ENABLED": "0",
+        "GTT_R1_SINGLE_NEUTRAL": "1"
+      },
+      "experiment_flags": {
+        "GTT_R3_ADJOINT_REUSE": "1",
+        "GTT_R3_OPERATION_SWITCH": "1",
+        "GTT_R3_PARALLEL_CAPTURE": "1",
+        "GTT_R3_PROGRAM_IDENTITY": "1",
+        "GTT_R3_TYPED_CANONICAL": "1",
+        "GTT_R4_FAST_COUNTERS": "1",
+        "GTT_R4_OWNED_DIGEST": "1",
+        "GTT_R4_TYPED_PANEL": "1"
+      },
+      "stage": "validate-theory-request"
+    },
+    {
+      "environment": {
+        "GODEBUG": null,
+        "GOGC": null,
+        "GOMAXPROCS": null,
+        "GOMEMLIMIT": null,
+        "GTT_MECHANIC_CACHE_ENABLED": "0",
+        "GTT_R1_SINGLE_NEUTRAL": "1"
+      },
+      "experiment_flags": {
+        "GTT_R3_ADJOINT_REUSE": "1",
+        "GTT_R3_OPERATION_SWITCH": "1",
+        "GTT_R3_PARALLEL_CAPTURE": "1",
+        "GTT_R3_PROGRAM_IDENTITY": "1",
+        "GTT_R3_TYPED_CANONICAL": "1",
+        "GTT_R4_FAST_COUNTERS": "1",
+        "GTT_R4_OWNED_DIGEST": "1",
+        "GTT_R4_TYPED_PANEL": "1"
+      },
+      "stage": "optimize-theory"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "cleanup": "same exact private variant --action release",
+  "expires": 1793810056.9835205,
+  "files": [
+    {
+      "bytes": 236,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031889-capture-request.json.gz",
+      "sha256": "f84f3f039b79cf95e950a42034f416a6b9b2daf468fec7de69f835ddd2635dda",
+      "stored_bytes": 196,
+      "stored_sha256": "d1c4efeed05f942c9a161340ec1833fff84d605d02272aaabcb6c2c11c65ce3c"
+    },
+    {
+      "bytes": 973,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031889-config.txt.gz",
+      "sha256": "1aa4befe7292c0d4b03fdc9e05a842b29a8a6787e3ce5b11a7ed43fd508f0c8c",
+      "stored_bytes": 428,
+      "stored_sha256": "0e8647a83f44437d2b14c03257dce1de2bab1426e037a328611a3cee5d2564b5"
+    },
+    {
+      "bytes": 9620526,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031889-member.json.gz",
+      "sha256": "37b72216e37f86a3b46c25c4ad1734e3ede10630a39c64e5b1252fdd7e6b632f",
+      "stored_bytes": 630565,
+      "stored_sha256": "f5bc83b90d5ac263d77d1c57a1107f3a2ef48bafc7886235632c094bf474646a"
+    },
+    {
+      "bytes": 17733992,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031889-member.json.effects.json.gz",
+      "sha256": "81c9e28a5c0509baa0d1c4b9f6bc2b8c082a2eb0c9755f7c936b38a3babe8bae",
+      "stored_bytes": 412182,
+      "stored_sha256": "04df1067070606ccf6da381fd2ee42a081cb39bf3b048599dd4403aaf7d16f36"
+    },
+    {
+      "bytes": 236,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031890-capture-request.json.gz",
+      "sha256": "a8952c1325c4f15cd566c3ea3f09076e770d724be341576d13a93551e712fdd7",
+      "stored_bytes": 196,
+      "stored_sha256": "cc47d0e391eb16621174d7cc9290e2c55224f6e72b53d1dc444423f0e7e43f25"
+    },
+    {
+      "bytes": 973,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031890-config.txt.gz",
+      "sha256": "1aa4befe7292c0d4b03fdc9e05a842b29a8a6787e3ce5b11a7ed43fd508f0c8c",
+      "stored_bytes": 428,
+      "stored_sha256": "0e8647a83f44437d2b14c03257dce1de2bab1426e037a328611a3cee5d2564b5"
+    },
+    {
+      "bytes": 9574329,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031890-member.json.gz",
+      "sha256": "52f1ef9f4d4be448d3eabb54f55162268652aa6af6c904f4c6d949ed8f7ea7e4",
+      "stored_bytes": 628103,
+      "stored_sha256": "e95cff64e6ac098738b6530e788d73324f4baf65cd36c6b0fd34ba077a654e7a"
+    },
+    {
+      "bytes": 17575378,
+      "path": "private\\variants\\theory-preexperiment-v1\\saved-panel\\seed-742031890-member.json.effects.json.gz",
+      "sha256": "729e37e43ab7e45b540bfef0ce6bedf70406f344fda83c67f1751e6e6737e424",
+      "stored_bytes": 409118,
+      "stored_sha256": "6078edbf264f4ecb39563e7bbece9a15fd4b4751c3f6875d3dc3e1a3455e1eba"
+    }
+  ],
+  "owner": "MAIN01a1824a / ROOT01a16b30; one preparation-only Luna diagnosis after review"
+}

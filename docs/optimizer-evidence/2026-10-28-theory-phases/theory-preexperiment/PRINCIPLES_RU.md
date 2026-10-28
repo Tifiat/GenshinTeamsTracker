@@ -27,3 +27,8 @@ Line refs — восстановленный native image, не dirty HEAD.
 После сбора event-level данных ROOT показывает человеку интерпретацию и
 конкретные предлагаемые эксперименты. Эта таблица сама не является GO ни для
 staged policy, ни для frozenOFF, reuse, learning, нового поиска или установки.
+
+После collect: конкретно установлены initialization-order boundary, joint-wide
+reference freeze при Clam2 и повтор неподдержанного CurrentHPRatio при concrete
+queries. См. RESULT_RU.md. Это данные к строкам uncertainty/reuse; новых
+simulator budget/staged-quality измерений не было, статусы таблицы не меняются.

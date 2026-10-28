@@ -1,8 +1,10 @@
-# Preparation-only diagnosis — READY for ROOT review
+# Preparation-only diagnosis — COMPLETE, report STOP
 
 28 October 2026. Owner MAIN01a1824a / ROOT01a16b30. Data collection precedes
-human selection of the next experiment. No capture or numerical collection
-has been executed by MAIN. Observer/CUA remain OFF. No new frozen policy,
+human selection of the next experiment. Luna completed one admitted collect:
+2 captures,15×2 cases,0 search/ordinary calls. MAIN only analyzed saved results
+and checked custody. Read [result/limits](RESULT_RU.md) and [summary](summary.json).
+Observer/CUA remain OFF. No new frozen policy,
 candidate selection, search algorithm, benchmark comparison or installation.
 
 Read [saved/source findings](SOURCE_FINDINGS_RU.md),
@@ -12,7 +14,7 @@ The full old476 tuple join is unavailable;6 complete historical rows survived
 a bounded fragment. Neither30M port events nor the shared41 uncertainty labels
 count unique new mechanics. No whole-search leader/start lineage is invented.
 
-## The one command proposed for Luna, after ROOT reviews it
+## Historical executed command — no retry or new dispatch
 
 From C:/Users/user/Desktop/worker3 GTT/.codex_tmp/t1-control-v1/app:
 
@@ -105,8 +107,8 @@ Small runner transport was sealed after the build; source and native pins stay
 unchanged. All Python text I/O is explicitly UTF-8 or raw bytes.
 
 Output goes here as events.json/capture-structure.json and updated registry.
-After successful collection the2 panels' request/config/member/sidecar files
-are gzip-compressed into the **private owned variant** with hashes, owner and
+The2 panels' request/config/member/sidecar files were gzip-compressed into the
+**private owned variant** (8 archives,2081216 compressed bytes) with hashes, owner and
 the same7-day expiry, so further measurements of this stage can reuse them.
 These archives are not committed. Raw managed scratch is automatically removed
 after export; existing MAIN/control-v2/timed R5 files are preserved and checked.
@@ -115,7 +117,9 @@ app/private/variants/theory-preexperiment-v1 after ROOT finishes this data stage
 it refuses a running diagnostic and preserves durable evidence and baseline apps.
 Release already exercised the owned private path during preparation revisions.
 
-After Luna: inspect missing/truncated evidence, captured facts boundary, true
-init/event/freeze/binding costs and bounded result identities; ROOT presents
-interpretation plus concrete proposed experiments to the human. **STOP for that
+Analysis is complete: World starts at order3, Clam Init abort affects all joint
+ports in the derived control, and Berserker fails in symbolic/concrete attack
+queries. Unknown-detail overflow337372 does not drop cases, capture, first causes
+or full coverage counts. MAIN/baseline/pins/archives/raw cleanup checked.
+ROOT presents interpretation plus proposed experiments to the human. **STOP for that
 discussion; no automatic next policy, reuse change, full comparison or install.**

@@ -1,0 +1,46 @@
+[
+  {
+    "characters": [
+      {
+        "index": 0,
+        "key": "chasca"
+      },
+      {
+        "index": 1,
+        "key": "furina"
+      },
+      {
+        "index": 2,
+        "key": "bennett"
+      },
+      {
+        "index": 3,
+        "key": "ororon"
+      }
+    ],
+    "seed": "seed-742031889",
+    "sidecar_sha256": "81c9e28a5c0509baa0d1c4b9f6bc2b8c082a2eb0c9755f7c936b38a3babe8bae"
+  },
+  {
+    "characters": [
+      {
+        "index": 0,
+        "key": "chasca"
+      },
+      {
+        "index": 1,
+        "key": "furina"
+      },
+      {
+        "index": 2,
+        "key": "bennett"
+      },
+      {
+        "index": 3,
+        "key": "ororon"
+      }
+    ],
+    "seed": "seed-742031890",
+    "sidecar_sha256": "729e37e43ab7e45b540bfef0ce6bedf70406f344fda83c67f1751e6e6737e424"
+  }
+]

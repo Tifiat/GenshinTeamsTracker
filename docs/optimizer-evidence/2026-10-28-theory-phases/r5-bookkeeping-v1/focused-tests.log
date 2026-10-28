@@ -1,0 +1,6 @@
+=== RUN   TestFrozenBookkeepingParityAndLazyRecordKey
+--- PASS: TestFrozenBookkeepingParityAndLazyRecordKey (0.03s)
+=== RUN   TestR1FrozenCausalGuardAndCounterSemantics
+--- PASS: TestR1FrozenCausalGuardAndCounterSemantics (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/seteffects	0.084s

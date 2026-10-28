@@ -1,0 +1,27 @@
+package seteffects
+
+import "testing"
+
+// Pure retained-source fixture: no engine, capture, benchmark or new policy.
+func TestR1FrozenCausalGuardAndCounterSemantics(t *testing.T) {
+ b:=r1TestBinding()
+ b.r1Stats.Records=make([]R1FrozenPort,128)
+ choice:=RuleChoice{Owner:2,Key:"generic",Pieces:4}
+ vector:=NeutralEffectVector{Values:[]float64{99,7},Known:[]bool{true,true}}
+ var out NeutralExpressions
+ for i:=0;i<3;i++ {out=b.r1FreezeConcrete([]RuleChoice{choice},r1TestPartial(),vector)}
+ if !out.Complete()||!out.r1Frozen||out.Constants[1]!=7 {t.Fatal("frozen guide premise differs")}
+ if b.componentOf(out).usable {t.Fatal("frozen guide unexpectedly composable")}
+ plain:=out;plain.r1Frozen=false
+ if !b.componentOf(plain).usable {t.Fatal("another guard, not frozen, rejected the fixture")}
+ if b.r1Stats.FallbackReplays!=3||b.r1Stats.AnchorPorts!=3||b.r1Stats.OmittedRecords!=3||len(b.r1Stats.Records)!=128 {
+  t.Fatal("concrete-call/port/omitted semantics changed",b.r1Stats)
+ }
+ if b.stats.Replays!=0||b.stats.ReplaySeconds!=0 {t.Fatal("concrete calls are independently counted as joint timer calls")}
+ b.components=map[RuleChoice]neutralComponent{choice:b.componentOf(out)}
+ b.groups=map[string]neutralComponent{"kept":b.componentOf(out)}
+ fork:=b.ForkTheory()
+ if len(fork.components)!=1||len(fork.groups)!=1||fork.components[choice].usable||fork.r1Stats.FallbackReplays!=3 {
+  t.Fatal("fork erased component/group/counter state")
+ }
+}

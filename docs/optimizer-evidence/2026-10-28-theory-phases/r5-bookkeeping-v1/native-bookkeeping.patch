@@ -1,0 +1,62 @@
+--- a/internal/seteffects/r1_frozen_neutral.go
++++ b/internal/seteffects/r1_frozen_neutral.go
+@@ -92,6 +92,8 @@
+ 	if out.Effects == nil {
+ 		out.Effects = map[string]*formula.InputExpression{}
+ 	}
++	var packageKey string
++	packageKeyReady := false
+ 	for mi, member := range b.members {
+ 		for _, port := range member.ports {
+ 			dim := port.dimension
+@@ -104,13 +106,18 @@
+ 				out.Boundaries = append(out.Boundaries, "R1 invalid source-slot ownership")
+ 				return out
+ 			}
+-			record := R1FrozenPort{Package: ruleChoicesKey(choices), Seed: member.seed, Key: key, Member: mi, Owner: port.query.Owner, Dimension: dim, SourceNode: source.NodeID, SourceValue: source.Observed}
++			keepRecord := len(b.r1Stats.Records) < 128
++			var recordState, recordReason string
++			var recordAnchor *float64
++			recordPreserved := false
+ 			if concrete.Known[dim] && isRuleFinite(concrete.Values[dim]) {
+ 				value := concrete.Values[dim]
+ 				out.Effects[key] = &formula.InputExpression{Operation: "constant", Value: value}
+-				record.State = "observed_package_anchor_frozen"
+-				record.PackageAnchorValue = &value
+-				record.Reason = "symbolic_dependency_unbound"
++				if keepRecord {
++					recordState = "observed_package_anchor_frozen"
++					recordAnchor = &value
++					recordReason = "symbolic_dependency_unbound"
++				}
+ 				b.r1Stats.AnchorPorts++
+ 				out.Uncertainty = append(out.Uncertainty, "r1_observed_package_anchor_frozen")
+ 			} else if concrete.Known[dim] {
+@@ -121,13 +128,23 @@
+ 				// No intervention leaves that source arithmetic/value in place; it
+ 				// does not measure the unknown package's effect as zero.
+ 				out.Effects[key] = &formula.InputExpression{Operation: "constant", Value: 0}
+-				record.State = "no_package_anchor_reference_guide"
+-				record.SourceSlotPreserved = true
+-				record.Reason = "concrete_package_response_unresolved"
++				if keepRecord {
++					recordState = "no_package_anchor_reference_guide"
++					recordPreserved = true
++					recordReason = "concrete_package_response_unresolved"
++				}
+ 				b.r1Stats.ReferencePorts++
+ 				out.Uncertainty = append(out.Uncertainty, "r1_no_package_anchor_source_slot_preserved")
+ 			}
+-			if len(b.r1Stats.Records) < 128 {
++			if keepRecord {
++				if !packageKeyReady {
++					packageKey = ruleChoicesKey(choices)
++					packageKeyReady = true
++				}
++				record := R1FrozenPort{Package: packageKey, Seed: member.seed, Key: key, Member: mi,
++					Owner: port.query.Owner, Dimension: dim, SourceNode: source.NodeID, SourceValue: source.Observed,
++					State: recordState, Reason: recordReason, PackageAnchorValue: recordAnchor,
++					SourceSlotPreserved: recordPreserved}
+ 				b.r1Stats.Records = append(b.r1Stats.Records, record)
+ 			} else {
+ 				b.r1Stats.OmittedRecords++

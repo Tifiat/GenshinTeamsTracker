@@ -1,0 +1,38 @@
+package seteffects
+
+import("reflect";"testing")
+
+// Only a go-test source overlay calls this spy; the real binary calls the
+// original ruleChoicesKey. Other legitimate package keys are not counted here.
+var recordPackageKeyCalls int
+func countedRecordPackageKey(choices []RuleChoice) string {
+ recordPackageKeyCalls++
+ return ruleChoicesKey(choices)
+}
+
+func TestFrozenBookkeepingParityAndLazyRecordKey(t *testing.T){
+ for _,prefix:=range []int{0,126,127,128}{
+  for _,known:=range [][]bool{{true,true},{false,true}}{
+   for _,choices:=range [][]RuleChoice{nil,{{Owner:2,Key:"generic",Pieces:4}}}{
+    before,after:=r1TestBinding(),r1TestBinding()
+    for i:=0;i<prefix;i++{
+     row:=R1FrozenPort{Package:"original",Key:"prefix",Dimension:i}
+     before.r1Stats.Records=append(before.r1Stats.Records,row)
+     after.r1Stats.Records=append(after.r1Stats.Records,row)
+    }
+    repeats:=3;if prefix==0{repeats=65}
+    for i:=0;i<repeats;i++{
+     vector:=NeutralEffectVector{Values:[]float64{99,7},Known:known}
+     initial:=len(after.r1Stats.Records);recordPackageKeyCalls=0
+     got:=after.r1FreezeConcrete(choices,NeutralExpressions{Boundaries:[]string{"fixture partial"}},vector)
+     want:=before.r1FreezeConcreteBaseline(choices,NeutralExpressions{Boundaries:[]string{"fixture partial"}},vector)
+     if !reflect.DeepEqual(got,want)||!reflect.DeepEqual(after.r1Stats,before.r1Stats){
+      t.Fatalf("output/records/order/counters differ prefix%d replay%d",prefix,i)
+     }
+     expected:=0;if len(after.r1Stats.Records)>initial{expected=1}
+     if recordPackageKeyCalls!=expected{t.Fatalf("record key calls %d want%d prefix%d replay%d",recordPackageKeyCalls,expected,prefix,i)}
+    }
+   }
+  }
+ }
+}

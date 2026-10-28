@@ -1,0 +1,19 @@
+{
+  "admission_checks": "ROOT independently checked source/actual consumer/producer/harness/full604-597-39 input/protected9d81/arms0/build1; MAIN prepared-review records exact438-source and protected parity",
+  "admitted_utc": "2026-10-28T07:39:38.875193+00:00",
+  "authority": "ROOT FULL OFF ADMISSION received by codex_delegation; MAIN executes the sole fixed OFF command now",
+  "authority_thread": "01a16b30-1a26-75e3-a140-126d35aab5de",
+  "baseline_or_on_repeats": false,
+  "closeout": "Export comparison/gear/DPS/counts; original owner release; protected and process cleanup; result local commit; STOP. First anomaly is not repeated.",
+  "consumer_sha256": "015a1cb7a9a1ea8c8c0da33703b9248a077462bc471dd03359eaded49b26476c",
+  "job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-guos49re",
+  "maximum_off_commands": 1,
+  "native_source_map_sha256": "0f504808a6fd57fd3fae55403d15853bc6adaeb891583c32fabdc813535c9e83",
+  "owner_exec_session": 77097,
+  "permitted_arms": [
+    "off"
+  ],
+  "producer_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "schema": "r4_root_admission_v1",
+  "source_commit": "b3f9713b71d13544df8ed1a82d7e3db6d2ff1f56"
+}

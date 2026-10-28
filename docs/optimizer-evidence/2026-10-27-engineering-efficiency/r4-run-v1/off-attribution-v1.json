@@ -1,0 +1,2710 @@
+{
+  "accepted_modules": [
+    "owned_raw_digest",
+    "typed_panel_canonical",
+    "fixed_atomic_counters"
+  ],
+  "capture_witness": {
+    "R3_provider": [
+      {
+        "context_sha256": "c4282ea48f4fbe19fc2a3478eb469ec4bd8d024b0563259d61aa852f5c3be899",
+        "decode_ms": 1854.8418,
+        "process_ms": 4661.6708,
+        "result_sha256": "6d3601489c62cce58705acdb19f055d68d555d25ccb1123fa1fe9a9df7ec9846",
+        "seed": 742031889
+      },
+      {
+        "context_sha256": "c4282ea48f4fbe19fc2a3478eb469ec4bd8d024b0563259d61aa852f5c3be899",
+        "decode_ms": 1900.387,
+        "process_ms": 4362.1064,
+        "result_sha256": "52e383aba8d07561ca4a99d83ee9c9f5547e6e1117025c3b0e35991aba292c44",
+        "seed": 742031890
+      }
+    ],
+    "R3_raw_pairwise_semantic_comparison_available": false,
+    "R4": [
+      {
+        "channels": 372,
+        "config_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+        "duration_ms": 65583,
+        "effect_source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+        "mechanic_invocations_present": true,
+        "member_raw_sha256": "4a53efd5f92a12d7e6a313eb886adcdac663e20c2f8cf007e8005d39ef3fec74",
+        "nodes": 89010,
+        "request": {
+          "context_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+          "ignore_burst_energy": true,
+          "include_effect_inputs": true,
+          "iterations": 1,
+          "output_mode": "compact_ir_v1",
+          "schema_version": 1,
+          "seed": "742031889",
+          "workers": 1
+        },
+        "seed": 742031889,
+        "sidecar_sha256": "0e9084f3b528e2aad37d19fcc14e04c1aef5d1977a97cb30e14385954e5d901e",
+        "source_config_sha256": "d5f09e4157bcc54f0eecf13bbd148bf3c8a4d47774781f0cd033650167996f3a",
+        "topology_sha256": "b27b089a5d7890ca4bd89dcfe7e2d8b58a382b3b4cae52f3152f05987393487c"
+      },
+      {
+        "channels": 366,
+        "config_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+        "duration_ms": 65583,
+        "effect_source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+        "mechanic_invocations_present": true,
+        "member_raw_sha256": "2023bb91e9853d0e872c6fb58419840c977240467844323ab8f79c8dab1cb4f9",
+        "nodes": 88553,
+        "request": {
+          "context_sha256": "3e4feacb332a3a2f47a11908c530f7d963612b18637875c627c99fe1f4772f89",
+          "ignore_burst_energy": true,
+          "include_effect_inputs": true,
+          "iterations": 1,
+          "output_mode": "compact_ir_v1",
+          "schema_version": 1,
+          "seed": "742031890",
+          "workers": 1
+        },
+        "seed": 742031890,
+        "sidecar_sha256": "65bf1b01866fcdff8028cc7f1eb2e2cf4547bca559ce5df0b90406e94e90c1a7",
+        "source_config_sha256": "d5f09e4157bcc54f0eecf13bbd148bf3c8a4d47774781f0cd033650167996f3a",
+        "topology_sha256": "56e5f511bac2ebe64f889757a5ccad1d8c86e66af0a0bc43b5cbfa558ac583f5"
+      }
+    ],
+    "R4_provider": [
+      {
+        "context_sha256": "ff87bde6cb36aa9ebe29da7c8df359f184c36bffcc6df43f765e756f763360ab",
+        "decode_ms": 1865.8639,
+        "process_ms": 4184.9963,
+        "result_sha256": "4a53efd5f92a12d7e6a313eb886adcdac663e20c2f8cf007e8005d39ef3fec74",
+        "seed": 742031889
+      },
+      {
+        "context_sha256": "ff87bde6cb36aa9ebe29da7c8df359f184c36bffcc6df43f765e756f763360ab",
+        "decode_ms": 1867.8789,
+        "process_ms": 4228.2592,
+        "result_sha256": "2023bb91e9853d0e872c6fb58419840c977240467844323ab8f79c8dab1cb4f9",
+        "seed": 742031890
+      }
+    ],
+    "limit": "Historical R3 raw members were already removed. Context fingerprints include relocated engine binding; different raw hashes alone do not identify the cause. R4 sidecar/raw/config/seed bindings verified before cleanup.",
+    "product_prepared_config_target_seeds_options_rotation_exact_R3": true
+  },
+  "captured_utc": "2026-10-28T07:45:24.297646+00:00",
+  "consumer_sha256": "015a1cb7a9a1ea8c8c0da33703b9248a077462bc471dd03359eaded49b26476c",
+  "control_evidence": {
+    "off-attribution-v1.json": "c23d6398654f17a60045c7f4225585777deaa1349df66ec46777580331a97ca4",
+    "off-details.json": "c2b806166c1727a5b658f50e430cd13619f69d6c2ba5b06a785c95224367628e",
+    "off.json": "b37cf12e9315ff2d0da2f6caa046f61935ca381e83c177ec7c6d9a4b6f197872"
+  },
+  "counts": {
+    "artifact.evaluate_calls": 366624,
+    "artifact.gradient_calls": 8982,
+    "engine.compact.process_attempts": 2,
+    "engine.compact.process_exit_success": 2,
+    "engine.ordinary.process_attempts": 87,
+    "engine.ordinary.process_exit_success": 87,
+    "product.rendered_candidates": 8,
+    "r1.neutral_models": 1,
+    "r3.capture_batch_workers": 2,
+    "search.selected_finalists": 9
+  },
+  "coverage": {
+    "adaptive_events": 131,
+    "adaptive_samples": 24,
+    "c4_projections": 0,
+    "extra_context_captures": 0,
+    "neutral_cycles": [
+      {
+        "CandidateSearchCalls": 1639,
+        "CandidateSearchReused": 61,
+        "Cycle": 1,
+        "HeuristicSkipped": 907,
+        "ModelDeferred": 971,
+        "ModelUnavailable": 0,
+        "NotPrepared": 1125,
+        "NotProcessed": 0,
+        "Prepared": 971,
+        "Processed": 0,
+        "Queued": 971,
+        "ReservationDeferred": 0,
+        "Sampled": 64,
+        "Total": 2096
+      },
+      {
+        "CandidateSearchCalls": 2760,
+        "CandidateSearchReused": 439,
+        "Cycle": 2,
+        "HeuristicSkipped": 2032,
+        "ModelDeferred": 2096,
+        "ModelUnavailable": 0,
+        "NotPrepared": 0,
+        "NotProcessed": 0,
+        "Prepared": 2096,
+        "Processed": 0,
+        "Queued": 2096,
+        "ReservationDeferred": 0,
+        "Sampled": 64,
+        "Total": 2096
+      }
+    ],
+    "neutral_cycles_equal_R3": true,
+    "r1_frozen": {
+      "AnchorPorts": 339395,
+      "FallbackReplays": 37,
+      "OmittedRecords": 358661,
+      "ReferencePorts": 19394
+    },
+    "search_stop_reason": "neutral_cycle_budget",
+    "stabilization_reports": 7,
+    "support_response_calls_derived_from_ordinary_minus_adaptive_minus_final": 53
+  },
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "evidence": {
+    "ROOT_ADMISSION.json": "9043b6d2d9d9f26a4e87479948661d6a24b42f8f6051e2ec32e77183788609d9",
+    "off-details.json": "10789cb86d4128710aedf33bb652b7d0c38256ad19cb3ab95c60e406763a13a4",
+    "off-observations.json": "c5ae3f27adc20873f294dc3e2c3be0eb169a5c826ea9725ee28c80dded6cf385",
+    "off-r3-observations.json": "9efb4545ae29665813ebef77d128025444b4f96ed256129958fbce4b5a0b73c1",
+    "off-r4-observations.json": "4093329c5431c914e59076966500ded96732ef0a1a5cbd51dc9a1482a4bc12d7",
+    "off.json": "3e91427ca65b978977b9029a95e37f852772b23cb1b701398b2b6b461c0326e5",
+    "owner.json": "5d84bb09b93a436db2da44c98554bd5d19490a83148154c2682e6104ad135ea3",
+    "prepared-review-v1.json": "41ab1ff44b7b3e3612c2a45d18b29916f93b4e9245ee873f7ec2bdb1db888e8f"
+  },
+  "inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "b60ab60115dae98cc223ddddc929ea90260ddb0d842bea4b0b7dbc21bbdc6bc7",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "limits": [
+    "Single pair in one team; no universal speed or gameplay acceptance.",
+    "DPS change is sampling noise for the same gear and formula, not an improvement in model quality. Multithreaded ordinary RNG samples are not claimed identical or independent.",
+    "Negative frontier and repeated public mutable-member validation exclusion are documented in OFFLINE_RU.md.",
+    "R3 RESULT_RU.md and historical failed fixture-layout evidence remain immutable."
+  ],
+  "model_reuse": {
+    "DispatchHits": 561,
+    "Preparation": {
+      "ComponentExpressionNodes": 1440,
+      "ComponentHits": 15222,
+      "FamilyHits": 2229,
+      "FamilyMisses": 1015,
+      "FullFallbacks": 34,
+      "GroupEntries": 17,
+      "GroupHits": 123,
+      "GroupMisses": 17,
+      "GroupValues": 164849,
+      "JointReplays": 51,
+      "Merges": 140,
+      "ReplaySeconds": 9.512527599999997,
+      "Replays": 283,
+      "Requests": 3278,
+      "SymbolicComponents": 4,
+      "SymbolicCompositions": 153,
+      "TwoPieceChoices": 124,
+      "TwoPieceEffectFamilies": 31
+    },
+    "PreparedPayloadProgramHits": 1914,
+    "ProgramHits": 661,
+    "ProgramMisses": 703,
+    "RegionReuse": {
+      "Calls": 602,
+      "OutputNodes": 810863,
+      "PeakArenaNodes": 20112,
+      "Rebuilt": 2162730,
+      "Resets": 0,
+      "Reused": 21341156,
+      "Visited": 23503886
+    },
+    "Requests": 3839,
+    "Specialization": {
+      "Entries": 256,
+      "Hits": 5857,
+      "Misses": 1246,
+      "Nodes": 473180
+    }
+  },
+  "native_source_map_sha256": "0f504808a6fd57fd3fae55403d15853bc6adaeb891583c32fabdc813535c9e83",
+  "outcome": {
+    "R3_winner": {
+      "assignment": [
+        [
+          36,
+          1413,
+          1426,
+          140,
+          203
+        ],
+        [
+          1571,
+          81,
+          92,
+          88,
+          1615
+        ],
+        [
+          1395,
+          1598,
+          1466,
+          1563,
+          1614
+        ],
+        [
+          1616,
+          91,
+          241,
+          1586,
+          119
+        ]
+      ],
+      "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+      "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+      "elapsed_ms": 3726.5448,
+      "engine_result_sha256": "d6b35c0674dd138fa47bab765cd22e3bda278ace12344096f496635e512910a3",
+      "formula_dps": 156969.25165871024,
+      "formula_residual_dps": 1257.6776075836679,
+      "iterations": 500,
+      "measured_dps": 158226.9292662939,
+      "rank": 1,
+      "source": "real_candidate",
+      "standard_deviation": 2415.548023429393,
+      "standard_error": 108.02659166606755
+    },
+    "R4_winner": {
+      "assignment": [
+        [
+          36,
+          1413,
+          1426,
+          140,
+          203
+        ],
+        [
+          1571,
+          81,
+          92,
+          88,
+          1615
+        ],
+        [
+          1395,
+          1598,
+          1466,
+          1563,
+          1614
+        ],
+        [
+          1616,
+          91,
+          241,
+          1586,
+          119
+        ]
+      ],
+      "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+      "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+      "elapsed_ms": 3267.4682,
+      "engine_result_sha256": "70b1c04f6ca545450ef4a4a37a9db248b8a8d80b712b5b52499c830b363438de",
+      "formula_dps": 156969.25165871024,
+      "formula_residual_dps": 1360.9910278626194,
+      "iterations": 500,
+      "measured_dps": 158330.24268657286,
+      "rank": 1,
+      "source": "real_candidate",
+      "standard_deviation": 2336.594999432395,
+      "standard_error": 104.49570509233835
+    },
+    "button_R3_ms": 90500,
+    "button_R4_ms": 87656,
+    "dps_delta": 103.31342027895153,
+    "dps_delta_percent": 0.0652944607836492,
+    "saving_ms": 2844,
+    "saving_percent": 3.1425414364640885
+  },
+  "owner_metadata_scope": "Actual source_commit is b3f9713; inherited accepted403 source_closure wording does not describe the exact438 R4 native map or standalone whole-product closure.",
+  "panel": {
+    "actual_published": 8,
+    "all_nine_full_gear_evidence": "off-details.json",
+    "all_nine_gear_mains_substats_exact": true,
+    "all_nine_ordered_assignment_formula_source_config_iterations_exact": true,
+    "all_nine_summary": [
+      {
+        "R3_measured_dps": 158226.9292662939,
+        "R3_standard_error": 108.02659166606755,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+        "elapsed_ms": 3267.4682,
+        "engine_result_sha256": "70b1c04f6ca545450ef4a4a37a9db248b8a8d80b712b5b52499c830b363438de",
+        "formula_dps": 156969.25165871024,
+        "formula_residual_dps": 1360.9910278626194,
+        "gear_sha256": "8922395239c7299caa39244fb771bd96f1f86b3b7bb94555cd78af5840216e8f",
+        "iterations": 500,
+        "measured_dps": 158330.24268657286,
+        "rank": 1,
+        "source": "real_candidate",
+        "standard_deviation": 2336.594999432395,
+        "standard_error": 104.49570509233835
+      },
+      {
+        "R3_measured_dps": 149940.3513779232,
+        "R3_standard_error": 356.9183404047334,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1290
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "config_sha256": "4598c385e6330a9615bdb75b6620cfda1004e8a5e1f5a5a918df8df7828c8277",
+        "elapsed_ms": 3241.2303,
+        "engine_result_sha256": "f6c185750293aca36dd7aed78d92d60499bc8e2778eae5bfaf67f080ca5e57c8",
+        "formula_dps": 148644.3089331408,
+        "formula_residual_dps": 1528.757167017291,
+        "gear_sha256": "308521aef1c578df3bc4228b5dd2d270826bcda3ef640b05122777dc7d894b82",
+        "iterations": 100,
+        "measured_dps": 150173.0661001581,
+        "rank": 2,
+        "source": "measured_stat_response_proposal",
+        "standard_deviation": 3588.00650892374,
+        "standard_error": 358.800650892374
+      },
+      {
+        "R3_measured_dps": 146542.4449347409,
+        "R3_standard_error": 255.87665971627652,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            132,
+            88,
+            124
+          ],
+          [
+            1395,
+            1598,
+            1466,
+            1563,
+            1614
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "config_sha256": "980b59b257175a45c703b163793449f7129ec5e89b6f37b7d0a99fa3f4381ef6",
+        "elapsed_ms": 3303.5811,
+        "engine_result_sha256": "6351d7c4b7e66f6a9f37472a00b2454f57c69d977ad3572f9b75a82c28ccb516",
+        "formula_dps": 145247.14513794772,
+        "formula_residual_dps": 1673.1775373265264,
+        "gear_sha256": "cb8ab919b6521f087fca1f19f4b8101c6c408b5c82363c4f50e5dced70535066",
+        "iterations": 100,
+        "measured_dps": 146920.32267527425,
+        "rank": 3,
+        "source": "measured_stat_response_combined_proposal",
+        "standard_deviation": 2173.7782380842245,
+        "standard_error": 217.37782380842245
+      },
+      {
+        "R3_measured_dps": 155931.6276669884,
+        "R3_standard_error": 233.3864919324401,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "config_sha256": "34301e5e338ae1640c265da2a6c7bbea5bca5b2e1fb89e91cd7685970a53281d",
+        "elapsed_ms": 3295.4902,
+        "engine_result_sha256": "c010e2716bfdd1d8fecca8ea1ce6f70704cf7cf2398d66c57e0841bbfb09440a",
+        "formula_dps": 154637.8107269837,
+        "formula_residual_dps": 1289.3538528616482,
+        "gear_sha256": "0f330f9d23d6b73d5ea74a548bccd294570369ace51d1acdcc295c6a709e4170",
+        "iterations": 100,
+        "measured_dps": 155927.16457984535,
+        "rank": 4,
+        "source": "real_candidate",
+        "standard_deviation": 2045.4811839715123,
+        "standard_error": 204.54811839715123
+      },
+      {
+        "R3_measured_dps": 155808.57156848873,
+        "R3_standard_error": 227.24039093985957,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "config_sha256": "fdb6a9852120ab6fb5882fc281890a5c6d5395c4948c505e26e8e4df006e8300",
+        "elapsed_ms": 2878.5379,
+        "engine_result_sha256": "00c01d02376c73b5d06c3b0e5cd998f421ce31173b3c5f78993084c506d086e1",
+        "formula_dps": 154633.2859967898,
+        "formula_residual_dps": 1193.7706353583199,
+        "gear_sha256": "8a2d26915b0c9f40826ca96f70a7b6d071f568bc108399d5ac82c0b72eebf19c",
+        "iterations": 100,
+        "measured_dps": 155827.05663214813,
+        "rank": 5,
+        "source": "single_item_replacement",
+        "standard_deviation": 2276.0570944079113,
+        "standard_error": 227.60570944079114
+      },
+      {
+        "R3_measured_dps": 156215.95269876783,
+        "R3_standard_error": 229.48574846072088,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1302,
+            7,
+            1466,
+            1309,
+            1318
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "config_sha256": "15a97726e64b719dbf9c257fb6631f0337e952b604d8731ac10babc4b8d45304",
+        "elapsed_ms": 2880.3508,
+        "engine_result_sha256": "0218850ddddeae3a4a2a162ab33fffa0ff8ff374038eb991555629a86c1e0a06",
+        "formula_dps": 154617.04832316763,
+        "formula_residual_dps": 1351.0007853980933,
+        "gear_sha256": "79e90eee29e6fef6186709c4a9637b9582c5d0050735a6f479f27429d1f23aef",
+        "iterations": 100,
+        "measured_dps": 155968.04910856573,
+        "rank": 6,
+        "source": "single_item_replacement",
+        "standard_deviation": 2366.9452257937482,
+        "standard_error": 236.69452257937482
+      },
+      {
+        "R3_measured_dps": 154636.50330727076,
+        "R3_standard_error": 217.94402461918085,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1586,
+            119
+          ]
+        ],
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "config_sha256": "f51f7fe797fb734d805ff21b2e0869280fc126340de29580297e1f9a22972c3a",
+        "elapsed_ms": 2849.7274,
+        "engine_result_sha256": "ab1927d76144b439974a4cbb79154c7b12da1fecd9efe7ff3f9eb711c3d70904",
+        "formula_dps": 153368.87796647247,
+        "formula_residual_dps": 1103.076541407383,
+        "gear_sha256": "ebb7af1aa36372c9dabfc830edb917f75a10d67ef134d9876875d3280c9df8bc",
+        "iterations": 100,
+        "measured_dps": 154471.95450787985,
+        "rank": 7,
+        "source": "real_candidate",
+        "standard_deviation": 2355.781967787485,
+        "standard_error": 235.5781967787485
+      },
+      {
+        "R3_measured_dps": 154532.23225353804,
+        "R3_standard_error": 239.9681652323542,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1566,
+            119
+          ]
+        ],
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "config_sha256": "5b5cd779f20e7338570edcc3fc757a528a97efa08679f4371c1c515a010e48b3",
+        "elapsed_ms": 2933.5592,
+        "engine_result_sha256": "7af00e8ed42a2ea9f98021499ed42672f32c2e11a83ce5d876787ac481b34d11",
+        "formula_dps": 153364.3532362786,
+        "formula_residual_dps": 1374.4701394579315,
+        "gear_sha256": "8ec72133fec6b788c75d8c7d96c2ee017e4b9c20d487f07a64927041c718f1a6",
+        "iterations": 100,
+        "measured_dps": 154738.82337573654,
+        "rank": 8,
+        "source": "single_item_replacement",
+        "standard_deviation": 2365.198689163746,
+        "standard_error": 236.5198689163746
+      },
+      {
+        "R3_measured_dps": 154847.35590514058,
+        "R3_standard_error": 197.0433433425054,
+        "assignment": [
+          [
+            36,
+            1413,
+            1426,
+            140,
+            203
+          ],
+          [
+            1571,
+            81,
+            92,
+            88,
+            1615
+          ],
+          [
+            1395,
+            1351,
+            1466,
+            1563,
+            1436
+          ],
+          [
+            1616,
+            91,
+            241,
+            1477,
+            119
+          ]
+        ],
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "config_sha256": "5579491474106a0b09769af85cd8b4170b622d05f2222f4a523814116b761f73",
+        "elapsed_ms": 846.513,
+        "engine_result_sha256": "7f565d2484ce5d5a6c5e67e53ec392d037bcbe5397fb8a4c8a9a7e52c432a008",
+        "formula_dps": 153348.1155626564,
+        "formula_residual_dps": 1350.4917838945694,
+        "gear_sha256": "9cc04370a695140ef64725bb52bc120ef4426c4c5a964d6edb553ca9d0a449a4",
+        "iterations": 100,
+        "measured_dps": 154698.60734655097,
+        "rank": 9,
+        "source": "single_item_replacement",
+        "standard_deviation": 2229.7640221409606,
+        "standard_error": 222.97640221409605
+      }
+    ],
+    "publication_note": "All nine simulated; combined two-item proposal is excluded from distance-one display under unchanged grouping rule.",
+    "published": [
+      {
+        "alternative_rank": 1,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1598,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1614,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "formula_dps": "156969.25165871024",
+        "measured": {
+          "dps": "158330.24268657286",
+          "engine_result_sha256": "70b1c04f6ca545450ef4a4a37a9db248b8a8d80b712b5b52499c830b363438de",
+          "iterations": 500,
+          "standard_error": "104.49570509233835"
+        },
+        "rank": 1,
+        "set_group_rank": 1,
+        "verified_source_rank": 1
+      },
+      {
+        "alternative_rank": 2,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1290,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1598,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1614,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "formula_dps": "148644.3089331408",
+        "measured": {
+          "dps": "150173.0661001581",
+          "engine_result_sha256": "f6c185750293aca36dd7aed78d92d60499bc8e2778eae5bfaf67f080ca5e57c8",
+          "iterations": 100,
+          "standard_error": "358.800650892374"
+        },
+        "rank": 2,
+        "set_group_rank": 1,
+        "verified_source_rank": 2
+      },
+      {
+        "alternative_rank": 1,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1302,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 7,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1309,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1318,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1477,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "formula_dps": "154617.04832316763",
+        "measured": {
+          "dps": "155968.04910856573",
+          "engine_result_sha256": "0218850ddddeae3a4a2a162ab33fffa0ff8ff374038eb991555629a86c1e0a06",
+          "iterations": 100,
+          "standard_error": "236.69452257937482"
+        },
+        "rank": 3,
+        "set_group_rank": 2,
+        "verified_source_rank": 6
+      },
+      {
+        "alternative_rank": 2,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1302,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 7,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1309,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1318,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "formula_dps": "154637.8107269837",
+        "measured": {
+          "dps": "155927.16457984535",
+          "engine_result_sha256": "c010e2716bfdd1d8fecca8ea1ce6f70704cf7cf2398d66c57e0841bbfb09440a",
+          "iterations": 100,
+          "standard_error": "204.54811839715123"
+        },
+        "rank": 4,
+        "set_group_rank": 2,
+        "verified_source_rank": 4
+      },
+      {
+        "alternative_rank": 3,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1302,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 7,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1309,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1318,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1566,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "formula_dps": "154633.2859967898",
+        "measured": {
+          "dps": "155827.05663214813",
+          "engine_result_sha256": "00c01d02376c73b5d06c3b0e5cd998f421ce31173b3c5f78993084c506d086e1",
+          "iterations": 100,
+          "standard_error": "227.60570944079114"
+        },
+        "rank": 5,
+        "set_group_rank": 2,
+        "verified_source_rank": 5
+      },
+      {
+        "alternative_rank": 1,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1351,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1436,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1566,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "formula_dps": "153364.3532362786",
+        "measured": {
+          "dps": "154738.82337573654",
+          "engine_result_sha256": "7af00e8ed42a2ea9f98021499ed42672f32c2e11a83ce5d876787ac481b34d11",
+          "iterations": 100,
+          "standard_error": "236.5198689163746"
+        },
+        "rank": 6,
+        "set_group_rank": 3,
+        "verified_source_rank": 8
+      },
+      {
+        "alternative_rank": 2,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1351,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1436,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1477,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "formula_dps": "153348.1155626564",
+        "measured": {
+          "dps": "154698.60734655097",
+          "engine_result_sha256": "7f565d2484ce5d5a6c5e67e53ec392d037bcbe5397fb8a4c8a9a7e52c432a008",
+          "iterations": 100,
+          "standard_error": "222.97640221409605"
+        },
+        "rank": 7,
+        "set_group_rank": 3,
+        "verified_source_rank": 9
+      },
+      {
+        "alternative_rank": 3,
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "slot": "flower",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1413,
+            "slot": "plume",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1426,
+            "slot": "sands",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 140,
+            "slot": "goblet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 203,
+            "slot": "circlet",
+            "wearer_key": "bennett"
+          },
+          {
+            "artifact_id": 1571,
+            "slot": "flower",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 81,
+            "slot": "plume",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 92,
+            "slot": "sands",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 88,
+            "slot": "goblet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1615,
+            "slot": "circlet",
+            "wearer_key": "chasca"
+          },
+          {
+            "artifact_id": 1395,
+            "slot": "flower",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1351,
+            "slot": "plume",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1466,
+            "slot": "sands",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1563,
+            "slot": "goblet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1436,
+            "slot": "circlet",
+            "wearer_key": "furina"
+          },
+          {
+            "artifact_id": 1616,
+            "slot": "flower",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 91,
+            "slot": "plume",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 241,
+            "slot": "sands",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 1586,
+            "slot": "goblet",
+            "wearer_key": "ororon"
+          },
+          {
+            "artifact_id": 119,
+            "slot": "circlet",
+            "wearer_key": "ororon"
+          }
+        ],
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "formula_dps": "153368.87796647247",
+        "measured": {
+          "dps": "154471.95450787985",
+          "engine_result_sha256": "ab1927d76144b439974a4cbb79154c7b12da1fecd9efe7ff3f9eb711c3d70904",
+          "iterations": 100,
+          "standard_error": "235.5781967787485"
+        },
+        "rank": 8,
+        "set_group_rank": 3,
+        "verified_source_rank": 7
+      }
+    ],
+    "search_work_rows_excluding_context_and_timers_exact": true,
+    "winner_gear": [
+      {
+        "artifacts": [
+          {
+            "artifact_id": 36,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.07"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.101"
+              },
+              {
+                "key": "em",
+                "value": "82"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.047"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1413,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.14"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.179"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.078"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.047"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1426,
+            "level": 20,
+            "main_stat": {
+              "key": "em",
+              "value": "187"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.202"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.074"
+              },
+              {
+                "key": "def",
+                "value": "37"
+              },
+              {
+                "key": "hp",
+                "value": "239"
+              }
+            ]
+          },
+          {
+            "artifact_id": 140,
+            "level": 20,
+            "main_stat": {
+              "key": "pyro_damage_bonus",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "gildeddreams",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.132"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.078"
+              },
+              {
+                "key": "em",
+                "value": "63"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.058"
+              }
+            ]
+          },
+          {
+            "artifact_id": 203,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "noblesseoblige",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "19"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.047"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.128"
+              },
+              {
+                "key": "em",
+                "value": "63"
+              }
+            ]
+          }
+        ],
+        "owner": "bennett",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "noblesseoblige"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1571,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.111"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.027"
+              },
+              {
+                "key": "em",
+                "value": "23"
+              }
+            ]
+          },
+          {
+            "artifact_id": 81,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.053"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.148"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.136"
+              },
+              {
+                "key": "em",
+                "value": "37"
+              }
+            ]
+          },
+          {
+            "artifact_id": 92,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "deepwoodmemories",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.311"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.062"
+              },
+              {
+                "key": "def",
+                "value": "42"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 88,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "35"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.039"
+              },
+              {
+                "key": "def",
+                "value": "19"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1615,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "obsidiancodex",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "19"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.105"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.097"
+              },
+              {
+                "key": "def",
+                "value": "56"
+              }
+            ]
+          }
+        ],
+        "owner": "chasca",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "obsidiancodex"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1395,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.053"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.272"
+              },
+              {
+                "key": "def",
+                "value": "44"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.099"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1598,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.111"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.288"
+              },
+              {
+                "key": "em",
+                "value": "19"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.105"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1466,
+            "level": 20,
+            "main_stat": {
+              "key": "hp_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "wandererstroupe",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.187"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.128"
+              },
+              {
+                "key": "em",
+                "value": "21"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1563,
+            "level": 20,
+            "main_stat": {
+              "key": "hp_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.21"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.066"
+              },
+              {
+                "key": "em",
+                "value": "56"
+              },
+              {
+                "key": "hp",
+                "value": "269"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1614,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_damage",
+              "value": "0.622"
+            },
+            "rarity": 5,
+            "set_uid": "tenacityofthemillelith",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "45"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.082"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.031"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.117"
+              }
+            ]
+          }
+        ],
+        "owner": "furina",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "tenacityofthemillelith"
+          }
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "artifact_id": 1616,
+            "level": 20,
+            "main_stat": {
+              "key": "hp",
+              "value": "4780"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "flower",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "14"
+              },
+              {
+                "key": "atk_percent",
+                "value": "0.117"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.21"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.066"
+              }
+            ]
+          },
+          {
+            "artifact_id": 91,
+            "level": 20,
+            "main_stat": {
+              "key": "atk",
+              "value": "311"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "plume",
+            "substats": [
+              {
+                "key": "atk_percent",
+                "value": "0.146"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.124"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.109"
+              },
+              {
+                "key": "energy_recharge",
+                "value": "0.052"
+              }
+            ]
+          },
+          {
+            "artifact_id": 241,
+            "level": 20,
+            "main_stat": {
+              "key": "atk_percent",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "sands",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.218"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.074"
+              },
+              {
+                "key": "def_percent",
+                "value": "0.124"
+              },
+              {
+                "key": "hp",
+                "value": "209"
+              }
+            ]
+          },
+          {
+            "artifact_id": 1586,
+            "level": 20,
+            "main_stat": {
+              "key": "electro_damage_bonus",
+              "value": "0.466"
+            },
+            "rarity": 5,
+            "set_uid": "aubadeofmorningstarandmoon",
+            "slot": "goblet",
+            "substats": [
+              {
+                "key": "atk",
+                "value": "14"
+              },
+              {
+                "key": "crit_damage",
+                "value": "0.35"
+              },
+              {
+                "key": "crit_rate",
+                "value": "0.031"
+              },
+              {
+                "key": "def_percent",
+                "value": "0.051"
+              }
+            ]
+          },
+          {
+            "artifact_id": 119,
+            "level": 20,
+            "main_stat": {
+              "key": "crit_rate",
+              "value": "0.311"
+            },
+            "rarity": 5,
+            "set_uid": "scrolloftheheroofcindercity",
+            "slot": "circlet",
+            "substats": [
+              {
+                "key": "crit_damage",
+                "value": "0.264"
+              },
+              {
+                "key": "em",
+                "value": "21"
+              },
+              {
+                "key": "hp",
+                "value": "538"
+              },
+              {
+                "key": "hp_percent",
+                "value": "0.058"
+              }
+            ]
+          }
+        ],
+        "owner": "ororon",
+        "set_bonuses": [
+          {
+            "pieces": 4,
+            "set_uid": "scrolloftheheroofcindercity"
+          }
+        ]
+      }
+    ]
+  },
+  "r4_flags": {
+    "GTT_R3_ADJOINT_REUSE": "1",
+    "GTT_R3_OPERATION_SWITCH": "1",
+    "GTT_R3_PARALLEL_CAPTURE": "1",
+    "GTT_R3_PROGRAM_IDENTITY": "1",
+    "GTT_R3_TYPED_CANONICAL": "1",
+    "GTT_R4_FAST_COUNTERS": "1",
+    "GTT_R4_OWNED_DIGEST": "1",
+    "GTT_R4_TYPED_PANEL": "1"
+  },
+  "rejected_module": "dirty frontier: no established time benefit on retained input; production region/fork exact R3",
+  "retained_validation": "Public mutable member slices; public compiler semantic validation preserved",
+  "schema": "r4_full_button_attribution_v1",
+  "scope": "One complete full-account Chasca AppShell All Sets OFF; ROOT accepted this scope. No repeat/ON/install/other team.",
+  "source_commit": "b3f9713b71d13544df8ed1a82d7e3db6d2ff1f56",
+  "stopped_state": "Numerical run complete; original owner77097 retained for export readback, then standard release and final closeout.json.",
+  "timing_ms": {
+    "R3": {
+      "adaptive_wall_ms": 2936.1379999999995,
+      "bind_ms": 3666.6931000000022,
+      "capture_batch_wall_ms": 7267.8827,
+      "capture_decode_sum_ms": 3755.2288,
+      "capture_model_ms": 9819.9313,
+      "capture_process_sum_ms": 9023.7772,
+      "fullbuild_inner_sum_ms": 18690.7173,
+      "native_ms": 75174.3062,
+      "rule_ms": 11038.74960000001,
+      "search_excluding_capture_model_ms": 32633.8046,
+      "search_ms": 42453.7359,
+      "source_preparation_ms": 2205.2995,
+      "staged_outer_minus_inner_ms": 2667.2873,
+      "staged_outer_ms": 21358.0046,
+      "support_response_ms": 9271.6631
+    },
+    "R4": {
+      "adaptive_wall_ms": 2877.5571,
+      "bind_ms": 3486.609,
+      "capture_batch_wall_ms": 6734.6189,
+      "capture_decode_sum_ms": 3733.7428,
+      "capture_model_ms": 8242.488299999999,
+      "capture_process_sum_ms": 8413.2555,
+      "fullbuild_inner_sum_ms": 16892.9375,
+      "native_ms": 70394.4378,
+      "rule_ms": 10552.159000000001,
+      "search_excluding_capture_model_ms": 31194.857300000003,
+      "search_ms": 39437.3456,
+      "source_preparation_ms": 2386.1385999999998,
+      "staged_outer_minus_inner_ms": 2695.3316000000013,
+      "staged_outer_ms": 19588.2691,
+      "support_response_ms": 9341.532
+    },
+    "capture_model_saving_ms": 1577.4430000000011,
+    "remaining_search_saving_ms": 1438.9472999999962,
+    "same_boundary_search_saving_ms": 3016.390299999999,
+    "warning": "Nested/inclusive wall boundaries overlap. Parallel process/decode sums overlap each other and batch wall. No full-run CPU/allocation/RSS measurement; all phase changes cannot be attributed solely to the three R4 modules."
+  },
+  "top_level_click_ms": {
+    "R3": {
+      "adapter_formula_inputs_ms": 5750.0,
+      "adapter_optimizer_process_ms": 78735.0,
+      "adapter_prepare_inputs_ms": 5204.0,
+      "adapter_request_preflight_ms": 140.0,
+      "adapter_total_elapsed_ms": 89829.0,
+      "button_click_to_terminal_ms": 90500,
+      "fixture_build_ms": 5875,
+      "product_timeout_ms": 0,
+      "source_load_ms": 0,
+      "theory_finish_button_click_ms": null,
+      "theory_first_ready_elapsed_ms": null,
+      "theory_first_ready_projection_ms": null,
+      "whole_test_child_elapsed_ms": 100906,
+      "worker_output_render_ms": 454
+    },
+    "R4": {
+      "adapter_formula_inputs_ms": 6969.0,
+      "adapter_optimizer_process_ms": 74219.0,
+      "adapter_prepare_inputs_ms": 5594.0,
+      "adapter_request_preflight_ms": 140.0,
+      "adapter_total_elapsed_ms": 86922.0,
+      "button_click_to_terminal_ms": 87656,
+      "fixture_build_ms": 6984,
+      "product_timeout_ms": 0,
+      "source_load_ms": 0,
+      "theory_finish_button_click_ms": null,
+      "theory_first_ready_elapsed_ms": null,
+      "theory_first_ready_projection_ms": null,
+      "whole_test_child_elapsed_ms": 99782,
+      "worker_output_render_ms": 453
+    }
+  },
+  "verification": {
+    "actual_final_calls": 10,
+    "actual_final_iterations": 1400,
+    "decisions": [
+      {
+        "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "gap": 0,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": true,
+        "stage": "pilot_leader",
+        "threshold": 1268.7454634280452
+      },
+      {
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "gap": 2764.9446839781012,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1304.3183191958447
+      },
+      {
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "gap": 2805.8292126984743,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1214.2060983711383
+      },
+      {
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "gap": 2905.937160395697,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1278.1734111635071
+      },
+      {
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "gap": 3994.17041680729,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1303.8112976041152
+      },
+      {
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "gap": 4034.386445992859,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1265.0506474422673
+      },
+      {
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "gap": 4261.039284663973,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1301.0806716899035
+      },
+      {
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "gap": 8559.92769238574,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1692.5318427661214
+      },
+      {
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "gap": 11812.67111726958,
+        "leader_iterations": 100,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "pilot_leader",
+        "threshold": 1249.3628048023486
+      },
+      {
+        "assignment_sha256": "b302c893fb400f06237ed355a17a932c861900496dea550445950c170cb185d8",
+        "gap": 2362.1935780071362,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1034.9388341487481
+      },
+      {
+        "assignment_sha256": "04a735258015ea86e8dccc3b889638600ad280c3cb6ef6f60847a6a2ea0ba44b",
+        "gap": 2403.0781067275093,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 918.7755775819029
+      },
+      {
+        "assignment_sha256": "023ab8da0897258fe20d906ade9c563bc5351d043d3807e4e3694da9367478fb",
+        "gap": 2503.186054424732,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1001.7880921854944
+      },
+      {
+        "assignment_sha256": "e1693086541b07491782c940bf027848758b6c9b1e1df90c6b899f095b84e2c0",
+        "gap": 3591.419310836325,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1034.2997691189066
+      },
+      {
+        "assignment_sha256": "644129c080e73750bc58a736b42f4e80769ca972fd446b90b7abc13657d0ced6",
+        "gap": 3631.635340021894,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 984.9899762096042
+      },
+      {
+        "assignment_sha256": "0aa4276a16228bdb5554d6fb8a33bdf4d1ddc97a9f58b6fa524c8654e2dd02fc",
+        "gap": 3858.2881786930084,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1030.855483025796
+      },
+      {
+        "assignment_sha256": "a5aeada8e40c870a6a3cea9bb367ab3347069402a4fa687e98695c9c61c88c3e",
+        "gap": 8157.176586414775,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 1494.8298068397548
+      },
+      {
+        "assignment_sha256": "22d5964b823113e7eb213cf3adfee522fe31238a6a3a41e5d970b9eba1ae6769",
+        "gap": 11409.920011298615,
+        "leader_iterations": 500,
+        "leader_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+        "promoted": false,
+        "stage": "after_confirmation_1",
+        "threshold": 964.7587940324194
+      }
+    ],
+    "iteration_policy": "per_candidate",
+    "merged_iterations": 0,
+    "stages": [
+      {
+        "iterations": 100,
+        "name": "pilot-n100",
+        "result": {
+          "iterations": 100,
+          "total_elapsed_ms": 12987.5076,
+          "waves": [
+            {
+              "candidate_count": 4,
+              "index": 1,
+              "parallelism": 4,
+              "start_rank": 1,
+              "total_elapsed_ms": 6003.7049,
+              "workers": 4
+            },
+            {
+              "candidate_count": 4,
+              "index": 2,
+              "parallelism": 4,
+              "start_rank": 5,
+              "total_elapsed_ms": 5445.4323,
+              "workers": 4
+            },
+            {
+              "candidate_count": 1,
+              "index": 3,
+              "parallelism": 1,
+              "start_rank": 9,
+              "total_elapsed_ms": 1536.8606,
+              "workers": 16
+            }
+          ],
+          "winner": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                1598,
+                1466,
+                1563,
+                1614
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+            "config_sha256": "e700d0ac3c12996c54fc87adab04b43cd0ec09057ae496009f167eba2e5ee0f4",
+            "elapsed_ms": 3270.3582,
+            "engine_result_sha256": "dfc7cca79dc76e33d9dddcef0d6bb7b6b040cde82b636f329726533a5a0deb61",
+            "formula_dps": 156969.25165871024,
+            "formula_residual_dps": 1763.7421338335844,
+            "iterations": 100,
+            "measured_dps": 158732.99379254383,
+            "rank": 1,
+            "source": "real_candidate",
+            "standard_deviation": 2242.846301974099,
+            "standard_error": 224.28463019740988
+          }
+        }
+      },
+      {
+        "iterations": 500,
+        "name": "confirmation-01-n500",
+        "result": {
+          "iterations": 500,
+          "total_elapsed_ms": 3905.4299,
+          "waves": [
+            {
+              "candidate_count": 1,
+              "index": 1,
+              "parallelism": 1,
+              "start_rank": 1,
+              "total_elapsed_ms": 3905.4299,
+              "workers": 16
+            }
+          ],
+          "winner": {
+            "assignment": [
+              [
+                36,
+                1413,
+                1426,
+                140,
+                203
+              ],
+              [
+                1571,
+                81,
+                92,
+                88,
+                1615
+              ],
+              [
+                1395,
+                1598,
+                1466,
+                1563,
+                1614
+              ],
+              [
+                1616,
+                91,
+                241,
+                1586,
+                119
+              ]
+            ],
+            "assignment_sha256": "ebb3316762058f4fe1aac2e6efa976a5de6ac990bebda926b58a27182e6b6c66",
+            "config_sha256": "19a7bc8cb20070ca2346101f6fec325fbeb15779eacf3cdf8f28e8dc721e3f4e",
+            "elapsed_ms": 3267.4682,
+            "engine_result_sha256": "70b1c04f6ca545450ef4a4a37a9db248b8a8d80b712b5b52499c830b363438de",
+            "formula_dps": 156969.25165871024,
+            "formula_residual_dps": 1360.9910278626194,
+            "iterations": 500,
+            "measured_dps": 158330.24268657286,
+            "rank": 1,
+            "source": "real_candidate",
+            "standard_deviation": 2336.594999432395,
+            "standard_error": 104.49570509233835
+          }
+        }
+      }
+    ]
+  }
+}

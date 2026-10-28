@@ -1,0 +1,54 @@
+{
+  "attribution_owner_hash_scope": "off-attribution-v1 records the exported owner before release. This receipt records the final closed owner hash.",
+  "closed_utc": "2026-10-28T07:47:52.219318+00:00",
+  "consumer_builds": 1,
+  "consumer_sha256": "015a1cb7a9a1ea8c8c0da33703b9248a077462bc471dd03359eaded49b26476c",
+  "engine_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+  "exactly_one_completed_off": true,
+  "heavy_processes_owned": 0,
+  "installations": 0,
+  "job_removed": true,
+  "native_source_map_sha256": "0f504808a6fd57fd3fae55403d15853bc6adaeb891583c32fabdc813535c9e83",
+  "original_job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-guos49re",
+  "original_owner_exit_code": 0,
+  "original_owner_session": 77097,
+  "owned_processes_after": [],
+  "owned_processes_count": 0,
+  "owner_finished": 1793173619.8774612,
+  "owner_status": "closed_off_complete_waiting_root",
+  "preserved_state": {
+    "active_profile_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "files": {
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\gcsim\\engines\\active_engine.json": "d884c10f04bab47fe8bc660ced60ae80b7efad9baef09338a1e7dc6f8fdaf2f1",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\profiles\\57b730eff7544d0eb4e9f74ecb8fc2fa\\data\\artifacts.db": "0937e22817f3cece02ac93baaa9a9d39bb5467630f55751501f3082455c9eb85",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\profiles\\registry.json": "adbefae9c6fd33116fa63d33069f50f6531ef9bfe3c42ec224841e4ed7d8ad94",
+      "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\native\\gcsim_optimizer\\gtt-optimizer.exe": "415d995c20897d13faf70217fedd37831528e6570b249b472d154b36a61f069d"
+    }
+  },
+  "producer_builds": 0,
+  "protected_exact": true,
+  "protected_sha256_after": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "protected_sha256_before": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "receipt_hashes": {
+    "ROOT_ADMISSION.json": "9043b6d2d9d9f26a4e87479948661d6a24b42f8f6051e2ec32e77183788609d9",
+    "chasca-config.json": "a0906af08413c1bca5188f2e2c4d3a4a5b7fb3af4cbcb49857c9c70d62460506",
+    "off-attribution-v1.json": "9bb0203064aa4decc8ed594df0801b62af071284474b1e0a9245f54a292ac312",
+    "off-details.json": "10789cb86d4128710aedf33bb652b7d0c38256ad19cb3ab95c60e406763a13a4",
+    "off-observations.json": "c5ae3f27adc20873f294dc3e2c3be0eb169a5c826ea9725ee28c80dded6cf385",
+    "off-r3-observations.json": "9efb4545ae29665813ebef77d128025444b4f96ed256129958fbce4b5a0b73c1",
+    "off-r4-observations.json": "4093329c5431c914e59076966500ded96732ef0a1a5cbd51dc9a1482a4bc12d7",
+    "off.json": "3e91427ca65b978977b9029a95e37f852772b23cb1b701398b2b6b461c0326e5",
+    "owner.json": "0a5edccb05c61009aaa764cf5b3a72245b9f64c5fb2b247ad4cf62a8ec5479ed",
+    "prepared-review-v1.json": "41ab1ff44b7b3e3612c2a45d18b29916f93b4e9245ee873f7ec2bdb1db888e8f"
+  },
+  "release_command_exit_code": 0,
+  "removed_bytes": 258495805,
+  "result_report": {
+    "path": "docs\\optimizer-evidence\\2026-10-27-engineering-efficiency\\R4_RESULT_RU.md",
+    "sha256": "35b0919f1eaf84406b42f039c8b795a1c84e309bb828e65bae4e03f0ae6eed90"
+  },
+  "schema": "r4_full_button_closeout_v1",
+  "source_commit": "b3f9713b71d13544df8ed1a82d7e3db6d2ff1f56",
+  "status": "closed_exported_protected_exact_STOP",
+  "stop": "No repeat, ON/warm, installation, other team or next experiment authorized by this closeout."
+}

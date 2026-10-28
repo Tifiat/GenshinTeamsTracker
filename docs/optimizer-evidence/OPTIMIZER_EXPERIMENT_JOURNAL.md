@@ -266,3 +266,24 @@ verified receipt hashes, current protected account/runtime, absent job and zero
 owned processes. Attributionc23d6398 preserves pre-release owner hash; closeout
 binds final ownerf1aaf43e. One successful OFF only; no resumed simulation, install
 or new test. REPORT/STOP; further work requires a new human order.
+
+
+R4 source milestone b3f9713 (28October): owned raw digest, typed panel canonical,
+fixed atomic counters over exact R3. Public mutable-member semantic validation
+retained. Dirty frontier rejected: saved-input benefit unproved; production
+region/fork exact R3. Focused checks and three runner checks PASS; initial cmd
+fixture-layout failure retained, isolated corrective rerun PASS on same438-map.
+No full-run race/CPU/alloc/RSS claim; source reconstruction and inherited closure
+limits remain explicit in [offline evidence](2026-10-27-engineering-efficiency/OFFLINE_RU.md).
+
+ROOT admitted and accepted ONE full604/597/39 Chasca OFF. Consumer015a1cb7/enginef1e:
+90.500 to87.656s (-2.844s/-3.143%); same20 winner and all9ordered gear/formula/config,
+counts366624eval/8982gradient/87ordinary/2compact/1model. DPS158226.929+/-108.027
+SE to158330.243+/-104.496, n500; sampling variation, not improved model quality.
+Search42.454 to39.437s includes initial9.820 to8.242s; remaining32.634 to31.195s.
+Final outer21.358 to19.588s; phase changes are not solely attributed to R4 modules.
+[Report](2026-10-27-engineering-efficiency/R4_RESULT_RU.md),
+[attribution](2026-10-27-engineering-efficiency/r4-run-v1/off-attribution-v1.json) and
+[closeout](2026-10-27-engineering-efficiency/r4-run-v1/closeout.json) saved/read back.
+Owner77097 exited0; job-guos49re removed258495805bytes; owned processes0,
+protected9d81 exact. No install/repeat/ON/other teams. Local result save; STOP.

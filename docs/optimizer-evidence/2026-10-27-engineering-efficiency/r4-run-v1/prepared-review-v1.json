@@ -1,0 +1,72 @@
+{
+  "accepted_r4_modules": [
+    "owned_raw_digest",
+    "typed_panel_canonical",
+    "fixed_atomic_counters"
+  ],
+  "consumer_build_s": 24.327999999994063,
+  "consumer_builds": 1,
+  "consumer_sha256": "015a1cb7a9a1ea8c8c0da33703b9248a077462bc471dd03359eaded49b26476c",
+  "consumer_target": {
+    "CGO_ENABLED": "0",
+    "GOAMD64": "v1",
+    "GOARCH": "amd64",
+    "GOEXPERIMENT": "",
+    "GOOS": "windows",
+    "GoVersion": "go1.26.4"
+  },
+  "deadline": 1793183519.8731878,
+  "dirty_frontier": "excluded; source region/fork exact R3",
+  "engine_calls": 0,
+  "inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "b60ab60115dae98cc223ddddc929ea90260ddb0d842bea4b0b7dbc21bbdc6bc7",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "job": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-guos49re",
+  "native_source_files_verified": 438,
+  "native_source_map_sha256": "0f504808a6fd57fd3fae55403d15853bc6adaeb891583c32fabdc813535c9e83",
+  "off_authority": "ROOT dispatches single OFF to existing cheap tester after review; MAIN has issued no OFF",
+  "owner_exec_session": 77097,
+  "owner_snapshot_sha256": "98272334a9eb91771c6c312e2e6fc9363dd31ab95102ae383c19d74d8d37ead4",
+  "producer": {
+    "artifact_path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\managed-optimizer\\job-guos49re\\engine-store\\engines\\gcsim-v2.45.0-mechanic-compiler-20261025\\build\\gtt-gcsim.exe",
+    "artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+    "binding_sha256": "b60ab60115dae98cc223ddddc929ea90260ddb0d842bea4b0b7dbc21bbdc6bc7",
+    "engine_tree_sha256": "b50e678556b6ed630f09510c194179e74839048b1322689c3ee6def2594349fb",
+    "trusted": true
+  },
+  "producer_builds": 0,
+  "producer_target": {
+    "CGO_ENABLED": "0",
+    "GOAMD64": "v1",
+    "GOARCH": "amd64",
+    "GOEXPERIMENT": "",
+    "GOOS": "windows",
+    "GoVersion": "go1.26.4"
+  },
+  "protected_exact": true,
+  "protected_sha256_now": "9d81f64bfb44ed408387df75e5129fa5a89f32b467706f9b42fecd2344a53c01",
+  "r4_flags": {
+    "GTT_R3_ADJOINT_REUSE": "1",
+    "GTT_R3_OPERATION_SWITCH": "1",
+    "GTT_R3_PARALLEL_CAPTURE": "1",
+    "GTT_R3_PROGRAM_IDENTITY": "1",
+    "GTT_R3_TYPED_CANONICAL": "1",
+    "GTT_R4_FAST_COUNTERS": "1",
+    "GTT_R4_OWNED_DIGEST": "1",
+    "GTT_R4_TYPED_PANEL": "1"
+  },
+  "retained_validation": "Public mutable member slices; public compiler semantic validation preserved",
+  "schema": "r4_prepared_review_v1",
+  "source_commit": "b3f9713b71d13544df8ed1a82d7e3db6d2ff1f56",
+  "status": "prepared_no_numeric_command",
+  "verified_utc": "2026-10-28T07:38:47.572509+00:00",
+  "wrapper_fields_scope": "Inherited R1 source_closure wording. Actual R4 native is committed b3f9713 plus verified exact438-map. Python/material and producer retain separately pinned dependencies; not standalone product checkout.",
+  "wrapper_source_closure": "accepted403 reconstruction/helper chain; not standalone checkout"
+}

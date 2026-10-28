@@ -167,3 +167,11 @@ capture/model, First/fork, offer/probes and verification timestamps; never infer
 their seconds from a single cumulative progress event. None added or run here.
 
 STOP. ROOT owns current handoff/queue updates; this file saves bounded forensics.
+
+ROOT review: the inherited flag and shared-constructor/frozen-composition seams
+were independently inspected. The policy mismatch is confirmed; its share of
+the latency regression remains unmeasured. Disabling frozen admission in one
+future comparison is a diagnostic control, not final acceptance of permanently
+excluding unknown mechanics. A final remedy must retain labeled best-effort
+search without unbounded repeated rule work. No implementation or new run is
+authorized by this report; discuss the bounded correction/measurement plan first.

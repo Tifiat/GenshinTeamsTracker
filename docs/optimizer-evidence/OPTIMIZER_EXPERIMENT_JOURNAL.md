@@ -23,6 +23,22 @@ Do not add nested timers or compare versions as an isolated patch experiment.
 Preserve old rows; each useful completed stage needs a scoped local commit under
 [the milestone rule](../handoff/HANDOFF_MAINTENANCE.md#commit-useful-milestones--human-order-27-october-2026).
 
+## 28 October: Theory recovery and causal diagnosis
+
+[Full comparison and receipts](../../../worker3%20GTT/docs/optimizer-evidence/2026-10-28-theory-phases/COMPARISON_RU.md).
+Worker2 control-v2 (98f1069): historical native415d with pinned current wrapper,
+114.734s button /199023.030 DPS, matching historical formula197302.481673.
+Historical105.344s full Python/env not recovered. Worker3 timed R5:462.079s /
+198293.889 DPS; First396.607s contains372.930s joint rule replay (nested timers).
+R1 frozen policy reaches Theory and excludes frozen components from composition.
+Diagnostic-only291a1ef avoids discarded record/key construction:404.703s /
+198102.281 DPS; same two build identities/formulas/work counters; replay313.493s.
+Ordinary n500 unseeded, SE150.230/144.378; this is not a demonstrated quality loss.
+Both use2 captures/52 response results/2 ordinary results, cache OFF; first verified
+snapshot followed by actual Finish, not exhaustive search or timeout.
+Per-run scratch removed; MAIN pins and retained baseline restoration verified.
+No installation. STOP/discuss remaining replay/policy before another experiment.
+
 ## Located versions and measurements
 
 | Evidence | Input / configuration | Measured boundary and result | Interpretation |

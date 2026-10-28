@@ -221,6 +221,15 @@ completed result. No installation/CUA/observer or broad disk inspection.
 New harness resources/temp files have explicit owners, finite retention and
 cleanup on success/error/cancel. Preserve protected account/runtime/foreign work.
 
+### T1 dispatch audit — hold for human discussion
+
+T1 failed in the new runner before optimizer launch: a timeout assertion ran
+before the existing adapter normalized its sentinel. No numerical result exists.
+The expensive MAIN preparation/ROOT coordination was disproportionate to a
+measurement-only request; see t1-run-v1/DISPATCH_AUDIT.md for session accounting.
+Use the measurement-only route in ORCHESTRATOR_RULES for subsequent dispatch.
+No retry, algorithm work or next team is authorized by this audit.
+
 ## Representation decision after source review
 
 ROOT admits the typed-canonical IRSeedMember candidate described in
@@ -244,3 +253,10 @@ whitelist in IRNode.validate. A fifth, isolated module may replace only this map
 with exact switch membership, preserving validation order/errors. Compare it
 separately from typed JSON, folded into the same corrective saved-data job when
 possible; do not expand into general validator/crypto/cache rewrites.
+
+Human28October resumes T1: repair only runner composition/failure reporting, then
+one t1-run-v2 Theory observation by fresh sidebar Luna/low. Fresh executor
+01a1824a-905d-7a50-a342-a1ffe0b35022 is Sol6.1/medium; ROOT model/effort
+remain human-controlled. Preserve v1 failure; no algorithm changes/install.
+This supersedes the audit HOLD; result then discussion/STOP. One-time approval
+permits workflow/context simplification, not future significant scope changes.

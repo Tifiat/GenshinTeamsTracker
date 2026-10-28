@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "C:\Users\user\Desktop\GenshinTeamsTracker\tests\tools\test_optimizer_archetype_button_cases.py", line 440, in <lambda>
+    lambda index, rotation: AppShell._on_gcsim_optimizer_requested(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Desktop\GenshinTeamsTracker\ui\app_shell.py", line 2516, in _on_gcsim_optimizer_requested
+    worker = GcsimBrowserSelectedOptimizerWorker(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\user\Desktop\GenshinTeamsTracker\tests\tools\test_optimizer_archetype_button_cases.py", line 2947, in __init__
+    super().__init__(replace(request, product_timeout_ms=product_timeout_ms))
+  File "C:\Users\user\Desktop\GenshinTeamsTracker\tools\experiments\gcsim\mvp_polish\t1_theory_button.py", line 114, in __init__
+    raise ValueError('T1 actual Theory settings differ')
+ValueError: T1 actual Theory settings differ

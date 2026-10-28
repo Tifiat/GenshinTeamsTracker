@@ -1,0 +1,4918 @@
+{
+  "benchmark_cache": {
+    "after": {
+      "bytes": 0,
+      "files": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "before": {
+      "bytes": 0,
+      "files": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "bundled_cache": "application_read_only",
+    "cache_enabled": false,
+    "flag": "off"
+  },
+  "candidate_optimizer_binary_sha256": "506cd4b75a4f751786ae5321e6e4e1a99df9007069dcf0e2c302a4e70eb6e202",
+  "candidate_preparation_elapsed_ms": 10359,
+  "case": {
+    "assessment_policy": "Selected/All use 1 group x 2 builds so the common support-response escape lane is eligible when needed. Theory uses its production lifetime of up to 7 ordinary candidates, including 2 response slots; First and Finish share that budget. Finish follows the first ordinary-verified snapshot. A frozen paired candidate control changes one legal artifact line only; bind engine, rotation, energy, diagnostic seeds and profiles. Production n500 finalists are unseeded. A set/role label is not evidence.",
+    "case_id": "chasca_600_fixture",
+    "config_join": {
+      "button_signal_rotation_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+      "context_sha256": "f4d81e16bf997e63a47145417fff19ae2ee9c09571a4f51eb638d47574e7ad90",
+      "engine_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+      "engine_binding_sha256": "8e8a504163ed305fcf9362c3c3010a6961226e4f8343673d0c751db4399f681c",
+      "engine_id": "gcsim-v2.45.0-mechanic-compiler-20261025",
+      "engine_patch_manifest_sha256": "aaaea806b830865f02312e071f7f1e5bf8e3bbfe376d7d019b09cf1e614dee69",
+      "engine_source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+      "mode": "theory",
+      "prepared_config_sha256": "1aa4befe7292c0d4b03fdc9e05a842b29a8a6787e3ce5b11a7ed43fd508f0c8c",
+      "request_artifact_count": 0,
+      "request_available": true,
+      "request_hash_join_match": true,
+      "request_payload_sha256": "ddb0bf6e79257779e8527cbaadf6b7228b34c3e6922b62ebc749b9ceb6554193",
+      "request_result_options": {},
+      "request_seed_schedule": [
+        742031889,
+        742031890
+      ],
+      "request_sha256": "ddb0bf6e79257779e8527cbaadf6b7228b34c3e6922b62ebc749b9ceb6554193",
+      "request_wearer_count": 4,
+      "request_wearers": [
+        {
+          "weapon_key": "sapwoodblade",
+          "wearer_key": "bennett"
+        },
+        {
+          "weapon_key": "astralvulturescrimsonplumage",
+          "wearer_key": "chasca"
+        },
+        {
+          "weapon_key": "wolffang",
+          "wearer_key": "furina"
+        },
+        {
+          "weapon_key": "thestringless",
+          "wearer_key": "ororon"
+        }
+      ],
+      "rotation_button_text_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+      "rotation_prepared_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+      "rotation_source_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+      "target_sha256": "2f6d40a7ae7e4783e5b9cb4abc5ca6579553d5098a085e363e98f62884dec4c4",
+      "trace_context_sha256": "11d9cb0ee111d76454f5310c4d9a957c65ae056d6b39ba199dd5c6d502aca754"
+    },
+    "contract_validation": {
+      "error_code": "",
+      "failed_checks": [],
+      "status": "passed"
+    },
+    "errors": {
+      "class": "",
+      "code": ""
+    },
+    "inventory": {
+      "artifact_domain_count": 604,
+      "artifact_rarity_level": {
+        "level": 20,
+        "rarity": 5
+      },
+      "artifacts_by_set_position": {
+        "emblemofseveredfate": {
+          "circlet": 1,
+          "flower": 1,
+          "goblet": 1,
+          "plume": 1,
+          "sands": 1
+        },
+        "goldentroupe": {
+          "circlet": 5,
+          "flower": 4,
+          "goblet": 5,
+          "plume": 4,
+          "sands": 4
+        },
+        "noblesseoblige": {
+          "circlet": 5,
+          "flower": 4,
+          "goblet": 5,
+          "plume": 4,
+          "sands": 4
+        },
+        "tenacityofthemillelith": {
+          "circlet": 5,
+          "flower": 4,
+          "goblet": 5,
+          "plume": 4,
+          "sands": 4
+        },
+        "thunderingfury": {
+          "circlet": 5,
+          "flower": 4,
+          "goblet": 5,
+          "plume": 4,
+          "sands": 4
+        },
+        "vourukashasglow": {
+          "circlet": 1,
+          "flower": 1,
+          "goblet": 1,
+          "plume": 1,
+          "sands": 1
+        }
+      },
+      "baseline_main_stats_by_character": {
+        "bennett": {
+          "3": "atk_",
+          "4": "electro_dmg_",
+          "5": "critRate_"
+        },
+        "chasca": {
+          "3": "atk_",
+          "4": "electro_dmg_",
+          "5": "critRate_"
+        },
+        "furina": {
+          "3": "hp_",
+          "4": "hp_",
+          "5": "hp_"
+        },
+        "ororon": {
+          "3": "hp_",
+          "4": "pyro_dmg_",
+          "5": "critRate_"
+        }
+      },
+      "equipped_artifact_count": 20,
+      "fixture_admission": {
+        "artifact_count": null,
+        "code": "fixture_admission_invalid",
+        "engine_catalog_fingerprint": null,
+        "equipped_artifact_count": null,
+        "fixture_sha256": null,
+        "initial_lines_per_wearer": null,
+        "profile_count": null,
+        "rolls_per_wearer": null,
+        "schema_kind": "gtt_mvp_fixture_admission_v1",
+        "set_domain_count": null,
+        "status": "unknown",
+        "substat_count": null,
+        "upgrade_event_count": null,
+        "upgrades_per_wearer": null
+      },
+      "fixture_quality_scope": "active_profile_full_account_artifact_snapshot",
+      "fixture_sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48",
+      "main_stat_choice_count_by_position": {
+        "circlet": 5,
+        "flower": 1,
+        "goblet": 5,
+        "plume": 1,
+        "sands": 4
+      },
+      "main_stat_options_by_position": {
+        "circlet": [
+          "hp_",
+          "atk_",
+          "critRate_",
+          "critDMG_",
+          "eleMas"
+        ],
+        "flower": [
+          "hp"
+        ],
+        "goblet": [
+          "hp_",
+          "atk_",
+          "pyro_dmg_",
+          "electro_dmg_",
+          "eleMas"
+        ],
+        "plume": [
+          "atk"
+        ],
+        "sands": [
+          "hp_",
+          "atk_",
+          "enerRech_",
+          "eleMas"
+        ]
+      },
+      "profile_level_policy": {
+        "character_level_default": 90,
+        "source": "same virtual-profile defaults as mode_matrix/run_product_matrix.py",
+        "weapon_level_default": 90,
+        "weapon_promote_level": 6
+      },
+      "set_domain_count": 39,
+      "set_keys": [
+        "adaycarvedfromrisingwinds",
+        "adventurer",
+        "archaicpetra",
+        "aubadeofmorningstarandmoon",
+        "blizzardstrayer",
+        "bloodstainedchivalry",
+        "celestialgift",
+        "crimsonwitchofflames"
+      ],
+      "substat_line_count_per_artifact": 4,
+      "synthetic_set_starts_by_character": {
+        "bennett": "goldentroupe",
+        "chasca": "thunderingfury",
+        "furina": "tenacityofthemillelith",
+        "ororon": "noblesseoblige"
+      },
+      "upgrade_event_count_per_artifact": 5
+    },
+    "mode": "theory",
+    "native_diagnostics": {
+      "candidate_context_count": null,
+      "capture": {
+        "capture_process_launch_attempts": null,
+        "capture_process_launch_blocked": null,
+        "capture_process_launch_failures": null,
+        "capture_processes_launched": null,
+        "completed_compact_members": null,
+        "configured_seed_maximum": 2,
+        "evidence_source": "compact.json member array is observed only when parsed; adapter process attempts, launches, failures, and blocks are separate counts",
+        "provider_timing_invalid_row_count": null,
+        "provider_timing_row_count": null,
+        "provider_timing_status": "missing",
+        "provider_timing_valid_row_count": null,
+        "source_inferred_completed_members": null,
+        "source_inferred_completed_members_evidence_kind": null
+      },
+      "capture_members": null,
+      "capture_members_semantics": null,
+      "compile_elapsed_ms": null,
+      "debug_receipt_available": false,
+      "debug_receipt_bytes": null,
+      "debug_receipt_sha256": "",
+      "guide_seconds": null,
+      "mode": "theory",
+      "ordinary_measurement": {
+        "attempted_engine_calls": null,
+        "completed_measurements": null,
+        "completed_ordinary_engine_calls": null,
+        "configured_candidate_maximum_from_result_options": null,
+        "energy_rejected": null,
+        "evidence_source": "native ordinary-verification receipt; null means absent from retained receipt",
+        "failed_attempts": null,
+        "iterations_per_candidate": null
+      },
+      "proposal_package_count": null,
+      "proposal_seconds": null,
+      "search_elapsed_ms": null,
+      "search_expansions": null,
+      "search_seconds": null,
+      "search_stop_reason": "",
+      "search_summary": {},
+      "source_preparation_seconds": null,
+      "status": "success",
+      "support_response": {
+        "attempted_engine_calls": null,
+        "configured_call_limit": null,
+        "evidence_source": "native support_response.check plan/evidence; absent counts remain unknown",
+        "numeric_evidence": {
+          "binding": null,
+          "directions": null,
+          "elapsed_ms": null,
+          "evidence": null,
+          "plan": null,
+          "projection": {
+            "issues": [
+              "unknown_field"
+            ],
+            "malformed": false,
+            "truncated": false,
+            "unknown": true
+          },
+          "schema_kind": "gtt_mvp_support_response_projection_v1",
+          "scope": "local_proposal_observations_not_finalist_verification_or_global_caps",
+          "selected_seeds": null,
+          "status": null,
+          "wrapper_status": null
+        },
+        "selected_seed_count": null,
+        "skipped_engine_calls": null,
+        "status": null
+      },
+      "total_elapsed_ms": null
+    },
+    "output_summary": {
+      "build_pages": 1,
+      "payload_success": true,
+      "result_text_characters": 1020,
+      "status": "success"
+    },
+    "process_guard": {
+      "attempted": 2,
+      "blocked": 0,
+      "failed": 0,
+      "launched": 2,
+      "max_launches": 80,
+      "one_button_click": true,
+      "product_timeout_ms": 0,
+      "stages": {
+        "optimizer_search": {
+          "attempted": 1,
+          "blocked": 0,
+          "failed": 0,
+          "launched": 1
+        },
+        "other": {
+          "attempted": 1,
+          "blocked": 0,
+          "failed": 0,
+          "launched": 1
+        }
+      },
+      "theory_finish_button_clicked": true,
+      "theory_first_ready_elapsed_ms": 459594,
+      "theory_first_ready_event_stage": "searching",
+      "theory_first_ready_finalizing_after": false,
+      "theory_first_ready_finalizing_before": true,
+      "theory_first_ready_finish_enabled": true,
+      "theory_first_ready_phase": "first_light",
+      "theory_first_ready_publication_version": 4,
+      "theory_first_ready_snapshot_version": 1,
+      "theory_first_ready_verification_count": 2,
+      "theory_session_finish_requested": true,
+      "worker_thread_joined": true
+    },
+    "progress": {
+      "clock_kind": "UI-observed event-arrival offsets, not engine phase durations",
+      "stages": {
+        "compiling_formula": {
+          "events": 1,
+          "first_event_offset_ms": 0,
+          "last_event_offset_ms": 0
+        },
+        "completed": {
+          "events": 2,
+          "first_event_offset_ms": 444547,
+          "last_event_offset_ms": 444985
+        },
+        "searching": {
+          "events": 1,
+          "first_event_offset_ms": 442532,
+          "last_event_offset_ms": 442532
+        },
+        "simulating_finalists": {
+          "events": 3,
+          "first_event_offset_ms": 429407,
+          "last_event_offset_ms": 441032
+        }
+      }
+    },
+    "result_summary": {
+      "result_schema_kind": "gtt_gcsim_optimizer_theory_result_v3",
+      "status": "success",
+      "theory_families": {
+        "co_leaders": [
+          {
+            "aliases": [
+              {
+                "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                "packages": [
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "noblesseoblige"
+                      }
+                    ],
+                    "wearer_key": "bennett"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "obsidiancodex"
+                      }
+                    ],
+                    "wearer_key": "chasca"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "tenacityofthemillelith"
+                      }
+                    ],
+                    "wearer_key": "furina"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "scrolloftheheroofcindercity"
+                      }
+                    ],
+                    "wearer_key": "ororon"
+                  }
+                ],
+                "tuple_key": "noblesseoblige:4|obsidiancodex:4|tenacityofthemillelith:4|scrolloftheheroofcindercity:4",
+                "uncertainty": [
+                  "artifact_stat_read_binding_unresolved",
+                  "attack_field_operand_dependency_frozen",
+                  "attack_mod_closure_expression_collapsed",
+                  "callback_provider_unattributed",
+                  "flat_dmg_expression_collapsed",
+                  "flat_source_parameter_dependencies_incomplete",
+                  "gadget_wave_state_lineage_not_instrumented",
+                  "heal_bonus_modifier_aggregate_incomplete",
+                  "health_context_candidate_dependency_incomplete",
+                  "health_field_candidate_dependency_incomplete",
+                  "health_field_origin_unresolved",
+                  "health_incoming_heal_bonus_origin_unbound",
+                  "health_initial_hp_origin_unresolved",
+                  "health_input_branch_schedule_frozen",
+                  "health_source_bonus_origin_unbound",
+                  "max_hp_candidate_dependency_incomplete",
+                  "modifier_candidate_dependency_incomplete",
+                  "modifier_output_provenance_unresolved",
+                  "modifier_state_read_candidate_dependency_incomplete",
+                  "multiplier_source_expression_not_instrumented",
+                  "numeric_expression_candidate_dependency_incomplete",
+                  "numeric_marker_replay_not_recomputed",
+                  "ordinary_helper_argument_dependency_incomplete",
+                  "post_damage_callback_state_effects_unmodeled",
+                  "provider_transition_timeline_incomplete",
+                  "reaction_bonus_schedule_frozen",
+                  "reaction_parent_lineage_not_instrumented",
+                  "reaction_topology_aggregate_only",
+                  "saved_stat_vector_schedule_frozen",
+                  "scalar_modifier_output_branch_schedule_frozen",
+                  "stat_mod_dependency_expression_collapsed",
+                  "stat_read_external_dependencies_incomplete",
+                  "state_read_candidate_dependency_incomplete",
+                  "state_write_candidate_dependency_incomplete",
+                  "task_numeric_transition_dependency_incomplete",
+                  "task_payload_source_expression_unbound",
+                  "untyped_callback_state_effects_unmodeled",
+                  "counterfactual_callback_phase_observed_schedule",
+                  "energy_activation_uses_observed_particle_ER",
+                  "set_energy_change_callbacks_not_reemitted",
+                  "shield_absorption_feedback_unmodeled"
+                ]
+              }
+            ],
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_damage",
+                  "flower": "hp",
+                  "goblet": "pyro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 2,
+                    "stat_key": "atk",
+                    "stat_value": 38.9
+                  },
+                  {
+                    "roll_units": 5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.2915
+                  },
+                  {
+                    "roll_units": 10.5,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.8158500000000001
+                  },
+                  {
+                    "roll_units": 21.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.8266249999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 6.25,
+                    "stat_key": "em",
+                    "stat_value": 145.6875
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "bennett"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_damage",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk",
+                    "stat_value": 77.8
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.2332
+                  },
+                  {
+                    "roll_units": 23,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.7871000000000001
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 5,
+                    "stat_key": "em",
+                    "stat_value": 116.55
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "chasca"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_damage",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 0,
+                    "stat_key": "atk",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 19,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.4763000000000002
+                  },
+                  {
+                    "roll_units": 9.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.379275
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "hp",
+                    "stat_value": 1195
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.539275
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "furina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_damage",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk",
+                    "stat_value": 77.8
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.2332
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.796425
+                  },
+                  {
+                    "roll_units": 23.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.9238749999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ororon"
+              }
+            ],
+            "deficit_percent": 0,
+            "family": "acc727d5b79bf2aff45a825f5c1f9d5e4532d7ab6ddcc79cfb8ac4350a5e5e3a",
+            "formula_dps": 196428.78621118117,
+            "measurement": {
+              "build_identity": {
+                "kind": "theory_witness45_v1",
+                "packages": [
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "noblesseoblige"
+                      }
+                    ],
+                    "wearer_key": "bennett"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "obsidiancodex"
+                      }
+                    ],
+                    "wearer_key": "chasca"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "tenacityofthemillelith"
+                      }
+                    ],
+                    "wearer_key": "furina"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "scrolloftheheroofcindercity"
+                      }
+                    ],
+                    "wearer_key": "ororon"
+                  }
+                ],
+                "witness45": {
+                  "Lines": [
+                    [
+                      [
+                        2,
+                        3,
+                        6,
+                        1
+                      ],
+                      [
+                        2,
+                        3,
+                        6,
+                        1
+                      ],
+                      [
+                        2,
+                        3,
+                        1,
+                        0
+                      ],
+                      [
+                        2,
+                        3,
+                        6,
+                        1
+                      ],
+                      [
+                        3,
+                        6,
+                        1,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        2,
+                        1,
+                        6,
+                        0
+                      ],
+                      [
+                        2,
+                        1,
+                        6,
+                        3
+                      ],
+                      [
+                        2,
+                        6,
+                        0,
+                        3
+                      ],
+                      [
+                        2,
+                        6,
+                        0,
+                        3
+                      ],
+                      [
+                        3,
+                        1,
+                        6,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        9,
+                        2,
+                        6
+                      ],
+                      [
+                        3,
+                        9,
+                        2,
+                        8
+                      ],
+                      [
+                        3,
+                        2,
+                        8,
+                        6
+                      ],
+                      [
+                        3,
+                        9,
+                        2,
+                        8
+                      ],
+                      [
+                        3,
+                        9,
+                        8,
+                        6
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        2,
+                        1,
+                        0
+                      ],
+                      [
+                        3,
+                        2,
+                        1,
+                        6
+                      ],
+                      [
+                        3,
+                        2,
+                        0,
+                        6
+                      ],
+                      [
+                        3,
+                        2,
+                        1,
+                        0
+                      ],
+                      [
+                        3,
+                        1,
+                        0,
+                        6
+                      ]
+                    ]
+                  ],
+                  "Mains": [
+                    [
+                      "hp",
+                      "atk",
+                      "em",
+                      "pyro_damage_bonus",
+                      "crit_damage"
+                    ],
+                    [
+                      "hp",
+                      "atk",
+                      "atk_percent",
+                      "atk_percent",
+                      "crit_damage"
+                    ],
+                    [
+                      "hp",
+                      "atk",
+                      "hp_percent",
+                      "hydro_damage_bonus",
+                      "crit_damage"
+                    ],
+                    [
+                      "hp",
+                      "atk",
+                      "atk_percent",
+                      "electro_damage_bonus",
+                      "crit_damage"
+                    ]
+                  ],
+                  "Upgrades": [
+                    [
+                      [
+                        1.5,
+                        3.5,
+                        0,
+                        0
+                      ],
+                      [
+                        1.75,
+                        3.25,
+                        0,
+                        0
+                      ],
+                      [
+                        2,
+                        3,
+                        0,
+                        0
+                      ],
+                      [
+                        1.25,
+                        3,
+                        0.75,
+                        0
+                      ],
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        4.75,
+                        0.25,
+                        0,
+                        0
+                      ],
+                      [
+                        4.5,
+                        0.25,
+                        0,
+                        0.25
+                      ],
+                      [
+                        4.75,
+                        0,
+                        0,
+                        0.25
+                      ],
+                      [
+                        5,
+                        0,
+                        0,
+                        0
+                      ],
+                      [
+                        4.5,
+                        0.5,
+                        0,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        0.75,
+                        3.25,
+                        0
+                      ],
+                      [
+                        1,
+                        0.25,
+                        3.75,
+                        0
+                      ],
+                      [
+                        1,
+                        4,
+                        0,
+                        0
+                      ],
+                      [
+                        0.75,
+                        0.25,
+                        4,
+                        0
+                      ],
+                      [
+                        1,
+                        4,
+                        0,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ],
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ],
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ],
+                      [
+                        3.25,
+                        1.75,
+                        0,
+                        0
+                      ],
+                      [
+                        5,
+                        0,
+                        0,
+                        0
+                      ]
+                    ]
+                  ]
+                }
+              },
+              "candidate_sha256": "acc727d5b79bf2aff45a825f5c1f9d5e4532d7ab6ddcc79cfb8ac4350a5e5e3a",
+              "config_sha256": "4da71dba3d8e6e199cbe0e4da7ebe43c0996217eba2a49baee8aea97711e300f",
+              "engine_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+              "engine_result_sha256": "3bd6d357c91ee035d714d35ec9875859fb613f7f17adaf0cde5531401252144f",
+              "formula_dps": 196428.78621118117,
+              "frame_sha256": "9cb1150dc09b78b1ea07b2dc6c31c5d73f3bee180df3181a8d5343a7c47d8c58",
+              "ignore_burst_energy": true,
+              "iterations": 500,
+              "measured_dps": 198293.88871036752,
+              "origins": [
+                {
+                  "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                  "diagnostic_codes": [
+                    "artifact_stat_read_binding_unresolved",
+                    "attack_field_operand_dependency_frozen",
+                    "attack_mod_closure_expression_collapsed",
+                    "callback_provider_unattributed",
+                    "flat_dmg_expression_collapsed",
+                    "flat_source_parameter_dependencies_incomplete",
+                    "gadget_wave_state_lineage_not_instrumented",
+                    "heal_bonus_modifier_aggregate_incomplete",
+                    "health_context_candidate_dependency_incomplete",
+                    "health_field_candidate_dependency_incomplete",
+                    "health_field_origin_unresolved",
+                    "health_incoming_heal_bonus_origin_unbound",
+                    "health_initial_hp_origin_unresolved",
+                    "health_input_branch_schedule_frozen",
+                    "health_source_bonus_origin_unbound",
+                    "max_hp_candidate_dependency_incomplete",
+                    "modifier_candidate_dependency_incomplete",
+                    "modifier_output_provenance_unresolved",
+                    "modifier_state_read_candidate_dependency_incomplete",
+                    "multiplier_source_expression_not_instrumented",
+                    "numeric_expression_candidate_dependency_incomplete",
+                    "numeric_marker_replay_not_recomputed",
+                    "ordinary_helper_argument_dependency_incomplete",
+                    "post_damage_callback_state_effects_unmodeled",
+                    "provider_transition_timeline_incomplete",
+                    "reaction_bonus_schedule_frozen",
+                    "reaction_parent_lineage_not_instrumented",
+                    "reaction_topology_aggregate_only",
+                    "saved_stat_vector_schedule_frozen",
+                    "scalar_modifier_output_branch_schedule_frozen",
+                    "stat_mod_dependency_expression_collapsed",
+                    "stat_read_external_dependencies_incomplete",
+                    "state_read_candidate_dependency_incomplete",
+                    "state_write_candidate_dependency_incomplete",
+                    "task_numeric_transition_dependency_incomplete",
+                    "task_payload_source_expression_unbound",
+                    "untyped_callback_state_effects_unmodeled",
+                    "counterfactual_callback_phase_observed_schedule",
+                    "energy_activation_uses_observed_particle_ER",
+                    "set_energy_change_callbacks_not_reemitted",
+                    "shield_absorption_feedback_unmodeled"
+                  ],
+                  "family": "program:3df815bdbd8c0380e9ccd1d611ae341c5beb4044acac8e270badcd3cc94032df:5791ff82080738afcd3bc8352970964b50a0eaac5ec68656b203b84a556365a5",
+                  "kind": "formula_search",
+                  "phase": "first_light"
+                },
+                {
+                  "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                  "diagnostic_codes": [
+                    "support_response_proposal_only",
+                    "owner=chasca",
+                    "stat=atk_percent",
+                    "probe_amount=0.466",
+                    "probe_config_sha256=1dd2b30ee19db509fec4d1c4dc7f80d7107fc9789463d45aa5b01ea57a4b9b1d",
+                    "anchor_candidate_sha256=f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                    "anchor_config_sha256=42ecd37719f3fd788494ff02ca8563adeb6829804f47a899ebc20aa501137cb4",
+                    "anchor_engine_artifact_sha256=f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+                    "anchor_source_manifest_sha256=7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+                    "probe_seed_742031889_result_sha256=60926650b6570962da6469452934f17b1e50fb898c9d8d9be29b418cea3706fa",
+                    "probe_seed_742031890_result_sha256=3a9196c875d0a466b86a355d99167250cf3a12877e53394e877183c7cd097a82",
+                    "proposal_shape=local_quarter"
+                  ],
+                  "family": "f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                  "kind": "support_response",
+                  "phase": "local_response_proposal"
+                }
+              ],
+              "source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+              "standard_deviation": 3359.23376108823,
+              "standard_error": 150.2295008421114
+            },
+            "refinement_level": 1,
+            "witness45": {
+              "Lines": [
+                [
+                  [
+                    2,
+                    3,
+                    6,
+                    1
+                  ],
+                  [
+                    2,
+                    3,
+                    6,
+                    1
+                  ],
+                  [
+                    2,
+                    3,
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    3,
+                    6,
+                    1
+                  ],
+                  [
+                    3,
+                    6,
+                    1,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    2,
+                    1,
+                    6,
+                    0
+                  ],
+                  [
+                    2,
+                    1,
+                    6,
+                    3
+                  ],
+                  [
+                    2,
+                    6,
+                    0,
+                    3
+                  ],
+                  [
+                    2,
+                    6,
+                    0,
+                    3
+                  ],
+                  [
+                    3,
+                    1,
+                    6,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    3,
+                    9,
+                    2,
+                    6
+                  ],
+                  [
+                    3,
+                    9,
+                    2,
+                    8
+                  ],
+                  [
+                    3,
+                    2,
+                    8,
+                    6
+                  ],
+                  [
+                    3,
+                    9,
+                    2,
+                    8
+                  ],
+                  [
+                    3,
+                    9,
+                    8,
+                    6
+                  ]
+                ],
+                [
+                  [
+                    3,
+                    2,
+                    1,
+                    0
+                  ],
+                  [
+                    3,
+                    2,
+                    1,
+                    6
+                  ],
+                  [
+                    3,
+                    2,
+                    0,
+                    6
+                  ],
+                  [
+                    3,
+                    2,
+                    1,
+                    0
+                  ],
+                  [
+                    3,
+                    1,
+                    0,
+                    6
+                  ]
+                ]
+              ],
+              "Mains": [
+                [
+                  "hp",
+                  "atk",
+                  "em",
+                  "pyro_damage_bonus",
+                  "crit_damage"
+                ],
+                [
+                  "hp",
+                  "atk",
+                  "atk_percent",
+                  "atk_percent",
+                  "crit_damage"
+                ],
+                [
+                  "hp",
+                  "atk",
+                  "hp_percent",
+                  "hydro_damage_bonus",
+                  "crit_damage"
+                ],
+                [
+                  "hp",
+                  "atk",
+                  "atk_percent",
+                  "electro_damage_bonus",
+                  "crit_damage"
+                ]
+              ],
+              "Upgrades": [
+                [
+                  [
+                    1.5,
+                    3.5,
+                    0,
+                    0
+                  ],
+                  [
+                    1.75,
+                    3.25,
+                    0,
+                    0
+                  ],
+                  [
+                    2,
+                    3,
+                    0,
+                    0
+                  ],
+                  [
+                    1.25,
+                    3,
+                    0.75,
+                    0
+                  ],
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    4.75,
+                    0.25,
+                    0,
+                    0
+                  ],
+                  [
+                    4.5,
+                    0.25,
+                    0,
+                    0.25
+                  ],
+                  [
+                    4.75,
+                    0,
+                    0,
+                    0.25
+                  ],
+                  [
+                    5,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    4.5,
+                    0.5,
+                    0,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    0.75,
+                    3.25,
+                    0
+                  ],
+                  [
+                    1,
+                    0.25,
+                    3.75,
+                    0
+                  ],
+                  [
+                    1,
+                    4,
+                    0,
+                    0
+                  ],
+                  [
+                    0.75,
+                    0.25,
+                    4,
+                    0
+                  ],
+                  [
+                    1,
+                    4,
+                    0,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ],
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ],
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ],
+                  [
+                    3.25,
+                    1.75,
+                    0,
+                    0
+                  ],
+                  [
+                    5,
+                    0,
+                    0,
+                    0
+                  ]
+                ]
+              ]
+            }
+          },
+          {
+            "aliases": [
+              {
+                "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                "packages": [
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "noblesseoblige"
+                      }
+                    ],
+                    "wearer_key": "bennett"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "obsidiancodex"
+                      }
+                    ],
+                    "wearer_key": "chasca"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "tenacityofthemillelith"
+                      }
+                    ],
+                    "wearer_key": "furina"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "scrolloftheheroofcindercity"
+                      }
+                    ],
+                    "wearer_key": "ororon"
+                  }
+                ],
+                "tuple_key": "noblesseoblige:4|obsidiancodex:4|tenacityofthemillelith:4|scrolloftheheroofcindercity:4",
+                "uncertainty": [
+                  "artifact_stat_read_binding_unresolved",
+                  "attack_field_operand_dependency_frozen",
+                  "attack_mod_closure_expression_collapsed",
+                  "callback_provider_unattributed",
+                  "flat_dmg_expression_collapsed",
+                  "flat_source_parameter_dependencies_incomplete",
+                  "gadget_wave_state_lineage_not_instrumented",
+                  "heal_bonus_modifier_aggregate_incomplete",
+                  "health_context_candidate_dependency_incomplete",
+                  "health_field_candidate_dependency_incomplete",
+                  "health_field_origin_unresolved",
+                  "health_incoming_heal_bonus_origin_unbound",
+                  "health_initial_hp_origin_unresolved",
+                  "health_input_branch_schedule_frozen",
+                  "health_source_bonus_origin_unbound",
+                  "max_hp_candidate_dependency_incomplete",
+                  "modifier_candidate_dependency_incomplete",
+                  "modifier_output_provenance_unresolved",
+                  "modifier_state_read_candidate_dependency_incomplete",
+                  "multiplier_source_expression_not_instrumented",
+                  "numeric_expression_candidate_dependency_incomplete",
+                  "numeric_marker_replay_not_recomputed",
+                  "ordinary_helper_argument_dependency_incomplete",
+                  "post_damage_callback_state_effects_unmodeled",
+                  "provider_transition_timeline_incomplete",
+                  "reaction_bonus_schedule_frozen",
+                  "reaction_parent_lineage_not_instrumented",
+                  "reaction_topology_aggregate_only",
+                  "saved_stat_vector_schedule_frozen",
+                  "scalar_modifier_output_branch_schedule_frozen",
+                  "stat_mod_dependency_expression_collapsed",
+                  "stat_read_external_dependencies_incomplete",
+                  "state_read_candidate_dependency_incomplete",
+                  "state_write_candidate_dependency_incomplete",
+                  "task_numeric_transition_dependency_incomplete",
+                  "task_payload_source_expression_unbound",
+                  "untyped_callback_state_effects_unmodeled",
+                  "counterfactual_callback_phase_observed_schedule",
+                  "energy_activation_uses_observed_particle_ER",
+                  "set_energy_change_callbacks_not_reemitted",
+                  "shield_absorption_feedback_unmodeled"
+                ]
+              }
+            ],
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_damage",
+                  "flower": "hp",
+                  "goblet": "pyro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 2,
+                    "stat_key": "atk",
+                    "stat_value": 38.9
+                  },
+                  {
+                    "roll_units": 5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.2915
+                  },
+                  {
+                    "roll_units": 10.5,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.8158500000000001
+                  },
+                  {
+                    "roll_units": 21.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.8266249999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 6.25,
+                    "stat_key": "em",
+                    "stat_value": 145.6875
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "bennett"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_damage",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk",
+                    "stat_value": 77.8
+                  },
+                  {
+                    "roll_units": 3.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.189475
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.8259500000000002
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 5,
+                    "stat_key": "em",
+                    "stat_value": 116.55
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "chasca"
+              },
+              {
+                "main_stats": {
+                  "circlet": "healing_bonus",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 0,
+                    "stat_key": "atk",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 19,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.4763000000000002
+                  },
+                  {
+                    "roll_units": 9.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.379275
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "hp",
+                    "stat_value": 1195
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.539275
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "furina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_damage",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk",
+                    "stat_value": 77.8
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.2332
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.796425
+                  },
+                  {
+                    "roll_units": 23.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.9238749999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "def_percent",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "energy_recharge",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp",
+                    "stat_value": 0
+                  },
+                  {
+                    "roll_units": 0,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ororon"
+              }
+            ],
+            "deficit_percent": 0.9665673202783142,
+            "family": "a94933d33e060063ab24b885cbdbc7d657af9bccc685e0d81d3ac52ad6cef8b1",
+            "formula_dps": 193330.1079494707,
+            "measurement": {
+              "build_identity": {
+                "kind": "theory_witness45_v1",
+                "packages": [
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "noblesseoblige"
+                      }
+                    ],
+                    "wearer_key": "bennett"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "obsidiancodex"
+                      }
+                    ],
+                    "wearer_key": "chasca"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "tenacityofthemillelith"
+                      }
+                    ],
+                    "wearer_key": "furina"
+                  },
+                  {
+                    "sets": [
+                      {
+                        "count": 4,
+                        "set_uid": "scrolloftheheroofcindercity"
+                      }
+                    ],
+                    "wearer_key": "ororon"
+                  }
+                ],
+                "witness45": {
+                  "Lines": [
+                    [
+                      [
+                        2,
+                        3,
+                        6,
+                        1
+                      ],
+                      [
+                        2,
+                        3,
+                        6,
+                        1
+                      ],
+                      [
+                        2,
+                        3,
+                        1,
+                        0
+                      ],
+                      [
+                        2,
+                        3,
+                        6,
+                        1
+                      ],
+                      [
+                        3,
+                        6,
+                        1,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        2,
+                        1,
+                        6,
+                        0
+                      ],
+                      [
+                        2,
+                        1,
+                        6,
+                        3
+                      ],
+                      [
+                        2,
+                        6,
+                        0,
+                        3
+                      ],
+                      [
+                        2,
+                        6,
+                        0,
+                        3
+                      ],
+                      [
+                        3,
+                        1,
+                        6,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        9,
+                        2,
+                        6
+                      ],
+                      [
+                        3,
+                        9,
+                        2,
+                        8
+                      ],
+                      [
+                        3,
+                        2,
+                        8,
+                        6
+                      ],
+                      [
+                        3,
+                        9,
+                        2,
+                        8
+                      ],
+                      [
+                        3,
+                        9,
+                        8,
+                        6
+                      ]
+                    ],
+                    [
+                      [
+                        3,
+                        2,
+                        1,
+                        0
+                      ],
+                      [
+                        3,
+                        2,
+                        1,
+                        6
+                      ],
+                      [
+                        3,
+                        2,
+                        0,
+                        6
+                      ],
+                      [
+                        3,
+                        2,
+                        1,
+                        0
+                      ],
+                      [
+                        3,
+                        1,
+                        0,
+                        6
+                      ]
+                    ]
+                  ],
+                  "Mains": [
+                    [
+                      "hp",
+                      "atk",
+                      "em",
+                      "pyro_damage_bonus",
+                      "crit_damage"
+                    ],
+                    [
+                      "hp",
+                      "atk",
+                      "atk_percent",
+                      "atk_percent",
+                      "crit_damage"
+                    ],
+                    [
+                      "hp",
+                      "atk",
+                      "hp_percent",
+                      "hydro_damage_bonus",
+                      "healing_bonus"
+                    ],
+                    [
+                      "hp",
+                      "atk",
+                      "atk_percent",
+                      "electro_damage_bonus",
+                      "crit_damage"
+                    ]
+                  ],
+                  "Upgrades": [
+                    [
+                      [
+                        1.5,
+                        3.5,
+                        0,
+                        0
+                      ],
+                      [
+                        1.75,
+                        3.25,
+                        0,
+                        0
+                      ],
+                      [
+                        2,
+                        3,
+                        0,
+                        0
+                      ],
+                      [
+                        1.25,
+                        3,
+                        0.75,
+                        0
+                      ],
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        5,
+                        0,
+                        0,
+                        0
+                      ],
+                      [
+                        4.75,
+                        0,
+                        0,
+                        0.25
+                      ],
+                      [
+                        4.75,
+                        0,
+                        0,
+                        0.25
+                      ],
+                      [
+                        5,
+                        0,
+                        0,
+                        0
+                      ],
+                      [
+                        4.75,
+                        0.25,
+                        0,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        1,
+                        0.75,
+                        3.25,
+                        0
+                      ],
+                      [
+                        1,
+                        0.25,
+                        3.75,
+                        0
+                      ],
+                      [
+                        1,
+                        4,
+                        0,
+                        0
+                      ],
+                      [
+                        0.75,
+                        0.25,
+                        4,
+                        0
+                      ],
+                      [
+                        1,
+                        4,
+                        0,
+                        0
+                      ]
+                    ],
+                    [
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ],
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ],
+                      [
+                        3.5,
+                        1.5,
+                        0,
+                        0
+                      ],
+                      [
+                        3.25,
+                        1.75,
+                        0,
+                        0
+                      ],
+                      [
+                        5,
+                        0,
+                        0,
+                        0
+                      ]
+                    ]
+                  ]
+                }
+              },
+              "candidate_sha256": "a94933d33e060063ab24b885cbdbc7d657af9bccc685e0d81d3ac52ad6cef8b1",
+              "config_sha256": "f997b2003dce94cbb18d2c87be90954dd15d99b64729c22cd73754c90ed76ea8",
+              "engine_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+              "engine_result_sha256": "c95b263b0e21be500ce42baf64daa243557263e64310c23ef0cb0fc169888cca",
+              "formula_dps": 193330.1079494707,
+              "frame_sha256": "9cb1150dc09b78b1ea07b2dc6c31c5d73f3bee180df3181a8d5343a7c47d8c58",
+              "ignore_burst_energy": true,
+              "iterations": 500,
+              "measured_dps": 196377.24478398406,
+              "origins": [
+                {
+                  "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                  "diagnostic_codes": [
+                    "artifact_stat_read_binding_unresolved",
+                    "attack_field_operand_dependency_frozen",
+                    "attack_mod_closure_expression_collapsed",
+                    "callback_provider_unattributed",
+                    "flat_dmg_expression_collapsed",
+                    "flat_source_parameter_dependencies_incomplete",
+                    "gadget_wave_state_lineage_not_instrumented",
+                    "heal_bonus_modifier_aggregate_incomplete",
+                    "health_context_candidate_dependency_incomplete",
+                    "health_field_candidate_dependency_incomplete",
+                    "health_field_origin_unresolved",
+                    "health_incoming_heal_bonus_origin_unbound",
+                    "health_initial_hp_origin_unresolved",
+                    "health_input_branch_schedule_frozen",
+                    "health_source_bonus_origin_unbound",
+                    "max_hp_candidate_dependency_incomplete",
+                    "modifier_candidate_dependency_incomplete",
+                    "modifier_output_provenance_unresolved",
+                    "modifier_state_read_candidate_dependency_incomplete",
+                    "multiplier_source_expression_not_instrumented",
+                    "numeric_expression_candidate_dependency_incomplete",
+                    "numeric_marker_replay_not_recomputed",
+                    "ordinary_helper_argument_dependency_incomplete",
+                    "post_damage_callback_state_effects_unmodeled",
+                    "provider_transition_timeline_incomplete",
+                    "reaction_bonus_schedule_frozen",
+                    "reaction_parent_lineage_not_instrumented",
+                    "reaction_topology_aggregate_only",
+                    "saved_stat_vector_schedule_frozen",
+                    "scalar_modifier_output_branch_schedule_frozen",
+                    "stat_mod_dependency_expression_collapsed",
+                    "stat_read_external_dependencies_incomplete",
+                    "state_read_candidate_dependency_incomplete",
+                    "state_write_candidate_dependency_incomplete",
+                    "task_numeric_transition_dependency_incomplete",
+                    "task_payload_source_expression_unbound",
+                    "untyped_callback_state_effects_unmodeled",
+                    "counterfactual_callback_phase_observed_schedule",
+                    "energy_activation_uses_observed_particle_ER",
+                    "set_energy_change_callbacks_not_reemitted",
+                    "shield_absorption_feedback_unmodeled"
+                  ],
+                  "family": "program:3df815bdbd8c0380e9ccd1d611ae341c5beb4044acac8e270badcd3cc94032df:5791ff82080738afcd3bc8352970964b50a0eaac5ec68656b203b84a556365a5",
+                  "kind": "formula_search",
+                  "phase": "first_light"
+                },
+                {
+                  "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                  "diagnostic_codes": [
+                    "support_response_proposal_only",
+                    "owner=furina",
+                    "stat=healing_bonus",
+                    "probe_amount=0.359",
+                    "probe_config_sha256=bf2ccaeed7db8d17a52bd76078cedd8034e87fe8b92d879c935a058e2b5ff03c",
+                    "anchor_candidate_sha256=f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                    "anchor_config_sha256=42ecd37719f3fd788494ff02ca8563adeb6829804f47a899ebc20aa501137cb4",
+                    "anchor_engine_artifact_sha256=f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+                    "anchor_source_manifest_sha256=7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+                    "probe_seed_742031889_result_sha256=e92ef0f7a8abf2311f5b779c0ae839b5ad8ebed877ee5176fd10c9318d42e23b",
+                    "probe_seed_742031890_result_sha256=6f692cefcefde07cbe2f6b1e47e5aa29a3d3bf907f6734ab3026d1e02a2d0eba",
+                    "proposal_shape=single_main"
+                  ],
+                  "family": "f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                  "kind": "support_response",
+                  "phase": "local_response_proposal"
+                }
+              ],
+              "source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+              "standard_deviation": 3076.724370511117,
+              "standard_error": 137.59529680986213
+            },
+            "refinement_level": 1,
+            "witness45": {
+              "Lines": [
+                [
+                  [
+                    2,
+                    3,
+                    6,
+                    1
+                  ],
+                  [
+                    2,
+                    3,
+                    6,
+                    1
+                  ],
+                  [
+                    2,
+                    3,
+                    1,
+                    0
+                  ],
+                  [
+                    2,
+                    3,
+                    6,
+                    1
+                  ],
+                  [
+                    3,
+                    6,
+                    1,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    2,
+                    1,
+                    6,
+                    0
+                  ],
+                  [
+                    2,
+                    1,
+                    6,
+                    3
+                  ],
+                  [
+                    2,
+                    6,
+                    0,
+                    3
+                  ],
+                  [
+                    2,
+                    6,
+                    0,
+                    3
+                  ],
+                  [
+                    3,
+                    1,
+                    6,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    3,
+                    9,
+                    2,
+                    6
+                  ],
+                  [
+                    3,
+                    9,
+                    2,
+                    8
+                  ],
+                  [
+                    3,
+                    2,
+                    8,
+                    6
+                  ],
+                  [
+                    3,
+                    9,
+                    2,
+                    8
+                  ],
+                  [
+                    3,
+                    9,
+                    8,
+                    6
+                  ]
+                ],
+                [
+                  [
+                    3,
+                    2,
+                    1,
+                    0
+                  ],
+                  [
+                    3,
+                    2,
+                    1,
+                    6
+                  ],
+                  [
+                    3,
+                    2,
+                    0,
+                    6
+                  ],
+                  [
+                    3,
+                    2,
+                    1,
+                    0
+                  ],
+                  [
+                    3,
+                    1,
+                    0,
+                    6
+                  ]
+                ]
+              ],
+              "Mains": [
+                [
+                  "hp",
+                  "atk",
+                  "em",
+                  "pyro_damage_bonus",
+                  "crit_damage"
+                ],
+                [
+                  "hp",
+                  "atk",
+                  "atk_percent",
+                  "atk_percent",
+                  "crit_damage"
+                ],
+                [
+                  "hp",
+                  "atk",
+                  "hp_percent",
+                  "hydro_damage_bonus",
+                  "healing_bonus"
+                ],
+                [
+                  "hp",
+                  "atk",
+                  "atk_percent",
+                  "electro_damage_bonus",
+                  "crit_damage"
+                ]
+              ],
+              "Upgrades": [
+                [
+                  [
+                    1.5,
+                    3.5,
+                    0,
+                    0
+                  ],
+                  [
+                    1.75,
+                    3.25,
+                    0,
+                    0
+                  ],
+                  [
+                    2,
+                    3,
+                    0,
+                    0
+                  ],
+                  [
+                    1.25,
+                    3,
+                    0.75,
+                    0
+                  ],
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    5,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    4.75,
+                    0,
+                    0,
+                    0.25
+                  ],
+                  [
+                    4.75,
+                    0,
+                    0,
+                    0.25
+                  ],
+                  [
+                    5,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    4.75,
+                    0.25,
+                    0,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    1,
+                    0.75,
+                    3.25,
+                    0
+                  ],
+                  [
+                    1,
+                    0.25,
+                    3.75,
+                    0
+                  ],
+                  [
+                    1,
+                    4,
+                    0,
+                    0
+                  ],
+                  [
+                    0.75,
+                    0.25,
+                    4,
+                    0
+                  ],
+                  [
+                    1,
+                    4,
+                    0,
+                    0
+                  ]
+                ],
+                [
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ],
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ],
+                  [
+                    3.5,
+                    1.5,
+                    0,
+                    0
+                  ],
+                  [
+                    3.25,
+                    1.75,
+                    0,
+                    0
+                  ],
+                  [
+                    5,
+                    0,
+                    0,
+                    0
+                  ]
+                ]
+              ]
+            }
+          }
+        ],
+        "pending": []
+      },
+      "theory_first_ready_elapsed_ms": 459594,
+      "theory_first_ready_projection_ms": 16,
+      "theory_first_ready_snapshot": {
+        "domain_tuples": "3595305184641",
+        "elapsed_ms_from_button_click": 459594,
+        "finished_early": false,
+        "found_group_families": 2,
+        "found_group_tuples": 2,
+        "full_cartesian_covered": false,
+        "phase": "first_light",
+        "practical_band_percent": 3,
+        "publication_version": 4,
+        "reference_score": 198293.88871036752,
+        "response_status": "ordinary_verified",
+        "sensitivity_band_percent": 2,
+        "sensitivity_group_families": 2,
+        "sensitivity_group_tuples": 2,
+        "snapshot_version": 1,
+        "status": "success",
+        "support_stats": {
+          "producer_status": "completed_proposal_only",
+          "response_lane_attempted_count": 2,
+          "response_lane_count_semantics": "ordinary finalist candidates selected from the Theory response lane; not support probe calls",
+          "response_lane_reserve": 2
+        },
+        "theory_families": {
+          "co_leaders": [
+            {
+              "aliases": [
+                {
+                  "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                  "packages": [
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "noblesseoblige"
+                        }
+                      ],
+                      "wearer_key": "bennett"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "obsidiancodex"
+                        }
+                      ],
+                      "wearer_key": "chasca"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "tenacityofthemillelith"
+                        }
+                      ],
+                      "wearer_key": "furina"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "scrolloftheheroofcindercity"
+                        }
+                      ],
+                      "wearer_key": "ororon"
+                    }
+                  ],
+                  "tuple_key": "noblesseoblige:4|obsidiancodex:4|tenacityofthemillelith:4|scrolloftheheroofcindercity:4",
+                  "uncertainty": [
+                    "artifact_stat_read_binding_unresolved",
+                    "attack_field_operand_dependency_frozen",
+                    "attack_mod_closure_expression_collapsed",
+                    "callback_provider_unattributed",
+                    "flat_dmg_expression_collapsed",
+                    "flat_source_parameter_dependencies_incomplete",
+                    "gadget_wave_state_lineage_not_instrumented",
+                    "heal_bonus_modifier_aggregate_incomplete",
+                    "health_context_candidate_dependency_incomplete",
+                    "health_field_candidate_dependency_incomplete",
+                    "health_field_origin_unresolved",
+                    "health_incoming_heal_bonus_origin_unbound",
+                    "health_initial_hp_origin_unresolved",
+                    "health_input_branch_schedule_frozen",
+                    "health_source_bonus_origin_unbound",
+                    "max_hp_candidate_dependency_incomplete",
+                    "modifier_candidate_dependency_incomplete",
+                    "modifier_output_provenance_unresolved",
+                    "modifier_state_read_candidate_dependency_incomplete",
+                    "multiplier_source_expression_not_instrumented",
+                    "numeric_expression_candidate_dependency_incomplete",
+                    "numeric_marker_replay_not_recomputed",
+                    "ordinary_helper_argument_dependency_incomplete",
+                    "post_damage_callback_state_effects_unmodeled",
+                    "provider_transition_timeline_incomplete",
+                    "reaction_bonus_schedule_frozen",
+                    "reaction_parent_lineage_not_instrumented",
+                    "reaction_topology_aggregate_only",
+                    "saved_stat_vector_schedule_frozen",
+                    "scalar_modifier_output_branch_schedule_frozen",
+                    "stat_mod_dependency_expression_collapsed",
+                    "stat_read_external_dependencies_incomplete",
+                    "state_read_candidate_dependency_incomplete",
+                    "state_write_candidate_dependency_incomplete",
+                    "task_numeric_transition_dependency_incomplete",
+                    "task_payload_source_expression_unbound",
+                    "untyped_callback_state_effects_unmodeled",
+                    "counterfactual_callback_phase_observed_schedule",
+                    "energy_activation_uses_observed_particle_ER",
+                    "set_energy_change_callbacks_not_reemitted",
+                    "shield_absorption_feedback_unmodeled"
+                  ]
+                }
+              ],
+              "allocations": [
+                {
+                  "main_stats": {
+                    "circlet": "crit_damage",
+                    "flower": "hp",
+                    "goblet": "pyro_damage_bonus",
+                    "plume": "atk",
+                    "sands": "em"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 2,
+                      "stat_key": "atk",
+                      "stat_value": 38.9
+                    },
+                    {
+                      "roll_units": 5,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0.2915
+                    },
+                    {
+                      "roll_units": 10.5,
+                      "stat_key": "crit_damage",
+                      "stat_value": 0.8158500000000001
+                    },
+                    {
+                      "roll_units": 21.25,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.8266249999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 6.25,
+                      "stat_key": "em",
+                      "stat_value": 145.6875
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "bennett"
+                },
+                {
+                  "main_stats": {
+                    "circlet": "crit_damage",
+                    "flower": "hp",
+                    "goblet": "atk_percent",
+                    "plume": "atk",
+                    "sands": "atk_percent"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 4,
+                      "stat_key": "atk",
+                      "stat_value": 77.8
+                    },
+                    {
+                      "roll_units": 4,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0.2332
+                    },
+                    {
+                      "roll_units": 23,
+                      "stat_key": "crit_damage",
+                      "stat_value": 1.7871000000000001
+                    },
+                    {
+                      "roll_units": 9,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.35009999999999997
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 5,
+                      "stat_key": "em",
+                      "stat_value": 116.55
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "chasca"
+                },
+                {
+                  "main_stats": {
+                    "circlet": "crit_damage",
+                    "flower": "hp",
+                    "goblet": "hydro_damage_bonus",
+                    "plume": "atk",
+                    "sands": "hp_percent"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 0,
+                      "stat_key": "atk",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 19,
+                      "stat_key": "crit_damage",
+                      "stat_value": 1.4763000000000002
+                    },
+                    {
+                      "roll_units": 9.75,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.379275
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 3,
+                      "stat_key": "em",
+                      "stat_value": 69.92999999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 4,
+                      "stat_key": "hp",
+                      "stat_value": 1195
+                    },
+                    {
+                      "roll_units": 9.25,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0.539275
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "furina"
+                },
+                {
+                  "main_stats": {
+                    "circlet": "crit_damage",
+                    "flower": "hp",
+                    "goblet": "electro_damage_bonus",
+                    "plume": "atk",
+                    "sands": "atk_percent"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 4,
+                      "stat_key": "atk",
+                      "stat_value": 77.8
+                    },
+                    {
+                      "roll_units": 4,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0.2332
+                    },
+                    {
+                      "roll_units": 10.25,
+                      "stat_key": "crit_damage",
+                      "stat_value": 0.796425
+                    },
+                    {
+                      "roll_units": 23.75,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.9238749999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 3,
+                      "stat_key": "em",
+                      "stat_value": 69.92999999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "ororon"
+                }
+              ],
+              "deficit_percent": 0,
+              "family": "acc727d5b79bf2aff45a825f5c1f9d5e4532d7ab6ddcc79cfb8ac4350a5e5e3a",
+              "formula_dps": 196428.78621118117,
+              "measurement": {
+                "build_identity": {
+                  "kind": "theory_witness45_v1",
+                  "packages": [
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "noblesseoblige"
+                        }
+                      ],
+                      "wearer_key": "bennett"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "obsidiancodex"
+                        }
+                      ],
+                      "wearer_key": "chasca"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "tenacityofthemillelith"
+                        }
+                      ],
+                      "wearer_key": "furina"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "scrolloftheheroofcindercity"
+                        }
+                      ],
+                      "wearer_key": "ororon"
+                    }
+                  ],
+                  "witness45": {
+                    "Lines": [
+                      [
+                        [
+                          2,
+                          3,
+                          6,
+                          1
+                        ],
+                        [
+                          2,
+                          3,
+                          6,
+                          1
+                        ],
+                        [
+                          2,
+                          3,
+                          1,
+                          0
+                        ],
+                        [
+                          2,
+                          3,
+                          6,
+                          1
+                        ],
+                        [
+                          3,
+                          6,
+                          1,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          2,
+                          1,
+                          6,
+                          0
+                        ],
+                        [
+                          2,
+                          1,
+                          6,
+                          3
+                        ],
+                        [
+                          2,
+                          6,
+                          0,
+                          3
+                        ],
+                        [
+                          2,
+                          6,
+                          0,
+                          3
+                        ],
+                        [
+                          3,
+                          1,
+                          6,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          3,
+                          9,
+                          2,
+                          6
+                        ],
+                        [
+                          3,
+                          9,
+                          2,
+                          8
+                        ],
+                        [
+                          3,
+                          2,
+                          8,
+                          6
+                        ],
+                        [
+                          3,
+                          9,
+                          2,
+                          8
+                        ],
+                        [
+                          3,
+                          9,
+                          8,
+                          6
+                        ]
+                      ],
+                      [
+                        [
+                          3,
+                          2,
+                          1,
+                          0
+                        ],
+                        [
+                          3,
+                          2,
+                          1,
+                          6
+                        ],
+                        [
+                          3,
+                          2,
+                          0,
+                          6
+                        ],
+                        [
+                          3,
+                          2,
+                          1,
+                          0
+                        ],
+                        [
+                          3,
+                          1,
+                          0,
+                          6
+                        ]
+                      ]
+                    ],
+                    "Mains": [
+                      [
+                        "hp",
+                        "atk",
+                        "em",
+                        "pyro_damage_bonus",
+                        "crit_damage"
+                      ],
+                      [
+                        "hp",
+                        "atk",
+                        "atk_percent",
+                        "atk_percent",
+                        "crit_damage"
+                      ],
+                      [
+                        "hp",
+                        "atk",
+                        "hp_percent",
+                        "hydro_damage_bonus",
+                        "crit_damage"
+                      ],
+                      [
+                        "hp",
+                        "atk",
+                        "atk_percent",
+                        "electro_damage_bonus",
+                        "crit_damage"
+                      ]
+                    ],
+                    "Upgrades": [
+                      [
+                        [
+                          1.5,
+                          3.5,
+                          0,
+                          0
+                        ],
+                        [
+                          1.75,
+                          3.25,
+                          0,
+                          0
+                        ],
+                        [
+                          2,
+                          3,
+                          0,
+                          0
+                        ],
+                        [
+                          1.25,
+                          3,
+                          0.75,
+                          0
+                        ],
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          4.75,
+                          0.25,
+                          0,
+                          0
+                        ],
+                        [
+                          4.5,
+                          0.25,
+                          0,
+                          0.25
+                        ],
+                        [
+                          4.75,
+                          0,
+                          0,
+                          0.25
+                        ],
+                        [
+                          5,
+                          0,
+                          0,
+                          0
+                        ],
+                        [
+                          4.5,
+                          0.5,
+                          0,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          1,
+                          0.75,
+                          3.25,
+                          0
+                        ],
+                        [
+                          1,
+                          0.25,
+                          3.75,
+                          0
+                        ],
+                        [
+                          1,
+                          4,
+                          0,
+                          0
+                        ],
+                        [
+                          0.75,
+                          0.25,
+                          4,
+                          0
+                        ],
+                        [
+                          1,
+                          4,
+                          0,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ],
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ],
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ],
+                        [
+                          3.25,
+                          1.75,
+                          0,
+                          0
+                        ],
+                        [
+                          5,
+                          0,
+                          0,
+                          0
+                        ]
+                      ]
+                    ]
+                  }
+                },
+                "candidate_sha256": "acc727d5b79bf2aff45a825f5c1f9d5e4532d7ab6ddcc79cfb8ac4350a5e5e3a",
+                "config_sha256": "4da71dba3d8e6e199cbe0e4da7ebe43c0996217eba2a49baee8aea97711e300f",
+                "engine_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+                "engine_result_sha256": "3bd6d357c91ee035d714d35ec9875859fb613f7f17adaf0cde5531401252144f",
+                "formula_dps": 196428.78621118117,
+                "frame_sha256": "9cb1150dc09b78b1ea07b2dc6c31c5d73f3bee180df3181a8d5343a7c47d8c58",
+                "ignore_burst_energy": true,
+                "iterations": 500,
+                "measured_dps": 198293.88871036752,
+                "origins": [
+                  {
+                    "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                    "diagnostic_codes": [
+                      "artifact_stat_read_binding_unresolved",
+                      "attack_field_operand_dependency_frozen",
+                      "attack_mod_closure_expression_collapsed",
+                      "callback_provider_unattributed",
+                      "flat_dmg_expression_collapsed",
+                      "flat_source_parameter_dependencies_incomplete",
+                      "gadget_wave_state_lineage_not_instrumented",
+                      "heal_bonus_modifier_aggregate_incomplete",
+                      "health_context_candidate_dependency_incomplete",
+                      "health_field_candidate_dependency_incomplete",
+                      "health_field_origin_unresolved",
+                      "health_incoming_heal_bonus_origin_unbound",
+                      "health_initial_hp_origin_unresolved",
+                      "health_input_branch_schedule_frozen",
+                      "health_source_bonus_origin_unbound",
+                      "max_hp_candidate_dependency_incomplete",
+                      "modifier_candidate_dependency_incomplete",
+                      "modifier_output_provenance_unresolved",
+                      "modifier_state_read_candidate_dependency_incomplete",
+                      "multiplier_source_expression_not_instrumented",
+                      "numeric_expression_candidate_dependency_incomplete",
+                      "numeric_marker_replay_not_recomputed",
+                      "ordinary_helper_argument_dependency_incomplete",
+                      "post_damage_callback_state_effects_unmodeled",
+                      "provider_transition_timeline_incomplete",
+                      "reaction_bonus_schedule_frozen",
+                      "reaction_parent_lineage_not_instrumented",
+                      "reaction_topology_aggregate_only",
+                      "saved_stat_vector_schedule_frozen",
+                      "scalar_modifier_output_branch_schedule_frozen",
+                      "stat_mod_dependency_expression_collapsed",
+                      "stat_read_external_dependencies_incomplete",
+                      "state_read_candidate_dependency_incomplete",
+                      "state_write_candidate_dependency_incomplete",
+                      "task_numeric_transition_dependency_incomplete",
+                      "task_payload_source_expression_unbound",
+                      "untyped_callback_state_effects_unmodeled",
+                      "counterfactual_callback_phase_observed_schedule",
+                      "energy_activation_uses_observed_particle_ER",
+                      "set_energy_change_callbacks_not_reemitted",
+                      "shield_absorption_feedback_unmodeled"
+                    ],
+                    "family": "program:3df815bdbd8c0380e9ccd1d611ae341c5beb4044acac8e270badcd3cc94032df:5791ff82080738afcd3bc8352970964b50a0eaac5ec68656b203b84a556365a5",
+                    "kind": "formula_search",
+                    "phase": "first_light"
+                  },
+                  {
+                    "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                    "diagnostic_codes": [
+                      "support_response_proposal_only",
+                      "owner=chasca",
+                      "stat=atk_percent",
+                      "probe_amount=0.466",
+                      "probe_config_sha256=1dd2b30ee19db509fec4d1c4dc7f80d7107fc9789463d45aa5b01ea57a4b9b1d",
+                      "anchor_candidate_sha256=f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                      "anchor_config_sha256=42ecd37719f3fd788494ff02ca8563adeb6829804f47a899ebc20aa501137cb4",
+                      "anchor_engine_artifact_sha256=f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+                      "anchor_source_manifest_sha256=7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+                      "probe_seed_742031889_result_sha256=60926650b6570962da6469452934f17b1e50fb898c9d8d9be29b418cea3706fa",
+                      "probe_seed_742031890_result_sha256=3a9196c875d0a466b86a355d99167250cf3a12877e53394e877183c7cd097a82",
+                      "proposal_shape=local_quarter"
+                    ],
+                    "family": "f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                    "kind": "support_response",
+                    "phase": "local_response_proposal"
+                  }
+                ],
+                "source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+                "standard_deviation": 3359.23376108823,
+                "standard_error": 150.2295008421114
+              },
+              "refinement_level": 1,
+              "witness45": {
+                "Lines": [
+                  [
+                    [
+                      2,
+                      3,
+                      6,
+                      1
+                    ],
+                    [
+                      2,
+                      3,
+                      6,
+                      1
+                    ],
+                    [
+                      2,
+                      3,
+                      1,
+                      0
+                    ],
+                    [
+                      2,
+                      3,
+                      6,
+                      1
+                    ],
+                    [
+                      3,
+                      6,
+                      1,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      2,
+                      1,
+                      6,
+                      0
+                    ],
+                    [
+                      2,
+                      1,
+                      6,
+                      3
+                    ],
+                    [
+                      2,
+                      6,
+                      0,
+                      3
+                    ],
+                    [
+                      2,
+                      6,
+                      0,
+                      3
+                    ],
+                    [
+                      3,
+                      1,
+                      6,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      3,
+                      9,
+                      2,
+                      6
+                    ],
+                    [
+                      3,
+                      9,
+                      2,
+                      8
+                    ],
+                    [
+                      3,
+                      2,
+                      8,
+                      6
+                    ],
+                    [
+                      3,
+                      9,
+                      2,
+                      8
+                    ],
+                    [
+                      3,
+                      9,
+                      8,
+                      6
+                    ]
+                  ],
+                  [
+                    [
+                      3,
+                      2,
+                      1,
+                      0
+                    ],
+                    [
+                      3,
+                      2,
+                      1,
+                      6
+                    ],
+                    [
+                      3,
+                      2,
+                      0,
+                      6
+                    ],
+                    [
+                      3,
+                      2,
+                      1,
+                      0
+                    ],
+                    [
+                      3,
+                      1,
+                      0,
+                      6
+                    ]
+                  ]
+                ],
+                "Mains": [
+                  [
+                    "hp",
+                    "atk",
+                    "em",
+                    "pyro_damage_bonus",
+                    "crit_damage"
+                  ],
+                  [
+                    "hp",
+                    "atk",
+                    "atk_percent",
+                    "atk_percent",
+                    "crit_damage"
+                  ],
+                  [
+                    "hp",
+                    "atk",
+                    "hp_percent",
+                    "hydro_damage_bonus",
+                    "crit_damage"
+                  ],
+                  [
+                    "hp",
+                    "atk",
+                    "atk_percent",
+                    "electro_damage_bonus",
+                    "crit_damage"
+                  ]
+                ],
+                "Upgrades": [
+                  [
+                    [
+                      1.5,
+                      3.5,
+                      0,
+                      0
+                    ],
+                    [
+                      1.75,
+                      3.25,
+                      0,
+                      0
+                    ],
+                    [
+                      2,
+                      3,
+                      0,
+                      0
+                    ],
+                    [
+                      1.25,
+                      3,
+                      0.75,
+                      0
+                    ],
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      4.75,
+                      0.25,
+                      0,
+                      0
+                    ],
+                    [
+                      4.5,
+                      0.25,
+                      0,
+                      0.25
+                    ],
+                    [
+                      4.75,
+                      0,
+                      0,
+                      0.25
+                    ],
+                    [
+                      5,
+                      0,
+                      0,
+                      0
+                    ],
+                    [
+                      4.5,
+                      0.5,
+                      0,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      1,
+                      0.75,
+                      3.25,
+                      0
+                    ],
+                    [
+                      1,
+                      0.25,
+                      3.75,
+                      0
+                    ],
+                    [
+                      1,
+                      4,
+                      0,
+                      0
+                    ],
+                    [
+                      0.75,
+                      0.25,
+                      4,
+                      0
+                    ],
+                    [
+                      1,
+                      4,
+                      0,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ],
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ],
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ],
+                    [
+                      3.25,
+                      1.75,
+                      0,
+                      0
+                    ],
+                    [
+                      5,
+                      0,
+                      0,
+                      0
+                    ]
+                  ]
+                ]
+              }
+            },
+            {
+              "aliases": [
+                {
+                  "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                  "packages": [
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "noblesseoblige"
+                        }
+                      ],
+                      "wearer_key": "bennett"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "obsidiancodex"
+                        }
+                      ],
+                      "wearer_key": "chasca"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "tenacityofthemillelith"
+                        }
+                      ],
+                      "wearer_key": "furina"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "scrolloftheheroofcindercity"
+                        }
+                      ],
+                      "wearer_key": "ororon"
+                    }
+                  ],
+                  "tuple_key": "noblesseoblige:4|obsidiancodex:4|tenacityofthemillelith:4|scrolloftheheroofcindercity:4",
+                  "uncertainty": [
+                    "artifact_stat_read_binding_unresolved",
+                    "attack_field_operand_dependency_frozen",
+                    "attack_mod_closure_expression_collapsed",
+                    "callback_provider_unattributed",
+                    "flat_dmg_expression_collapsed",
+                    "flat_source_parameter_dependencies_incomplete",
+                    "gadget_wave_state_lineage_not_instrumented",
+                    "heal_bonus_modifier_aggregate_incomplete",
+                    "health_context_candidate_dependency_incomplete",
+                    "health_field_candidate_dependency_incomplete",
+                    "health_field_origin_unresolved",
+                    "health_incoming_heal_bonus_origin_unbound",
+                    "health_initial_hp_origin_unresolved",
+                    "health_input_branch_schedule_frozen",
+                    "health_source_bonus_origin_unbound",
+                    "max_hp_candidate_dependency_incomplete",
+                    "modifier_candidate_dependency_incomplete",
+                    "modifier_output_provenance_unresolved",
+                    "modifier_state_read_candidate_dependency_incomplete",
+                    "multiplier_source_expression_not_instrumented",
+                    "numeric_expression_candidate_dependency_incomplete",
+                    "numeric_marker_replay_not_recomputed",
+                    "ordinary_helper_argument_dependency_incomplete",
+                    "post_damage_callback_state_effects_unmodeled",
+                    "provider_transition_timeline_incomplete",
+                    "reaction_bonus_schedule_frozen",
+                    "reaction_parent_lineage_not_instrumented",
+                    "reaction_topology_aggregate_only",
+                    "saved_stat_vector_schedule_frozen",
+                    "scalar_modifier_output_branch_schedule_frozen",
+                    "stat_mod_dependency_expression_collapsed",
+                    "stat_read_external_dependencies_incomplete",
+                    "state_read_candidate_dependency_incomplete",
+                    "state_write_candidate_dependency_incomplete",
+                    "task_numeric_transition_dependency_incomplete",
+                    "task_payload_source_expression_unbound",
+                    "untyped_callback_state_effects_unmodeled",
+                    "counterfactual_callback_phase_observed_schedule",
+                    "energy_activation_uses_observed_particle_ER",
+                    "set_energy_change_callbacks_not_reemitted",
+                    "shield_absorption_feedback_unmodeled"
+                  ]
+                }
+              ],
+              "allocations": [
+                {
+                  "main_stats": {
+                    "circlet": "crit_damage",
+                    "flower": "hp",
+                    "goblet": "pyro_damage_bonus",
+                    "plume": "atk",
+                    "sands": "em"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 2,
+                      "stat_key": "atk",
+                      "stat_value": 38.9
+                    },
+                    {
+                      "roll_units": 5,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0.2915
+                    },
+                    {
+                      "roll_units": 10.5,
+                      "stat_key": "crit_damage",
+                      "stat_value": 0.8158500000000001
+                    },
+                    {
+                      "roll_units": 21.25,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.8266249999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 6.25,
+                      "stat_key": "em",
+                      "stat_value": 145.6875
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "bennett"
+                },
+                {
+                  "main_stats": {
+                    "circlet": "crit_damage",
+                    "flower": "hp",
+                    "goblet": "atk_percent",
+                    "plume": "atk",
+                    "sands": "atk_percent"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 4,
+                      "stat_key": "atk",
+                      "stat_value": 77.8
+                    },
+                    {
+                      "roll_units": 3.25,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0.189475
+                    },
+                    {
+                      "roll_units": 23.5,
+                      "stat_key": "crit_damage",
+                      "stat_value": 1.8259500000000002
+                    },
+                    {
+                      "roll_units": 9.25,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.35982499999999995
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 5,
+                      "stat_key": "em",
+                      "stat_value": 116.55
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "chasca"
+                },
+                {
+                  "main_stats": {
+                    "circlet": "healing_bonus",
+                    "flower": "hp",
+                    "goblet": "hydro_damage_bonus",
+                    "plume": "atk",
+                    "sands": "hp_percent"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 0,
+                      "stat_key": "atk",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 19,
+                      "stat_key": "crit_damage",
+                      "stat_value": 1.4763000000000002
+                    },
+                    {
+                      "roll_units": 9.75,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.379275
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 3,
+                      "stat_key": "em",
+                      "stat_value": 69.92999999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 4,
+                      "stat_key": "hp",
+                      "stat_value": 1195
+                    },
+                    {
+                      "roll_units": 9.25,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0.539275
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "furina"
+                },
+                {
+                  "main_stats": {
+                    "circlet": "crit_damage",
+                    "flower": "hp",
+                    "goblet": "electro_damage_bonus",
+                    "plume": "atk",
+                    "sands": "atk_percent"
+                  },
+                  "spent_roll_units": 45,
+                  "substats": [
+                    {
+                      "roll_units": 4,
+                      "stat_key": "atk",
+                      "stat_value": 77.8
+                    },
+                    {
+                      "roll_units": 4,
+                      "stat_key": "atk_percent",
+                      "stat_value": 0.2332
+                    },
+                    {
+                      "roll_units": 10.25,
+                      "stat_key": "crit_damage",
+                      "stat_value": 0.796425
+                    },
+                    {
+                      "roll_units": 23.75,
+                      "stat_key": "crit_rate",
+                      "stat_value": 0.9238749999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "def_percent",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 3,
+                      "stat_key": "em",
+                      "stat_value": 69.92999999999999
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "energy_recharge",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp",
+                      "stat_value": 0
+                    },
+                    {
+                      "roll_units": 0,
+                      "stat_key": "hp_percent",
+                      "stat_value": 0
+                    }
+                  ],
+                  "unspent_roll_units": 0,
+                  "wearer_key": "ororon"
+                }
+              ],
+              "deficit_percent": 0.9665673202783142,
+              "family": "a94933d33e060063ab24b885cbdbc7d657af9bccc685e0d81d3ac52ad6cef8b1",
+              "formula_dps": 193330.1079494707,
+              "measurement": {
+                "build_identity": {
+                  "kind": "theory_witness45_v1",
+                  "packages": [
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "noblesseoblige"
+                        }
+                      ],
+                      "wearer_key": "bennett"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "obsidiancodex"
+                        }
+                      ],
+                      "wearer_key": "chasca"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "tenacityofthemillelith"
+                        }
+                      ],
+                      "wearer_key": "furina"
+                    },
+                    {
+                      "sets": [
+                        {
+                          "count": 4,
+                          "set_uid": "scrolloftheheroofcindercity"
+                        }
+                      ],
+                      "wearer_key": "ororon"
+                    }
+                  ],
+                  "witness45": {
+                    "Lines": [
+                      [
+                        [
+                          2,
+                          3,
+                          6,
+                          1
+                        ],
+                        [
+                          2,
+                          3,
+                          6,
+                          1
+                        ],
+                        [
+                          2,
+                          3,
+                          1,
+                          0
+                        ],
+                        [
+                          2,
+                          3,
+                          6,
+                          1
+                        ],
+                        [
+                          3,
+                          6,
+                          1,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          2,
+                          1,
+                          6,
+                          0
+                        ],
+                        [
+                          2,
+                          1,
+                          6,
+                          3
+                        ],
+                        [
+                          2,
+                          6,
+                          0,
+                          3
+                        ],
+                        [
+                          2,
+                          6,
+                          0,
+                          3
+                        ],
+                        [
+                          3,
+                          1,
+                          6,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          3,
+                          9,
+                          2,
+                          6
+                        ],
+                        [
+                          3,
+                          9,
+                          2,
+                          8
+                        ],
+                        [
+                          3,
+                          2,
+                          8,
+                          6
+                        ],
+                        [
+                          3,
+                          9,
+                          2,
+                          8
+                        ],
+                        [
+                          3,
+                          9,
+                          8,
+                          6
+                        ]
+                      ],
+                      [
+                        [
+                          3,
+                          2,
+                          1,
+                          0
+                        ],
+                        [
+                          3,
+                          2,
+                          1,
+                          6
+                        ],
+                        [
+                          3,
+                          2,
+                          0,
+                          6
+                        ],
+                        [
+                          3,
+                          2,
+                          1,
+                          0
+                        ],
+                        [
+                          3,
+                          1,
+                          0,
+                          6
+                        ]
+                      ]
+                    ],
+                    "Mains": [
+                      [
+                        "hp",
+                        "atk",
+                        "em",
+                        "pyro_damage_bonus",
+                        "crit_damage"
+                      ],
+                      [
+                        "hp",
+                        "atk",
+                        "atk_percent",
+                        "atk_percent",
+                        "crit_damage"
+                      ],
+                      [
+                        "hp",
+                        "atk",
+                        "hp_percent",
+                        "hydro_damage_bonus",
+                        "healing_bonus"
+                      ],
+                      [
+                        "hp",
+                        "atk",
+                        "atk_percent",
+                        "electro_damage_bonus",
+                        "crit_damage"
+                      ]
+                    ],
+                    "Upgrades": [
+                      [
+                        [
+                          1.5,
+                          3.5,
+                          0,
+                          0
+                        ],
+                        [
+                          1.75,
+                          3.25,
+                          0,
+                          0
+                        ],
+                        [
+                          2,
+                          3,
+                          0,
+                          0
+                        ],
+                        [
+                          1.25,
+                          3,
+                          0.75,
+                          0
+                        ],
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          5,
+                          0,
+                          0,
+                          0
+                        ],
+                        [
+                          4.75,
+                          0,
+                          0,
+                          0.25
+                        ],
+                        [
+                          4.75,
+                          0,
+                          0,
+                          0.25
+                        ],
+                        [
+                          5,
+                          0,
+                          0,
+                          0
+                        ],
+                        [
+                          4.75,
+                          0.25,
+                          0,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          1,
+                          0.75,
+                          3.25,
+                          0
+                        ],
+                        [
+                          1,
+                          0.25,
+                          3.75,
+                          0
+                        ],
+                        [
+                          1,
+                          4,
+                          0,
+                          0
+                        ],
+                        [
+                          0.75,
+                          0.25,
+                          4,
+                          0
+                        ],
+                        [
+                          1,
+                          4,
+                          0,
+                          0
+                        ]
+                      ],
+                      [
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ],
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ],
+                        [
+                          3.5,
+                          1.5,
+                          0,
+                          0
+                        ],
+                        [
+                          3.25,
+                          1.75,
+                          0,
+                          0
+                        ],
+                        [
+                          5,
+                          0,
+                          0,
+                          0
+                        ]
+                      ]
+                    ]
+                  }
+                },
+                "candidate_sha256": "a94933d33e060063ab24b885cbdbc7d657af9bccc685e0d81d3ac52ad6cef8b1",
+                "config_sha256": "f997b2003dce94cbb18d2c87be90954dd15d99b64729c22cd73754c90ed76ea8",
+                "engine_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+                "engine_result_sha256": "c95b263b0e21be500ce42baf64daa243557263e64310c23ef0cb0fc169888cca",
+                "formula_dps": 193330.1079494707,
+                "frame_sha256": "9cb1150dc09b78b1ea07b2dc6c31c5d73f3bee180df3181a8d5343a7c47d8c58",
+                "ignore_burst_energy": true,
+                "iterations": 500,
+                "measured_dps": 196377.24478398406,
+                "origins": [
+                  {
+                    "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                    "diagnostic_codes": [
+                      "artifact_stat_read_binding_unresolved",
+                      "attack_field_operand_dependency_frozen",
+                      "attack_mod_closure_expression_collapsed",
+                      "callback_provider_unattributed",
+                      "flat_dmg_expression_collapsed",
+                      "flat_source_parameter_dependencies_incomplete",
+                      "gadget_wave_state_lineage_not_instrumented",
+                      "heal_bonus_modifier_aggregate_incomplete",
+                      "health_context_candidate_dependency_incomplete",
+                      "health_field_candidate_dependency_incomplete",
+                      "health_field_origin_unresolved",
+                      "health_incoming_heal_bonus_origin_unbound",
+                      "health_initial_hp_origin_unresolved",
+                      "health_input_branch_schedule_frozen",
+                      "health_source_bonus_origin_unbound",
+                      "max_hp_candidate_dependency_incomplete",
+                      "modifier_candidate_dependency_incomplete",
+                      "modifier_output_provenance_unresolved",
+                      "modifier_state_read_candidate_dependency_incomplete",
+                      "multiplier_source_expression_not_instrumented",
+                      "numeric_expression_candidate_dependency_incomplete",
+                      "numeric_marker_replay_not_recomputed",
+                      "ordinary_helper_argument_dependency_incomplete",
+                      "post_damage_callback_state_effects_unmodeled",
+                      "provider_transition_timeline_incomplete",
+                      "reaction_bonus_schedule_frozen",
+                      "reaction_parent_lineage_not_instrumented",
+                      "reaction_topology_aggregate_only",
+                      "saved_stat_vector_schedule_frozen",
+                      "scalar_modifier_output_branch_schedule_frozen",
+                      "stat_mod_dependency_expression_collapsed",
+                      "stat_read_external_dependencies_incomplete",
+                      "state_read_candidate_dependency_incomplete",
+                      "state_write_candidate_dependency_incomplete",
+                      "task_numeric_transition_dependency_incomplete",
+                      "task_payload_source_expression_unbound",
+                      "untyped_callback_state_effects_unmodeled",
+                      "counterfactual_callback_phase_observed_schedule",
+                      "energy_activation_uses_observed_particle_ER",
+                      "set_energy_change_callbacks_not_reemitted",
+                      "shield_absorption_feedback_unmodeled"
+                    ],
+                    "family": "program:3df815bdbd8c0380e9ccd1d611ae341c5beb4044acac8e270badcd3cc94032df:5791ff82080738afcd3bc8352970964b50a0eaac5ec68656b203b84a556365a5",
+                    "kind": "formula_search",
+                    "phase": "first_light"
+                  },
+                  {
+                    "context_sha256": "c8d4611517543842728bfe74c5495675dd4882110d8b81de8e43a6b36de8b7fc",
+                    "diagnostic_codes": [
+                      "support_response_proposal_only",
+                      "owner=furina",
+                      "stat=healing_bonus",
+                      "probe_amount=0.359",
+                      "probe_config_sha256=bf2ccaeed7db8d17a52bd76078cedd8034e87fe8b92d879c935a058e2b5ff03c",
+                      "anchor_candidate_sha256=f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                      "anchor_config_sha256=42ecd37719f3fd788494ff02ca8563adeb6829804f47a899ebc20aa501137cb4",
+                      "anchor_engine_artifact_sha256=f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+                      "anchor_source_manifest_sha256=7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+                      "probe_seed_742031889_result_sha256=e92ef0f7a8abf2311f5b779c0ae839b5ad8ebed877ee5176fd10c9318d42e23b",
+                      "probe_seed_742031890_result_sha256=6f692cefcefde07cbe2f6b1e47e5aa29a3d3bf907f6734ab3026d1e02a2d0eba",
+                      "proposal_shape=single_main"
+                    ],
+                    "family": "f404e44cb01446f0259f212093272ae382e2619aba2f5c1df856d3a0469c666b",
+                    "kind": "support_response",
+                    "phase": "local_response_proposal"
+                  }
+                ],
+                "source_manifest_sha256": "7e31be3643a1c4ca3fe501863c0a1419b66a6999e431d27b74312b4be6e2b21e",
+                "standard_deviation": 3076.724370511117,
+                "standard_error": 137.59529680986213
+              },
+              "refinement_level": 1,
+              "witness45": {
+                "Lines": [
+                  [
+                    [
+                      2,
+                      3,
+                      6,
+                      1
+                    ],
+                    [
+                      2,
+                      3,
+                      6,
+                      1
+                    ],
+                    [
+                      2,
+                      3,
+                      1,
+                      0
+                    ],
+                    [
+                      2,
+                      3,
+                      6,
+                      1
+                    ],
+                    [
+                      3,
+                      6,
+                      1,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      2,
+                      1,
+                      6,
+                      0
+                    ],
+                    [
+                      2,
+                      1,
+                      6,
+                      3
+                    ],
+                    [
+                      2,
+                      6,
+                      0,
+                      3
+                    ],
+                    [
+                      2,
+                      6,
+                      0,
+                      3
+                    ],
+                    [
+                      3,
+                      1,
+                      6,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      3,
+                      9,
+                      2,
+                      6
+                    ],
+                    [
+                      3,
+                      9,
+                      2,
+                      8
+                    ],
+                    [
+                      3,
+                      2,
+                      8,
+                      6
+                    ],
+                    [
+                      3,
+                      9,
+                      2,
+                      8
+                    ],
+                    [
+                      3,
+                      9,
+                      8,
+                      6
+                    ]
+                  ],
+                  [
+                    [
+                      3,
+                      2,
+                      1,
+                      0
+                    ],
+                    [
+                      3,
+                      2,
+                      1,
+                      6
+                    ],
+                    [
+                      3,
+                      2,
+                      0,
+                      6
+                    ],
+                    [
+                      3,
+                      2,
+                      1,
+                      0
+                    ],
+                    [
+                      3,
+                      1,
+                      0,
+                      6
+                    ]
+                  ]
+                ],
+                "Mains": [
+                  [
+                    "hp",
+                    "atk",
+                    "em",
+                    "pyro_damage_bonus",
+                    "crit_damage"
+                  ],
+                  [
+                    "hp",
+                    "atk",
+                    "atk_percent",
+                    "atk_percent",
+                    "crit_damage"
+                  ],
+                  [
+                    "hp",
+                    "atk",
+                    "hp_percent",
+                    "hydro_damage_bonus",
+                    "healing_bonus"
+                  ],
+                  [
+                    "hp",
+                    "atk",
+                    "atk_percent",
+                    "electro_damage_bonus",
+                    "crit_damage"
+                  ]
+                ],
+                "Upgrades": [
+                  [
+                    [
+                      1.5,
+                      3.5,
+                      0,
+                      0
+                    ],
+                    [
+                      1.75,
+                      3.25,
+                      0,
+                      0
+                    ],
+                    [
+                      2,
+                      3,
+                      0,
+                      0
+                    ],
+                    [
+                      1.25,
+                      3,
+                      0.75,
+                      0
+                    ],
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      5,
+                      0,
+                      0,
+                      0
+                    ],
+                    [
+                      4.75,
+                      0,
+                      0,
+                      0.25
+                    ],
+                    [
+                      4.75,
+                      0,
+                      0,
+                      0.25
+                    ],
+                    [
+                      5,
+                      0,
+                      0,
+                      0
+                    ],
+                    [
+                      4.75,
+                      0.25,
+                      0,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      1,
+                      0.75,
+                      3.25,
+                      0
+                    ],
+                    [
+                      1,
+                      0.25,
+                      3.75,
+                      0
+                    ],
+                    [
+                      1,
+                      4,
+                      0,
+                      0
+                    ],
+                    [
+                      0.75,
+                      0.25,
+                      4,
+                      0
+                    ],
+                    [
+                      1,
+                      4,
+                      0,
+                      0
+                    ]
+                  ],
+                  [
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ],
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ],
+                    [
+                      3.5,
+                      1.5,
+                      0,
+                      0
+                    ],
+                    [
+                      3.25,
+                      1.75,
+                      0,
+                      0
+                    ],
+                    [
+                      5,
+                      0,
+                      0,
+                      0
+                    ]
+                  ]
+                ]
+              }
+            }
+          ],
+          "pending": []
+        },
+        "total_found_families": 452,
+        "total_found_tuples": 11010,
+        "unavailable_count": 0,
+        "unseen_tuples": "3595305173631",
+        "verification": {
+          "attempted_count": 2,
+          "candidate_count": 11074,
+          "completed_count": 2,
+          "energy_rejected_count": 0,
+          "failed_count": 0,
+          "in_progress": false,
+          "iterations": 500,
+          "limit": 7,
+          "omitted_count": 11072,
+          "policy_id": "theory_ordinary_finalists_v1",
+          "remaining_budget": 5,
+          "response_lane_attempted_count": 2,
+          "response_lane_reserve": 2,
+          "unverified_count": 11072
+        },
+        "verified_row_retention": {
+          "limit": 7,
+          "omitted_count": 0,
+          "retained_count": 2,
+          "sections": {
+            "co_leaders": {
+              "omitted_count": 0,
+              "retained_count": 2,
+              "source_count": 2,
+              "status": "complete",
+              "unverified_source_count": 0,
+              "verified_source_count": 2
+            },
+            "pending": {
+              "omitted_count": 0,
+              "retained_count": 0,
+              "source_count": 0,
+              "status": "complete",
+              "unverified_source_count": 0,
+              "verified_source_count": 0
+            }
+          },
+          "source_count": 2,
+          "status": "complete",
+          "unverified_source_count": 0,
+          "verified_count_matches_publication": true,
+          "verified_source_count": 2
+        }
+      },
+      "theory_snapshot": {
+        "domain_tuples": "3595305184641",
+        "finished_early": true,
+        "found_group_families": 2,
+        "found_group_tuples": 2,
+        "full_cartesian_covered": false,
+        "phase": "first_light",
+        "practical_band_percent": 3,
+        "publication_version": 5,
+        "reference_score": 198293.88871036752,
+        "response_status": "ordinary_verified",
+        "sensitivity_band_percent": 2,
+        "sensitivity_group_families": 2,
+        "sensitivity_group_tuples": 2,
+        "snapshot_version": 2,
+        "status": "success",
+        "support_stats": {
+          "producer_status": "completed_proposal_only",
+          "response_lane_attempted_count": 2,
+          "response_lane_count_semantics": "ordinary finalist candidates selected from the Theory response lane; not support probe calls",
+          "response_lane_reserve": 2
+        },
+        "total_found_families": 452,
+        "total_found_tuples": 11010,
+        "unavailable_count": 0,
+        "unseen_tuples": "3595305173631",
+        "verification": {
+          "attempted_count": 2,
+          "candidate_count": 11074,
+          "completed_count": 2,
+          "energy_rejected_count": 0,
+          "failed_count": 0,
+          "in_progress": false,
+          "iterations": 500,
+          "limit": 7,
+          "omitted_count": 11072,
+          "policy_id": "theory_ordinary_finalists_v1",
+          "remaining_budget": 5,
+          "response_lane_attempted_count": 2,
+          "response_lane_reserve": 2,
+          "unverified_count": 11072
+        },
+        "verified_row_retention": {
+          "limit": 7,
+          "omitted_count": 0,
+          "retained_count": 2,
+          "sections": {
+            "co_leaders": {
+              "omitted_count": 0,
+              "retained_count": 2,
+              "source_count": 2,
+              "status": "complete",
+              "unverified_source_count": 0,
+              "verified_source_count": 2
+            },
+            "pending": {
+              "omitted_count": 0,
+              "retained_count": 0,
+              "source_count": 0,
+              "status": "complete",
+              "unverified_source_count": 0,
+              "verified_source_count": 0
+            }
+          },
+          "source_count": 2,
+          "status": "complete",
+          "unverified_source_count": 0,
+          "verified_count_matches_publication": true,
+          "verified_source_count": 2
+        }
+      }
+    },
+    "schema_kind": "gtt_optimizer_mvp_polish_case_receipt_v1",
+    "source": {
+      "lease_id_sha256": "b600ca1b61684bd590cc84dc9bda2d1e35b0ed48bbdcceaec911f8fee7629efd",
+      "rotation_file": "docs/optimizer-evidence/2026-10-25-cache-team-matrix/resolved-v2/chasca_600_fixture-rotation.txt",
+      "rotation_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+      "source_id": "chasca_600_fixture",
+      "source_profiles_sha256": "5b7b3bf561b3a75b945babcc7585785d5d43d7aafc67577ea1b522491f6563a6",
+      "source_url": "repository://saved-corpus/chasca_600_fixture"
+    },
+    "status": "success",
+    "timings_ms": {
+      "adapter_formula_inputs_ms": 6375.0,
+      "adapter_optimizer_process_ms": 449906.0,
+      "adapter_prepare_inputs_ms": 5109.0,
+      "adapter_request_preflight_ms": 94.0,
+      "adapter_total_elapsed_ms": 461484.0,
+      "button_click_to_terminal_ms": 462079,
+      "fixture_build_ms": 6063,
+      "product_timeout_ms": 0,
+      "source_load_ms": 0,
+      "theory_finish_button_click_ms": 0,
+      "theory_first_ready_elapsed_ms": 459594,
+      "theory_first_ready_projection_ms": 16,
+      "whole_test_child_elapsed_ms": 473125,
+      "worker_output_render_ms": 390
+    }
+  },
+  "case_id": "chasca_600_fixture",
+  "child_exit_code": 0,
+  "child_log_bytes": 105,
+  "child_log_sha256": "901ee26c9d272bc360bcea487d379683e297c9dab48ec53a6d1580bbd24d0e61",
+  "cleanup_status": "removed",
+  "error_code": null,
+  "installed_identity": {
+    "consumer_sha256": "506cd4b75a4f751786ae5321e6e4e1a99df9007069dcf0e2c302a4e70eb6e202",
+    "engine_artifact_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+    "engine_binding_sha256": "5589c5427c924b8eeace0077e91b4ab946ec0df15d6836128f7bd081210d8fa3",
+    "engine_id": "gcsim-v2.45.0-mechanic-compiler-20261025"
+  },
+  "installed_identity_after_match": true,
+  "installed_runtime": true,
+  "lease_id_sha256": "b600ca1b61684bd590cc84dc9bda2d1e35b0ed48bbdcceaec911f8fee7629efd",
+  "managed_job_removed": true,
+  "measurement_scope": "full_account_snapshot; one AppShell button; test_watchdog_only",
+  "mechanics": {
+    "ast_cache": {
+      "BundledHits": 0,
+      "Errors": 0,
+      "Hits": 3569,
+      "MemoryHits": 3569,
+      "Misses": 236,
+      "Repairs": 0,
+      "WritableHits": 0,
+      "Writes": 0
+    },
+    "bound_boundaries": {
+      "groups": [],
+      "observations": 0,
+      "observations_overflow": 0,
+      "source_available": false,
+      "unique_groups_overflow": 0
+    },
+    "bound_boundary_count": 0,
+    "cache_enabled": false,
+    "diagnostics_status": "recorded",
+    "frozen_store": {
+      "Errors": 0,
+      "Evicted": 0,
+      "Overflow": 0,
+      "Records": 0
+    },
+    "ir_cache": {
+      "bundled_hits": 0,
+      "errors": 0,
+      "fresh_binds": 473,
+      "memory_hits": 473,
+      "misses": 71,
+      "repairs": 0,
+      "semantic_analyses": 71,
+      "writable_hits": 0,
+      "writes": 0
+    },
+    "omitted_uncertain_groups": null,
+    "reason_codes": {
+      "groups": [],
+      "observations_overflow": 0,
+      "unique_groups_overflow": 0,
+      "unmatched_static_identity": 0
+    },
+    "source_result_sha256": "4febdec7d01b9b81441c70956dbdcf43ab749685780a02da13af1df26a1c7315",
+    "static_coverage": {
+      "link_not_prepared": 0,
+      "link_partial": 51,
+      "linked": 0,
+      "mechanics": 51,
+      "parse_not_prepared": 0,
+      "parsed": 51,
+      "runtime_unverified": 51,
+      "semantics_partial": 51,
+      "semantics_unavailable": 0,
+      "semantics_unknown": 0,
+      "source_only": 0,
+      "unresolved": 2739
+    },
+    "status": "available"
+  },
+  "mode": "theory",
+  "native_failure_evidence": {
+    "error_codes": [],
+    "sanitized_error_excerpts": [],
+    "status": "retained_private",
+    "unclassified_error_text_present": false
+  },
+  "native_log_manifest_sha256": "a33cc6b25bc8b57ea7e1151dcb0ac3e4a1d754c7072ec894535ddf1b2a9b39fb",
+  "outer_process_elapsed_ms": 477797,
+  "practical_inventory": {
+    "artifact_count": 604,
+    "artifact_input_sha256": "32e4a8352f1b17173f1f088845cdd8ca0a600499231ffd46b24ee9e79387f60b",
+    "eligible_count": 597,
+    "engine_binding_sha256": "83714a131507b460bc598e64fcb63f13f60dad0ae89cf2427430df2144861e09",
+    "profile_id_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
+    "registry_imported": false,
+    "set_domain_count": 39,
+    "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
+  },
+  "public_inputs": {
+    "result_options": {
+      "builds_per_group": 3,
+      "fast_mode": false,
+      "set_group_limit": 3
+    },
+    "rotation_sha256": "a82ff47ff8a54e0ea9afb8248e40116dc7b3cb61931ed13f803efa74814582ee",
+    "source_config_sha256": "ee94b0254db25112a44c9193e695cd3de1938016e8bd31bf298c5fd7e6ef81ff",
+    "source_profiles_sha256": "5b7b3bf561b3a75b945babcc7585785d5d43d7aafc67577ea1b522491f6563a6"
+  },
+  "receipt_output": "docs/optimizer-evidence/control-off.json",
+  "schema_kind": "gtt_optimizer_mvp_polish_case_receipt_v1",
+  "status": "success",
+  "theory_coarse_evidence": {
+    "error_code": null,
+    "missing_spans": [],
+    "path": "phases.json",
+    "sha256": "567fc6b9c56a97d19156bf57d985c8499e995f654ce267fd2e3291de9ff3bdf9",
+    "status": "available"
+  },
+  "theory_measurement_label": "first_light + Finish"
+}

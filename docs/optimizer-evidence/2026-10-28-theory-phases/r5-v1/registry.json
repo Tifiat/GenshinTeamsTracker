@@ -12,11 +12,32 @@
     "python": "3.11.5 (tags/v3.11.5:cce6ba9, Aug 24 2023, 14:38:34) [MSC v.1936 64 bit (AMD64)]",
     "qt_platform": null
   },
+  "ambient_run": {
+    "cpu_budget": 16,
+    "environment": {
+      "GODEBUG": null,
+      "GOFLAGS": null,
+      "GOGC": null,
+      "GOMAXPROCS": null,
+      "GOMEMLIMIT": null
+    },
+    "executable": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.venv\\Scripts\\python.exe",
+    "pyside6": "6.11.0",
+    "python": "3.11.5 (tags/v3.11.5:cce6ba9, Aug 24 2023, 14:38:34) [MSC v.1936 64 bit (AMD64)]",
+    "qt_platform": null
+  },
   "attempt": "r5-phases-v1",
   "baseline_reused_from": "control-v1",
   "cleanup": "per-run managed scratch auto-cleanup; retained baseline --action release, expires7days",
   "consumer": "506cd4b75a4f751786ae5321e6e4e1a99df9007069dcf0e2c302a4e70eb6e202",
   "created": 1793196271.3358505,
+  "diagnostic_evidence": {
+    "error_code": null,
+    "missing_spans": [],
+    "path": "phases.json",
+    "sha256": "567fc6b9c56a97d19156bf57d985c8499e995f654ce267fd2e3291de9ff3bdf9",
+    "status": "available"
+  },
   "evidence": "C:\\Users\\user\\Desktop\\worker3 GTT\\docs\\optimizer-evidence\\2026-10-28-theory-phases\\r5-v1",
   "expires": 1793801071.3358505,
   "files": {
@@ -578,6 +599,8 @@
     "set_domain_count": 39,
     "sha256": "173afda2d560e9bcc5f2e607daec4c49ea042ef244cf3b2f71cbeff290906b48"
   },
+  "job_removed": true,
+  "main_protected_after_match": true,
   "main_protected_before": {
     "active_profile_sha256": "d6f1c58c32a2ffd0978c276948afabcb0d6bdd6bc4f91dbf19d5f7f2f83788a9",
     "files": {
@@ -589,8 +612,10 @@
   },
   "original_r5_consumer": "6f3027201939f0a796db8ba90a76187bdebbee8dfe9056b98ff510677b350e27",
   "owner": "MAIN01a1824a / ROOT01a16b30; one Luna instrumented R5",
+  "package_retained": true,
   "producer": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
   "producer_binding": "5589c5427c924b8eeace0077e91b4ab946ec0df15d6836128f7bd081210d8fa3",
+  "result_status": "success",
   "retained_baseline": "one pinned old415d application, f1e runtime and owned artifact DB; keep between experiments, no automatic repeat",
   "row": {
     "case_id": "chasca_600_fixture",
@@ -714,5 +739,5 @@
   "source_native_base": "48f643c2e4c7f353806513c8e00f9f5efd31d5bfe615cdb93a038d9f84b9ae09",
   "source_native_timed": "b0b5d32de00b3ddac20065badd26e5f649dba4b51a15f6739bf2bf63bcddca88",
   "source_python_map": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
-  "status": "prepared"
+  "status": "complete"
 }

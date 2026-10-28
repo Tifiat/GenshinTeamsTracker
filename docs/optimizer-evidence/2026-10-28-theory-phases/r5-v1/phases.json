@@ -1,0 +1,316 @@
+{
+  "accounting": "First includes checkpoint_fork; offer_response includes support_probes. Cumulative model stats overlap spans. Do not sum inclusive/nested measurements.",
+  "cumulative_model_stats": {
+    "main_after_first": {
+      "BindSeconds": 11.231044299999965,
+      "ConstantBindSeconds": 10.982505899999975,
+      "ConstantDamageInputs": 9581,
+      "ConstantVectorBindings": 10963,
+      "DispatchHits": 11010,
+      "EffectInputs": 9853,
+      "ExpressionMapBindings": 47,
+      "Preparation": {
+        "ComponentExpressionNodes": 1440,
+        "ComponentHits": 48896,
+        "FamilyHits": 7122,
+        "FamilyMisses": 736,
+        "FullFallbacks": 3102,
+        "GroupEntries": 10,
+        "GroupHits": 49,
+        "GroupMisses": 10,
+        "GroupValues": 98530,
+        "JointReplays": 3111,
+        "Merges": 59,
+        "ReplaySeconds": 372.9296764999986,
+        "Replays": 3516,
+        "Requests": 11010,
+        "SymbolicComponents": 4,
+        "SymbolicCompositions": 5,
+        "TwoPieceChoices": 200,
+        "TwoPieceEffectFamilies": 37
+      },
+      "PreparedPayloadProgramHits": 0,
+      "ProgramHits": 10557,
+      "ProgramMisses": 453,
+      "RegionReuse": {
+        "Calls": 433,
+        "OutputNodes": 563111,
+        "PeakArenaNodes": 23417,
+        "Rebuilt": 918637,
+        "Resets": 0,
+        "Reused": 15982652,
+        "Visited": 16901289
+      },
+      "Requests": 22020,
+      "RuleSeconds": 374.18514259999876,
+      "Specialization": {
+        "Entries": 256,
+        "Hits": 0,
+        "Misses": 452,
+        "Nodes": 675072
+      },
+      "SymbolicBindSeconds": 0.24385730000000005,
+      "Unavailable": 0,
+      "ViewSeconds": 0.9635833000000008,
+      "r1": {
+        "AnchorPorts": 26076661,
+        "FallbackReplays": 3140,
+        "OmittedRecords": 30754155,
+        "PackageGuides": null,
+        "Records": null,
+        "ReferencePorts": 4677622,
+        "UnmappedPackageReasons": null
+      }
+    },
+    "main_initial": {
+      "BindSeconds": 0,
+      "ConstantBindSeconds": 0,
+      "ConstantDamageInputs": 0,
+      "ConstantVectorBindings": 0,
+      "DispatchHits": 0,
+      "EffectInputs": 0,
+      "ExpressionMapBindings": 0,
+      "Preparation": {
+        "ComponentExpressionNodes": 0,
+        "ComponentHits": 0,
+        "FamilyHits": 0,
+        "FamilyMisses": 0,
+        "FullFallbacks": 0,
+        "GroupEntries": 0,
+        "GroupHits": 0,
+        "GroupMisses": 0,
+        "GroupValues": 0,
+        "JointReplays": 0,
+        "Merges": 0,
+        "ReplaySeconds": 0,
+        "Replays": 0,
+        "Requests": 0,
+        "SymbolicComponents": 0,
+        "SymbolicCompositions": 0,
+        "TwoPieceChoices": 0,
+        "TwoPieceEffectFamilies": 0
+      },
+      "PreparedPayloadProgramHits": 0,
+      "ProgramHits": 0,
+      "ProgramMisses": 0,
+      "RegionReuse": {
+        "Calls": 0,
+        "OutputNodes": 0,
+        "PeakArenaNodes": 0,
+        "Rebuilt": 0,
+        "Resets": 0,
+        "Reused": 0,
+        "Visited": 0
+      },
+      "Requests": 0,
+      "RuleSeconds": 0,
+      "Specialization": {
+        "Entries": 0,
+        "Hits": 0,
+        "Misses": 0,
+        "Nodes": 0
+      },
+      "SymbolicBindSeconds": 0,
+      "Unavailable": 0,
+      "ViewSeconds": 0,
+      "r1": {
+        "AnchorPorts": 0,
+        "FallbackReplays": 0,
+        "OmittedRecords": 0,
+        "PackageGuides": null,
+        "Records": null,
+        "ReferencePorts": 0,
+        "UnmappedPackageReasons": null
+      }
+    },
+    "response_after_offer": {
+      "BindSeconds": 0.0116612,
+      "ConstantBindSeconds": 0.0116612,
+      "ConstantDamageInputs": 9581,
+      "ConstantVectorBindings": 1,
+      "DispatchHits": 1,
+      "EffectInputs": 9853,
+      "ExpressionMapBindings": 0,
+      "Preparation": {
+        "ComponentExpressionNodes": 0,
+        "ComponentHits": 0,
+        "FamilyHits": 0,
+        "FamilyMisses": 1,
+        "FullFallbacks": 0,
+        "GroupEntries": 0,
+        "GroupHits": 0,
+        "GroupMisses": 0,
+        "GroupValues": 0,
+        "JointReplays": 0,
+        "Merges": 0,
+        "ReplaySeconds": 0.15593200000000002,
+        "Replays": 4,
+        "Requests": 1,
+        "SymbolicComponents": 0,
+        "SymbolicCompositions": 0,
+        "TwoPieceChoices": 0,
+        "TwoPieceEffectFamilies": 0
+      },
+      "PreparedPayloadProgramHits": 0,
+      "ProgramHits": 0,
+      "ProgramMisses": 1,
+      "RegionReuse": {
+        "Calls": 1,
+        "OutputNodes": 1329,
+        "PeakArenaNodes": 1329,
+        "Rebuilt": 39033,
+        "Resets": 0,
+        "Reused": 0,
+        "Visited": 39033
+      },
+      "Requests": 2,
+      "RuleSeconds": 0.1610692,
+      "Specialization": {
+        "Entries": 1,
+        "Hits": 0,
+        "Misses": 1,
+        "Nodes": 2658
+      },
+      "SymbolicBindSeconds": 0,
+      "Unavailable": 0,
+      "ViewSeconds": 0,
+      "r1": {
+        "AnchorPorts": 0,
+        "FallbackReplays": 0,
+        "OmittedRecords": 0,
+        "PackageGuides": null,
+        "Records": null,
+        "ReferencePorts": 0,
+        "UnmappedPackageReasons": null
+      }
+    },
+    "response_before_offer": {
+      "BindSeconds": 0,
+      "ConstantBindSeconds": 0,
+      "ConstantDamageInputs": 0,
+      "ConstantVectorBindings": 0,
+      "DispatchHits": 0,
+      "EffectInputs": 0,
+      "ExpressionMapBindings": 0,
+      "Preparation": {
+        "ComponentExpressionNodes": 0,
+        "ComponentHits": 0,
+        "FamilyHits": 0,
+        "FamilyMisses": 0,
+        "FullFallbacks": 0,
+        "GroupEntries": 0,
+        "GroupHits": 0,
+        "GroupMisses": 0,
+        "GroupValues": 0,
+        "JointReplays": 0,
+        "Merges": 0,
+        "ReplaySeconds": 0,
+        "Replays": 0,
+        "Requests": 0,
+        "SymbolicComponents": 0,
+        "SymbolicCompositions": 0,
+        "TwoPieceChoices": 0,
+        "TwoPieceEffectFamilies": 0
+      },
+      "PreparedPayloadProgramHits": 0,
+      "ProgramHits": 0,
+      "ProgramMisses": 0,
+      "RegionReuse": {
+        "Calls": 0,
+        "OutputNodes": 0,
+        "PeakArenaNodes": 0,
+        "Rebuilt": 0,
+        "Resets": 0,
+        "Reused": 0,
+        "Visited": 0
+      },
+      "Requests": 0,
+      "RuleSeconds": 0,
+      "Specialization": {
+        "Entries": 0,
+        "Hits": 0,
+        "Misses": 0,
+        "Nodes": 0
+      },
+      "SymbolicBindSeconds": 0,
+      "Unavailable": 0,
+      "ViewSeconds": 0,
+      "r1": {
+        "AnchorPorts": 0,
+        "FallbackReplays": 0,
+        "OmittedRecords": 0,
+        "PackageGuides": null,
+        "Records": null,
+        "ReferencePorts": 0,
+        "UnmappedPackageReasons": null
+      }
+    }
+  },
+  "dropped": 0,
+  "elapsed_ns": 444547637300,
+  "schema": "theory_coarse_phases_v1",
+  "spans": [
+    {
+      "name": "context_setup",
+      "start_ns": 0,
+      "wall_ns": 683312100
+    },
+    {
+      "name": "capture",
+      "start_ns": 683312100,
+      "wall_ns": 8354755400
+    },
+    {
+      "name": "model",
+      "start_ns": 9038067500,
+      "wall_ns": 100326300
+    },
+    {
+      "name": "config_world",
+      "start_ns": 9138393800,
+      "wall_ns": 64541600
+    },
+    {
+      "name": "response_world_fork",
+      "start_ns": 9202935400,
+      "wall_ns": 0
+    },
+    {
+      "name": "initial_resolve_binding",
+      "start_ns": 9211493300,
+      "wall_ns": 773798200
+    },
+    {
+      "name": "checkpoint_fork",
+      "parent": "first",
+      "start_ns": 406493934100,
+      "wall_ns": 69976300
+    },
+    {
+      "name": "first",
+      "start_ns": 9985291500,
+      "wall_ns": 396606653500
+    },
+    {
+      "name": "offer_search",
+      "start_ns": 406591945000,
+      "wall_ns": 11706203800
+    },
+    {
+      "name": "support_probes",
+      "parent": "offer_response",
+      "start_ns": 418512546700,
+      "wall_ns": 9930071100
+    },
+    {
+      "name": "offer_response",
+      "start_ns": 418298148800,
+      "wall_ns": 10225756100
+    },
+    {
+      "name": "verify",
+      "start_ns": 428523904900,
+      "wall_ns": 13999735400
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+test_source_repository_read_once_parity_and_mutations (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_source_repository_read_once_parity_and_mutations) ... ok
+test_tree_streaming_scopes_and_only_requested_file_digest (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_tree_streaming_scopes_and_only_requested_file_digest) ... ok
+test_real_prepare_source_adapter_keeps_wire_and_skips_first_full_report (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_real_prepare_source_adapter_keeps_wire_and_skips_first_full_report) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.948s
+
+OK

@@ -1,0 +1,14 @@
+=== RUN   TestR5SavedEvaluateAndScratchCosts
+--- PASS: TestR5SavedEvaluateAndScratchCosts (2.50s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	2.559s
+testing: warning: no tests to run
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/evaluator	0.041s [no tests to run]
+=== RUN   TestR5SavedStreamingHashCosts
+--- PASS: TestR5SavedStreamingHashCosts (1.33s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	1.384s
+testing: warning: no tests to run
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/setcontext	0.052s [no tests to run]

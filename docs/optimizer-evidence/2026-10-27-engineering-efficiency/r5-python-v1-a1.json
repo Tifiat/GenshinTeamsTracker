@@ -1,0 +1,11 @@
+{
+  "engine_calls": 0,
+  "error": "Windows fixture cleanup: sqlite3 connection context manager committed but did not close the test writer; all consistency assertions completed. Corrected test-owned writer close in a2; no product change.",
+  "errors": 1,
+  "full_log": "Original tool transcript; no local full stdout log was captured.",
+  "passed": 9,
+  "schema": "r5_python_offline_initial_v1",
+  "source_map_sha256": "62558c65c3d8a8fd0ab2a50a8786173e51c681fedd236f09082431bdfb50f6bd",
+  "status": "failed",
+  "tests": 10
+}

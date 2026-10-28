@@ -1,0 +1,7 @@
+{
+  "engine_calls": 0,
+  "error": "Managed helper imported product modules before installing the prospective image; preimport guard rejected this. Runner now installs the image before importing the managed helper. Empty owned scratch was removed.",
+  "schema": "r5_python_bootstrap_failure_v1",
+  "status": "failed_before_tests",
+  "tests": 0
+}

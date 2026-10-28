@@ -1,0 +1,18 @@
+=== RUN   TestR5EvaluateFiniteBitsReuseAndErrors
+--- PASS: TestR5EvaluateFiniteBitsReuseAndErrors (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	0.049s
+# genshinteamstracker/native/gcsim_optimizer/internal/evaluator
+internal\evaluator\parametric_view.go:15:5: invalid operation: panel == nil || panel.parametricView (mismatched types untyped bool and func(program *formula.ParametricProgram, uncertainty []string, uncertaintyApplied bool) (*Panel, error))
+internal\evaluator\parametric_view.go:37:21: field and method with the same name parametricView
+	internal\evaluator\panel.go:56:2: other declaration of parametricView
+internal\evaluator\panel.go:183:5: non-boolean condition in if statement
+internal\evaluator\panel.go:231:5: non-boolean condition in if statement
+internal\evaluator\panel.go:257:5: non-boolean condition in if statement
+FAIL	genshinteamstracker/native/gcsim_optimizer/internal/evaluator [build failed]
+=== RUN   TestR5StreamingIntegrityRetainsEveryCheck
+--- PASS: TestR5StreamingIntegrityRetainsEveryCheck (0.14s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	0.175s
+FAIL	genshinteamstracker/native/gcsim_optimizer/internal/setcontext [build failed]
+FAIL

@@ -1,0 +1,84 @@
+=== RUN   TestArtifactArithmeticMatchesGenericInterpreter
+--- PASS: TestArtifactArithmeticMatchesGenericInterpreter (0.01s)
+=== RUN   TestArtifactArithmeticOrderedFoldsAndErrorRecovery
+--- PASS: TestArtifactArithmeticOrderedFoldsAndErrorRecovery (0.00s)
+=== RUN   TestArtifactChangedMaskExactSequenceAndOrder
+--- PASS: TestArtifactChangedMaskExactSequenceAndOrder (0.00s)
+=== RUN   TestArtifactChangedMaskRepeatAdmission
+--- PASS: TestArtifactChangedMaskRepeatAdmission (0.00s)
+=== RUN   TestArtifactChangedMaskPrivateScratch
+--- PASS: TestArtifactChangedMaskPrivateScratch (0.00s)
+=== RUN   TestArtifactChangedMaskSignedZeroAndEqualSelect
+--- PASS: TestArtifactChangedMaskSignedZeroAndEqualSelect (0.00s)
+=== RUN   TestArtifactChangedMaskErrorRecoveryAndFallbacks
+=== RUN   TestArtifactChangedMaskErrorRecoveryAndFallbacks/partial
+=== RUN   TestArtifactChangedMaskErrorRecoveryAndFallbacks/over64
+=== RUN   TestArtifactChangedMaskErrorRecoveryAndFallbacks/noActive
+--- PASS: TestArtifactChangedMaskErrorRecoveryAndFallbacks (0.00s)
+    --- PASS: TestArtifactChangedMaskErrorRecoveryAndFallbacks/partial (0.00s)
+    --- PASS: TestArtifactChangedMaskErrorRecoveryAndFallbacks/over64 (0.00s)
+    --- PASS: TestArtifactChangedMaskErrorRecoveryAndFallbacks/noActive (0.00s)
+=== RUN   TestIncrementalUnchangedLiveStatsStillValidateAllInputs
+--- PASS: TestIncrementalUnchangedLiveStatsStillValidateAllInputs (0.00s)
+=== RUN   TestR5EvaluateFiniteBitsReuseAndErrors
+--- PASS: TestR5EvaluateFiniteBitsReuseAndErrors (0.00s)
+=== RUN   TestParametricSpecializationCacheIdentityAndScratch
+--- PASS: TestParametricSpecializationCacheIdentityAndScratch (0.00s)
+=== RUN   TestArtifactProgramTheoryForkOwnsPreviousAndValueScratch
+--- PASS: TestArtifactProgramTheoryForkOwnsPreviousAndValueScratch (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	0.068s
+=== RUN   TestParametricSearchViewUsesBoundProgramAndNoStaleActorDetail
+--- PASS: TestParametricSearchViewUsesBoundProgramAndNoStaleActorDetail (0.01s)
+=== RUN   TestR5SearchViewOwnScratchZeroPreflight
+--- PASS: TestR5SearchViewOwnScratchZeroPreflight (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/evaluator	0.062s
+=== RUN   TestBoundEngineDetectsStageMutation
+--- PASS: TestBoundEngineDetectsStageMutation (0.01s)
+=== RUN   TestR5StreamingIntegrityRetainsEveryCheck
+--- PASS: TestR5StreamingIntegrityRetainsEveryCheck (0.14s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	0.186s
+=== RUN   TestContextReplacementPreservesFrameAndRestores
+--- PASS: TestContextReplacementPreservesFrameAndRestores (0.00s)
+=== RUN   TestContextIdentityCoversAllInputs
+=== RUN   TestContextIdentityCoversAllInputs/source
+=== RUN   TestContextIdentityCoversAllInputs/reference
+=== RUN   TestContextIdentityCoversAllInputs/seed_order
+=== RUN   TestContextIdentityCoversAllInputs/energy
+=== RUN   TestContextIdentityCoversAllInputs/patch
+=== RUN   TestContextIdentityCoversAllInputs/catalog
+=== RUN   TestContextIdentityCoversAllInputs/rotation
+=== RUN   TestContextIdentityCoversAllInputs/raw_stats
+=== RUN   TestContextIdentityCoversAllInputs/target
+=== RUN   TestContextIdentityCoversAllInputs/initialization
+=== RUN   TestContextIdentityCoversAllInputs/binary
+--- PASS: TestContextIdentityCoversAllInputs (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/source (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/reference (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/seed_order (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/energy (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/patch (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/catalog (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/rotation (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/raw_stats (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/target (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/initialization (0.00s)
+    --- PASS: TestContextIdentityCoversAllInputs/binary (0.00s)
+=== RUN   TestNeutralModelSavedFixtureOwnershipAndResponse
+    neutral_test.go:23: managed neutral capture gate only
+--- SKIP: TestNeutralModelSavedFixtureOwnershipAndResponse (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/setcontext	0.058s
+testing: warning: no tests to run
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/allsets	0.051s [no tests to run]
+=== RUN   TestVerifyFullBuildCancellationBeforeDispatchDoesNotSpendAttempt
+--- PASS: TestVerifyFullBuildCancellationBeforeDispatchDoesNotSpendAttempt (0.01s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/finalists	0.046s
+=== RUN   TestR2GroupedProductRetainsActualMixedIterations
+--- PASS: TestR2GroupedProductRetainsActualMixedIterations (0.01s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer	0.060s

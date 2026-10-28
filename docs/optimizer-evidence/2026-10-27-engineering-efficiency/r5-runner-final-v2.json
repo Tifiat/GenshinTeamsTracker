@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "actual sitecustomize child, frozen AppShell and test definitions, exact source packet/reconstruction/dependencies without optimizer",
+    "finite function-local late harness import closure",
+    "source mutation rejection",
+    "one-OFF/duplicate dispatch guard"
+  ],
+  "engine_calls": 0,
+  "errors": 0,
+  "failures": 0,
+  "harness_recovery_map_sha256": "218d189c7f6838a43ec5cd19267bfe5b50d04cc85c83156fb14b1f93924f26a6",
+  "log_sha256": "89549fcba132e3293a712e53f053ed63f0fbbf92807c3076822da3a739156799",
+  "native_map_sha256": "48f643c2e4c7f353806513c8e00f9f5efd31d5bfe615cdb93a038d9f84b9ae09",
+  "python_map_sha256": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
+  "schema": "r5_runner_final_v2",
+  "search_calls": 0,
+  "status": "passed",
+  "tests": 4
+}

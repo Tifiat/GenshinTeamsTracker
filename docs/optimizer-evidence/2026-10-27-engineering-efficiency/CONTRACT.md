@@ -125,6 +125,52 @@ button OFF, export phase/DPS/SE/n/gear/panel/count/protected evidence, release t
 original managed owner, local source/result commits, report/STOP. First material
 anomaly holds progression; no short quality timeouts or automatic retry.
 
+## R5 — bounded final-audit closure — human order 28 October
+
+The human authorizes closing the remaining engineering findings, one comparative
+Chasca result and a report before any next stage. Existing MAIN chat01a15af5 uses
+GPT-6.1 Sol/high; ROOT01a16b30 owns architecture/admission. ROOT updates routing;
+MAIN is the sole source writer. R4 sourceb3f9713/resulte6e600d and exact438 native
+map0f504808 remain the control. Do not rebuild the unrelated dirty native tree.
+
+Disposition every item as fixed or retained with a concrete reason:
+
+1. Consolidate inventory/equipment into one consistent read-only snapshot and
+   remove duplicate config preparation where a narrow equivalent path exists.
+   Preserve virtual mappings, legality and concurrent-change protection.
+2. Remove overlapping source/binary reads through owned per-run inputs, retaining
+   each distinct digest scope and mutation check. Reuse the existing source
+   repository collector; no persistent cache or extra full-tree memory mirror.
+3. Reduce exact context/view repetition only with demonstrated immutable identity
+   and separate mutable scratch. Zero-baseline evaluation also initializes and
+   validates the view; an unused Baseline accessor does not authorize deleting it.
+   No broad cache or abstraction without measured benefit.
+4. Fuse finite-input and changed-mask scans where equivalent, retaining signed
+   zero, nonfinite rejection, early-reuse validation and error invalidation.
+5. Bound the in-memory stderr tail while keeping the complete owned log; avoid
+   whole-executable temporary allocations where streaming preserves every check.
+6. Pin actual product Python bytes as well as native/harness/toolchain/config
+   before and after the run. R4 packets do not establish the dirty Python bytes;
+   do not retroactively invent them or attribute R4 preparation cost to source
+   observations. Preserve a committed reproducible R5 reconstruction without
+   staging foreign work or private data.
+
+Use focused parity/invalid/mutation/ownership/lifecycle checks and existing saved
+inputs first. Preserve gameplay, floating-point order, search/coverage/budgets,
+77 intermediate checks, two compact seeds/one neutral model, staged n100/n500
+policy and current full604/597 inventory. No new broad audit, algorithm change,
+extra traces, installation, CUA, ON/warm, other teams or observer wakeup.
+
+MAIN supplies READY with exact sources, owned commit, focused results, local
+costs and retained findings. ROOT reviews before one cheap-tester full button OFF;
+no automatic full run. First anomaly holds progression for diagnosis; wall goals
+are metrics, not short kill timers. Record phase timings/counts/bytes and actual
+CPU measurement limits without heavy per-node telemetry. Compare nine ordered
+gear/formula/search counts and winner DPS/SE against R4, distinguishing historical
+button timing from strictly reproducible Python attribution. Export evidence,
+release owned scratch, verify protected state, commit useful source/results,
+report all six dispositions and STOP. No automatic next stage or repeat success.
+
 ## Representation decision after source review
 
 ROOT admits the typed-canonical IRSeedMember candidate described in

@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "exact current packet/new native pins/dependencies/reconstruction",
+    "function-local finite harness import closure"
+  ],
+  "engine_calls": 0,
+  "errors": 0,
+  "failures": 0,
+  "native_map_sha256": "48f643c2e4c7f353806513c8e00f9f5efd31d5bfe615cdb93a038d9f84b9ae09",
+  "previous_startup_gate": "4 checks passed including actual sitecustomize child with AppShell imports, mutation and duplicate dispatch; see prior tool transcript,13.7/15.2s. No search.",
+  "python_map_sha256": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
+  "schema": "r5_runner_final_v1",
+  "status": "passed",
+  "tests": 2
+}

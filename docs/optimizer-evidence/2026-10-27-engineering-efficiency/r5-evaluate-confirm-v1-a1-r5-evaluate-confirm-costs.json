@@ -1,0 +1,57 @@
+{
+  "rows": [
+    {
+      "allocated_bytes": 16,
+      "allocations": 1,
+      "calls": 1048576,
+      "cpu_available": false,
+      "fused": false,
+      "order": [
+        false,
+        true
+      ],
+      "seed": "742031889",
+      "wall_ms": 455.1255
+    },
+    {
+      "allocated_bytes": 48,
+      "allocations": 2,
+      "calls": 1048576,
+      "cpu_available": false,
+      "fused": true,
+      "order": [
+        false,
+        true
+      ],
+      "seed": "742031889",
+      "wall_ms": 439.6213
+    },
+    {
+      "allocated_bytes": 0,
+      "allocations": 0,
+      "calls": 1048576,
+      "cpu_available": false,
+      "fused": true,
+      "order": [
+        true,
+        false
+      ],
+      "seed": "742031890",
+      "wall_ms": 436.4943
+    },
+    {
+      "allocated_bytes": 0,
+      "allocations": 0,
+      "calls": 1048576,
+      "cpu_available": false,
+      "fused": false,
+      "order": [
+        true,
+        false
+      ],
+      "seed": "742031890",
+      "wall_ms": 460.2783
+    }
+  ],
+  "scope": "One ROOT-admitted clarification; equal bit-comparison work in both arms, reversed fixture order. Same retained data, no engine/search, no further repeats."
+}

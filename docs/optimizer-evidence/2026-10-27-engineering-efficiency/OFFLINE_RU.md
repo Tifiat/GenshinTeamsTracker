@@ -152,3 +152,81 @@ bounded concurrency/lifecycle evidence без установки нового to
 (5R3+3R4), исключение frontier, gate и policy. Пока0engine/0search/0consumerbuild,
 ничего не установлено. Source milestone, затем разрешённая подготовка одного
 managed owner; OFF выдаёт ROOT после проверки consumer/input/protected pins.
+
+
+## R5 - bounded closure (28 October, before the admitted full run)
+
+All six findings have a disposition. No gameplay, FP order, search/coverage,
+77 intermediate checks or n100/n500 policy changed; no engine/search calls here.
+
+1. **Fixed:** one read-only SQLite transaction freezes inventory and equipment;
+   validation/hash runs once over owned rows. The independently supplied inventory
+   API retains its old cross-transaction recheck. WAL mutation/virtual mapping/
+   legality tests pass. First full config report becomes the existing common
+   slot/mapping payload; final full report remains. Keeping common slot preparation
+   preserves virtual overrides and identity/rotation validation without rewriting
+   the character/config builder. Two full assemblies become one; no isolated
+   real-config timing is claimed.
+2. **Fixed/retained:** derive the requested binary SHA in the store-tree pass;
+   stream that binary on one reused buffer, keep ordinary small-file reads.
+   Tree and binary digest scopes remain distinct. Existing verified Go repository
+   supplies later source text and go.mod; catalog and mutable cross-stage integrity
+   checks remain. Full-tree extra SHA maps/caches or RAM mirrors were not added.
+3. **Fixed/retained:** one uncertain-view scratch copy replaces two. Independent
+   values/previous/error/adjoint storage and the zero-input preflight remain.
+   Context.Replace/New remains: it validates/freezes complete caller inputs before
+   the exact dispatch key exists. No new context cache or unchecked identity path.
+4. **Fixed:** finite/Float64bits-change scanning fused on the reuse path; every
+   input is checked before early reuse. Signed zero and R4 early-error scratch
+   behavior remain; arithmetic errors still invalidate partially computed state.
+5. **Fixed:** stderr retains eight 2048-character tails plus Finish-marker flags
+   from the original last eight lines. Full owned file/progress/cancel lifecycle
+   remains. Go binary SHA uses streaming for every required existing check.
+6. **Fixed:** prospectively frozen 394-file product Python image, Git+readable delta,
+   applies eight owned overlays without editing/staging dirty live product files.
+   Private/generated directories are pruned before descent. Ordinary data/resource
+   paths keep existing checks; they are not an executable-code sandbox. The 111
+   non-R5 imported harness files have a separate Git+delta reconstruction; owned
+   R5 helpers belong to the source milestone. Finite lazy harness route and actual
+   sitecustomize/AppShell-definition startup are checked offline. Python/Qt/SQLite
+   runtime identities and source pins are checked before/after numerical work.
+   Historical R4 product Python identity is unknown and is not reconstructed here.
+
+### Local costs and limits
+
+- Saved full inventory604, input32e4a835: two transactions/hashes to one,
+  instrumented1646.611 to1137.850ms. Four service-only virtual baselines; this is
+  not a full config/button timing. Source envelope10058.542 to9878.905ms with
+  tracing/read counters; identical envelope,117 fewer opens. These include probe
+  overhead and use the prospective pre-R5 Python baseline.
+- All-file streaming was rejected: instrumented6.785 to10.451s (v1), improved
+  reused-buffer all-file variant6.759 to6.965s (v2). Keep both historical receipts
+  and maps. Final binary-only hybrid, without profiler/read interception and with
+  reversed order:4.361 versus4.437s, CPU4.344 versus4.359s; exact distinct digests.
+  The76ms difference is not claimed as a stable gain. One55,406,080-byte duplicate
+  binary read and its whole-file buffer are removed.
+-64 uncertain scratch constructors on each saved fixture allocate1,392,640 to
+ 696,320bytes,512 to256allocations. Timer was below resolution; this proves
+ allocation reduction only, not the cost of the retained zero preflight.
+- Initial2048-call Evaluate samples were too short/mixed. One ROOT-admitted
+ clarification used1,048,576calls per arm with equal bit checks and reversed
+ fixture order:455.126 to439.621ms;460.278 to436.494ms. Bit/error parity passed;
+ ROOT accepted the local3.4-5.2percent result, not a full-search speed claim.
+- One existing55,406,080-byte producer SHA: Go allocations55,412,408 to34,064bytes;
+ wall678.566 to647.781ms, local process CPU687.5 to656.25ms. One warm-order pair;
+ every required check remains. Do not attribute the whole final outer-minus-inner
+ timer to hashing. No full-run CPU/allocation/RSS claim.
+
+### Checks and custody
+
+Combined native gate:19 top-level PASS across the selected existing/new checks;
+managed neutral fixture SKIP disclosed, allsets compiled with no matching test.
+Actual artifact/gradient/mask/scratch/context/binary-mutation/finalist grouping
+checks passed. Python10 focused checks plus targeted source/adapter/hybrid
+checks passed. Runner source/bootstrap/late-import/mutation/one-OFF checks pass;
+exact current receipts and commands are indexed by r5-ready-v1.json.
+Initial native field/method-name compile failure and Python fixture writer-close/
+bootstrap-order failures remain as separate receipts. No product defect is hidden
+by those harness corrections. All local managed jobs were removed, protected
+state stayed exact. Full Chasca OFF still requires final ROOT admission; no
+installation, ON/warm, other team or repeat follows automatically.

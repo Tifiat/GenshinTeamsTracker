@@ -287,3 +287,21 @@ Final outer21.358 to19.588s; phase changes are not solely attributed to R4 modul
 [closeout](2026-10-27-engineering-efficiency/r4-run-v1/closeout.json) saved/read back.
 Owner77097 exited0; job-guos49re removed258495805bytes; owned processes0,
 protected9d81 exact. No install/repeat/ON/other teams. Local result save; STOP.
+
+
+R5 bounded final-audit source (28October): exact R4 native438-map0f504808 to
+444-map48f643c2. Eight Python overlays use prospective394-map e3d71c21; original
+live product files stay untouched. Product baseline cf3ccfb5 and111 nonowned
+harness sources218d189c reconstruct from e6e600d plus literal readable deltas;
+new R5 helpers belong to this source milestone. No R4 Python identity invented.
+Inventory/equipment one read view, one final config assembly, verified source
+text/go.mod reuse, binary-only hybrid tree pass, one uncertain scratch copy,
+fused finite/bit mask, bounded stderr/Finish flags and streaming Go SHA accepted
+by ROOT after focused checks. Public independent inventory recheck, complete
+context construction, zero-input preflight and mutable cross-stage checks remain.
+[Offline dispositions/costs](2026-10-27-engineering-efficiency/OFFLINE_RU.md) retain
+mixed short samples and rejected all-file streaming. Clarifiers accepted local
+Evaluate3.4-5.2percent and hybrid non-regression, not whole-search speed guarantees.
+Combined19PASS/one disclosed managed-fixture SKIP; Python/source/adapter/bootstrap
+checks passed with no engine/search. Source freeze/commit and original finite
+owner prepare precede final ROOT one-OFF admission. No install/new team/cache arm.

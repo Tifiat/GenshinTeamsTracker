@@ -1,0 +1,15 @@
+test_concurrent_wal_change_cannot_mix_inventory_and_equipment (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_concurrent_wal_change_cannot_mix_inventory_and_equipment) ... ok
+test_engine_context_existing_scope_checks (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_engine_context_existing_scope_checks) ... ok
+test_existing_cancel_finish_and_reader_flags (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_existing_cancel_finish_and_reader_flags) ... ok
+test_inventory_equipment_one_view_and_legacy_parity (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_inventory_equipment_one_view_and_legacy_parity) ... ok
+test_lazy_import_pin_mutation_and_missing_rejection (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_lazy_import_pin_mutation_and_missing_rejection) ... ok
+test_preimport_rejected_and_package_resources_keep_original_paths (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_preimport_rejected_and_package_resources_keep_original_paths) ... ok
+test_real_prepare_source_adapter_keeps_wire_and_skips_first_full_report (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_real_prepare_source_adapter_keeps_wire_and_skips_first_full_report) ... ok
+test_source_repository_read_once_parity_and_mutations (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_source_repository_read_once_parity_and_mutations) ... ok
+test_stderr_bounded_complete_log_and_finish_marker_on_long_line (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_stderr_bounded_complete_log_and_finish_marker_on_long_line) ... ok
+test_tree_streaming_scopes_and_only_requested_file_digest (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_tree_streaming_scopes_and_only_requested_file_digest) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.580s
+
+OK

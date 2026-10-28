@@ -1,0 +1,6 @@
+test_existing_adapter_binary_override_and_stage_timing (tools.experiments.gcsim.mvp_polish.test_r5_python.R5PythonTests.test_existing_adapter_binary_override_and_stage_timing) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.029s
+
+OK

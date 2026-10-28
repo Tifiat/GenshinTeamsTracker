@@ -1,0 +1,6 @@
+=== RUN   TestR5EvaluateFiniteBitsReuseAndErrors
+--- PASS: TestR5EvaluateFiniteBitsReuseAndErrors (0.00s)
+=== RUN   TestR5SavedEvaluateConfirmation
+--- PASS: TestR5SavedEvaluateConfirmation (4.31s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	4.383s

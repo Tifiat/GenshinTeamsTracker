@@ -1,0 +1,7 @@
+test_exact_source_image_and_unchanged_policy (tools.experiments.gcsim.mvp_polish.test_r5_button.R5ButtonTests.test_exact_source_image_and_unchanged_policy) ... ok
+test_pinned_route_covers_function_local_harness_imports (tools.experiments.gcsim.mvp_polish.test_r5_button.R5ButtonTests.test_pinned_route_covers_function_local_harness_imports) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 5.619s
+
+OK

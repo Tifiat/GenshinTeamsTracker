@@ -1,0 +1,15 @@
+=== RUN   TestR5EvaluateFiniteBitsReuseAndErrors
+--- PASS: TestR5EvaluateFiniteBitsReuseAndErrors (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	0.045s
+=== RUN   TestR5SearchViewOwnScratchZeroPreflight
+--- PASS: TestR5SearchViewOwnScratchZeroPreflight (0.01s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/evaluator	0.052s
+=== RUN   TestR5StreamingIntegrityRetainsEveryCheck
+--- PASS: TestR5StreamingIntegrityRetainsEveryCheck (0.14s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	0.181s
+testing: warning: no tests to run
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/setcontext	0.040s [no tests to run]

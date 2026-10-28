@@ -1,0 +1,25 @@
+{
+  "checks_per_arm": 1,
+  "file_bytes": 55406080,
+  "rows": [
+    {
+      "allocated_bytes": 55412408,
+      "allocations": 23,
+      "arm": "R4_ReadFile",
+      "cpu_available": true,
+      "process_cpu_ms": 687.5,
+      "verified_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+      "wall_ms": 678.5655
+    },
+    {
+      "allocated_bytes": 34064,
+      "allocations": 10,
+      "arm": "R5_streaming",
+      "cpu_available": true,
+      "process_cpu_ms": 656.25,
+      "verified_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+      "wall_ms": 647.7813
+    }
+  ],
+  "scope": "Read-only installed unchanged producer bytes; no engine invocation. Every required integrity check retained. One warm-order pair, not attribution of the final outer timer."
+}

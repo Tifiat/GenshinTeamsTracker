@@ -1,0 +1,68 @@
+[
+  {
+    "all_value_bits_equal": true,
+    "evaluate_R4": {
+      "allocated_bytes": 0,
+      "allocations": 0,
+      "cpu_available": false,
+      "wall_ms": 1.014
+    },
+    "evaluate_R5": {
+      "allocated_bytes": 0,
+      "allocations": 0,
+      "cpu_available": false,
+      "wall_ms": 0.9999
+    },
+    "evaluate_calls_per_arm": 2048,
+    "scope": "Historical retained capture, not the R4 neutral graph. Copy constructor only; zero-preflight remains and was checked separately. One sample each, no full-run speed claim.",
+    "scratch_R4_two_copies": {
+      "allocated_bytes": 1392640,
+      "allocations": 512,
+      "cpu_available": false,
+      "wall_ms": 0
+    },
+    "scratch_R5_one_copy": {
+      "allocated_bytes": 696320,
+      "allocations": 256,
+      "cpu_available": false,
+      "wall_ms": 0
+    },
+    "scratch_views_per_arm": 64,
+    "seed": "742031889",
+    "specialized_coordinates": 20,
+    "specialized_nodes": 261
+  },
+  {
+    "all_value_bits_equal": true,
+    "evaluate_R4": {
+      "allocated_bytes": 0,
+      "allocations": 0,
+      "cpu_available": false,
+      "wall_ms": 1.006
+    },
+    "evaluate_R5": {
+      "allocated_bytes": 0,
+      "allocations": 0,
+      "cpu_available": false,
+      "wall_ms": 1.1074
+    },
+    "evaluate_calls_per_arm": 2048,
+    "scope": "Historical retained capture, not the R4 neutral graph. Copy constructor only; zero-preflight remains and was checked separately. One sample each, no full-run speed claim.",
+    "scratch_R4_two_copies": {
+      "allocated_bytes": 1392640,
+      "allocations": 512,
+      "cpu_available": false,
+      "wall_ms": 0
+    },
+    "scratch_R5_one_copy": {
+      "allocated_bytes": 696320,
+      "allocations": 256,
+      "cpu_available": false,
+      "wall_ms": 0
+    },
+    "scratch_views_per_arm": 64,
+    "seed": "742031890",
+    "specialized_coordinates": 20,
+    "specialized_nodes": 263
+  }
+]

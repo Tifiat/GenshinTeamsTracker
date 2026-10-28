@@ -1,0 +1,32 @@
+{
+  "engine_calls": 0,
+  "focused_checks": 2,
+  "instrumentation": "perf_counter/process_time only; no tracemalloc or file/read interception",
+  "job_removed": true,
+  "order": [
+    "hybrid",
+    "baseline"
+  ],
+  "protected_exact": true,
+  "python_source_map_sha256": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
+  "python_source_unchanged": true,
+  "rows": [
+    {
+      "arm": "hybrid",
+      "binary_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+      "process_cpu_ms": 4343.75,
+      "tree_sha256": "b82e2da040522ef5bc3620ee303b1f853034fa879a2ac635ff0601c273546fb9",
+      "wall_ms": 4360.721400007606
+    },
+    {
+      "arm": "baseline",
+      "binary_sha256": "f1e076b7fa9d292d0bab83aed9d3db0ec917437b288dcc6798cd69f4718f9b93",
+      "process_cpu_ms": 4359.375,
+      "tree_sha256": "b82e2da040522ef5bc3620ee303b1f853034fa879a2ac635ff0601c273546fb9",
+      "wall_ms": 4436.944999994012
+    }
+  ],
+  "schema": "r5_tree_confirmation_v3",
+  "scope": "One ROOT-admitted corrected confirmation, reversed order relative to v1. Only the requested binary streams; ordinary files keep their old read. Current frozen pre-R5 Python control, not reconstructed R4 Python.",
+  "search_calls": 0
+}

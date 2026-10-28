@@ -1,0 +1,9 @@
+test_actual_startup_freezes_appshell_imports_without_running_it (tools.experiments.gcsim.mvp_polish.test_r5_button.R5ButtonTests.test_actual_startup_freezes_appshell_imports_without_running_it) ... ok
+test_exact_source_image_and_unchanged_policy (tools.experiments.gcsim.mvp_polish.test_r5_button.R5ButtonTests.test_exact_source_image_and_unchanged_policy) ... ok
+test_pinned_route_covers_function_local_harness_imports (tools.experiments.gcsim.mvp_polish.test_r5_button.R5ButtonTests.test_pinned_route_covers_function_local_harness_imports) ... ok
+test_source_mutation_and_duplicate_dispatch_rejected (tools.experiments.gcsim.mvp_polish.test_r5_button.R5ButtonTests.test_source_mutation_and_duplicate_dispatch_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 18.498s
+
+OK

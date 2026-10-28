@@ -7,7 +7,7 @@ if not any(isinstance(item, ProductImageFinder) for item in sys.meta_path):
     install_image()
 
 import argparse
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 import json
 import os
 from pathlib import Path
@@ -76,12 +76,64 @@ def preflight():
     return images,row,packet
 
 
+@contextmanager
+def fail_callback_errors(button):
+    """Return Qt callback failures to the test's existing receipt/finalizer path."""
+    original_click = button.ArchetypeButtonHarness.click_one_mode
+    def click(harness, *args, **kwargs):
+        failures = []
+        process_events = button._APP.processEvents
+        def capture(kind, error, traceback):
+            if not failures:
+                failures.append((error, traceback))
+        def pump(*args, **kwargs):
+            process_events(*args, **kwargs)
+            if failures:
+                error, traceback = failures[0]
+                raise error.with_traceback(traceback)
+        try:
+            with patch.object(sys, 'excepthook', capture), patch.object(button._APP, 'processEvents', pump):
+                return original_click(harness, *args, **kwargs)
+        finally:
+            failures.clear()  # Do not retain the callback traceback/harness.
+    with patch.object(button.ArchetypeButtonHarness, 'click_one_mode', click):
+        yield
+
+
+def observed_worker(real_worker, observations):
+    from run_workspace.gcsim.optimizer_go_theory import GcsimOptimizerGoTheoryRequest
+    from run_workspace.gcsim.optimizer_go_theory_session import GcsimOptimizerGoTheorySession
+    class ObservedWorker(real_worker):
+        def __init__(self, request):
+            super().__init__(base.transport.prepare_worker_request(request,False,observations))
+            if not isinstance(self._session,GcsimOptimizerGoTheorySession):
+                raise ValueError('T1 actual worker did not use live Theory session')
+            actual = self._session.request
+            if (not isinstance(actual,GcsimOptimizerGoTheoryRequest) or actual.product_timeout_ms!=0
+                or actual.theory_options not in (None,{}) or not actual.infinite_energy_enabled
+                or actual.mechanic_cache_enabled is not False):
+                raise ValueError('T1 actual Theory settings differ')
+            observations['worker']={'mode':self._session.run_mode,'product_timeout_ms':actual.product_timeout_ms,
+                'theory_options':actual.theory_options,'infinite_energy':actual.infinite_energy_enabled,
+                'seeds':list(actual.seeds),'cache_enabled':actual.mechanic_cache_enabled}
+            previous_callback=self._session._progress_callback
+            event_start=time.monotonic()
+            def progress(event):
+                if len(observations['progress'])<512:
+                    snapshot=event.get('theory_snapshot') or {}
+                    observations['progress'].append({'observed_ms':(time.monotonic()-event_start)*1000,
+                        'stage':event.get('stage'),'native_elapsed_ms':event.get('elapsed_ms'),
+                        'phase':snapshot.get('phase'),'verification':snapshot.get('verification'),
+                        'work':snapshot.get('active_branch_work')})
+                if previous_callback is not None:previous_callback(event)
+            self._session._progress_callback=progress
+    return ObservedWorker
+
+
 class T1TheoryButtonTest(unittest.TestCase):
     def test_one_case(self):
         from tests.tools import test_optimizer_archetype_button_cases as button
         from run_workspace.gcsim import optimizer_go_session as session
-        from run_workspace.gcsim.optimizer_go_theory import GcsimOptimizerGoTheoryRequest
-        from run_workspace.gcsim.optimizer_go_theory_session import GcsimOptimizerGoTheorySession
         packet=json.loads(Path(os.environ['GTT_T1_OWNER']).read_bytes())['packet']
         if os.environ.get('GTT_R5_IMAGE_BOOTSTRAPPED')!=packet['r5_product_python_map_sha256']:
             raise ValueError('T1 child did not load frozen R5 Python before imports')
@@ -106,30 +158,9 @@ class T1TheoryButtonTest(unittest.TestCase):
             observations['native_launches'].append({'stage':stage,'flags':{key:env[key] for key in FLAGS},'cache':'off'})
             return real_launcher(command,*args,**kwargs)
         with base.gate.install_child_adapter(button),ExitStack() as stack:
-            real_worker=button.GcsimBrowserSelectedOptimizerWorker
-            class ObservedWorker(real_worker):
-                def __init__(self,request):
-                    if (not isinstance(request,GcsimOptimizerGoTheoryRequest) or request.product_timeout_ms!=0
-                        or request.theory_options not in (None,{}) or not request.infinite_energy_enabled):
-                        raise ValueError('T1 actual Theory settings differ')
-                    super().__init__(base.transport.prepare_worker_request(request,False,observations))
-                    if not isinstance(self._session,GcsimOptimizerGoTheorySession):
-                        raise ValueError('T1 actual worker did not use live Theory session')
-                    observations['worker']={'mode':self._session.run_mode,'product_timeout_ms':request.product_timeout_ms,
-                        'theory_options':request.theory_options,'infinite_energy':request.infinite_energy_enabled,
-                        'seeds':list(request.seeds),'cache_enabled':self._session.request.mechanic_cache_enabled}
-                    previous_callback=self._session._progress_callback
-                    event_start=time.monotonic()
-                    def progress(event):
-                        if len(observations['progress'])<512:
-                            snapshot=event.get('theory_snapshot') or {}
-                            observations['progress'].append({'observed_ms':(time.monotonic()-event_start)*1000,
-                                'stage':event.get('stage'),'native_elapsed_ms':event.get('elapsed_ms'),
-                                'phase':snapshot.get('phase'),'verification':snapshot.get('verification'),
-                                'work':snapshot.get('active_branch_work')})
-                        if previous_callback is not None:previous_callback(event)
-                    self._session._progress_callback=progress
+            ObservedWorker=observed_worker(button.GcsimBrowserSelectedOptimizerWorker,observations)
             stack.enter_context(patch.object(button,'GcsimBrowserSelectedOptimizerWorker',ObservedWorker))
+            stack.enter_context(fail_callback_errors(button))
             stack.enter_context(patch.object(session,'start_optimizer_process',launch))
             try:
                 result=unittest.TestResult()
@@ -154,7 +185,7 @@ def summarize(job,arm,result,output):
     raw=job/'raw'/arm
     rows=list(raw.rglob('theory-result.json'))
     evidence={'schema':'t1_theory_result_v1','status':result.get('status'),'error_code':result.get('error_code'),
-              'arm':arm,'raw_root':str(raw),'button_ms':result.get('case',{}).get('timings_ms',{}).get('button_click_to_terminal_ms'),
+              'arm':arm,'raw_root':str(raw),'button_ms':(result.get('case') or {}).get('timings_ms',{}).get('button_click_to_terminal_ms'),
               'completion_label':result.get('theory_measurement_label'),'native_result_count':len(rows)}
     if len(rows)==1:
         path=rows[0];request_path=path.parent/'request.json'

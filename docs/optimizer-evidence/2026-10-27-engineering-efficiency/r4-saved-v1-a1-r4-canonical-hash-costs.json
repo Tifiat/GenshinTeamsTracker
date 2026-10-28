@@ -1,0 +1,66 @@
+[
+  {
+    "alloc_bytes": 467378040,
+    "allocations": 5655081,
+    "members": 2,
+    "operation": "canonical_panel",
+    "output_bytes": 18206094,
+    "sha256": "9c2f8478227bf1b54000ea4cc40f1e54f6a5ec0a18255d4db83c9d63b90ca060",
+    "typed": false,
+    "wall_ms": 1355.5299
+  },
+  {
+    "alloc_bytes": 99648480,
+    "allocations": 68,
+    "members": 2,
+    "operation": "canonical_panel",
+    "output_bytes": 18206094,
+    "sha256": "9c2f8478227bf1b54000ea4cc40f1e54f6a5ec0a18255d4db83c9d63b90ca060",
+    "typed": true,
+    "wall_ms": 323.675
+  },
+  {
+    "alloc_bytes": 256,
+    "allocations": 4,
+    "hash_calls": 2,
+    "input_bytes": 9127421,
+    "member_index": 0,
+    "operation": "owned_raw_digest",
+    "reuse": false,
+    "sha256": "05b489fb8103b994b8689453263157423c19cc7583b407278b6529c6b162489f",
+    "wall_ms": 196.8747
+  },
+  {
+    "alloc_bytes": 128,
+    "allocations": 2,
+    "hash_calls": 1,
+    "input_bytes": 9127421,
+    "member_index": 0,
+    "operation": "owned_raw_digest",
+    "reuse": true,
+    "sha256": "05b489fb8103b994b8689453263157423c19cc7583b407278b6529c6b162489f",
+    "wall_ms": 98.3566
+  },
+  {
+    "alloc_bytes": 256,
+    "allocations": 4,
+    "hash_calls": 2,
+    "input_bytes": 9078672,
+    "member_index": 1,
+    "operation": "owned_raw_digest",
+    "reuse": false,
+    "sha256": "e345222590778eb4d82e3ad4d9d7930a04c59a0d35d16e0f6e06840e31af8f35",
+    "wall_ms": 194.7657
+  },
+  {
+    "alloc_bytes": 128,
+    "allocations": 2,
+    "hash_calls": 1,
+    "input_bytes": 9078672,
+    "member_index": 1,
+    "operation": "owned_raw_digest",
+    "reuse": true,
+    "sha256": "e345222590778eb4d82e3ad4d9d7930a04c59a0d35d16e0f6e06840e31af8f35",
+    "wall_ms": 101.1584
+  }
+]

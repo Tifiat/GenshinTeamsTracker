@@ -1,0 +1,12 @@
+=== RUN   TestR4SavedPanelAndOwnedHashCosts
+--- PASS: TestR4SavedPanelAndOwnedHashCosts (4.32s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/contracts	4.398s
+=== RUN   TestR4SavedRegionCosts
+--- PASS: TestR4SavedRegionCosts (3.68s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	3.746s
+=== RUN   TestR4SavedCounterCosts
+--- PASS: TestR4SavedCounterCosts (0.03s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/projectionmetrics	0.072s

@@ -1,0 +1,94 @@
+[
+  {
+    "alloc_bytes": 9642976,
+    "allocations": 31865,
+    "calls": 64,
+    "damage_nodes": 0,
+    "dirty": false,
+    "dirty_index_bytes": 0,
+    "gc_cycles": 3,
+    "ports": 469,
+    "scope": "historical single-seed actual graph with observed effect/resistance ports;64 fixed unchanged/disjoint/dense vectors, not the complete R3 neutral graph",
+    "seed": "742031889",
+    "source_nodes": 2671,
+    "stats": {
+      "Calls": 64,
+      "Visited": 170944,
+      "Rebuilt": 31399,
+      "Reused": 139545,
+      "OutputNodes": 92679,
+      "Resets": 0,
+      "PeakArenaNodes": 2883
+    },
+    "wall_ms": 17.2891
+  },
+  {
+    "alloc_bytes": 9755128,
+    "allocations": 31997,
+    "calls": 64,
+    "damage_nodes": 0,
+    "dirty": true,
+    "dirty_index_bytes": 80232,
+    "gc_cycles": 1,
+    "ports": 469,
+    "scope": "historical single-seed actual graph with observed effect/resistance ports;64 fixed unchanged/disjoint/dense vectors, not the complete R3 neutral graph",
+    "seed": "742031889",
+    "source_nodes": 2671,
+    "stats": {
+      "Calls": 64,
+      "Visited": 31399,
+      "Rebuilt": 31399,
+      "Reused": 139545,
+      "OutputNodes": 92679,
+      "Resets": 0,
+      "PeakArenaNodes": 2883
+    },
+    "wall_ms": 17.0544
+  },
+  {
+    "alloc_bytes": 9632880,
+    "allocations": 31407,
+    "calls": 64,
+    "damage_nodes": 0,
+    "dirty": false,
+    "dirty_index_bytes": 0,
+    "gc_cycles": 3,
+    "ports": 460,
+    "scope": "historical single-seed actual graph with observed effect/resistance ports;64 fixed unchanged/disjoint/dense vectors, not the complete R3 neutral graph",
+    "seed": "742031890",
+    "source_nodes": 2638,
+    "stats": {
+      "Calls": 64,
+      "Visited": 168832,
+      "Rebuilt": 30876,
+      "Reused": 137956,
+      "OutputNodes": 91457,
+      "Resets": 0,
+      "PeakArenaNodes": 2927
+    },
+    "wall_ms": 16.5533
+  },
+  {
+    "alloc_bytes": 9745016,
+    "allocations": 31539,
+    "calls": 64,
+    "damage_nodes": 0,
+    "dirty": true,
+    "dirty_index_bytes": 79268,
+    "gc_cycles": 1,
+    "ports": 460,
+    "scope": "historical single-seed actual graph with observed effect/resistance ports;64 fixed unchanged/disjoint/dense vectors, not the complete R3 neutral graph",
+    "seed": "742031890",
+    "source_nodes": 2638,
+    "stats": {
+      "Calls": 64,
+      "Visited": 30876,
+      "Rebuilt": 30876,
+      "Reused": 137956,
+      "OutputNodes": 91457,
+      "Resets": 0,
+      "PeakArenaNodes": 2927
+    },
+    "wall_ms": 18.5185
+  }
+]

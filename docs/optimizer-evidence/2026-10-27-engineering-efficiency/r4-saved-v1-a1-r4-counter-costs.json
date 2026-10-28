@@ -1,0 +1,48 @@
+[
+  {
+    "alloc_bytes": 0,
+    "allocations": 0,
+    "count_calls": 375606,
+    "counts": null,
+    "enabled": false,
+    "fast": false,
+    "scope": "exact R3 measured arithmetic-call counts, single sequential caller; includes first registration if enabled",
+    "wall_ms": 8.1298
+  },
+  {
+    "alloc_bytes": 16,
+    "allocations": 1,
+    "count_calls": 375606,
+    "counts": null,
+    "enabled": false,
+    "fast": true,
+    "scope": "exact R3 measured arithmetic-call counts, single sequential caller; includes first registration if enabled",
+    "wall_ms": 1.6202
+  },
+  {
+    "alloc_bytes": 208,
+    "allocations": 1,
+    "count_calls": 375606,
+    "counts": {
+      "artifact.evaluate_calls": 366624,
+      "artifact.gradient_calls": 8982
+    },
+    "enabled": true,
+    "fast": false,
+    "scope": "exact R3 measured arithmetic-call counts, single sequential caller; includes first registration if enabled",
+    "wall_ms": 15.199
+  },
+  {
+    "alloc_bytes": 208,
+    "allocations": 1,
+    "count_calls": 375606,
+    "counts": {
+      "artifact.evaluate_calls": 366624,
+      "artifact.gradient_calls": 8982
+    },
+    "enabled": true,
+    "fast": true,
+    "scope": "exact R3 measured arithmetic-call counts, single sequential caller; includes first registration if enabled",
+    "wall_ms": 5.6194
+  }
+]

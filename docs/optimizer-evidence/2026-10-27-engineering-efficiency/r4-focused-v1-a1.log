@@ -1,0 +1,60 @@
+=== RUN   TestSeedMemberTypedCanonicalBytes
+--- PASS: TestSeedMemberTypedCanonicalBytes (0.02s)
+=== RUN   TestSeedMemberTypedCanonicalSchema
+--- PASS: TestSeedMemberTypedCanonicalSchema (0.00s)
+=== RUN   TestSeedMemberTypedCanonicalStrictDecode
+--- PASS: TestSeedMemberTypedCanonicalStrictDecode (0.01s)
+=== RUN   TestSeedMemberTypedCanonicalScope
+--- PASS: TestSeedMemberTypedCanonicalScope (0.00s)
+=== RUN   TestR4CanonicalPanelBytesNilNumbersAndPointers
+--- PASS: TestR4CanonicalPanelBytesNilNumbersAndPointers (0.00s)
+=== RUN   TestR4CanonicalPanelMalformedGoStrings
+--- PASS: TestR4CanonicalPanelMalformedGoStrings (0.00s)
+=== RUN   TestR4RawAndCanonicalDigestRemainDifferent
+--- PASS: TestR4RawAndCanonicalDigestRemainDifferent (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/contracts	0.070s
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/source
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/bytes
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/context
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/seed
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/missing
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/owner
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/node
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/duplicate
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/nan
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/config
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/resolved_config
+--- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/source (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/bytes (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/context (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/seed (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/missing (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/owner (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/node (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/duplicate (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/nan (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/config (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/resolved_config (0.00s)
+=== RUN   TestR4OwnedDigestReuseAndExternalBytesGuard
+--- PASS: TestR4OwnedDigestReuseAndExternalBytesGuard (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	0.046s
+=== RUN   TestR4RegionsDisjointChangesUnchangedAndFork
+--- PASS: TestR4RegionsDisjointChangesUnchangedAndFork (0.00s)
+=== RUN   TestR4RegionsErrorInvalidatesAndRecovers
+--- PASS: TestR4RegionsErrorInvalidatesAndRecovers (0.00s)
+=== RUN   TestRegionsPreserveGraphGradientAndIndependentOutputs
+--- PASS: TestRegionsPreserveGraphGradientAndIndependentOutputs (0.01s)
+=== RUN   TestRegionsOrderedBranchesAndFailureRecovery
+--- PASS: TestRegionsOrderedBranchesAndFailureRecovery (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	0.052s
+=== RUN   TestR4CounterTotalsConcurrentAndRunBoundaries
+--- PASS: TestR4CounterTotalsConcurrentAndRunBoundaries (0.02s)
+=== RUN   TestR4CounterCapacityMatchesFrozen
+--- PASS: TestR4CounterCapacityMatchesFrozen (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/projectionmetrics	0.060s

@@ -1,0 +1,96 @@
+=== RUN   TestSeedMemberTypedCanonicalBytes
+--- PASS: TestSeedMemberTypedCanonicalBytes (0.02s)
+=== RUN   TestSeedMemberTypedCanonicalSchema
+--- PASS: TestSeedMemberTypedCanonicalSchema (0.00s)
+=== RUN   TestSeedMemberTypedCanonicalStrictDecode
+--- PASS: TestSeedMemberTypedCanonicalStrictDecode (0.01s)
+=== RUN   TestSeedMemberTypedCanonicalScope
+--- PASS: TestSeedMemberTypedCanonicalScope (0.00s)
+=== RUN   TestR4CanonicalPanelBytesNilNumbersAndPointers
+--- PASS: TestR4CanonicalPanelBytesNilNumbersAndPointers (0.00s)
+=== RUN   TestR4CanonicalPanelMalformedGoStrings
+--- PASS: TestR4CanonicalPanelMalformedGoStrings (0.00s)
+=== RUN   TestR4RawAndCanonicalDigestRemainDifferent
+--- PASS: TestR4RawAndCanonicalDigestRemainDifferent (0.00s)
+=== RUN   TestR4SavedPanelAndOwnedHashCosts
+    r4_saved_costs_test.go:16: owned real-input measurement only
+--- SKIP: TestR4SavedPanelAndOwnedHashCosts (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/contracts	0.070s
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/bytes
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/context
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/config
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/source
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/seed
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/missing
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/owner
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/resolved_config
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/node
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/duplicate
+=== RUN   TestEffectSidecarRejectsCrossContextAndMalformedPorts/nan
+--- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/bytes (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/context (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/config (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/source (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/seed (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/missing (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/owner (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/resolved_config (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/node (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/duplicate (0.00s)
+    --- PASS: TestEffectSidecarRejectsCrossContextAndMalformedPorts/nan (0.00s)
+=== RUN   TestR4OwnedDigestReuseAndExternalBytesGuard
+--- PASS: TestR4OwnedDigestReuseAndExternalBytesGuard (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/engineclient	0.050s
+=== RUN   TestRegionsPreserveGraphGradientAndIndependentOutputs
+--- PASS: TestRegionsPreserveGraphGradientAndIndependentOutputs (0.01s)
+=== RUN   TestRegionsOrderedBranchesAndFailureRecovery
+--- PASS: TestRegionsOrderedBranchesAndFailureRecovery (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/formula	0.044s
+=== RUN   TestR4CounterTotalsConcurrentAndRunBoundaries
+--- PASS: TestR4CounterTotalsConcurrentAndRunBoundaries (0.02s)
+=== RUN   TestR4CounterCapacityMatchesFrozen
+--- PASS: TestR4CounterCapacityMatchesFrozen (0.00s)
+=== RUN   TestR4SavedCounterCosts
+    r4_saved_metrics_test.go:16: finite measured-call gate only
+--- SKIP: TestR4SavedCounterCosts (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/projectionmetrics	0.069s
+=== RUN   TestR3CaptureStableOrderAndBound
+--- PASS: TestR3CaptureStableOrderAndBound (0.00s)
+=== RUN   TestR3CaptureCancellationJoinAndIdentity
+--- PASS: TestR3CaptureCancellationJoinAndIdentity (0.00s)
+=== RUN   TestR4CaptureCanonicalAndMutableValidationParity
+--- PASS: TestR4CaptureCanonicalAndMutableValidationParity (0.00s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/setcontext	0.055s
+=== RUN   TestR2ClearPilotLeaderAndHonestMixedRows
+--- PASS: TestR2ClearPilotLeaderAndHonestMixedRows (0.02s)
+=== RUN   TestR2InitialNearTiesAreAllConfirmed
+--- PASS: TestR2InitialNearTiesAreAllConfirmed (0.02s)
+=== RUN   TestR2ConfirmationRankReversalPromotesOldPilots
+--- PASS: TestR2ConfirmationRankReversalPromotesOldPilots (0.02s)
+=== RUN   TestR2AllCloseIsBoundedAtNineConfirmations
+--- PASS: TestR2AllCloseIsBoundedAtNineConfirmations (0.03s)
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence/identity
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence/nonfinite
+=== RUN   TestR2InvalidMeasurementFailsAndRetainsStageEvidence/iterations
+--- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence (0.04s)
+    --- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence/identity (0.01s)
+    --- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence/nonfinite (0.01s)
+    --- PASS: TestR2InvalidMeasurementFailsAndRetainsStageEvidence/iterations (0.01s)
+=== RUN   TestR2EnergyRejectedPilotLeaderCannotWin
+--- PASS: TestR2EnergyRejectedPilotLeaderCannotWin (0.02s)
+PASS
+ok  	genshinteamstracker/native/gcsim_optimizer/internal/finalists	0.217s
+=== RUN   TestR2GroupedProductRetainsActualMixedIterations
+    r2_product_test.go:14: open C:\Users\user\Desktop\GenshinTeamsTracker\.codex_tmp\managed-optimizer\tests\fixtures\gcsim_optimizer_go_v1\request_v1.json: The system cannot find the path specified.
+--- FAIL: TestR2GroupedProductRetainsActualMixedIterations (0.00s)
+FAIL
+FAIL	genshinteamstracker/native/gcsim_optimizer/cmd/gtt-optimizer	0.055s
+FAIL

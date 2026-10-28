@@ -98,6 +98,33 @@ modules and their local evidence. No universal speed/no-loss claim from one team
 Export minimal evidence, release/clean the original owned job, verify protected
 state and zero owned processes, commit the result and STOP.
 
+## R4 — confirmed redundant operations — new human order
+
+This later human order resumes only bounded engineering work over completed R3
+source0596011/result0eb1aad, native428-map3401a0e. Historical R3 receipts and STOP
+remain unchanged. Preserve gameplay/FP/quality/integrity/search/coverage,77checks,
+3x3/seeds/n100-n500 policy and real604/597 inventory. No install/ON/otherteams,
+new broad audit, rule cache, persistent worker, algorithm or safeguard.
+
+MAIN is sole implementation and current-handoff writer; ROOT reviews/adopts one
+later full Chasca OFF only after all admitted fixes and focused checks. Scope:
+reuse one raw-member SHA inside its owned capture; exact typed canonical panel
+hash without generic DOM; remove hot telemetry mutex/map overhead. The bounded
+dirty-frontier candidate reduced visits but failed to establish a time benefit;
+preserve its negative evidence and exclude it from final production images.
+Region binding/fork source remains exact R3. Repeated validation
+may be omitted only with simple demonstrable immutable ownership. If absent,
+retain the public compiler's check and state why. Do not introduce a trusted
+token system merely to avoid validation.9.9s rule replays and87launches are not
+proven redundant; leave them. Include frequent small costs only in touched paths.
+
+Narrow canonical/invalid-input/bitwise/ownership/reset/fork/concurrency checks and
+bounded saved-real-data costs precede source milestone and whole-run readiness.
+No heavy run until ROOT technical admission. Then one complete normal Chasca
+button OFF, export phase/DPS/SE/n/gear/panel/count/protected evidence, release the
+original managed owner, local source/result commits, report/STOP. First material
+anomaly holds progression; no short quality timeouts or automatic retry.
+
 ## Representation decision after source review
 
 ROOT admits the typed-canonical IRSeedMember candidate described in

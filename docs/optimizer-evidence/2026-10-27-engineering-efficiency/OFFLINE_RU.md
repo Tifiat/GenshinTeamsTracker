@@ -101,3 +101,54 @@ Go target и свежий настоящий 604/597/39 inventory относит
 После единственного результата: экспорт минимальных evidence, сравнение с R2,
 release исходного owner, cleanup/protected/process checks, локальный commit и
 STOP. Нет ON/warm/install/других команд/новых оптимизаций.
+
+## R4 —28October: три принятых модуля и rejected frontier
+
+Новый ограниченный этап от R3 source0596011/result0eb1aad. Математика, поиск,
+77 промежуточных проверок,3×3, seeds, staged n100/n500/four-SE не менялись.
+Повторная semantic validation сохранена: публичные member slices изменяемы,
+простой безопасной immutable ownership границы нет. ROOT принял это исключение.
+
+Приняты raw SHA reuse внутри owned runCompact; точная typed panel canonical
+без generic DOM; фиксированные atomic counters. External byte-taking sidecar
+entry всегда вычисляет свой SHA. Raw и canonical SHA не смешиваются. Invalid
+Go UTF-8 panel уходит в старую generic-нормализацию; nil/empty/optional pointers,
+MaxUint64 и отказы проверены. Счётчики сохраняют точные totals и лимит256имён,
+включая насыщение/zero/wrap; старый disabled mutex fastpath тоже устранён.
+
+[r4-focused-v1-a1](r4-focused-v1-a1.json):15 top checks PASS плюс invalid-input
+subcases. [Saved costs](r4-saved-v1-a1.json) — один ограниченный проход без engine:
+panel1355.530→323.675мс,467378040→99648480allocatedbytes,5655081→68allocations,
+18 206 094 canonical bytes/hash одинаковые. Raw per-member2→1hash:196.875→98.357
+и194.766→101.158мс;256→128allocatedbytes. Enabled375606Countcalls:15.199→5.619мс,
+208bytes/1allocation в обоих вариантах; totals366624eval/8982gradient точные.
+Disabled:8.130→1.620мс; это local call-cost, не обещание процента всей кнопки.
+Контрольный canonical output удерживался для byte parity: времена не доказывают
+равный GC lifetime; сравнение allocations и identity остаётся прямым.
+
+Dirty frontier — полезный отрицательный результат. На исторических graphs2671/2638
+source nodes,469/460ports,64вектора unchanged/disjoint/dense сократил Visited
+170944→31399 и168832→30876 при тех же Rebuilt/Reused/output graphs/битовых scores.
+Время17.289→17.054 и16.553→18.519мс,alloc+~112KB,index~80KB. Последний вариант
+не ускорился. Контрольные64outputs удерживались ради parity при candidate pass,
+так что GC lifetime тоже неодинаков. ROOT исключил модуль: нет сохранённого
+репрезентативного R3neutral graph/векторов. Новых captures/синтетик/серий нет.
+Историческое damage_nodes=0 — ошибка diagnostic чтения lazy-parent: правильные
+значения2671/2638 следуют из control Visited/64. Старый JSON сохранён как есть.
+Кандидат/тесты воспроизводимы через region_candidate=True только при новом допуске;
+в production images отсутствуют. region_binding.go/theory_fork.go exact R3.
+
+[Combined a1](r4-combined-v1-a1.json) прошёл все feature/verification packages;
+единственный FAIL — product fixture искалась вне owned root из-за мелкого layout.
+Исправлены только layout native/gcsim_optimizer и две публичные fixture внутри
+job. [Cmd a2](r4-combined-cmd-v1-a2.json) PASS, native map идентичен a1; повторён
+только этот пакет.3 runnerchecks PASS (worker, оба native env, inventory/oneOFF).
+Saved-input tests в combined пропущены намеренно, их отдельная серия пройдена.
+Race detector отсутствует при фиксированном WindowsCGO0/no-gcc; ROOT принял
+bounded concurrency/lifecycle evidence без установки нового toolchain.
+
+Готовая конфигурация:438файлов,map0f504808a6fd57fd3fae55403d15853bc6adaeb891583c32fabdc813535c9e83.
+[Readiness/точные команды](r4-ready-v1.json) фиксируют source/harness,8flags
+(5R3+3R4), исключение frontier, gate и policy. Пока0engine/0search/0consumerbuild,
+ничего не установлено. Source milestone, затем разрешённая подготовка одного
+managed owner; OFF выдаёт ROOT после проверки consumer/input/protected pins.

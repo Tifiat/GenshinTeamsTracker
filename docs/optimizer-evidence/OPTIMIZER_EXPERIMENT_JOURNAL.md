@@ -325,3 +325,14 @@ remain measured in their own scope. [Report](2026-10-27-engineering-efficiency/R
 Original owner9388 exited0; job-oi7e_0vw removed258522499bytes, owned processes0,
 protected9d81 exact. No installation/ON/warm/new teams. Result save then STOP;
 ROOT owns separately queued user disk-growth inspection, not this R5 stage.
+
+
+T1 human GO28October: one unchanged R5 Chasca Theory observation. Exact444native/
+394Python/producerf1e retained; existing first verified first_light+UI Finish
+route, terminal finished_early/join. Historical415d Theory OFF105.344s shares
+profiles/rotation/boundary but is not exact-source R5 control. Harness only;
+three narrow checks PASS/zero engine. Theory45rolls/native domains/infinite
+energy/cacheOFF; original lifetime7n500/reserve2 plus existing max66n1 support
+allowance180s, no added witness/R2 policy. [Offline boundary](2026-10-27-engineering-efficiency/OFFLINE_RU.md)
+and t1-harness-v1.json own limits. Source save/prepare then ROOT admission and
+one Luna OFF. After result export/cleanup/result save: human discussion/STOP.

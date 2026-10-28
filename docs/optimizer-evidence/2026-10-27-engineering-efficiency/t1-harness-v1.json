@@ -1,0 +1,67 @@
+{
+  "checks": {
+    "actual_GUI_worker_reader_first_verified_Finish_bridge": "PASS previous3/3 gate on exact frozen R5",
+    "final_changed_guard": "Execution native launcher checks actual prepared config/rotation/target/seeds/empty artifacts/options/no-finalist-override before numerical stage",
+    "new_harness_and_Theory_commands": "PASS",
+    "single_arm_guard": "PASS previous3/3 gate"
+  },
+  "commands": {
+    "off": ".venv/Scripts/python.exe -B -m tools.experiments.gcsim.mvp_polish.t1_theory_button --action off --output \"C:/Users/user/Desktop/GenshinTeamsTracker/docs/optimizer-evidence/2026-10-27-engineering-efficiency/t1-run-v1\"",
+    "prepare": ".venv/Scripts/python.exe -B -m tools.experiments.gcsim.mvp_polish.t1_theory_button --action prepare --output \"C:/Users/user/Desktop/GenshinTeamsTracker/docs/optimizer-evidence/2026-10-27-engineering-efficiency/t1-run-v1\"",
+    "release": ".venv/Scripts/python.exe -B -m tools.experiments.gcsim.mvp_polish.t1_theory_button --action release --output \"C:/Users/user/Desktop/GenshinTeamsTracker/docs/optimizer-evidence/2026-10-27-engineering-efficiency/t1-run-v1\""
+  },
+  "engine_calls": 0,
+  "full_run_authority": "ROOT only, then one Luna tester. MAIN prepares and sends no OFF.",
+  "historical": {
+    "button_ms": 105344,
+    "completion": "first_light + Finish",
+    "config_target_seeds_before_execution_guard": {
+      "prepared_config_sha256": "1aa4befe7292c0d4b03fdc9e05a842b29a8a6787e3ce5b11a7ed43fd508f0c8c",
+      "request_seed_schedule": [
+        742031889,
+        742031890
+      ],
+      "target_sha256": "2f6d40a7ae7e4783e5b9cb4abc5ca6579553d5098a085e363e98f62884dec4c4"
+    },
+    "consumer_sha256": "415d995c20897d13faf70217fedd37831528e6570b249b472d154b36a61f069d",
+    "limit": "Historical installed415d version; inputs/profile/rotation and completion boundary verified, not exact R5 source or strict performance control.",
+    "path": "docs/optimizer-evidence/2026-10-25-cache-team-matrix/corpus-main14-v2/chasca_600_fixture-theory/off.json",
+    "profile_identity_exact": true,
+    "rotation_exact": true,
+    "sha256": "b6ec4651306a97b92f44b08a4fa34c1cc60a2d3544797ab94c3f24058500a105",
+    "source_profiles_sha256": "5b7b3bf561b3a75b945babcc7585785d5d43d7aafc67577ea1b522491f6563a6",
+    "status": "success"
+  },
+  "metrics": {
+    "button_and_adapter": "existing production adapter timings",
+    "capture_model_split": "no separate frozen Theory provider/model timer; unknown split, combined compiling-formula interval retained",
+    "memory_background_CPU": "unknown; no ready sampler in reused harness; Docker untouched",
+    "native_phase": "bounded progress event timestamps; nested phases qualified",
+    "ordinary": "raw result/config files and existing verification counters; support probe calls counted separately"
+  },
+  "native_source_map_sha256": "48f643c2e4c7f353806513c8e00f9f5efd31d5bfe615cdb93a038d9f84b9ae09",
+  "owner": "Existing single managed R5/R1 owner10800s, test watchdog2700s; product timeout0, no short100/120s cutoff; retain raw in owned job until export, then original owner release on success/failure; finite retention.",
+  "policy": {
+    "budget": "full45 roll units per wearer, quarter grid, legal four substat lines per slot",
+    "captures": "one two-seed neutral universe; continuations do not recapture; count actual saved requests",
+    "completion": "actual first verified first_light -> UI Finish -> terminal finished_early and worker joined",
+    "energy": "infinite; finite unsupported",
+    "mains": "native standard legal domains; canonical neutral anchor HP/ATK/ATK%/ATK%/CR",
+    "next": "human discussion and STOP even on success; no repair/repeat/next mode",
+    "ordinary": "existing Theory lifetime limit7,500iterations each,response reserve2; no R2 staged policy",
+    "owned_wire_artifacts": 0,
+    "product_timeout_ms": 0,
+    "sets": "native bound complete source catalog; none/2p/4p/2+2, no supplied allowed_packages override",
+    "source_inventory": [
+      604,
+      597,
+      39
+    ],
+    "support_response": "existing separate maximum66 ordinary n1 calls, two seeds,180s lane allowance; not additional witness or AllSets77 policy",
+    "theory_options": {}
+  },
+  "product_python_map_sha256": "e3d71c217355830ca8e5cf21211a0d28fb8a924a4e53f955dfabd3bbec654569",
+  "schema": "t1_theory_harness_readiness_v1",
+  "search_calls": 0,
+  "status": "passed"
+}

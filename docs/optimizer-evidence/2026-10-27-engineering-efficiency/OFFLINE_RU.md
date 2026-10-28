@@ -230,3 +230,27 @@ bootstrap-order failures remain as separate receipts. No product defect is hidde
 by those harness corrections. All local managed jobs were removed, protected
 state stayed exact. Full Chasca OFF still requires final ROOT admission; no
 installation, ON/warm, other team or repeat follows automatically.
+
+
+## T1 - unchanged R5 Theory button observation (28 October)
+
+No product/native/Python image changes. Reuse native444-map48f643c2,
+productPython394-mape3d71c21 and producerf1e. Only the existing managed button
+owner is adapted from All Sets to Theory. Three new harness/seam tests PASS,
+engine/search0: exact live Theory session/commands/control+Finish, existing real
+GUI-worker-reader first verified publication bridge with synthetic snapshots,
+and one-arm rejection. Final prelaunch guard checks the actual neutral config,
+rotation,target,seeds,empty artifact/options and absence of a finalist override
+against historical105.344s415d Theory OFF. Same profiles/rotation exact; version
+and provenance limits are explicit in t1-harness-v1.json.
+
+Boundary: first ordinary-verified first_light, actual UI Finish, terminal/join,
+finished_early. Not exhaustive convergence. Full45 rolls/wearer, native standard
+main/set domains, infinite energy, cacheOFF. Default lifetime7 finalist calls
+n500/reserve2; separate existing support panel max66n1 with180s allowance.
+No new witness, R2 policy or algorithm. Product timeout0, existing test watchdog
+2700s/owner10800s only. Source/consumer/setup outside click. Phase timestamps,
+actual saved capture/ordinary counts and result stats retained; separate native
+capture/model timings and memory/background CPU are unknown where absent.
+Docker unchanged. Original owner retains raw until export, then release/cleanup;
+one meaningful observation then human discussion/STOP, even on success.

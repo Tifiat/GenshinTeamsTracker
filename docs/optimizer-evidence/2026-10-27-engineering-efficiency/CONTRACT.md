@@ -185,6 +185,42 @@ ownership, release of buffers/resources and joined children on success/error/
 cancellation, plus wired cleanup for their own temporary output under
 DATA_WORK_RULES. This is routine lifecycle correctness, not a broad disk audit.
 
+### T1 — one Chasca Theory observation — human28October GO
+
+Starting point is the exact R5 native/product Python image, unchanged producer,
+same Chasca team/rotation/profile and real full-account snapshot. MAIN01a15af5
+prepares only the necessary owned harness and source compatibility evidence;
+ROOT admits the finite packet; cheapest Luna performs the numerical measurement.
+No optimizer algorithm, budgets, dependency handling or gameplay changes.
+Check the existing Theory button route and recover actual request constraints:
+investment, allowed sets/main stats, energy, cache OFF and normal completion/
+pause controls. Do not force inventory-search semantics onto Theory. Preserve
+normal settings; disclose any incompatibility before a knowingly invalid run.
+
+Perform one meaningful complete Theory session and record button-to-result and
+phase time, trace/model/simulator counts, chosen theoretical stats/set bonuses,
+formula score and independently measured DPS when actually available. Compare
+the latest saved matching Theory result; disclose absent/nonmatching controls.
+Do not compare theoretical DPS to real-inventory DPS as a quality acceptance.
+T1 uses the existing historical button boundary: first ordinary-verified
+first_light publication, normal Finish, terminal result and joined worker.
+Record finished_early explicitly: this observes the first usable result, not
+exhaustive Theory convergence. Keep the current45-roll constraints. Ordinary
+verification is already part of this route; no additional witness simulations
+are admitted. Keep formula and measured DPS/n/SE separate in the report.
+No automatic cache arms, other modes, next team or repeat of a completed run.
+
+Human cadence: one meaningful observation, export/cleanup/commit, then discuss
+what it says about the algorithm and the next hypothesis with the human. This
+applies after success as well as failure. Early rounds must stay shallow;
+Navia on unchanged R5 is a possible following round, not current authorization.
+First material anomaly holds continuation; preserve enough evidence for a
+bounded diagnosis, do not repair the algorithm and silently start another round.
+Target seconds are metrics, not short kill timers; a paused session is not a
+completed result. No installation/CUA/observer or broad disk inspection.
+New harness resources/temp files have explicit owners, finite retention and
+cleanup on success/error/cancel. Preserve protected account/runtime/foreign work.
+
 ## Representation decision after source review
 
 ROOT admits the typed-canonical IRSeedMember candidate described in

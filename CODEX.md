@@ -43,8 +43,10 @@ conversation is usually Russian.
   Cross-branch transfers, push and other Git mutations require explicit
   confirmation. Follow the Git policy/journal through
   `docs/handoff/COORDINATION.md`; never stage unrelated changes.
-- Parallel workers use separate Git worktrees. Resolve imports, databases,
-  settings, engines, caches and outputs inside the calling worker's checkout;
+- Parallel workers use separate Git worktrees. The user-authorized version
+  comparison/artifact-DB copy exception is defined in
+  `docs/handoff/ORCHESTRATOR_RULES.md` (28 October 2026). Otherwise resolve imports,
+  databases, settings, engines, caches and outputs inside the calling worker's checkout;
   never edit another worker's files or share its live database. Git objects and
   refs are shared, so coordinate merges/branch moves. Dependency environments
   may be reused read-only; dependency changes require a separate environment.

@@ -26,6 +26,15 @@ execution/test chats with compact briefs instead of carrying full history; prese
 old chats inactive. Significant workflow/scope changes require human discussion;
 the28October workflow optimization grant applies once.
 
+Human28October separately permits optional version-comparison sandboxes in any
+worker folder containing an application copy: copy the artifact database there,
+restore/install the required optimizer and engine versions there, and keep the
+current version in the main folder. This overrides the general cross-worker
+artifact-DB/checkout prohibition for this bounded purpose. Check active ownership
+and preserve foreign edits/data before selecting a folder; use an isolated copy
+with owned cleanup. It does not authorize copying credentials or unrelated data,
+or start new runs while the active task remains saved-data discussion only.
+
 Use an existing owner chat when its purpose/context fit. Create a separate chat
 in the worker's saved project for a distinct workstream requiring bounded
 context. Keep the real checkout/branch; do not invent IDs or a second queue.

@@ -35,7 +35,9 @@ worker2 control-v2 results remain unchanged. No extra numerical tests, build,
 installation or algorithm implementation during closeout. STOP; ROOT owns
 current/shared handoff reconciliation.
 
-Closeout checker with --root worker3 reports one external coordination issue:
-GTT coordination/GIT_JOURNAL.md exceeds20000 bytes. No other issue was reported;
-this stage did not edit that ROOT-owned shared file. Evidence links, JSON
-parsing and git diff whitespace checks pass. Full handoff PASS is not claimed.
+Initial closeout checker reported an oversized ROOT-owned shared journal.
+After ROOT compacted it, the only repeated check (--root worker3) PASS:
+handoff structure, budgets and declared current projections. No product checks
+or numerical runs were repeated. Earlier evidence-link/JSON/whitespace checks
+remain valid. ROOT accepts the bounded57.376s button/59.437s replay gain,
+not attribution of the entire regression; remaining replay is unresolved.

@@ -217,10 +217,11 @@ JSON; bookkeeping registry относится к отдельному новом
 переноса в MAIN/worker2 или удаления retained apps. ROOT обновит current
 handoffs/shared queue отдельно.
 
-Closeout checker с --root worker3 сообщил одну внешнюю ошибку:
-общий GTT coordination/GIT_JOURNAL.md превышает20000 байт. Других ошибок
-не сообщил; ROOT-owned журнал не изменяли. Ссылки отчёта, JSON и whitespace
-проверки прошли. Полный handoff PASS на этом closeout не заявляется.
+Первый closeout checker сообщил превышение размера общего ROOT-owned журнала.
+После его сжатия ROOT повторён только checker с --root worker3: PASS по структуре,
+бюджетам и current projections. Продуктовые проверки и прогоны не повторялись.
+Предыдущие проверки ссылок отчёта, JSON и whitespace прошли. ROOT принимает
+причинный выигрыш57,376 с по кнопке и59,437 с внутри replay, а не весь разрыв.
 
 ## 8. Один r5-bookkeeping-v1: фактический итог
 
